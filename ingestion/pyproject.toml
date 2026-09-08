@@ -1,0 +1,30 @@
+[project]
+name = "coursepilot-ingestion"
+version = "0.1.0"
+description = "Rutgers data ingestion pipeline for CoursePilot."
+requires-python = ">=3.12,<3.14"
+
+# Deliberately minimal. Scraping dependencies (playwright, beautifulsoup4) are
+# NOT added yet — no scraper is being written in this phase, and unused heavy
+# dependencies rot. They go in when the first real source is implemented.
+dependencies = [
+    "httpx>=0.27",
+    "pydantic>=2.9",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "psycopg[binary]>=3.2",
+    "tenacity>=9.0",       # retry/backoff for flaky sources
+    "structlog>=24.4",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.3", "ruff>=0.7", "mypy>=1.13"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["coursepilot_ingestion"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

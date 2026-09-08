@@ -1,0 +1,61 @@
+# CoursePilot — local development stack.
+#
+# The frontend is intentionally NOT containerized. Next.js dev-server hot
+# reload through a Docker bind mount on Windows is slow and flaky; running
+# `npm run dev` on the host is faster and simpler. See docs/ARCHITECTURE.md
+# ("Local development topology") for the tradeoff.
+#
+# Usage:
+#   cp .env.example .env
+#   docker compose up -d db
+#   docker compose up backend
+
+services:
+  db:
+    # pgvector/pgvector ships PostgreSQL with the `vector` extension already
+    # compiled in, so we don't have to build a custom image.
+    image: pgvector/pgvector:pg16
+    container_name: coursepilot-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-coursepilot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-coursepilot}
+      POSTGRES_DB: ${POSTGRES_DB:-coursepilot}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-coursepilot} -d ${POSTGRES_DB:-coursepilot}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: coursepilot-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Override host-oriented values from .env for the container network.
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-coursepilot}:${POSTGRES_PASSWORD:-coursepilot}@db:5432/${POSTGRES_DB:-coursepilot}
+      DATABASE_URL_SYNC: postgresql+psycopg://${POSTGRES_USER:-coursepilot}:${POSTGRES_PASSWORD:-coursepilot}@db:5432/${POSTGRES_DB:-coursepilot}
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - ./backend:/app
+      # Skills are read by the backend at runtime but authored at the repo
+      # root, so they are mounted read-only rather than copied into the image.
+      - ./skills:/skills:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  pgdata:
