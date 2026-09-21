@@ -343,15 +343,12 @@ def test_case_2_one_completion_beats_two_partials(cs_session) -> None:
 # ==========================================================================
 
 
-def test_case_3_dead_end_requirement_is_where_the_engine_loses(cs_session) -> None:
+def test_case_3_dead_end_requirement_now_matches_the_oracle(cs_session) -> None:
     """R_BIG needs 2 courses and only 1 is eligible: it can NEVER finish.
 
-    The optimal allocation gives the course to R_ONE and completes it. The
-    current allocator fills R_BIG instead - same slot count, one fewer
-    requirement satisfied.
-
-    This is the one adversarial case in this file where the current engine is
-    provably suboptimal, and it is the whole argument for a global objective.
+    This was the one adversarial case where the engine was provably
+    suboptimal, and it was the whole argument for a global objective. Phase
+    4.5 adopted one, so the engine now reaches the oracle's answer.
     """
     definitions = [
         _req("R_BIG", count=2, courses=[C1]),
@@ -363,10 +360,10 @@ def test_case_3_dead_end_requirement_is_where_the_engine_loses(cs_session) -> No
     assert outcome["oracle_satisfied"] == {"R_ONE"}
     assert outcome["oracle_slots"] == 1
 
-    # Engine: fills the dead end, completes nothing. MEASURED, not desired.
+    # Engine now agrees with the oracle.
     assert outcome["engine_slots"] == 1
-    assert outcome["engine_satisfied"] == set()
-    assert len(outcome["oracle_satisfied"]) > len(outcome["engine_satisfied"])
+    assert outcome["engine_satisfied"] == {"R_ONE"}
+    assert outcome["engine_satisfied"] == outcome["oracle_satisfied"]
 
 
 # ==========================================================================

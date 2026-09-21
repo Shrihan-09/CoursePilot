@@ -50,11 +50,19 @@ from app.models import (
     StudentCourse,
 )
 from app.services.audit.allocation import (
+    AllocationPlan,
     Candidate,
     Slot,
     allocate,
     allocate_credits,
     max_distinct_categories,
+)
+from app.services.audit.optimizer import (
+    DEFAULT_OBJECTIVE,
+    AllocationProblem,
+    GlobalAllocationObjective,
+    ObjectiveContext,
+    RequirementSpec,
 )
 from app.services.audit.categories import (
     DEFAULT_STRATEGY,
@@ -91,12 +99,18 @@ class DegreeAuditEngine:
         self,
         session: Session,
         category_strategy: CategoryAllocationStrategy | None = None,
+        objective: "GlobalAllocationObjective | None" = None,
     ) -> None:
         self.session = session
         # Internal seam, not a user-facing setting: it exists so the two
         # category strategies can be compared on identical real input.
         # Production always uses DEFAULT_STRATEGY.
         self.category_strategy = category_strategy or DEFAULT_STRATEGY
+        # The adopted global objective (Phase 4.5). Overridable for tests and
+        # for measuring alternatives; production uses DEFAULT_OBJECTIVE.
+        self.objective = objective or DEFAULT_OBJECTIVE
+        # Guards the baseline audit against recomputing its own baseline.
+        self._computing_baseline = False
 
     # ------------------------------------------------------------------ #
     # loading
@@ -197,6 +211,120 @@ class DegreeAuditEngine:
             # are settled after the matching by allocate_credits().
             return 0
         return 0
+
+    # ------------------------------------------------------------------ #
+    # global allocation
+    # ------------------------------------------------------------------ #
+
+    def _optimize_globally(
+        self,
+        requirements: list[Requirement],
+        candidates: list[Candidate],
+        eligibility: dict[str, set[str]],
+        option_categories: dict[tuple[str, str], set[str]],
+        share: bool,
+        student: Student,
+    ):
+        """Re-allocate under the adopted global objective.
+
+        Returns a new AllocationPlan, or None to keep the matching's result -
+        which happens when the optimizer cannot PROVE optimality within its
+        bound. An unproven allocation is never presented as optimal.
+
+        Only course-to-requirement assignment is decided here. Categories are
+        assigned afterwards by the Phase 4.2 strategy, which remains the
+        authority on category semantics.
+        """
+        if self._computing_baseline:
+            # The baseline audit must not recurse into another baseline.
+            return None
+
+        specs: list[RequirementSpec] = []
+        for req in requirements:
+            needed = self._slots_needed(req)
+            if needed <= 0:
+                continue
+            cats: dict[str, frozenset[str]] = {}
+            for candidate in candidates:
+                if req.code not in candidate.eligible_requirements:
+                    continue
+                course_id = candidate.course_key.split(":")[0]
+                cats[candidate.course_key] = frozenset(
+                    option_categories.get((course_id, req.code), set())
+                )
+            if not cats:
+                continue
+            specs.append(
+                RequirementSpec(
+                    code=req.code,
+                    system=req.requirement_system if share else "*",
+                    needed_count=needed,
+                    needed_categories=req.min_distinct_categories or 0,
+                    categories=cats,
+                    sort_key=(req.sort_order, req.code),
+                )
+            )
+
+        if not specs:
+            return None
+
+        problem = AllocationProblem(
+            requirements=tuple(specs),
+            course_keys=tuple(sorted(c.course_key for c in candidates)),
+            share_across_systems=share,
+            # Natural identities, so the optimizer's tie-break survives a
+            # re-ingest that changes surrogate ids.
+            course_order={c.course_key: c.sort_key for c in candidates},
+        )
+        context = ObjectiveContext(
+            baseline_satisfied=self._baseline_satisfied(student)
+        )
+
+        from app.services.audit.optimizer import optimize
+
+        result = optimize(problem, self.objective, context)
+        if not result.exact:
+            # Documented fallback: keep the matching rather than claim an
+            # optimum that was not proven.
+            logger.info(
+                "global optimizer fell back for student %s (components: %s)",
+                student.id,
+                result.fallback_components,
+            )
+            return None
+
+        plan = AllocationPlan()
+        per_requirement: dict[str, int] = defaultdict(int)
+        system_of = {r.code: r.requirement_system for r in requirements}
+        for assignment in sorted(
+            result.allocation.assignments,
+            key=lambda a: (a.requirement_code, a.course_key),
+        ):
+            index = per_requirement[assignment.requirement_code]
+            per_requirement[assignment.requirement_code] += 1
+            plan.assign(
+                assignment.requirement_code,
+                index,
+                assignment.course_key,
+                system_of.get(assignment.requirement_code, "major"),
+            )
+        return plan
+
+    def _baseline_satisfied(self, student: Student) -> frozenset[str]:
+        """What the student had already EARNED - completed courses only.
+
+        See DATA_MODEL.md section 21. Derived from stored StudentCourse rows
+        through the real evaluator, never from a previous optimizer run.
+        """
+        from app.services.audit.baseline import EARNED_STATUSES, baseline_from_result
+
+        engine = DegreeAuditEngine(
+            self.session, category_strategy=self.category_strategy, objective=self.objective
+        )
+        engine._computing_baseline = True
+        return baseline_from_result(
+            engine.audit(student, statuses=EARNED_STATUSES)
+        ).satisfied
 
     # ------------------------------------------------------------------ #
     # category-aware allocation
@@ -761,7 +889,23 @@ class DegreeAuditEngine:
         # EXCLUSIVE is the default, so a program that has not stated a
         # sharing rule behaves exactly as it did before Phase 3.75.
         share = version.sharing_policy == SharingPolicy.SHARE_ACROSS_SYSTEMS.value
+
+        # --- global allocation (Phase 4.5) ---
+        # The matching below maximizes FILLED SLOTS, which is not the same as
+        # maximizing COMPLETED REQUIREMENTS (DATA_MODEL.md 17-19). The global
+        # optimizer answers "which allocation should be evaluated" under the
+        # adopted objective; the evaluator still decides what it MEANS, and
+        # the Phase 4.2 category strategy still owns category assignment.
+        #
+        # The matching remains the FALLBACK: if the optimizer cannot prove
+        # optimality within its bound, its result is discarded rather than
+        # presented as optimal.
         plan = allocate(slots, candidates, share_across_systems=share)
+        optimized = self._optimize_globally(
+            requirements, candidates, eligibility, option_categories, share, student
+        )
+        if optimized is not None:
+            plan = optimized
 
         # --- distinct-category requirements, re-chosen AFTER the matching ---
         # The matching fills slots without knowing categories exist, so it can

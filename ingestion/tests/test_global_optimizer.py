@@ -6,8 +6,8 @@ decomposition, not its search. Both are built here from the same requirement
 definition and compared on SCORE, which is what makes the agreement evidence
 rather than a tautology.
 
-Production allocation is unchanged by this phase; the optimizer is not wired
-into the engine.
+The optimizer IS the production allocation path as of Phase 4.5, under the
+adopted objective C. The oracle is never in that path.
 
 ## Synthetic data
 
@@ -501,20 +501,37 @@ def test_empty_baseline_makes_all_objectives_agree_on_completions() -> None:
     assert len(set(counts.values())) == 1, counts
 
 
-def test_no_default_objective_is_set() -> None:
-    """The A/B/C/D choice is a product decision left open by Phase 4.4, so the
-    module must not quietly adopt one."""
+def test_adopted_objective_is_c_without_a_progress_term() -> None:
+    """The product decision, pinned.
+
+    Policy C: completions first, then regressions avoided where free, then
+    filled slots. The partial-progress component was removed deliberately -
+    summed fractions embed an unstated weighting and were the measured
+    performance bottleneck.
+    """
     from app.services.audit import optimizer
 
-    assert optimizer.DEFAULT_OBJECTIVE is None
+    assert optimizer.DEFAULT_OBJECTIVE is optimizer.OBJECTIVE_C
+
+    problem = _problem([_spec("R", 3, ["c1"])], ["c1"])
+    score = optimizer.OBJECTIVE_C(
+        optimize(problem, optimizer.OBJECTIVE_C, _ctx()).allocation, problem, _ctx()
+    )
+    # (satisfied, -regressions, slots) - three components, all integers.
+    assert len(score) == 3
+    assert all(isinstance(x, int) for x in score)
 
 
-def test_optimizer_is_not_wired_into_the_engine() -> None:
-    """Production allocation semantics are unchanged by this phase."""
+def test_engine_uses_the_optimizer_but_never_the_oracle() -> None:
+    """The optimizer is production; the oracle must never be.
+
+    An oracle in the production path would make the verification circular -
+    and it is exponential besides.
+    """
     import inspect
 
     from app.services.audit import engine
 
     source = inspect.getsource(engine)
-    assert "optimizer" not in source
+    assert "optimizer" in source
     assert "oracle" not in source

@@ -223,8 +223,10 @@ def test_case_c_equal_slots_different_satisfaction(cs_session) -> None:
     assert _satisfied(result, ["R1", "R2", "R3"]) == {"R2", "R3"}
 
 
-def test_case_c2_slots_spent_on_an_unsatisfiable_requirement(cs_session) -> None:
-    """The divergence the tie-break does NOT save, pinned as current behaviour.
+def test_case_c2_dead_end_requirement_no_longer_strands_a_completion(
+    cs_session,
+) -> None:
+    """FIXED IN PHASE 4.5. Kept as the historical record of the defect.
 
     R_BIG needs 2 courses and only ONE course is eligible for it, so it can
     never be satisfied by any allocation. R_ONE needs 1 course and the same
@@ -235,12 +237,13 @@ def test_case_c2_slots_spent_on_an_unsatisfiable_requirement(cs_session) -> None
     requirements satisfied 0                       |  1
     preferred by           max-slots is INDIFFERENT|  max-satisfied strictly
 
-    Most-constrained-first does not help: both requirements have exactly one
-    eligible course, so the tie falls to sort order. A slot is filled in a
-    requirement that cannot be completed, and a requirement that could have
-    been completed reports unsatisfied.
+    Most-constrained-first could not help: both requirements have exactly one
+    eligible course, so the tie fell to sort order, and the slot was filled in
+    a requirement that cannot be completed while a completable one reported
+    unsatisfied.
 
-    THIS ASSERTION PINS BEHAVIOUR THE INVESTIGATION CONSIDERS WRONG.
+    The global objective adopted in Phase 4.5 maximizes COMPLETED
+    requirements, so the course now goes to R_ONE.
     """
     reqs = [
         _root(),
@@ -255,16 +258,10 @@ def test_case_c2_slots_spent_on_an_unsatisfiable_requirement(cs_session) -> None
 
     assert _filled_slots(result, ["R_BIG", "R_ONE"]) == 1
 
-    # MEASURED: the course goes to R_BIG, which can never be completed.
-    assert [a.requirement_code for a in result.allocation] == ["R_BIG"]
-    assert _satisfied(result, ["R_BIG", "R_ONE"]) == set()
-    assert _find(result, "R_BIG").satisfied_count == 1
-    assert _find(result, "R_BIG").needed_count == 2
-    assert _find(result, "R_ONE").status is RequirementStatus.UNSATISFIED
-
-    # One slot filled, ZERO requirements satisfied, where one was achievable.
-    # The student is told they have finished nothing, and a different reading
-    # of the same transcript would have finished R_ONE.
+    # Phase 4.5: the course goes to the requirement that can be COMPLETED.
+    assert [a.requirement_code for a in result.allocation] == ["R_ONE"]
+    assert _satisfied(result, ["R_BIG", "R_ONE"]) == {"R_ONE"}
+    assert _find(result, "R_BIG").satisfied_count == 0
 
 
 # ==========================================================================
