@@ -1843,3 +1843,261 @@ search is cheaper than the database round-trip it follows.
    fail to decompose, which is why the recommendation carries a bound and a
    fallback.
 5. **No major-vs-core precedence**, since no Rutgers source states one.
+
+---
+
+## 20. Global objective POLICY (Phase 4.4 investigation)
+
+Section 19 settled the mathematics and stopped at a product decision. This
+section models that decision, measures its consequences, and **does not make
+it**.
+
+**Production behaviour is unchanged.** Nothing in `policies.py` is imported by
+the audit engine.
+
+### 20.1 The product question
+
+> If an allocation can complete more requirements, but causes a requirement
+> that was previously complete to become incomplete, should CoursePilot
+> prefer that allocation?
+
+The shape, from Phase 4.3 real data:
+
+```
+Allocation A                 Allocation B
+CORE_SCL  satisfied          CORE_SCL  unsatisfied
+CORE_HST  partial            CORE_HST  satisfied
+CORE_QFR  partial            CORE_QFR  satisfied
+```
+
+A keeps what the student already had. B completes more. Neither is labelled
+better here, because "better" is a statement about what CoursePilot values
+and no Rutgers source supplies one.
+
+### 20.2 The policies, exactly
+
+Each is a lexicographic tuple, highest priority first. All components are
+counts or exact `Fraction`s derived from requirement definitions - no
+requirement is weighted by identity anywhere.
+
+| | Policy | Objective tuple |
+|---|---|---|
+| **A** | completion-first | `(satisfied, progress, slots)` |
+| **B** | progress-preserving | `(-regressions, satisfied, progress, slots)` |
+| **C** | completion + monotonic | `(satisfied, -regressions, progress, slots)` |
+| **D** | student-configurable | a selector over A and B |
+
+`regressions` = requirements that were satisfied in the baseline and are not
+satisfied under this allocation.
+
+**The orderings are the normative content.** B places preservation above
+completion; C places completion above preservation. That single swap is the
+entire disagreement, and it is a values question, not a mathematical one.
+
+### 20.3 Stateless versus stateful - an architectural consequence
+
+```
+A   stateless   depends only on the current transcript
+B   stateful    needs a baseline of previously satisfied requirements
+C   stateful    same
+D   either
+```
+
+Today every audit is recomputed from scratch and CoursePilot stores no prior
+audit. Adopting B or C therefore requires either persisting prior results or
+defining the baseline as "the audit before the newest course" - **different
+products, not different tunings**. With an empty baseline, B and C collapse
+onto A, so a first-ever audit cannot distinguish them.
+
+### 20.4 Policy C is a strict refinement of A, and does NOT guarantee monotonicity
+
+C's first key is identical to A's, so C can only differ from A among
+allocations **already tied on completions**. That yields, provably and
+checked by test:
+
+```
+satisfied(C) == satisfied(A)        always
+regressions(C) <= regressions(A)
+```
+
+The name is therefore misleading in one specific way: when the maximum
+completion count *requires* undoing a satisfied requirement, C undoes it,
+exactly like A. **C buys preservation only where preservation is free.** It
+is a tie-break, not a guarantee.
+
+Policy B is the only modelled policy that guarantees no regression - and it
+pays for that guarantee by declining completions.
+
+### 20.5 "Maximize partial progress" is not weight-free
+
+The brief warns against assuming `2/3` beats `1/1`. The warning generalises:
+**any scalar progress measure over requirements with different denominators
+embeds a weighting.**
+
+```
+filled slots      weight-free; one allocated course counts as one, anywhere
+sum of fractions  a slot in a 2-course requirement is worth 1/2, one in a
+                  5-course requirement 1/5 - a ranking nobody stated
+```
+
+Both are implemented because they disagree. A measured example:
+
+```
+R_DONE needs 1, R_PART needs 3, student holds c1, c2, c3
+
+complete_small : R_DONE 1/1 + R_PART 2/3   fraction 5/3, slots 3
+feed_big       : R_PART 3/3                fraction 1,   slots 3
+```
+
+Both complete exactly one requirement and fill three slots. The fraction
+measure prefers `complete_small` - it has a genuine preference for
+**spreading** progress across requirements, which nobody asked for and which
+falls out of the arithmetic. The slots measure cannot tell them apart at all.
+
+So "maximize partial progress" is under-specified until the measure is named,
+and naming it is itself a product decision.
+
+### 20.6 Real-data measurement
+
+800 sampled transcripts (two seeds, 6-10 courses) from the real 2026-27 CS BA
++ SAS Core instance. For each: take the transcript minus its last course,
+solve under Policy A to get the baseline, add the course back, then solve
+under A, B and C.
+
+```
+all three policies agree                     796 / 800   (99.5%)
+Policy A regressed a requirement               4 / 800   ( 0.5%)
+Policy B regressed a requirement               0 / 800
+Policy C regressed a requirement               0 / 800
+Policy A completed MORE than Policy B          0 / 800
+baseline contained a multi-course completion  ~58%
+```
+
+The regressed requirement was `CORE_WC` (3 courses) in all four cases -
+consistent with the structural result below that only multi-course
+requirements can regress.
+
+**All four regressions were gratuitous.** Each traded one completion for
+another with no net gain:
+
+```
+before = 8 courses, added 07:965:211
+  baseline : CCD, HST, QFR, SCL, WC        5 satisfied
+  Policy A : AH, CCD, HST, QFR, SCL        5 satisfied   (WC lost, AH gained)
+  Policy B : CCD, HST, QFR, SCL, WC        5 satisfied   (unchanged)
+  Policy C : CCD, HST, QFR, SCL, WC        5 satisfied   (unchanged)
+```
+
+A did not complete more. It simply picked a different member of a tied set,
+because it never looks at the baseline.
+
+**What was NOT observed:** the case where preservation genuinely costs a
+completion - the one that makes B and C differ - did not occur in 800 real
+transcripts. It is constructible synthetically (see 20.7) but absent from
+this instance at these sizes.
+
+### 20.7 Structural result: what a regression requires
+
+A satisfied requirement holding ONE course can free at most one course, which
+can complete at most one other requirement: a trade of one for one, never a
+strict gain. So Policy A has no incentive to regress a single-course
+requirement.
+
+Regressions therefore require a satisfied requirement holding **two or more**
+courses whose release completes two or more others. On the real instance only
+four requirements have a threshold >= 2 (`CORE_AH` 2, `CORE_QFR` 2, `CORE_WC`
+3, `CS_ELECTIVES` 5), which bounds how often the conflict can arise at all
+and matches the measurement above.
+
+The synthetic minimum case:
+
+```
+R_HELD needs 2 from {c1, c2}    satisfied at baseline
+R_ONE  needs 1 from {c1}
+R_TWO  needs 1 from {c2}
+
+keep    : R_HELD satisfied             1 satisfied, 0 regressions
+release : R_ONE + R_TWO satisfied      2 satisfied, 1 regression
+```
+
+Here A and C take the extra completion and B declines it. This is the only
+shape in which the A/B disagreement is real.
+
+### 20.8 Monotonicity
+
+> Can adding an eligible course cause an already satisfied requirement to
+> become unsatisfied?
+
+```
+Policy A   YES - measured, 4 of 800 real transcripts (0.5%)
+Policy C   YES in principle (when the regression is necessary);
+           NOT observed on real data - it avoided all four of A's
+Policy B   NO by construction
+```
+
+So a monotonicity guarantee is available, but only from Policy B, and only at
+the price of declining completions in the 20.7 shape. On the measured data
+that price was never actually charged - but "never observed in 800 samples"
+is not "cannot happen".
+
+### 20.9 Rutgers behaviour versus CoursePilot policy
+
+Kept deliberately separate, per the brief.
+
+**Documented Rutgers behaviour.** SAS Academic Advising, on Degree Navigator:
+
+> "DN will adjust itself automatically as soon as another course is taken -
+> DN will always adjust the audit so that the maximum number of requirements
+> are complete."
+
+That describes something close to Policy A: completion-maximizing, and
+explicitly re-adjusting when a course is added. It is a statement about
+Rutgers' own tool.
+
+**Difference.** It says nothing about preserving previously completed
+requirements, nor about which of several equally complete allocations DN
+picks. It therefore does not distinguish A from C - and C eliminated every
+observed regression without completing fewer requirements.
+
+**Potential student impact.** Under A, a student can see a requirement flip
+from complete to incomplete after taking an unrelated course, with no
+explanation and no change in their actual progress. Rutgers students already
+experience this with DN. Whether CoursePilot should reproduce it, avoid it
+where free (C), or guarantee against it (B) is a CoursePilot product
+decision.
+
+**This section does not conclude that CoursePilot must match Rutgers.**
+
+### 20.10 Arbitrary weights remain unjustified
+
+No policy modelled here assigns a numeric value to a requirement's identity -
+no "major = 50, core = 30", no "satisfied = 100, partial = 20". Phase 4.3
+established that Rutgers publishes no such ranking, and a test asserts that
+swapping two requirements' codes does not change the outcome shape.
+
+The one place a weighting creeps in implicitly is the fraction progress
+measure (20.5), which is why it is flagged rather than adopted.
+
+### 20.11 The decision that remains open
+
+```
+Does CoursePilot treat "a previously completed requirement becoming
+incomplete" as a cost?
+
+  no           -> Policy A
+  yes, free    -> Policy C   (avoid regressions that cost no completions)
+  yes, always  -> Policy B   (guarantee, at the price of completions)
+  let students choose -> Policy D
+```
+
+Evidence available for that choice:
+
+- The three policies agree on 99.5% of real transcripts.
+- Every observed regression under A was gratuitous - zero completions gained.
+- Policy C removed all of them at zero cost in completions **on this data**.
+- Policy B cost zero completions **on this data**, but is the only one whose
+  guarantee holds in general.
+- B and C require a stored baseline; A does not.
+- Policy D is logically coherent but makes the preference part of what an
+  audit MEANS: two students with identical transcripts see different audits,
+  and toggling changes requirement states without taking a course.
