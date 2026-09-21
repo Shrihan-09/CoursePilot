@@ -2101,3 +2101,220 @@ Evidence available for that choice:
 - Policy D is logically coherent but makes the preference part of what an
   audit MEANS: two students with identical transcripts see different audits,
   and toggling changes requirement states without taking a course.
+
+---
+
+## 21. Baseline semantics and the global optimizer (Phase 4.5)
+
+Section 20 modelled the objective choice and left it open. This section
+defines the **baseline** that a regression-aware objective protects, and
+implements the optimizer that will execute whichever objective is chosen.
+
+**Production allocation is unchanged.** The optimizer is not wired into the
+engine, and no default objective is set - a test asserts both.
+
+### 21.1 What the model already provides
+
+Established by inspection, not assumption:
+
+| Fact | Evidence |
+|---|---|
+| `StudentCourse.status` is `completed` / `in_progress` / `planned` | `student.py` |
+| `COUNTABLE = {completed, in_progress}`; planned "is an intention, not evidence" | `engine.py` |
+| **No table stores audit results or requirement assignments** | 17 tables, none for allocations |
+| A course's requirement assignment is an INTERPRETATION, recomputed each audit | `AllocationPlan` is built in memory per call |
+
+The third row decides most of the baseline question.
+
+### 21.2 The four candidate baselines
+
+| | Candidate | Verdict |
+|---|---|---|
+| **A** | audit over COMPLETED courses only | **adopted** - derivable today from authoritative student state |
+| B | the previous optimizer output | rejected |
+| C | the previous semester's planned allocation | rejected - planned courses are not evidence, and nothing is stored |
+| D | other authoritative state | none exists - no registrar-supplied allocation is modelled |
+
+**B is rejected on principle, not only on cost.** An optimizer's previous
+output is not an academic fact. Persisting it would let an arbitrary earlier
+run - including one produced by a version of the allocator since found to be
+wrong - acquire authority over later audits. Section 20's warning applies
+directly: a previous result should not become truth by virtue of having
+happened first.
+
+### 21.3 The definition
+
+```
+Baseline  = the audit computed from COMPLETED courses only,
+            taking requirements whose status is SATISFIED
+
+Regression = a requirement in the baseline that the candidate
+             allocation does not satisfy
+```
+
+**In-progress work is excluded deliberately.** The evaluator already
+separates `SATISFIED` from `PROVISIONALLY_SATISFIED` because an in-progress
+course can still be failed. A baseline counting in-progress work would let
+the audit promise to protect a completion the student has not earned, and
+then "regress" it through no change in their record.
+
+**Computed through the real evaluator.** `DegreeAuditEngine.audit(student,
+statuses={"completed"})` narrows the INPUT and leaves every rule untouched -
+grades, exclusions, category distinctness, sharing policy and group
+propagation all behave normally. The `statuses` parameter is the only engine
+change in this phase; omitted, behaviour is byte-for-byte as before.
+Reimplementing satisfaction in `baseline.py` would have created a second
+source of truth for "satisfied", which the audit architecture has
+consistently refused.
+
+### 21.4 Which regressions are in scope
+
+The evaluator exposes four quantities that could each regress. **Only the
+first is protected:**
+
+| Quantity | In scope | Why |
+|---|---|---|
+| requirement satisfaction | **yes** | what a student means by "it said I was done" |
+| partial progress (2/3 -> 1/3) | no | any scalar progress measure embeds a weighting (section 20.5) |
+| category coverage | no, not separately | already participates via satisfaction - a category-constrained requirement is unsatisfied without its categories |
+| credits | no | credit requirements are not allocated by the matching at all (`_slots_needed(CREDITS) == 0`) |
+
+Narrowing to satisfaction keeps the definition free of invented semantics.
+
+### 21.5 Optimizer architecture
+
+```
+allocation problem
+      |
+      v
+decompose into independent components     optimizer.decompose
+      |
+      v
+exhaustive search per component, bounded  optimizer._solve_component
+      |
+      v
+concatenate component allocations
+      |
+      v
+requirement evaluation                    engine.py - NOT the optimizer
+```
+
+The optimizer answers *which allocation should be evaluated*. The evaluator
+answers *what it means academically*. Those responsibilities stay separate:
+the optimizer's `satisfied()` mirrors only the threshold rule needed to score
+a candidate, and never grades, exclusions, credits or group propagation.
+
+**Independence from the oracle is total.** `optimizer.py` shares no types, no
+decomposition and no search with `oracle.py`. Tests build both from the same
+requirement definition and compare scores - agreement between two
+implementations that import each other would prove nothing.
+
+### 21.6 Objectives as named strategies
+
+`GlobalAllocationObjective` is a declared object with a name, a description
+and a scoring function, so the tuple ordering - the entire normative content
+- is visible rather than buried in a sort key:
+
+```
+A_completion_first      (satisfied, progress, slots)
+B_progress_preserving   (-regressions, satisfied, progress, slots)
+C_completion_monotonic  (satisfied, -regressions, progress, slots)
+slots_only              (slots,)                    today's behaviour
+```
+
+`DEFAULT_OBJECTIVE` is **None**. Phase 4.4 left the choice open as a product
+decision, and this module refuses to adopt one silently.
+
+### 21.7 Pruning, and why every rule is exact-preserving
+
+1. **Capacity** - a requirement holds at most `needed_count` courses. Extra
+   courses cannot raise any objective component: the threshold is already
+   met, and slots beyond capacity are not allocations the evaluator honours.
+2. **Canonical ordering** - courses and options are enumerated in fixed
+   order. This changes only WHICH optimum is found among ties, never the
+   optimal score.
+
+There is deliberately **no heuristic pruning**. Both rules are
+exact-preserving restrictions, so the search still returns the true optimum.
+
+One constant-factor change was made after measurement, not before:
+per-requirement occupancy is tracked incrementally rather than rescanned per
+option, which made the realistic transcript 108 ms -> 33 ms with no change to
+the states explored.
+
+### 21.8 Bound and fallback
+
+Every result carries `exact`. When a component exceeds its state bound the
+optimizer does **not** return its best-so-far as though it were optimal: it
+sets `exact = False` and names the components that fell back.
+`require_exact()` raises rather than hand back an unproven allocation.
+
+This matters because the failure is otherwise invisible - an inexact
+allocation looks exactly like an exact one.
+
+### 21.9 Measurements
+
+Real 2026-27 CS BA + SAS Core, objective A, `DEFAULT_COMPONENT_BOUND` 200,000:
+
+| courses | components | states | time | exact |
+|---|---|---|---|---|
+| 5 | 3.0 | 29 | 0.3 ms | yes |
+| 8 | 3.4 | 202 | 1.0 ms | yes |
+| 12 | 4.0 | 9,012 | 50 ms | yes |
+| 16 | 3.9 | 23,895 | 229 ms | yes |
+| 20 | 3.8 | 61,492 | 432 ms | **no** |
+| 30 | 3.4 | 164,770 | 1,836 ms | **no** |
+| 40 | 3.2 | 200,121 | 1,993 ms | **no** |
+
+**Realistic 19-course CS transcript: 8 components, 3,300 states, 33 ms,
+exact**, 14 requirements satisfied.
+
+Compared with Phase 4.3's decomposed oracle (12c 17 ms, 16c 18 ms, 30c
+45 ms), **this optimizer is slower** and falls back where the oracle did not.
+Reported rather than smoothed. Two contributing causes are known:
+
+- The `Fraction` progress term is expensive. Replacing objective A with
+  `(satisfied, slots)` measured 12c 31 ms -> 16 ms and 20c 980 ms -> 338 ms.
+  This is direct evidence for the rule that a progress component should be
+  **removed if the chosen objective does not need it**, rather than invented.
+- Random transcripts drawn from all 527 certified courses decompose worse
+  than real ones; the concentrated 19-course transcript is exact and fast,
+  while a random 30-course draw leaves a 28-course component.
+
+One 16-course sample took minutes under objective A. It did not reproduce in
+the sweep above and is recorded as an unexplained outlier rather than a
+characterised behaviour.
+
+### 21.10 Phase 4.2 compatibility
+
+Preserved and tested:
+
+- category distinctness remains a **satisfaction** condition - two courses
+  may both take `Xp`, producing a valid allocation that evaluates to 1 of 2
+  categories, and the search must generate it rather than prune it;
+- Case D - an `Xp + Xo` pair is found when one exists;
+- Case F - one course certified for two categories occupies one position;
+- the recorded category is the **edge selected**, not the union;
+- one course, one position per requirement;
+- sharing policy: one slot per system when sharing, exactly one under
+  EXCLUSIVE.
+
+### 21.11 Schema
+
+**No migration.** `alembic check` reports "No new upgrade operations
+detected". The baseline is derived entirely from existing `StudentCourse`
+rows, which is why candidate A was preferred on architecture as well as on
+principle.
+
+### 21.12 What remains open
+
+1. **The A/B/C/D objective decision** (section 20.11). Until it is made, the
+   optimizer is not wired into the engine and `DEFAULT_OBJECTIVE` stays None.
+2. **The progress component.** If the chosen objective does not need one, it
+   should be deleted rather than kept - it is the measured bottleneck and it
+   embeds a weighting.
+3. **Fallback policy in production.** The optimizer reports inexactness
+   honestly, but nothing yet decides what the engine should DO with an
+   inexact result: fall back to today's matching, or refuse.
+4. **Performance on poorly-decomposing curricula**, where the optimizer
+   currently falls back.
