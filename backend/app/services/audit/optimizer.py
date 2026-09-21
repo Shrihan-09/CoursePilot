@@ -101,6 +101,15 @@ class AllocationProblem:
     requirements: tuple[RequirementSpec, ...]
     course_keys: tuple[str, ...]
     share_across_systems: bool = False
+    #: course_key -> a STABLE NATURAL ordering key (course string, term...).
+    #: Course keys are built from surrogate ids, so ordering on them would be
+    #: deterministic within one database and arbitrary across a re-ingest -
+    #: the same trap documented in DATA_MODEL.md 16.3. Callers pass natural
+    #: keys so the chosen allocation survives reloading the catalog.
+    course_order: Mapping[str, tuple] = field(default_factory=dict)
+
+    def order_of(self, course_key: str) -> tuple:
+        return self.course_order.get(course_key, (course_key,))
 
     def system_of(self, code: str) -> str:
         if not self.share_across_systems:
@@ -167,6 +176,14 @@ class CandidateAllocation:
 
 def _assignment_key(a: Assignment) -> tuple:
     return (a.course_key, a.requirement_code, a.category)
+
+
+def _natural_key(allocation: CandidateAllocation, order) -> tuple:
+    """Canonical comparison key built from NATURAL course identities."""
+    return tuple(
+        (order(a.course_key), a.requirement_code, a.category)
+        for a in allocation.assignments
+    )
 
 
 # --------------------------------------------------------------------------
@@ -266,14 +283,13 @@ OBJECTIVE_B = GlobalAllocationObjective(
 OBJECTIVE_C = GlobalAllocationObjective(
     name="C_completion_monotonic",
     description=(
-        "(satisfied, -regressions, progress, slots) - completion-first, with "
-        "regressions avoided only where that costs no completions. NOT a "
-        "monotonicity guarantee."
+        "(satisfied, -regressions, slots) - completion-first, with regressions "
+        "avoided only where that costs no completions. NOT a monotonicity "
+        "guarantee. THE ADOPTED OBJECTIVE."
     ),
     score=lambda a, p, c: (
         len(a.satisfied(p)),
         -_regressions(a, p, c),
-        _progress_fraction(a, p),
         a.filled_slots,
     ),
 )
@@ -289,9 +305,18 @@ OBJECTIVES = {
     o.name: o for o in (OBJECTIVE_A, OBJECTIVE_B, OBJECTIVE_C, OBJECTIVE_SLOTS)
 }
 
-#: Deliberately unset. Phase 4.4 left the A/B/C/D choice open as a product
-#: decision, so this module refuses to pick one on the caller's behalf.
-DEFAULT_OBJECTIVE: GlobalAllocationObjective | None = None
+#: The adopted objective: Policy C with NO partial-progress component.
+#:
+#: Chosen as a product decision, recorded in DATA_MODEL.md section 21.6.
+#: Completions first; among equally-complete allocations, prefer the one
+#: that does not undo a requirement the student had already earned; then
+#: filled slots as a weight-free tie-break.
+#:
+#: The progress term was deliberately REMOVED rather than kept: summing
+#: per-requirement fractions embeds a weighting nobody stated (it prefers
+#: spreading progress across small requirements) and was the measured
+#: performance bottleneck.
+DEFAULT_OBJECTIVE: GlobalAllocationObjective = OBJECTIVE_C
 
 
 # --------------------------------------------------------------------------
@@ -347,8 +372,9 @@ def decompose(problem: AllocationProblem) -> list[AllocationProblem]:
         parts.append(
             AllocationProblem(
                 requirements=reqs,
-                course_keys=tuple(sorted(courses)),
+                course_keys=tuple(sorted(courses, key=problem.order_of)),
                 share_across_systems=problem.share_across_systems,
+                course_order=problem.course_order,
             )
         )
     return sorted(parts, key=lambda p: (p.requirements[0].sort_key, p.requirements[0].code))
@@ -395,7 +421,7 @@ def _choices_for(
         else ("*",)
     )
     out: dict[tuple[str, str], list[tuple[str, str] | None]] = {}
-    for course in sorted(problem.course_keys):
+    for course in sorted(problem.course_keys, key=problem.order_of):
         for system in systems:
             options: list[tuple[str, str] | None] = [None]
             for req in sorted(problem.requirements, key=lambda r: (r.sort_key, r.code)):
@@ -441,7 +467,10 @@ def _solve_component(
     optimum.
     """
     choices = _choices_for(problem)
-    slots = sorted(choices)
+    # Natural-key order, so both the enumeration and the tie-break below are
+    # reproducible across a re-ingest rather than merely deterministic.
+    slots = sorted(choices, key=lambda k: (problem.order_of(k[0]), k[1]))
+    order = problem.order_of
     capacity = {r.code: r.needed_count for r in problem.requirements}
 
     best_score: tuple | None = None
@@ -469,8 +498,7 @@ def _solve_component(
             score = objective(allocation, problem, context)
             if best_score is None or score > best_score or (
                 score == best_score
-                and tuple(map(_assignment_key, allocation.assignments))
-                < tuple(map(_assignment_key, best.assignments))
+                and _natural_key(allocation, order) < _natural_key(best, order)
             ):
                 best_score = score
                 best = allocation
@@ -529,6 +557,14 @@ def optimize(
             fallbacks.append(",".join(sorted(r.code for r in part.requirements)))
         merged = merged.merge(allocation)
 
+    merged = CandidateAllocation(
+        tuple(
+            sorted(
+                merged.assignments,
+                key=lambda a: (problem.order_of(a.course_key), a.requirement_code),
+            )
+        )
+    )
     return OptimizationResult(
         allocation=merged,
         exact=not fallbacks,
