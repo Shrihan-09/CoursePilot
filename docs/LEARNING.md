@@ -3912,3 +3912,251 @@ give.
 - Query expansion: pseudo-relevance feedback versus curated thesauri
 - Reciprocal Rank Fusion, and why score normalisation is hard across scales
 - Grounding and attribution in retrieval-augmented generation
+
+---
+
+# Lesson 15: Putting an LLM Downstream of the Answer
+
+## What We Built
+
+A layer that explains CoursePilot's decisions in readable prose — and that
+produces a correct explanation **before** any model is involved.
+
+No chatbot. No provider configured. The model is optional by construction,
+and that is the design, not a limitation.
+
+---
+
+## Concepts
+
+### Direction is the whole architecture
+
+Two arrangements look superficially similar and are opposites:
+
+```
+WRONG                              RIGHT
+LLM -> JSON -> engine trusts it    engine -> facts -> LLM -> prose
+```
+
+In the first, academic authority flows *from* the model. In the second the
+model is strictly downstream: it can only phrase what it was handed.
+
+Everything else in this phase is a consequence. No entry point takes "what
+should I take?" and returns a course — every method requires a course the
+audit already decided about. **The recommendation exists first; this layer
+explains it.**
+
+A tell worth watching for in any AI feature: can the model's output change
+what the system believes? If yes, the model is upstream, whatever the
+diagram says.
+
+### The best defence was written three phases ago
+
+The most useful discovery in Part A was that **nothing needed building**. The
+audit has emitted deterministic reasons since Phase 3:
+
+```
+Allocation.reason               "Course 01:198:344 is eligible for
+                                 'Computer Science Electives' and was
+                                 allocated to it."
+RequirementResult.reason        "3 of 5 courses completed."
+eligible_not_allocated          which courses could have counted and did not
+```
+
+Those sentences were written for a human to read. Reusing them means the
+explanation layer is mostly *assembly*, and the model is an upgrade in
+fluency rather than a source of content.
+
+**When a deterministic system already explains itself, an LLM has much less
+room to invent.** Systems that log only "requirement unsatisfied" give a
+model far more to fill in — and it will.
+
+### Keep fact types apart because they fail differently
+
+`DecisionFact`, `CourseFact` and `RequirementFact` could have been one list
+of strings. They are not, because their failure modes differ:
+
+```
+a wrong DecisionFact     -> an engine bug
+a wrong CourseFact       -> an ingestion bug
+a wrong RequirementFact  -> a curation bug
+```
+
+Flattening them would also erase the distinction the prompt depends on: a
+model that cannot see which lines are rulings and which are catalog prose
+will happily present catalog prose as a ruling.
+
+**Types carry meaning that strings lose.** That is worth the extra classes.
+
+### Refusal is a feature, and it must be structural
+
+"Why was this course NOT recommended" is where a model will invent most
+eagerly — "it conflicts with your schedule" sounds completely reasonable and
+is completely fabricated.
+
+The fix is not a sterner prompt. It is that only three things count as
+evidence, all recorded by the audit: `eligible_not_allocated`,
+`excluded_courses`, `unallocated_courses`. With none of them, the evidence is
+**ungrounded and the model is never called**.
+
+```python
+if not evidence.is_grounded or not self.model.is_available():
+    return deterministic_explanation(evidence)     # no model, no invention
+```
+
+You cannot hallucinate through a code path that does not execute.
+
+### Four layers, ordered by how much you trust them
+
+```
+1. prompt            weakest  - a request, not a rule
+2. structured output          - JSON, not prose
+3. validation                 - rejects contradictions of the facts
+4. deterministic fallback  strongest - needs no model at all
+```
+
+Prompting is listed first deliberately, because it is the layer people over-
+rely on. A prompt asks; a validator decides.
+
+And when validation fails, the response is **discarded, never repaired**.
+Patching a bad answer means shipping a blend of a correct answer and a wrong
+one, and nobody can say afterwards which parts came from where. The fallback
+was correct the whole time.
+
+### Validate what is decidable, and say so
+
+The validator checks:
+
+```
+course key matches the decision       requirement codes exist in evidence
+credit values match the audit         citations exist in the evidence
+no unsupported academic verbs         (heuristic, and labelled as one)
+```
+
+It does not attempt general fact checking, and pretending otherwise would be
+worse than not validating — a validator believed to be complete stops people
+looking.
+
+The last check is the interesting one. It looks for claims only the engine
+may make — *prerequisite*, *completed*, *graduate*, *guarantee* — and fires
+when they appear in a response but not in the decision facts. It catches the
+failure that matters most: a fluent sentence upgrading "was allocated to"
+into "you have completed your degree".
+
+**Structured facts make hallucination checkable.** That is the real argument
+for grounding on a deterministic core rather than on retrieved prose.
+
+### Make the fallback the ordinary path
+
+`NoModel` is the default, and every test in this repository runs without a
+provider. So the deterministic explanation is not an emergency branch that
+gets exercised the first time an API key expires — it is what runs all day.
+
+```
+grounded 7/7   factual 7/7   provenance 7/7   cited 7/7   complete 7/7
+latency 1.26 ms average, with no model
+```
+
+**A fallback you do not routinely run is a fallback you do not have.**
+
+### Say what is missing
+
+Most courses in the corpus have no catalog description, so most explanations
+end with:
+
+> No catalog description is available for this course in the ingested data.
+
+That line is the point. The alternative — quietly omitting it — produces an
+explanation that looks complete and is not, and a reader has no way to tell
+the difference.
+
+A bug found while writing this: the check was `if not course_facts`, but a
+description-less course still has a *title* and *credits*, so the limitation
+never appeared. The condition had to ask specifically whether a **description**
+existed. **"Do we have any data?" and "do we have the data I am about to
+imply we have?" are different questions.**
+
+### Measure the expansion before you run it
+
+Part O asked whether to widen catalog ingestion. Rather than guess:
+
+```
+programs CoursePilot audits     1 (CS BA)
+SAS program paths discoverable  97
+parser generalises?             YES, unmodified
+  mathematics-640   62 courses, 61 descriptions
+  philosophy-730   129 courses, 129 descriptions
+  history-510      404 - wrong path key, parser never reached
+```
+
+The upside is more than an order of magnitude on description coverage. It was
+still deferred: it is a ~97-page network ingestion, one sampled path 404'd,
+the index page itself returned 404, and Phase 3.5 found genuine parser bugs
+on a *single* program.
+
+**The investigation is the deliverable.** The next phase starts with a proven
+mechanism, a quantified gain and named risks, instead of re-deriving all
+three.
+
+---
+
+## Important Code
+
+| File | Why |
+|---|---|
+| [evidence.py](backend/app/services/explanations/evidence.py) | three fact types; evidence built from the audit alone |
+| [model.py](backend/app/services/explanations/model.py) | provider protocol and the strict prompt |
+| [validation.py](backend/app/services/explanations/validation.py) | what is checkable, and what is honestly not |
+| [service.py](backend/app/services/explanations/service.py) | fallback first, model second, rejection discarded |
+
+## What Could Go Wrong?
+
+- **A model's output re-entering the system** as belief rather than prose.
+- **An entry point that answers "what should I take?"**
+- **Flattening fact types** and losing which kind of claim is being made.
+- **Asking a model to infer a reason** the engine never recorded.
+- **Trusting the prompt** as the safety mechanism.
+- **Repairing a rejected response** instead of discarding it.
+- **A validator believed to be complete.**
+- **A fallback that only runs in emergencies.**
+- **Omitting what is missing**, so the answer looks complete.
+
+## What I Should Be Able To Explain
+
+1. Draw the two directions an LLM can sit in. Which is this, and how do you
+   tell from the code?
+2. Why did Part A find that almost nothing needed building?
+3. Why are `DecisionFact` and `CourseFact` different types?
+4. What are the only three admissible reasons for "not recommended", and what
+   happens when none apply?
+5. List the four safety layers, weakest first. Why that order?
+6. Why is a rejected model response discarded rather than patched?
+7. What can the validator NOT check, and why say so out loud?
+8. Why is `NoModel` the default?
+9. What did the description-limitation bug teach about writing checks?
+10. Why was catalog expansion deferred despite the parser generalising?
+
+## Try It Yourself
+
+**A.** Add a `confidence: float` field to `Explanation`. Which test fails, and
+write the sentence a UI would eventually show that makes the failure obvious.
+
+**B.** Remove the `is_grounded` guard in `_finish` and hand a ScriptedModel an
+invented reason for a course the audit never mentioned. What comes out? Which
+layer catches it, and which does not?
+
+**C.** Write a model response that is factually wrong but passes every
+validator check. What does that tell you about where grounding actually comes
+from?
+
+**D.** Ingest one extra program page (`philosophy-730`) through the existing
+pipeline. How many explanations stop saying "no catalog description
+available"? Use the number to argue for or against the deferred expansion.
+
+## Further Learning
+
+- Retrieval-augmented generation: grounding, attribution and refusal
+- Constrained decoding and schema-validated model output
+- Guardrails as layered defence rather than a single check
+- Provenance in systems that mix computed and retrieved facts
+- Human factors: why "sounds plausible" is the dangerous failure mode

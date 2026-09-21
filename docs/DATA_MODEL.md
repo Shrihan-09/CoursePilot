@@ -2622,3 +2622,197 @@ orders of magnitude larger.
    Engine questions; the flag exists so a caller routes them correctly.
 5. **Relevance labels are one person's judgement** over 20 queries. Useful for
    detecting regressions, too small to settle fine ranking differences.
+
+---
+
+## 23. Grounded explanations, and the AI boundary (Phase 5.1)
+
+> **CoursePilot computes the answer. Retrieval supplies evidence. The LLM
+> explains the answer.**
+
+This section documents the first AI-facing layer, and the constraints that
+stop it from becoming an academic decision-maker.
+
+### 23.1 The direction of authority
+
+```
+Degree Engine  ->  structured facts  ->  retrieval context  ->  LLM  ->  prose
+```
+
+Never the reverse. There is no path by which a model's output re-enters the
+audit, and no entry point that takes "what should I take?" and returns a
+course. **A recommendation must already exist before it can be explained.**
+
+If a generated answer ever conflicts with the engine, the engine wins. The
+system does not average them, and there is no `confidence` field anywhere in
+the explanation types - a field inviting a model to express doubt about a
+deterministic result would be an invitation to blend the two.
+
+### 23.2 What the audit already provides
+
+Part A's finding: **nothing needed to be recomputed.** The audit has been
+producing deterministic reasons since Phase 3.
+
+| Already available | Used for |
+|---|---|
+| `Allocation.reason` | why this course counted |
+| `Allocation.requirement_code / credits_applied / shared_with_systems` | what it counted toward |
+| `RequirementResult.status / reason / satisfied_count` | the resulting state |
+| `RequirementResult.source_prose` | quoted Rutgers wording |
+| `RequirementResult.eligible_not_allocated` | why a course was NOT used |
+| `DegreeAuditResult.excluded_courses` | program-rule exclusions |
+| Phase 4.5 `Baseline` | whether it was already satisfied |
+
+The explanation layer consumes these. That is why a correct explanation
+exists **before** any model is called - and why "no LLM" costs fluency, not
+accuracy.
+
+### 23.3 Three kinds of fact, kept apart
+
+| Type | Produced by | May a model contradict it? |
+|---|---|---|
+| `DecisionFact` | the Degree Engine | never |
+| `CourseFact` | SOC / Catalog, verbatim | never |
+| `RequirementFact` | curated requirement data, verbatim | never |
+
+Separate types rather than one list of strings, because they fail
+differently: a wrong decision fact is an engine bug, a wrong course fact an
+ingestion bug. Flattening them would leave an explanation unable to say what
+kind of claim it is making, and would let catalog prose be mistaken for an
+academic ruling.
+
+### 23.4 "Why was this NOT recommended" - only where the engine said so
+
+The admissible evidence is exactly three things the audit already records:
+`eligible_not_allocated`, `excluded_courses`, and `unallocated_courses`.
+
+With none of those, the evidence comes back **ungrounded and no model is
+called at all**. This is the shape that prevents the plausible invention the
+brief warns about - "it conflicts with your schedule" - because nothing is
+ever asked to infer a reason.
+
+### 23.5 Four layers of hallucination safety, weakest first
+
+1. **Prompt.** Tells the model the decision facts are authoritative,
+   enumerates what it must never invent, and requires JSON. Treated as the
+   weakest layer: a prompt is a request, not a rule.
+2. **Structured output.** JSON with fixed fields, not free prose or HTML.
+3. **Validation.** Rejects a response that contradicts the structured facts:
+   a course key not in the decision, a requirement code not in the evidence,
+   a credit value no fact establishes, a citation not in the evidence, or an
+   academic claim (prerequisite, completion, graduation, guarantee) the
+   decision facts never made.
+4. **Deterministic fallback.** Needs no model. A rejected response is
+   **discarded, never repaired or blended** - the fallback was correct all
+   along.
+
+The validator is honest about its limits: it checks what CoursePilot holds as
+structured data, where "wrong" is decidable. It is not general-purpose fact
+checking, and the unsupported-claim check is a heuristic that catches the
+failure that matters most - fluent prose upgrading "allocated to" into "you
+have completed your degree" - without claiming to catch every phrasing.
+
+### 23.6 Provider independence
+
+`ExplanationModel` is a two-method protocol (`is_available`, `generate`). No
+vendor SDK is imported anywhere in the package, enforced by test. `NoModel`
+is the default, so the deterministic path is the **ordinary** path that every
+test exercises, not a rarely-visited branch.
+
+`is_available()` exists because "no model" is a normal operating state.
+
+### 23.7 Retrieval is filtered, not dumped
+
+Context is retrieved for the **exact course key** and everything else is
+discarded. A course whose description happens to share vocabulary is not
+evidence about this decision, and a bounded context of the wrong courses is
+still the wrong context.
+
+### 23.8 Measured results
+
+Real audit over a 18-course CS transcript, seven case types the brief names:
+
+```
+grounded     7/7      factual      7/7      provenance   7/7
+cited        7/7      complete     7/7
+
+audit 39 ms | baseline 24 ms | document build 118 ms
+explanation latency  avg 1.26 ms, max 1.80 ms   (no model configured)
+```
+
+Cases covered: course with a description, course without one, shared across
+requirement systems, baseline-satisfied requirement, partial requirement
+progress, category-sensitive allocation (`CORE_AH`, two distinct goals), and
+an excluded course explained through "why not".
+
+The "without description" case correctly reports the limitation rather than
+looking complete - the 98% case in the real corpus.
+
+### 23.9 Catalog coverage investigation (Part O)
+
+Phase 5.0 named corpus coverage as the dominant retrieval limitation. This
+phase measured whether expanding it is feasible, **without** performing a
+large ingestion.
+
+Findings:
+
+| Question | Answer |
+|---|---|
+| Programs CoursePilot audits | **one** - CS BA (198) |
+| Program paths derivable from a pattern? | **No** - same lesson as catalog hosts; they must be discovered |
+| Can they be discovered? | **Yes** - 97 SAS program paths are enumerable from the school index page |
+| Does the existing parser generalise? | **Yes, unmodified** |
+
+Parser tested against untouched departments:
+
+```
+mathematics-640    HTTP 200    62 courses, 61 with descriptions
+philosophy-730     HTTP 200   129 courses, 129 with descriptions
+history-510        HTTP 404    (wrong path key - discovery is required,
+                                not guessing; the parser was never reached)
+```
+
+So the upside is large: today 31 of 4,415 courses (0.7%) carry a description,
+and ~97 SAS programs at 60-130 courses each would lift that by more than an
+order of magnitude - directly raising the Phase 5.0 retrieval ceiling and
+removing most "no catalog description available" limitations here.
+
+**Deferred rather than implemented**, deliberately:
+
+- it is a ~97-page network ingestion, which is a large expansion by the
+  brief's own definition, and the brief asks for measurement before one;
+- one of three sampled paths 404'd, so paths need verification rather than
+  assumption - and the index they came from itself returned 404, which is
+  not a stable contract to build on;
+- Phase 3.5 found real parser defects (split titles, missing credits) on a
+  *single* program; heterogeneous departments deserve the same validation
+  budget rather than a bulk load;
+- Phase 5.1's deliverable is complete without it.
+
+The investigation is the deliverable: the mechanism is proven, the gain is
+quantified, and the risks are named, so a later phase can execute it without
+re-deriving any of this.
+
+### 23.10 What the AI is allowed to do
+
+| Allowed | Forbidden |
+|---|---|
+| rephrase decision facts | decide whether a requirement is satisfied |
+| quote catalog descriptions with attribution | decide whether a course counts |
+| state that information is unavailable | infer prerequisites |
+| list sources it was given | invent credits, content, or progress |
+| | invent a reason a course was or was not recommended |
+| | invent a source or catalog year |
+
+### 23.11 Limitations
+
+1. **No live provider is configured.** The model path is exercised with
+   scripted responses; the deterministic path is what runs today.
+2. **The unsupported-claim check is a heuristic**, not a proof. It is one of
+   four layers for that reason.
+3. **Explanations are single-turn and stateless.** No conversation, no
+   memory, no planning - deliberately out of scope.
+4. **Description coverage is still 0.7%**, so most explanations say a catalog
+   description is unavailable. See 23.9.
+5. **No HTTP endpoint yet.** The service is a library; exposing it is a small
+   step but belongs with the API work rather than here.
