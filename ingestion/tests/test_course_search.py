@@ -63,6 +63,7 @@ _CORPUS = [
     _doc("01:198:112", "DATA STRUCTURES", description="Queues, stacks, trees, lists, and recursion."),
     _doc("01:198:344", "DESIGN AND ANALYSIS OF COMPUTER ALGORITHMS"),
     _doc("01:198:416", "OPERATING SYSTEMS DESIGN"),
+    _doc("01:198:440", "INTRODUCTION TO ARTIFICIAL INTELLIGENCE"),
     _doc("01:198:461", "MACHINE LEARNING PRINCIPLES"),
     _doc("01:640:104", "INTRODUCTION TO PROBABILITY", subject="Mathematics"),
     _doc("16:198:512", "INTRODUCTION TO DATA STRUCTURES AND ALGORITHMS"),
@@ -372,3 +373,169 @@ def test_corpus_stats_report_description_coverage() -> None:
 def test_empty_corpus_is_handled() -> None:
     assert corpus_stats([]).documents == 0
     assert build_bm25([]).search("anything", limit=5) == []
+
+
+# ==========================================================================
+# curated query expansion (Part E)
+# ==========================================================================
+
+
+def test_expansion_closes_the_measured_synonym_gap(searcher) -> None:
+    """'AI' has no lexical form anywhere in the corpus; expansion reaches it."""
+    from app.services.search.synonyms import ExpandingSearcher
+
+    assert searcher.search("AI", limit=5) == [] or all(
+        r.course_key != "01:198:440" for r in searcher.search("AI", limit=5)
+    )
+    expanded = ExpandingSearcher(searcher)
+    keys = [r.course_key for r in expanded.search("AI", limit=5)]
+    assert "01:198:440" in keys
+
+
+def test_expansion_reports_what_it_applied(searcher) -> None:
+    """A course surfacing because of an expansion must be explainable."""
+    from app.services.search.synonyms import ExpandingSearcher
+
+    expanded = ExpandingSearcher(searcher)
+    expanded.search("ML", limit=5)
+    assert [e.term for e in expanded.last_expansions] == ["ml"]
+    assert expanded.last_expansions[0].expands_to == ("machine", "learning")
+
+
+def test_expansion_keeps_the_original_terms(searcher) -> None:
+    """Expansion ADDS; it never replaces, so an exact lookup can still win."""
+    from app.services.search.synonyms import expand_query
+
+    expanded, applied = expand_query("CS 344")
+    assert expanded.startswith("CS 344")
+    assert "computer" in expanded and "science" in expanded
+    assert [e.term for e in applied] == ["cs"]
+
+
+def test_expansion_does_not_fire_on_unrelated_queries() -> None:
+    from app.services.search.synonyms import expand_query
+
+    expanded, applied = expand_query("operating systems design")
+    assert expanded == "operating systems design"
+    assert applied == ()
+
+
+def test_expansion_does_not_degrade_exact_lookup(searcher) -> None:
+    """The safety property: measured, no query type regressed."""
+    from app.services.search.synonyms import ExpandingSearcher
+
+    expanded = ExpandingSearcher(searcher)
+    assert expanded.search("01:198:344", limit=1)[0].course_key == "01:198:344"
+    assert expanded.search("data structures", limit=1)[0].course_key == "01:198:112"
+
+
+def test_every_curated_expansion_carries_a_justification() -> None:
+    """Curated data, reviewed like requirement data - not a model's opinion."""
+    from app.services.search.synonyms import CURATED_EXPANSIONS
+
+    for expansion in CURATED_EXPANSIONS:
+        assert expansion.note.strip(), expansion.term
+        assert expansion.expands_to
+        assert expansion.term == expansion.term.lower()
+
+
+def test_expansion_never_maps_a_term_to_course_codes() -> None:
+    """Mapping a query straight to courses would be retrieval making an
+    academic judgement."""
+    from app.services.search.synonyms import CURATED_EXPANSIONS
+
+    for expansion in CURATED_EXPANSIONS:
+        for word in expansion.expands_to:
+            assert ":" not in word
+
+
+# ==========================================================================
+# RAG context assembly (Parts J, K, L)
+# ==========================================================================
+
+
+def _by_key():
+    return {d.course_key: d for d in _CORPUS}
+
+
+def test_context_is_bounded_and_deduplicated(searcher) -> None:
+    from app.services.search.context import assemble_context
+
+    context = assemble_context(searcher, "computer", _by_key(), limit=3)
+    assert len(context.snippets) <= 3
+    assert len(context.course_keys) == len(context.snippets)
+
+
+def test_every_snippet_carries_provenance(searcher) -> None:
+    from app.services.search.context import assemble_context
+
+    context = assemble_context(searcher, "recursion", _by_key(), limit=3)
+    assert context.snippets
+    for snippet in context.snippets:
+        assert snippet.source_kind
+        assert snippet.citation() != ""
+    top = context.snippets[0]
+    assert top.field_name == "description"
+    assert top.citation() == "rutgers_catalog 2026-2027"
+
+
+def test_snippets_are_verbatim_never_rewritten(searcher) -> None:
+    """Generated text must never be able to masquerade as catalog text."""
+    from app.services.search.context import assemble_context
+
+    context = assemble_context(searcher, "recursion", _by_key(), limit=1)
+    source = _by_key()["01:198:112"].description
+    assert context.snippets[0].text in " ".join(source.split())
+
+
+def test_snippets_are_trimmed_on_a_word_boundary(searcher) -> None:
+    from app.services.search.context import assemble_context
+
+    context = assemble_context(searcher, "recursion", _by_key(), limit=1, snippet_chars=20)
+    assert context.truncated
+    assert len(context.snippets[0].text) <= 20
+    assert not context.snippets[0].text.endswith(" ")
+
+
+def test_academic_questions_are_flagged_for_the_degree_engine(searcher) -> None:
+    """The boundary, machine-checked rather than merely documented."""
+    from app.services.search.context import assemble_context
+
+    for query in (
+        "does CS 344 satisfy my electives",
+        "how many credits do I need",
+        "am I on track to graduate",
+        "which courses count toward the core",
+    ):
+        context = assemble_context(searcher, query, _by_key(), limit=3)
+        assert context.requires_degree_engine, query
+        assert any("app.services.audit" in n for n in context.notes)
+
+
+def test_descriptive_questions_are_not_flagged(searcher) -> None:
+    from app.services.search.context import assemble_context
+
+    context = assemble_context(searcher, "what is machine learning about", _by_key())
+    assert not context.requires_degree_engine
+
+
+def test_rendered_context_warns_when_the_engine_is_required(searcher) -> None:
+    from app.services.search.context import assemble_context
+
+    context = assemble_context(searcher, "do I need more credits", _by_key(), limit=2)
+    assert "Degree Engine" in context.render()
+
+
+def test_empty_query_yields_an_empty_context(searcher) -> None:
+    from app.services.search.context import assemble_context
+
+    context = assemble_context(searcher, "underwater basket weaving", _by_key())
+    assert context.snippets == ()
+    assert any("No course matched" in n for n in context.notes)
+
+
+def test_context_never_dumps_the_whole_catalog(searcher) -> None:
+    from app.services.search.context import DEFAULT_MAX_DOCUMENTS, assemble_context
+
+    context = assemble_context(searcher, "computer", _by_key())
+    assert len(context.snippets) <= DEFAULT_MAX_DOCUMENTS
