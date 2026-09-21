@@ -3424,3 +3424,230 @@ explain what about SAS Core's structure prevents it.
 - Monotonicity and stability in matching-based systems
 - Normalization choices as implicit weighting in composite metrics
 - Mechanism design: when the objective function is a policy document
+
+---
+
+# Lesson 13: Deriving a Baseline, and Building an Optimizer That Admits When It Failed
+
+## What We Built
+
+A baseline definition derived from the data model rather than invented, a
+decomposed exhaustive optimizer that never lies about optimality, and a
+deliberate refusal to wire either into production until a product decision
+lands.
+
+---
+
+## Concepts
+
+### Let the schema answer the design question
+
+"What should the baseline be?" looks like a philosophy question. Four
+candidates were on the table: completed courses, the previous optimizer
+output, last semester's plan, or some other authoritative state.
+
+Three facts from the existing model settled it in minutes:
+
+```
+StudentCourse.status is completed / in_progress / planned
+COUNTABLE = {completed, in_progress}   planned "is an intention, not evidence"
+NO table stores audit results          17 tables, none for allocations
+```
+
+The third one does the work. There is no previous optimizer output to use as
+a baseline, because allocations were never stored — a course's requirement
+assignment is an **interpretation, recomputed every audit**. Candidate B
+would have required inventing persistent state first.
+
+**The habit:** when a design question has several plausible answers, check
+which ones the existing model can already express. That usually eliminates
+most of them without any philosophy at all.
+
+### Not every rejection is about cost
+
+Candidate B — "use the previous optimizer result" — was also rejected on
+principle, and the distinction matters.
+
+An optimizer's previous output is not an academic fact. Persisting it would
+let an arbitrary earlier run acquire authority over later audits, including a
+run produced by a version of the allocator since found to be wrong. That is
+how a bug becomes a requirement.
+
+**Derived state should never be promoted to a source of truth just because it
+is convenient to have around.** Cost rejections change when hardware gets
+cheaper; principle rejections do not.
+
+### Narrow the input, not the rules
+
+The baseline needs "the audit, but only over completed courses". Two ways to
+get it:
+
+```
+reimplement satisfaction over completed courses    -> a SECOND source of truth
+narrow what the existing evaluator sees            -> one source of truth
+```
+
+The second is a one-parameter change: `audit(student,
+statuses={"completed"})` filters which `StudentCourse` rows are loaded and
+touches no rule. Grades, exclusions, category distinctness, sharing and group
+propagation all behave exactly as in a normal audit — which is the point.
+A test pins that omitting the parameter is byte-for-byte the old behaviour.
+
+**The general shape:** when you need "the same computation over less data",
+change the data, not the computation. Duplicating the rules to get a variant
+answer is how two definitions of "satisfied" start to drift.
+
+### An optimizer that shares code with its oracle proves nothing
+
+`optimizer.py` duplicates the oracle's problem types, its decomposition and
+its search. That looks wasteful and is the entire point.
+
+If the optimizer imported the oracle's search, agreement between them would
+show only that the code agrees with itself. Because they are independent
+implementations built from the same requirement definition, agreement is
+evidence. This is the same reasoning that kept `CategoryCoverageStrategy`
+alive in Phase 4.2.
+
+**Differential testing only works when the two sides are genuinely
+different.** A "second opinion" from the same brain is not a second opinion.
+
+### Every pruning rule needs a proof, not a plausibility argument
+
+Two rules made it in:
+
+```
+capacity           a requirement holds at most needed_count courses
+canonical order    fixed enumeration order
+```
+
+Both are **exact-preserving**: extra courses beyond capacity cannot raise any
+objective component, and fixed ordering changes only which optimum is found
+among ties. No heuristic pruning was added at all, because a heuristic that
+discards the true optimum fails silently — the result still looks like an
+allocation.
+
+**Ask of every pruning rule: can this discard the optimum?** If the answer
+needs a paragraph of hedging, it is a heuristic, and heuristics belong behind
+an explicit "approximate" flag or nowhere.
+
+### Optimize after measuring, and only what you measured
+
+One performance change was made: tracking per-requirement occupancy
+incrementally instead of rescanning the partial assignment for every option.
+
+```
+realistic 19-course transcript   108 ms -> 33 ms
+states explored                  unchanged
+```
+
+"States unchanged" is the part that matters — it confirms the change was a
+constant factor and not an accidental change to the search space. A speedup
+that also changes what you explore is a behaviour change wearing a
+performance costume.
+
+### Reporting a result that is worse than the prior phase
+
+The optimizer is **slower than the Phase 4.3 oracle** (12 courses: 50 ms vs
+17 ms) and falls back where the oracle did not (20+ random courses). That is
+an uncomfortable thing to write down, and writing it down is the job.
+
+Two causes were identified rather than hand-waved:
+
+- the `Fraction` progress term is expensive — dropping it measured 12c
+  31 ms -> 16 ms, 20c 980 ms -> 338 ms;
+- random transcripts drawn from 527 courses decompose worse than real ones,
+  so the headline numbers describe an unrealistic input.
+
+And one measurement — a 16-course sample that took minutes — **did not
+reproduce**, so it is recorded as an unexplained outlier rather than
+characterised as a behaviour. An anomaly you cannot reproduce is a fact about
+your measurement, not yet a fact about your system.
+
+### "I could not prove this is optimal" is a result
+
+The optimizer carries `exact` on every result and refuses, via
+`require_exact()`, to hand back an unproven allocation as though it were
+optimal.
+
+This is the same principle as `INDETERMINATE` from Lesson 5 and the oracle's
+bound from Lesson 11, and it keeps being necessary for the same reason: **an
+inexact allocation is indistinguishable from an exact one by inspection.**
+Nothing in the output looks wrong. A student would see a plausible audit and
+never learn that a better reading of their transcript existed.
+
+A system that can fail should be able to say so in its return value, not only
+in its logs.
+
+### Stopping at the boundary, with the work ready
+
+Phase 4.4 left the A/B/C/D choice open. So `DEFAULT_OBJECTIVE` is `None`, the
+optimizer is not imported by the engine, and two tests assert both.
+
+That is not indecision — all four objectives are implemented, verified
+against the oracle, and benchmarked. The decision is one line away from being
+executable. **The useful form of "I need a decision from you" is a branch
+that is finished except for the decision.**
+
+---
+
+## Important Code
+
+| File | Why |
+|---|---|
+| [baseline.py](backend/app/services/audit/baseline.py) | the baseline derived from the model, with the rejected candidates recorded |
+| [optimizer.py](backend/app/services/audit/optimizer.py) | decomposition, bounded exact search, named objectives, honest `exact` flag |
+| [engine.py](backend/app/services/audit/engine.py) | the one-parameter `statuses` change — narrower input, identical rules |
+| [test_global_optimizer.py](ingestion/tests/test_global_optimizer.py) | optimizer vs independent oracle, 9 cases x 3 objectives |
+| [test_baseline_semantics.py](ingestion/tests/test_baseline_semantics.py) | completed-only, planned excluded, determinism |
+
+## What Could Go Wrong?
+
+- **Inventing persistent state** to answer a question the schema already
+  answers.
+- **Promoting derived output to a source of truth** because it was there.
+- **Reimplementing the rules** to get a variant of the same computation.
+- **Verifying against an oracle you import.**
+- **Heuristic pruning** that can discard the optimum and never say so.
+- **Optimizing before measuring**, or optimizing something that also changes
+  the search space.
+- **Reporting an unreproduced anomaly** as a characterised behaviour.
+- **Returning a best-effort result** with the same shape as a proven one.
+
+## What I Should Be Able To Explain
+
+1. Which three facts about the model settled the baseline question?
+2. Why is "previous optimizer output" rejected on principle, not just cost?
+3. Why is in-progress work excluded from the baseline?
+4. Why narrow the input rather than reimplement satisfaction?
+5. Why does the optimizer deliberately duplicate the oracle?
+6. State the two pruning rules and why each cannot discard the optimum.
+7. Why does "states explored unchanged" matter after a speedup?
+8. Which regression types are in scope, and why are the other three not?
+9. What does `exact = False` mean, and why must it be in the return value?
+10. Why is `DEFAULT_OBJECTIVE` None?
+
+## Try It Yourself
+
+**A.** Set the baseline to include `in_progress` courses. Which test fails,
+and construct the student record where that change would report a completion
+the student then loses by failing a course.
+
+**B.** Add a pruning rule that skips any option leaving a requirement below
+half its threshold. Find the instance where it discards the optimum. How
+would you have noticed in production?
+
+**C.** Replace objective A's `Fraction` term with `(satisfied, slots)` and
+re-run the benchmark. Does the fallback at 20 courses disappear? What does
+that tell you about whether a progress component is worth its cost?
+
+**D.** Make `_solve_component` return its best-so-far with `exact=True` when
+the bound is hit. Every test still passes except one — which, and why is that
+test the only thing standing between you and a silently wrong audit?
+
+## Further Learning
+
+- Differential testing and N-version programming
+- Exact versus approximate combinatorial search; anytime algorithms
+- Branch and bound: admissible bounds versus heuristic pruning
+- Provenance and derived-state promotion in data systems
+- API design for fallible computations — returning failure as a value
