@@ -2110,8 +2110,8 @@ Section 20 modelled the objective choice and left it open. This section
 defines the **baseline** that a regression-aware objective protects, and
 implements the optimizer that will execute whichever objective is chosen.
 
-**Production allocation is unchanged.** The optimizer is not wired into the
-engine, and no default objective is set - a test asserts both.
+**The optimizer IS the production allocation path as of this phase**, under
+the objective adopted below. The oracle is never in that path.
 
 ### 21.1 What the model already provides
 
@@ -2222,8 +2222,26 @@ C_completion_monotonic  (satisfied, -regressions, progress, slots)
 slots_only              (slots,)                    today's behaviour
 ```
 
-`DEFAULT_OBJECTIVE` is **None**. Phase 4.4 left the choice open as a product
-decision, and this module refuses to adopt one silently.
+### The adopted objective
+
+```
+C_completion_monotonic   (satisfied, -regressions, slots)
+```
+
+Chosen as a product decision. Completions first; among equally-complete
+allocations, prefer the one that does not undo a requirement the student had
+already earned; then filled slots as a weight-free tie-break.
+
+**The partial-progress component was removed rather than kept.** Summed
+fractions embed a weighting nobody stated - they prefer spreading progress
+across small requirements (section 20.5) - and were the measured performance
+bottleneck. Section 14 of the phase brief is explicit that an unneeded
+progress component should be deleted rather than invented, and the
+measurements supported deleting it.
+
+What this objective does NOT provide is a monotonicity guarantee: when the
+maximum completion count requires undoing a satisfied requirement, it is
+undone. Only Policy B guarantees otherwise, at the price of completions.
 
 ### 21.7 Pruning, and why every rule is exact-preserving
 
@@ -2299,6 +2317,46 @@ Preserved and tested:
 - sharing policy: one slot per system when sharing, exactly one under
   EXCLUSIVE.
 
+### 21.10a Production integration and its division of labour
+
+```
+optimizer   decides WHICH COURSES go to which requirement   (global)
+categories  assigns the category within a requirement       (Phase 4.2)
+evaluator   decides what the allocation MEANS academically  (engine)
+```
+
+The optimizer does not reimplement category assignment: it reasons about
+valid allocations, and the existing `CategorySlotStrategy` remains the
+authority on which category edge each course occupies.
+
+**The matching is the fallback.** When the optimizer cannot PROVE optimality
+within its bound its result is discarded and the Phase 3 matching stands -
+an unproven allocation is never presented as optimal.
+
+A recursion guard keeps the baseline audit from computing its own baseline.
+
+### 21.10b Real-data result, and a correction to Phase 4.3
+
+With the engine now optimizing globally, over 60 real transcripts:
+
+```
+instances compared      60
+engine strictly worse    0        (was 8 before this phase)
+engine time         avg 26 ms     (was ~13 ms; the optimizer roughly doubles it)
+```
+
+**Correction.** The Phase 4.3 and 4.5 comparison harness built its oracle
+from every held course, including courses a program rule excludes from credit
+(`01:198:105/107/110/142/170/405` for declared CS majors). The engine
+correctly drops those; the oracle did not, so it credited the optimum with
+allocations the engine may not make. Some of the originally reported "8 of 60
+suboptimal" cases were therefore harness artifacts rather than engine
+defects. With exclusions applied identically to both sides, the engine now
+matches the optimum on every sampled transcript.
+
+The lesson generalises: a comparison harness that does not apply the same
+filters as the system under test measures the harness.
+
 ### 21.11 Schema
 
 **No migration.** `alembic check` reports "No new upgrade operations
@@ -2308,13 +2366,13 @@ principle.
 
 ### 21.12 What remains open
 
-1. **The A/B/C/D objective decision** (section 20.11). Until it is made, the
-   optimizer is not wired into the engine and `DEFAULT_OBJECTIVE` stays None.
-2. **The progress component.** If the chosen objective does not need one, it
-   should be deleted rather than kept - it is the measured bottleneck and it
-   embeds a weighting.
-3. **Fallback policy in production.** The optimizer reports inexactness
-   honestly, but nothing yet decides what the engine should DO with an
-   inexact result: fall back to today's matching, or refuse.
-4. **Performance on poorly-decomposing curricula**, where the optimizer
-   currently falls back.
+1. **No monotonicity guarantee.** Objective C undoes a satisfied requirement
+   when the maximum completion count requires it. Only Policy B guarantees
+   otherwise, and it declines completions to do so.
+2. **Performance on poorly-decomposing curricula.** A random 20+ course draw
+   can still exceed the per-component bound, in which case the engine falls
+   back to the matching. Realistic concentrated transcripts are exact.
+3. **The audit costs roughly twice as much** (13 ms -> 26 ms average). Well
+   within budget, but no longer negligible.
+4. **Group-level objectives remain out of scope** - they would break the
+   decomposition this optimizer depends on (section 19.5).
