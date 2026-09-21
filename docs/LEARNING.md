@@ -3158,3 +3158,269 @@ independent, and explain what that costs the recommendation in 19.9.
 - Treewidth and problem decomposition
 - Differential testing with exhaustive oracles
 - Pareto dominance versus scalarized objectives in multi-criteria decisions
+
+---
+
+# Lesson 12: Objectives Encode Values, and Values Are Not Yours to Pick
+
+## What We Built
+
+Four policy models, a measurement over 800 real transcripts, and a decision
+left deliberately unmade.
+
+Lesson 11 ended at a boundary: maximizing completions sometimes takes
+something away from a student, and choosing whether that is acceptable is not
+an engineering call. This phase makes that choice as easy as possible to make
+- without making it.
+
+---
+
+## Concepts
+
+### A lexicographic tuple is a sentence about values
+
+Three of the four policies differ by a **single swap**:
+
+```
+A   (satisfied, progress, slots)
+C   (satisfied, -regressions, progress, slots)
+B   (-regressions, satisfied, progress, slots)
+```
+
+B and C contain exactly the same components. The only difference is whether
+`-regressions` sits above or below `satisfied`. Above, and the system will
+decline a completion to avoid undoing one. Below, and it will undo one to get
+a completion.
+
+That is a values statement written as a tuple ordering, and it is worth being
+able to read it as such. When someone proposes "just optimize X, then Y",
+the order of X and Y is the entire argument.
+
+**Why lexicographic rather than weighted:** a weighted sum needs numbers -
+"a completion is worth 3 regressions" - and nobody has those numbers. A
+lexicographic tuple expresses "completions matter more than regressions"
+without ever claiming *how much* more. When the evidence supports an ordering
+but not a magnitude, that is exactly the right expressive power.
+
+### A name can promise a guarantee the maths does not deliver
+
+Policy C is "completion with monotonicity". It sounds like it prevents
+regressions. It does not.
+
+Because C's first key is identical to A's, C can only differ from A among
+allocations **already tied on completions**:
+
+```
+satisfied(C) == satisfied(A)     always
+regressions(C) <= regressions(A)
+```
+
+When the maximum completion count *requires* undoing a satisfied
+requirement, C undoes it, exactly like A. C buys preservation only where
+preservation is free. It is a tie-break wearing the name of a guarantee.
+
+Only Policy B actually guarantees no regression, and it pays in declined
+completions. **If you want a guarantee, it has to be the top key** — anything
+below the top is conditional on everything above it.
+
+### Stateless and stateful are different products
+
+"Preserve what was satisfied" needs an answer to: satisfied compared to
+*what*?
+
+```
+A   stateless   depends only on the current transcript
+B, C stateful   need a baseline of previously satisfied requirements
+```
+
+Today every audit recomputes from scratch and CoursePilot stores no prior
+audit. So B and C are not settings — they require either persisting audit
+history or defining the baseline as "the audit before the newest course".
+Those are different products with different failure modes.
+
+A tell worth recognising: with an empty baseline, B and C collapse onto A. A
+policy that is indistinguishable on a first run is a policy whose value lives
+entirely in remembered state.
+
+### Every scalar progress measure smuggles in a weighting
+
+The brief warned: do not assume `2/3` beats `1/1`. Following that warning
+carefully leads somewhere more interesting.
+
+Two obvious progress measures:
+
+```
+filled slots      one allocated course counts as one, anywhere
+sum of fractions  1/2 in a 2-course requirement, 1/5 in a 5-course one
+```
+
+Measured on a concrete instance:
+
+```
+R_DONE needs 1, R_PART needs 3, student holds three courses
+
+complete_small : R_DONE 1/1 + R_PART 2/3   fraction 5/3, slots 3
+feed_big       : R_PART 3/3                fraction 1,   slots 3
+```
+
+Both complete one requirement. Both fill three slots. The fraction measure
+prefers `complete_small` — it has a built-in preference for **spreading**
+progress, because small denominators produce bigger summands. Nobody asked
+for that preference; it fell out of the arithmetic.
+
+**The general point:** summing normalized quantities across units with
+different denominators is a weighting decision disguised as a neutral
+average. "Maximize partial progress" is not a specification until you say
+which measure — and that is a product decision, not a detail.
+
+### Measure the conflict before agonising over it
+
+The conflict is real in theory. On real data:
+
+```
+800 transcripts
+
+all three policies agree          796 / 800   (99.5%)
+Policy A regressed something        4 / 800   ( 0.5%)
+Policy B, C regressed something     0 / 800
+Policy A completed MORE than B      0 / 800
+```
+
+And every one of the four regressions was **gratuitous**:
+
+```
+baseline : CCD, HST, QFR, SCL, WC     5 satisfied
+Policy A : AH, CCD, HST, QFR, SCL     5 satisfied   (WC lost, AH gained)
+Policy C : CCD, HST, QFR, SCL, WC     5 satisfied   (unchanged)
+```
+
+A did not complete more. It picked a different member of a tied set, because
+it never looks at the baseline. The student loses a completed requirement in
+exchange for nothing.
+
+Meanwhile the case that actually separates B from C — where preservation
+costs a real completion — **never occurred** in 800 transcripts. It is
+constructible on paper and absent from this curriculum.
+
+**The lesson about scope:** the agonising question and the frequent question
+were not the same question. Most of the observed difference was A being
+careless in ties, not a deep values conflict. Measuring first told us which
+part of the decision is urgent and which is hypothetical.
+
+### Know the structural reason, not just the rate
+
+"0.5%" invites the question *why so rare?*
+
+A satisfied requirement holding ONE course can free one course, which can
+complete at most one other requirement — one for one, never a gain. So
+Policy A has no incentive to regress a single-course requirement.
+
+Regressions need a satisfied requirement holding **two or more** courses
+whose release completes two or more others. On the real instance only four
+requirements have a threshold of 2 or more, and the only one ever observed
+regressing was `CORE_WC`, which needs three.
+
+A measured rate tells you what happened. A structural reason tells you
+whether it will keep happening — and here it says the rate is low because of
+the curriculum's shape, not because of luck.
+
+### Separating external behaviour from your own policy
+
+Rutgers publishes, about Degree Navigator:
+
+> "DN will always adjust the audit so that the maximum number of requirements
+> are complete."
+
+It is tempting to treat that as settling the question. It does not, for two
+reasons worth distinguishing:
+
+1. It describes **Rutgers' tool**, not an academic requirement. It is
+   evidence about DN's behaviour, not about what students are owed.
+2. It does not distinguish A from C — it says nothing about *which* of
+   several equally complete allocations to pick, which is where every
+   observed difference actually lived.
+
+"Rutgers does X" is an input to a product decision, never a substitute for
+one. The honest structure is: documented external behaviour, possible
+CoursePilot behaviour, the difference, and the student impact — four separate
+lines.
+
+### Handing over a decision properly
+
+The deliverable here is not an answer. It is:
+
+- the options, stated precisely enough to implement;
+- what each one costs, measured rather than guessed;
+- what is frequent versus what is hypothetical;
+- which parts are mathematics (settled) and which are values (not mine).
+
+**Refusing to decide is only useful if you make deciding cheap.** "It
+depends" with no numbers is an abdication; "99.5% identical, 0.5% gratuitous
+regressions, the costly case never observed, and here is the tuple for each
+option" is a handover.
+
+---
+
+## Important Code
+
+| File | Why |
+|---|---|
+| [policies.py](backend/app/services/audit/policies.py) | the four policies as scoring tuples; no policy is default |
+| [test_objective_policies.py](ingestion/tests/test_objective_policies.py) | cases A–H, monotonicity, and the C-refines-A proof |
+| [oracle.py](backend/app/services/audit/oracle.py) | enumeration, reused unchanged — it knows nothing about policies |
+| [DATA_MODEL.md](docs/DATA_MODEL.md) | section 20: the decision, with the evidence for it |
+
+## What Could Go Wrong?
+
+- **Reading a tuple ordering as a technical detail** when it is a values
+  statement.
+- **Trusting a policy's name.** "Monotonic" did not mean monotonic.
+- **Putting a guarantee anywhere but the top key.**
+- **Treating a stateful policy as a setting** when it needs stored history.
+- **Summing normalized fractions** and calling the weighting neutral.
+- **Citing an external tool's behaviour** as if it settled your product
+  question.
+- **Deciding a values question** because you were the one holding the
+  keyboard.
+
+## What I Should Be Able To Explain
+
+1. Write A, B and C as tuples. What single swap separates B from C?
+2. Why does Policy C not guarantee monotonicity, and what would?
+3. Why do B and C collapse onto A on a first-ever audit?
+4. Give the instance where slots and fractions rank two allocations
+   differently, and say which is "right".
+5. What fraction of real transcripts distinguished the policies, and what did
+   the differing cases have in common?
+6. Why can a single-course requirement never be profitably regressed?
+7. Which real requirement regressed, and why that one?
+8. What does the Rutgers DN quote settle, and what does it leave open?
+9. Why is a weighted sum the wrong tool here?
+10. Which parts of this decision are mathematical, and which are not?
+
+## Try It Yourself
+
+**A.** Swap `-regressions` and `satisfied` in `policy_b_progress_preserving`
+so it becomes C. Which tests fail? What does each failure tell you about the
+ordering you just changed?
+
+**B.** Implement a fourth progress measure — say, courses-remaining rather
+than courses-completed. Does it rank the 20.5 example the same way as slots,
+as fractions, or differently again? What does that say about the phrase
+"maximize progress"?
+
+**C.** Re-run the 800-transcript comparison restricted to transcripts where
+`CORE_WC` is satisfied at baseline. Does the 0.5% regression rate rise? Use
+the answer to predict which curricula would make this decision urgent.
+
+**D.** Construct a real transcript from the actual Rutgers data where
+preservation genuinely costs a completion — the 20.7 shape. If you cannot,
+explain what about SAS Core's structure prevents it.
+
+## Further Learning
+
+- Lexicographic and hierarchical optimization versus scalarization
+- Pareto dominance, and when a tie-break is not a preference
+- Monotonicity and stability in matching-based systems
+- Normalization choices as implicit weighting in composite metrics
+- Mechanism design: when the objective function is a policy document
