@@ -1,0 +1,137 @@
+{
+  "_about": {
+    "purpose": "Manually verified retrieval evaluation set for Phase 5.0.",
+    "corpus": "Rutgers 2026-27 dev database: 4,415 courses, 243 subjects, 88 catalog descriptions (CS only).",
+    "relevance_scope": "Relevance is scoped to UNDERGRADUATE New Brunswick courses (level 'U', offering unit '01') unless a query names a specific course. CoursePilot plans SAS undergraduate degrees, so a graduate section surfacing for a student query is a wrong answer, not a near-miss. Labels were enumerated from the real corpus, not guessed.",
+    "caveat": "98% of courses have a title and no description. Conceptual and description-oriented queries are therefore bounded by what a ~27-character uppercase title contains. Weak scores on those types are a statement about the SOURCE DATA, not automatically about the retrieval method.",
+    "authority": "This set measures RETRIEVAL only. Whether a course satisfies a requirement is decided by the deterministic Degree Engine, never by search."
+  },
+  "queries": [
+    {
+      "query": "01:198:344",
+      "query_type": "exact_lookup",
+      "relevant": ["01:198:344"],
+      "note": "Full Rutgers course string."
+    },
+    {
+      "query": "198:344",
+      "query_type": "exact_lookup",
+      "relevant": ["01:198:344"],
+      "note": "Subject:number form, as students commonly write it."
+    },
+    {
+      "query": "computer science 344",
+      "query_type": "exact_lookup",
+      "relevant": ["01:198:344"],
+      "note": "Subject NAME plus number; relies on subject.description being indexed."
+    },
+    {
+      "query": "CS 344",
+      "query_type": "exact_lookup",
+      "relevant": ["01:198:344"],
+      "note": "Abbreviation. No source field contains the string 'CS', so lexical retrieval is expected to fail here. Kept deliberately: it measures a real gap rather than hiding it."
+    },
+    {
+      "query": "design and analysis of computer algorithms",
+      "query_type": "exact_lookup",
+      "relevant": ["01:198:344"],
+      "note": "Full catalog title."
+    },
+    {
+      "query": "operating systems design",
+      "query_type": "exact_lookup",
+      "relevant": ["01:198:416"],
+      "note": "Full title; the only undergraduate OS course in the corpus."
+    },
+    {
+      "query": "data structures",
+      "query_type": "exact_lookup",
+      "relevant": ["01:198:112"],
+      "note": "Exact undergraduate title."
+    },
+
+    {
+      "query": "machine learning",
+      "query_type": "conceptual",
+      "relevant": ["01:198:461"],
+      "note": "Only undergraduate NB machine-learning course. Graduate (16:198:535/536) and engineering (14:332:443) titles also match lexically and count against precision."
+    },
+    {
+      "query": "artificial intelligence",
+      "query_type": "conceptual",
+      "relevant": ["01:198:440", "01:070:161", "01:730:242"],
+      "note": "All three are undergraduate NB titles containing the concept, across CS, Anthropology and Philosophy."
+    },
+    {
+      "query": "algorithms",
+      "query_type": "conceptual",
+      "relevant": ["01:198:344", "01:198:345"],
+      "note": "Undergraduate NB titles containing 'algorithm'."
+    },
+    {
+      "query": "probability",
+      "query_type": "conceptual",
+      "relevant": ["01:640:104", "01:640:477"],
+      "note": "Undergraduate NB probability courses."
+    },
+
+    {
+      "query": "AI",
+      "query_type": "synonym",
+      "relevant": ["01:198:440", "01:070:161", "01:730:242"],
+      "note": "Abbreviation for artificial intelligence. No title contains 'AI' as a token, so lexical retrieval cannot reach these. This query exists to quantify the synonym gap."
+    },
+    {
+      "query": "ML",
+      "query_type": "synonym",
+      "relevant": ["01:198:461"],
+      "note": "Abbreviation for machine learning. Same gap as 'AI'."
+    },
+
+    {
+      "query": "probability and machine learning",
+      "query_type": "multi_concept",
+      "relevant": ["01:198:461", "01:640:104", "01:640:477"],
+      "note": "Two distinct concepts; a good retriever should surface both families rather than only the stronger one."
+    },
+    {
+      "query": "data structures and algorithms",
+      "query_type": "multi_concept",
+      "relevant": ["01:198:112", "01:198:344", "01:198:345"],
+      "note": "Undergraduate NB courses matching either concept."
+    },
+
+    {
+      "query": "data science",
+      "query_type": "ambiguous",
+      "relevant": ["01:198:210", "01:198:439", "01:219:400", "01:790:391", "01:830:202", "01:960:291"],
+      "note": "Deliberately ambiguous: the phrase spans CS, Statistics, Political Science and Public Health. All six are undergraduate NB titles containing it."
+    },
+
+    {
+      "query": "computer science electives",
+      "query_type": "requirement_oriented",
+      "relevant": ["01:198:344", "01:198:416", "01:198:440", "01:198:461"],
+      "note": "RETRIEVAL ONLY. Which courses actually satisfy CS_ELECTIVES is decided by the Degree Engine, which applies the 300-level rule, the outside-subject cap and the exclusion rules. The labels here are upper-level CS courses a student would expect to see surfaced; they are not an eligibility claim."
+    },
+
+    {
+      "query": "recursion",
+      "query_type": "description_oriented",
+      "relevant": ["01:198:112"],
+      "note": "The word appears in ZERO titles and in 01:198:112's catalog description. Only retrievable if descriptions are indexed, which makes this the cleanest test of description coverage."
+    },
+    {
+      "query": "sorting and searching",
+      "query_type": "description_oriented",
+      "relevant": ["01:198:112"],
+      "note": "Description-only phrase from the Data Structures catalog entry."
+    },
+    {
+      "query": "problem solving through decomposition",
+      "query_type": "description_oriented",
+      "relevant": ["01:198:111"],
+      "note": "Description-only phrase from the Introduction to Computer Science catalog entry."
+    }
+  ]
+}
