@@ -2376,3 +2376,249 @@ principle.
    within budget, but no longer negligible.
 4. **Group-level objectives remain out of scope** - they would break the
    decomposition this optimizer depends on (section 19.5).
+
+---
+
+## 22. Course retrieval and the RAG foundation (Phase 5.0)
+
+The deterministic audit layer is finished. This section adds a **retrieval**
+layer beneath the future AI features, and draws the line that keeps them
+honest:
+
+> **RAG retrieves and explains. The deterministic Degree Engine decides.**
+
+No chatbot is built here, and no model is called.
+
+### 22.1 The corpus, measured before anything was designed
+
+```
+courses                       4,415
+with a title                  4,415   mean 27 characters, UPPERCASE
+with a catalog description       31   CS only (88 catalog rows dedupe to 31)
+distinct subjects               243
+```
+
+**98% of courses have a title and nothing else**, because SOC publishes no
+descriptions and the catalog has only been ingested for CS. That is a
+property of the sources, and it bounds what any retrieval method can do on
+conceptual queries. Every number below was measured against this corpus
+rather than a richer hypothetical one.
+
+### 22.2 The retrieval document
+
+`CourseDocument` is a **derived, read-only view** of `course`, `subject` and
+`catalog_course_entry` - rebuildable, never authoritative, never a second
+copy of the catalog.
+
+Identity is the natural key `(course_string, supplement_code)`, not a UUID.
+Phase 1 measured that `course_string` alone is not unique, and a surrogate id
+would make the index unreproducible across a re-ingest - the trap recorded in
+section 16.3.
+
+**Provenance is per-text, not per-document**, because the authority matrix
+has not changed:
+
+| Field | Authoritative source |
+|---|---|
+| identity, title, credits, level | Rutgers SOC |
+| subject name | Rutgers SOC |
+| description | Rutgers Catalog, under its own catalog year |
+
+A course row and its description can come from different sources and
+different years. Collapsing them into one "year" would lose exactly what a
+future citation needs.
+
+### 22.3 BM25F, and the bug that made it worth writing by hand
+
+Implemented directly rather than pulled in as a dependency: it is sixty lines
+of arithmetic, and the tokenizer has to understand that `01:198:344`,
+`198:344` and `computer science 344` are the same course - something a
+generic library would shred.
+
+The first implementation summed the field lengths into one document length
+and normalised once. On the real corpus that was badly wrong:
+
+```
+corpus mean document length   13.4 tokens   (titles only)
+a document WITH a description 43   tokens
+
+result: 01:198:112 did not appear in the top ten for its own exact title,
+        "data structures", while three graduate courses did
+```
+
+Every described course was being penalised for carrying more information.
+True BM25F normalises **each field against its own average**, so a
+description is compared with other descriptions and a title with other
+titles. The fix, measured:
+
+| | before | after |
+|---|---|---|
+| Recall@5 | 0.558 | **0.725** |
+| Recall@10 | 0.717 | **0.792** |
+| MRR | 0.344 | **0.775** |
+| exact_lookup MRR | 0.243 | **0.857** |
+| conceptual R@5 | 0.417 | **0.833** |
+
+Field weights all default to 1.0. The brief forbids inventing them, so any
+non-default weight has to cite the evaluation set.
+
+### 22.4 The evaluation set
+
+20 hand-verified queries across the seven types the brief names, stored as
+**test data** (`ingestion/tests/data/retrieval_eval.json`), never hard-coded
+in production.
+
+Relevance is scoped to **undergraduate New Brunswick** courses: CoursePilot
+plans SAS undergraduate degrees, so a graduate section surfacing for a
+student query is a wrong answer, not a near miss.
+
+Two queries are included *because they were expected to fail* - `AI` and `ML`
+have no lexical form anywhere in the corpus - so the gap is quantified rather
+than hidden. `computer science electives` is labelled retrieval-only, with
+the note that eligibility is decided by the Degree Engine.
+
+### 22.5 Why semantic retrieval was investigated and NOT adopted
+
+After the per-field fix, BM25F failed completely on exactly two types:
+
+```
+synonym               R@5 0.000   "AI", "ML"
+requirement_oriented  R@5 0.000   "computer science electives"
+```
+
+`requirement_oriented` **is not a retrieval problem**. Which courses satisfy
+`CS_ELECTIVES` depends on the 300-level rule, the outside-subject cap and the
+exclusion rules - all of which the Degree Engine applies deterministically.
+Retrieval must not try to answer it, so it is not a gap for embeddings to
+close.
+
+That left abbreviations as the entire addressable gap. Neural embeddings were
+rejected for this corpus on the evidence:
+
+- 98% of documents are a ~27-character uppercase title, which is very little
+  text for a sentence encoder;
+- the dependency (torch, ~2GB) is large for a gap of two query forms;
+- `pgvector` is already installed, so storage was never the obstacle - the
+  obstacle is that there is almost nothing to embed.
+
+**This is a decision about this corpus, not about embeddings.** If catalog
+ingestion is ever extended past CS, it should be revisited, and the
+evaluation set is already in place to judge it.
+
+### 22.6 Curated query expansion
+
+A reviewed abbreviation map, applied at query time, measured against the same
+set:
+
+| | BM25F | BM25F + expansion |
+|---|---|---|
+| Recall@5 | 0.725 | **0.792** |
+| Recall@10 | 0.792 | **0.892** |
+| Precision@5 | 0.210 | **0.230** |
+| MRR | 0.775 | **0.875** |
+| synonym R@10 | 0.000 | **1.000** |
+
+**No other query type moved.** That is the safety property that matters: the
+expansion closes the synonym gap without degrading exact lookup, conceptual
+or description-oriented retrieval.
+
+It is curated data, reviewed the way requirement data is:
+
+- every entry expands to wording that appears **verbatim** in Rutgers titles
+  or subject names, so it points at real text rather than asserting a topic;
+- expansion **adds** terms, never replaces them, so an exact lookup can still
+  win on its own tokens;
+- every applied expansion is reported, so a surfaced course is explainable;
+- it never maps a term to course codes - that would be retrieval making an
+  academic judgement.
+
+The honest limitation: it does not generalise. An abbreviation nobody
+curated is still invisible.
+
+### 22.7 Hybrid retrieval was NOT built
+
+Part F asks for hybrid retrieval after BM25 and semantic retrieval are
+independently measurable. Semantic retrieval was not adopted, so **there is
+no second ranked list to fuse**. Building a fusion layer over one retriever
+would be machinery with nothing to do, and Reciprocal Rank Fusion over a
+single list is the identity function.
+
+Recorded as deliberately deferred rather than quietly skipped.
+
+### 22.8 RAG context assembly, and the boundary
+
+```
+query -> retrieve -> deduplicate by course -> bound -> attribute -> RagContext
+```
+
+`RagContext` carries a small number of verbatim snippets, each with its
+source and catalog year. Snippets are **copied, never summarised**: a
+paraphrase produced at assembly time would later look like catalog text,
+which is exactly the substitution Part C forbids.
+
+The boundary is machine-checkable rather than merely documented:
+
+```python
+RagContext.requires_degree_engine
+```
+
+A query matching patterns like "satisfy", "count toward", "how many credits"
+or "am I on track" is flagged, and the rendered context opens with a warning
+that the academic answer must come from `app.services.audit`. A test asserts
+that nothing in `app.services.search` imports the audit engine, and that
+`SearchResult` has no field capable of carrying an eligibility verdict.
+
+| RAG may retrieve | The Degree Engine must decide |
+|---|---|
+| titles, descriptions, subject names | requirement satisfaction |
+| catalog information | degree progress, credit accounting |
+| source documentation | category coverage, allocation |
+| | baseline regressions, sharing policy |
+
+If a generated answer ever conflicts with the engine, **the engine wins** -
+it is deterministic, exhaustively tested and verified against an independent
+oracle, while retrieval is text similarity over course titles.
+
+### 22.9 Performance
+
+Real corpus, 4,415 documents:
+
+```
+document build (from PostgreSQL)   ~230 ms
+BM25 index build                    ~90 ms     12,406 distinct terms
+query latency (BM25)               1.6 ms avg,  17 ms max
+query latency (with expansion)     0.6 ms avg,   2 ms max
+index storage                      in memory, a few MB
+```
+
+In memory is the right answer at this scale. A PostgreSQL full-text index
+would be infrastructure without a measurement behind it, and the corpus is
+nowhere near needing one.
+
+### 22.10 Data refresh
+
+The index is **derived**, so it follows the existing pipeline rather than
+creating a second source of truth:
+
+```
+fetch -> archive -> parse -> normalize -> validate -> load -> (rebuild index)
+```
+
+A full rebuild costs ~320 ms end to end, which is far cheaper than the
+bookkeeping an incremental index would need. Rebuild-on-load is therefore the
+strategy, and incremental updating is not justified until the corpus is
+orders of magnitude larger.
+
+### 22.11 Limitations
+
+1. **The corpus is the ceiling.** 0.7% description coverage bounds conceptual
+   and description-oriented retrieval. Extending catalog ingestion past CS
+   would raise it more than any retrieval change.
+2. **Curated expansion does not generalise** to abbreviations nobody wrote
+   down.
+3. **No semantic retrieval and no hybrid fusion**, deliberately - revisit if
+   the corpus grows.
+4. **`requirement_oriented` queries score zero and should.** They are Degree
+   Engine questions; the flag exists so a caller routes them correctly.
+5. **Relevance labels are one person's judgement** over 20 queries. Useful for
+   detecting regressions, too small to settle fine ranking differences.

@@ -3651,3 +3651,264 @@ test the only thing standing between you and a silently wrong audit?
 - Branch and bound: admissible bounds versus heuristic pruning
 - Provenance and derived-state promotion in data systems
 - API design for fallible computations — returning failure as a value
+
+---
+
+# Lesson 14: Retrieval Is Measured, and the Corpus Is the Ceiling
+
+## What We Built
+
+A course search layer: documents with provenance, BM25F, a labelled
+evaluation set, curated query expansion, and a bounded RAG context that
+refuses to answer academic questions.
+
+No chatbot, no embeddings, no vector database. Two of those three were
+considered and rejected on measurements, which is the actual content of this
+lesson.
+
+---
+
+## Concepts
+
+### Measure the corpus before designing the retriever
+
+The first useful thing this phase produced was a `SELECT count(*)`:
+
+```
+4,415 courses
+4,415 with a title            mean 27 characters, UPPERCASE
+   31 with a description      0.7%
+```
+
+Everything downstream follows from that. Plans for "semantic search over
+course descriptions" do not survive the discovery that **98% of courses have
+no description** — SOC does not publish them, and the catalog has only been
+ingested for CS.
+
+A retrieval method cannot retrieve text that is not there. Measuring first
+turned an architecture debate into arithmetic.
+
+**The habit:** before choosing a technique, count what it will operate on.
+The answer often eliminates most of the options for free.
+
+### BM25, and why the length term is the interesting part
+
+BM25 scores a document by how many query terms it contains, damped and
+normalised:
+
+```
+idf(t)  rare words count more than common ones
+k1      the tenth occurrence says little more than the third
+b       longer documents are discounted
+```
+
+`b` is where it went wrong here. The first implementation summed all field
+lengths into one document length and normalised once against the corpus
+average. Since the corpus average was 13.4 tokens (titles) and a described
+course ran to 43, **every course with a description was penalised for
+carrying more information**:
+
+```
+query "data structures"
+  01:198:112 DATA STRUCTURES  <- exact title, has a description: not in top 10
+  16:198:512, 22:544:613      <- longer graduate titles, no description: top 3
+```
+
+True BM25F normalises **each field against its own average** — descriptions
+compared with descriptions, titles with titles. One conceptual fix:
+
+```
+R@5  0.558 -> 0.725      MRR  0.344 -> 0.775
+```
+
+**The general point:** normalisation compares things to an average, so the
+question is always *average of what?* Averaging across populations that are
+not comparable is how a correct-looking formula produces a wrong ranking.
+
+### An evaluation set is what stops you fooling yourself
+
+It is very easy to type three queries, see plausible results, and declare
+search "working". The queries you type are the ones you already know work.
+
+The labelled set is 20 queries across seven types, and the per-type
+breakdown is the part that earns its keep:
+
+```
+exact_lookup          R@5 1.000
+description_oriented  R@5 1.000
+conceptual            R@5 0.833
+synonym               R@5 0.000   <- invisible in the overall average
+requirement_oriented  R@5 0.000
+```
+
+An overall R@5 of 0.725 looks decent and conceals two types scoring zero.
+**Averages hide exactly the failures worth finding**, which is why the brief
+demanded results per type.
+
+Two queries were included *because they were expected to fail*. Writing down
+a query you know will score zero feels like sabotage; it is the opposite. It
+converts "we should probably handle abbreviations someday" into a number that
+either improves or does not.
+
+### Not every failing query is a retrieval failure
+
+`"computer science electives"` scores 0.000 and **should**.
+
+Which courses satisfy `CS_ELECTIVES` depends on the 300-level rule, the
+outside-subject cap and the exclusion rules — all decided deterministically
+by the Degree Engine. If retrieval had scored well here, that would be the
+worrying result: it would mean text similarity was producing something that
+looks like an eligibility answer.
+
+So the fix is not better retrieval. It is `requires_degree_engine`, a flag
+that routes the question to the component that can actually answer it.
+
+**Before optimizing a failing case, check whether it is yours to fix.**
+
+### Rejecting the default architecture
+
+"RAG" conventionally means embeddings and a vector database. Both were
+rejected here, on evidence rather than taste:
+
+- After the BM25F fix, the only addressable gap was **abbreviations** — "AI"
+  and "ML", which appear in no Rutgers field.
+- 98% of documents are a 27-character uppercase title. A sentence encoder has
+  almost nothing to encode.
+- torch is roughly 2GB. That is a large dependency for two query forms.
+- `pgvector` was already installed, so storage was never the obstacle. The
+  obstacle was that there is nothing to embed.
+
+Curated expansion closed the gap instead:
+
+```
+                 R@5     R@10    MRR
+bm25            0.725   0.792   0.775
+bm25+expansion  0.792   0.892   0.875
+synonym type    R@10 0.000 -> 1.000, no other type moved
+```
+
+**"No other type moved" is the number that mattered.** A change that improves
+one metric while quietly degrading another is not an improvement, and only a
+per-type evaluation can tell the difference.
+
+This is a decision about *this corpus*, not about embeddings in general — and
+the evaluation set is already in place to re-judge it if descriptions ever
+arrive.
+
+### Curated data versus a model's opinion
+
+The expansion map could have been a bag of guesses. Instead it follows the
+same rules as CoursePilot's curated requirement data:
+
+- every expansion points at wording that appears **verbatim** in the corpus,
+  so it is a pointer to real text, not a claim about what a course is about;
+- it **adds** terms rather than replacing them, so exact lookup still wins on
+  its own tokens;
+- every entry carries a justification, and every applied expansion is
+  reported, so a surfaced course is explainable;
+- it never maps a term to course codes — that would be retrieval making an
+  academic judgement.
+
+The honest cost: it does not generalise. An abbreviation nobody wrote down is
+still invisible. That is a real limitation, and it is cheaper than 2GB.
+
+### Build the thing you can fuse, or do not build fusion
+
+Hybrid retrieval was in the brief. It was not built, because semantic
+retrieval was not adopted and **there is no second ranked list to fuse**.
+Reciprocal Rank Fusion over one list is the identity function.
+
+Machinery that has nothing to do is worse than absent machinery: it looks
+like a capability, and someone later assumes it is doing something.
+
+### Make the boundary executable
+
+"RAG retrieves, the Degree Engine decides" is easy to write in a design doc
+and easy to erode in code. Three things make it checkable here:
+
+```python
+RagContext.requires_degree_engine      # flags "does X satisfy Y" queries
+test_search_never_imports_the_degree_engine
+test_search_result_makes_no_eligibility_claim   # no field can hold a verdict
+```
+
+The import test is worth a note: the first version matched the string
+`"services.audit"` in the source text and failed immediately — because the
+**docstrings legitimately name the audit package when describing the
+boundary**. Parsing the AST for real imports fixed it. A guard that trips on
+documentation teaches people to delete the documentation.
+
+### Snippets are copied, never summarised
+
+Context text is verbatim and carries its source and catalog year. It would be
+easy to compress a long description at assembly time — and then generated
+text would sit in the context looking exactly like catalog text, ready to be
+cited as "according to the Rutgers catalog".
+
+**The moment you paraphrase a source, you own the paraphrase.** Trimming on a
+word boundary is fine; rewriting is not.
+
+---
+
+## Important Code
+
+| File | Why |
+|---|---|
+| [documents.py](backend/app/services/search/documents.py) | derived view, per-text provenance, measured corpus shape |
+| [bm25.py](backend/app/services/search/bm25.py) | BM25F with per-field normalisation, and the bug it fixes |
+| [evaluation.py](backend/app/services/search/evaluation.py) | Recall@K, Precision@K, MRR, reported per query type |
+| [synonyms.py](backend/app/services/search/synonyms.py) | curated expansion, and why embeddings were rejected |
+| [context.py](backend/app/services/search/context.py) | bounded verbatim context, and the executable boundary |
+| [retrieval_eval.json](ingestion/tests/data/retrieval_eval.json) | 20 hand-verified queries, including ones expected to fail |
+
+## What Could Go Wrong?
+
+- **Designing retrieval before counting the corpus.**
+- **Normalising against an average of things that are not comparable.**
+- **Judging search on queries you chose because they work.**
+- **Reading an overall metric** and missing a type scoring zero.
+- **Optimizing a failure that belongs to another component.**
+- **Adopting the default architecture** because it is the default.
+- **Improving one metric** while silently degrading another.
+- **Building fusion with one retriever.**
+- **A boundary that exists only in prose.**
+- **Summarising a source** and letting the summary inherit its authority.
+
+## What I Should Be Able To Explain
+
+1. What fraction of the corpus has a description, and what does that bound?
+2. Why did an exact-title match fail to reach the top ten, and what fixed it?
+3. Why report metrics per query type instead of overall?
+4. Why is `"computer science electives"` scoring 0.000 the correct outcome?
+5. What was the ONLY addressable gap after the BM25F fix?
+6. Give three reasons embeddings were rejected for this corpus — and what
+   would make you revisit.
+7. What makes the expansion map curated data rather than invented semantics?
+8. Why was hybrid retrieval not built?
+9. Name the three mechanisms that make the RAG boundary executable.
+10. Why are snippets copied verbatim rather than summarised?
+
+## Try It Yourself
+
+**A.** Revert `bm25.py` to one document length normalised against one corpus
+average. Run the evaluation. Which query type collapses, and why is it the
+one with descriptions?
+
+**B.** Add an abbreviation to the curated map that expands to wording NOT in
+any Rutgers title. Does any metric change? What does that tell you about what
+expansion actually does?
+
+**C.** Write five new queries for a subject you know, label them by hand, and
+add them to the evaluation set. Did overall R@5 move? Did any single type?
+
+**D.** Make `looks_like_an_academic_question` return False always. Which test
+fails, and describe the wrong answer a future assistant would then be free to
+give.
+
+## Further Learning
+
+- BM25 and BM25F: the derivation of the saturation and length terms
+- Evaluation: nDCG, and when graded relevance beats binary
+- Query expansion: pseudo-relevance feedback versus curated thesauri
+- Reciprocal Rank Fusion, and why score normalisation is hard across scales
+- Grounding and attribution in retrieval-augmented generation
