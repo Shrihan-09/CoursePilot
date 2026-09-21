@@ -147,13 +147,21 @@ class DegreeAuditEngine:
                 categories[(str(course_id), code)].add(category)
         return out, categories
 
-    def _load_student_courses(self, student: Student) -> list[tuple[StudentCourse, Course]]:
+    def _load_student_courses(
+        self, student: Student, statuses: frozenset[str] | None = None
+    ) -> list[tuple[StudentCourse, Course]]:
         rows = self.session.execute(
             select(StudentCourse, Course)
             .join(Course, Course.id == StudentCourse.course_id)
             .where(StudentCourse.student_id == student.id)
             .order_by(Course.course_string, Course.supplement_code, StudentCourse.term_code)
         ).all()
+        # `statuses` narrows the record WITHOUT changing how anything is
+        # evaluated. Phase 4.5 uses it to derive a completed-courses-only
+        # baseline through the real evaluator rather than a second copy of
+        # the satisfaction rules. Default: every row, exactly as before.
+        if statuses is not None:
+            return [(sc, c) for sc, c in rows if sc.status in statuses]
         return [(sc, c) for sc, c in rows]
 
     # ------------------------------------------------------------------ #
@@ -555,7 +563,16 @@ class DegreeAuditEngine:
     # entry point
     # ------------------------------------------------------------------ #
 
-    def audit(self, student: Student) -> DegreeAuditResult:
+    def audit(
+        self, student: Student, *, statuses: frozenset[str] | None = None
+    ) -> DegreeAuditResult:
+        """Evaluate a student's degree progress.
+
+        `statuses` restricts which StudentCourse rows are considered. It
+        changes the INPUT, never the rules: passing
+        `frozenset({"completed"})` yields the baseline audit defined in
+        DATA_MODEL.md section 21. Omitted, behaviour is unchanged.
+        """
         version = self.session.get(ProgramVersion, student.program_version_id)
         if version is None:
             raise ValueError(f"student {student.id} has no program version")
@@ -625,7 +642,7 @@ class DegreeAuditEngine:
         credits_excluded = Decimal(0)
         credits_in_progress = Decimal(0)
 
-        for sc, course in self._load_student_courses(student):
+        for sc, course in self._load_student_courses(student, statuses):
             ref = CourseRef(
                 course_id=str(course.id),
                 course_string=course.course_string,
