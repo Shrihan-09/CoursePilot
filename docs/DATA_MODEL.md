@@ -1540,3 +1540,306 @@ sufficient.
 Still not implemented, and still recorded in section 17: the global
 "maximize satisfied requirements" objective, and any major-vs-core
 precedence.
+
+---
+
+## 19. The global allocation objective (Phase 4.3 investigation)
+
+Section 17 named the objective. Section 18 fixed the category half. This
+section does the mathematics on the half that was left.
+
+**Production behaviour is unchanged by this phase.** What follows is a formal
+model, a complexity result, a decomposition result, measurements against a
+brute-force oracle on real Rutgers data, and a recommendation that stops at a
+product decision.
+
+### 19.1 Formal model
+
+Given
+
+```
+C     the student's countable courses
+R     requirements that consume course slots
+n(r)  how many courses r demands                 its THRESHOLD
+d(r)  how many DISTINCT categories r demands     0 if none
+E     eligibility: E(c,r) iff c may count toward r
+K     K(c,r) = the categories certifying c for r
+sys   the requirement system of r
+S     whether the program shares across systems
+```
+
+an **allocation** is a set of triples `(course, requirement, category)` with
+
+```
+(1) capacity     at most n(r) courses allocated to r
+(2) single use   a course appears at most once PER SYSTEM
+                 (once overall when S is false)
+(3) eligibility  only where E(c,r)
+(4) category     each chosen category is one the course actually holds
+```
+
+and `r` is **SATISFIED** iff it holds `n(r)` courses **and** the categories
+chosen for it cover `d(r)` distinct values.
+
+Two modelling points that are easy to get wrong, and one of which I got wrong
+first:
+
+- **Distinctness is a property of satisfaction, not of validity.** Two courses
+  certified under the same category may both be allocated to the requirement.
+  That allocation is legal and simply does not satisfy. Encoding distinctness
+  as a validity constraint makes the two-same-category case *unrepresentable*
+  rather than *unsatisfying* - which would quietly delete the very case
+  Phase 4.2 exists to report.
+- **Constraint (4) is why this is not a plain course-to-slot assignment.** The
+  same `(c, r)` pair can be useful under one category and useless under
+  another, so the decision variable carries three indices, not two.
+
+`credits` requirements and `all_of` / `any_of` groups consume no slots and so
+do not appear in the allocation problem at all. Groups still matter for the
+objective - see 19.5.
+
+### 19.2 Objective candidates
+
+| | Objective | Verdict |
+|---|---|---|
+| **A** | maximize satisfied requirements | right priority, but indifferent to everything else - it will happily leave slots empty |
+| **B** | maximize filled slots | today's production objective; provably wrong (19.6) |
+| **C** | lexicographic: satisfied, then slots, then deterministic order | **recommended** |
+| **D** | weighted sum over requirements | rejected - see below |
+| **E** | completion-first vs progress-first | **a product decision**, not an engineering one |
+
+**Why D is rejected.** A weighted sum needs weights, and no Rutgers source
+ranks requirements against one another. Inventing weights would put an
+academic policy judgement into a constant. Worse, a weighted sum is not
+scale-free: any weighting that makes one completion worth more than two
+partials also makes some pair of completions comparable in a way nothing
+justifies. D becomes available only if Rutgers ever publishes a precedence
+rule; until then it would be invention.
+
+**Why C rather than A.** A is indifferent between allocations that complete
+the same number of requirements, including ones that strand courses. Slots
+are the natural second key because that is exactly today's behaviour, so C is
+a strict refinement: it never completes fewer requirements than B, and among
+equal completions it behaves as B already does.
+
+### 19.3 Complexity
+
+**The general problem is NP-hard**, by reduction from Set Packing:
+
+```
+given sets S_1..S_m over a universe U
+build  one course per element of U
+       one requirement R_i with n(R_i) = |S_i|, eligible exactly S_i
+       one system
+
+R_i SATISFIED  <=>  all |S_i| of its courses are allocated to it
+single-use     =>   satisfied requirements use pairwise disjoint sets
+therefore      max satisfied requirements = maximum set packing
+```
+
+**Which constraint causes the hardness:** the **threshold** `n(r) >= 2`
+combined with single-use. That is worth isolating, because:
+
+> **If every threshold is 1, the problem is in P.** A requirement is then
+> satisfied exactly when its single slot is filled, so maximizing satisfied
+> requirements *is* maximum-cardinality bipartite matching - which is what
+> the allocator already computes.
+
+So the existing algorithm is not merely a heuristic; it is **exactly optimal**
+on the restricted instance where every requirement wants one course. The
+hardness lives entirely in the multi-course requirements.
+
+Measured on the real 2026-27 CS BA + SAS Core instance:
+
+```
+threshold 1 : 13 requirements      <- polynomial part
+threshold 2 : CORE_AH, CORE_QFR
+threshold 3 : CORE_WC
+threshold 5 : CS_ELECTIVES         <- the hard part: 4 nodes
+credits     : CORE_NS              <- no slots, handled separately
+```
+
+Four nodes carry all the theoretical difficulty.
+
+### 19.4 Decomposition - the practical result
+
+Build the bipartite graph of courses against requirements, with an edge
+wherever the course is eligible. **Connected components share no course and
+no constraint, so each can be optimized independently and the results
+concatenated.** The objective is a sum over requirements and slots, and sums
+decompose.
+
+This is what makes exhaustive optimization viable. Measured on a *realistic,
+concentrated* transcript - a junior CS major, 19 courses, deliberately the
+adversarial case for decomposition because such a transcript clusters in one
+subject:
+
+```
+19 courses, 15 slot-consuming requirements  ->  8 components
+
+   8 courses <-> CORE_CCD, CORE_CCO, CORE_WC, CS_344, CS_ELECTIVES
+   3 courses <-> CORE_QFR, CS_111, MATH_151, MATH_152
+   2 courses <-> CORE_HST
+   1 course each <-> CS_112, CS_205, CS_206, CS_211, MATH_250
+
+whole-instance exhaustive search   TOO LARGE (> 5,000,000 states)
+decomposed exhaustive search       17.6 ms, exact
+```
+
+The same instance is intractable whole and trivial in pieces.
+
+Scaling, averaged over random transcripts from the 527-course certified pool:
+
+| courses | whole-instance | decomposed | largest component |
+|---|---|---|---|
+| 5 | 0.83 ms | 0.18 ms | 4 |
+| 8 | 7.4 ms | 1.3 ms | 7 |
+| 12 | 173 ms | 17 ms | 11 |
+| 16 | 1,158 ms | 18 ms | 12 |
+| 20 | 1,600 ms (9/12 timed out) | 314 ms | 17 |
+| 30 | timeout | 45 ms | 16 |
+| 40 | timeout | 4.6 ms | 14 |
+
+The non-monotonic tail is an artifact of random sampling - a wider spread of
+courses produces more, smaller components - and is reported rather than
+smoothed, because it shows component *shape* matters more than course count.
+
+**The caveat that survives:** decomposition is a property of the data, not a
+guarantee. A curriculum where one pool is eligible for everything would not
+decompose, and any production optimizer needs a bound and a fallback for
+that case rather than an assumption.
+
+### 19.5 Where decomposition does NOT hold
+
+Components are computed over slot-consuming requirements. An `all_of` group
+spanning two components **couples them at the group level**, because a
+group's satisfaction is not the sum of its parts - it is a conjunction. If
+the objective ever counts group nodes rather than leaves, components stop
+being independent and this result no longer applies.
+
+The recommendation below therefore counts **leaf** satisfaction only, and
+that restriction is load-bearing rather than incidental.
+
+### 19.6 What the current allocator gets wrong, measured
+
+A brute-force oracle (`app/services/audit/oracle.py`) enumerates every legal
+allocation and returns the optimum. Run against the production engine on **60
+random real transcripts** from the real instance:
+
+```
+instances compared        60
+engine strictly worse      8      (13%)
+engine time           avg 13.2 ms
+oracle time           avg  0.9 ms      <- the search is not the expensive part
+```
+
+Real examples:
+
+```
+engine  = CORE_CCO                      optimal = CORE_CCD, CORE_CCO
+engine  = CORE_SCL                      optimal = CORE_CCO, CORE_SCL
+engine  = CORE_HST, CORE_SCL            optimal = CORE_AH, CORE_CCD, CORE_HST
+engine  = (nothing)                     optimal = CORE_AH, CORE_CCO
+```
+
+The dominant cause is the **dead-end requirement** from section 17 (Case C2):
+a course is spent on a requirement that cannot reach its threshold, while a
+requirement that could have been completed goes without.
+
+### 19.7 The finding that decides Case H
+
+Case H was expected to be the motivating example. It is not:
+
+```
+01:013:311 (AHp, CCD)    01:013:203 (AHo, AHq)
+
+A -> CCD, B -> AH    CCD satisfied, AH 1 of 2     1 satisfied, 2 slots
+A -> AH,  B -> AH    AH satisfied, CCD unsat      1 satisfied, 2 slots
+```
+
+Enumerating every optimum shows **four allocations tied at (1 satisfied, 2
+slots)**, including both of the above. Objectives A, B and C are all
+indifferent. Only a weighting (objective D) could prefer one, and no Rutgers
+source ranks AH against CCD.
+
+**So Case H stays as it is - not because the fix is hard, but because the
+mathematics says there is nothing to fix.** The brief's expectation that a
+global objective would move that course does not survive contact with the
+model.
+
+### 19.8 The product decision, made concrete
+
+Of the 8 instances where the engine is suboptimal:
+
+```
+3 of 8   the optimum strictly DOMINATES
+         more requirements completed AND no partial progress lost anywhere
+
+5 of 8   the optimum TRADES
+         a completion is gained by removing progress, or an entire
+         completion, from another requirement
+```
+
+A measured example of the trade:
+
+```
+engine  : CORE_SCL satisfied                        3 slots
+optimal : CORE_HST + CORE_QFR satisfied             4 slots
+          CORE_SCL drops from satisfied to nothing
+```
+
+Net +1 completion - and a student watching their audit would see SCL flip
+from done to not-done after adding an unrelated course. Rutgers describes
+exactly this behaviour ("DN will adjust itself automatically as soon as
+another course is taken... so that the maximum number of requirements are
+complete", section 17.7), so it is institutionally normal. Whether
+CoursePilot should present it that way is a **product decision**, and this
+phase stops at that boundary rather than choosing.
+
+### 19.9 Recommendation
+
+**Objective C**, leaf-level, implemented as **decomposed exhaustive search
+with a bound and a fallback**:
+
+```
+1. partition the instance into connected components        (19.4)
+2. for each component:
+      if the state space is under the bound -> solve exactly
+      otherwise                             -> keep today's matching result
+3. concatenate
+```
+
+No optimization library, no ILP, no SAT solver. The measurements say the
+search is cheaper than the database round-trip it follows.
+
+**Staging, because the two halves need different permission:**
+
+- **Stage 1 - dominance-only.** Accept a re-allocation only when it completes
+  strictly more requirements *and* loses no partial progress anywhere. That
+  covers 3 of the 8 measured defects with no product decision required and no
+  possibility of a requirement visibly regressing.
+- **Stage 2 - full objective C.** Covers the remaining 5, and needs the
+  19.8 decision first.
+
+**Rejected, with reasons:**
+
+| Approach | Why not |
+|---|---|
+| Weighted bipartite / min-cost max-flow | cannot express a threshold: "2 of these" is not a per-edge cost, and flow models value partial fills that the domain values at zero |
+| ILP / SAT solver | a dependency to solve instances that exhaustive search clears in 18 ms |
+| Greedy repair | no optimality guarantee, and the failure mode is the silent one the oracle exists to catch |
+| Global branch-and-bound without decomposition | intractable on a real 19-course transcript (19.4) |
+| Objective D (weights) | requires ranking requirements, which no Rutgers source does |
+
+### 19.10 Remaining limitations
+
+1. **The 19.8 product decision is open** and gates stage 2.
+2. **Group-level objectives are out of scope** and would break decomposition
+   (19.5).
+3. **Credit requirements stay outside the model.** `_slots_needed(CREDITS)`
+   is 0 and `allocate_credits()` still owns them; a credit minimum has no
+   threshold in courses, so it does not fit the slot formulation.
+4. **Decomposition is measured, not guaranteed.** A future curriculum could
+   fail to decompose, which is why the recommendation carries a bound and a
+   fallback.
+5. **No major-vs-core precedence**, since no Rutgers source states one.
