@@ -3,10 +3,10 @@ name = "coursepilot-backend"
 version = "0.1.0"
 description = "CoursePilot backend: FastAPI application, deterministic academic core."
 readme = "README.md"
-# 3.12 is the floor. Note: several pinned deps below do not yet publish
-# wheels for 3.14, which is what is installed on the primary dev machine.
-# The Docker image pins 3.12 so the containerized path always works.
-requires-python = ">=3.12,<3.14"
+# 3.12 is the floor. No upper cap: the application code runs fine on 3.14.
+# The database drivers are the only 3.14 risk, so they live in the `postgres`
+# extra rather than gating the whole package. The Docker image pins 3.12.
+requires-python = ">=3.12"
 
 dependencies = [
     "fastapi>=0.115",
@@ -15,12 +15,16 @@ dependencies = [
     "pydantic-settings>=2.6",
     "sqlalchemy[asyncio]>=2.0.36",
     "alembic>=1.14",
-    "psycopg[binary,pool]>=3.2",
-    "pgvector>=0.3.6",
     "python-json-logger>=2.0",
 ]
 
 [project.optional-dependencies]
+# Split out because psycopg/pgvector wheel availability lags new Python
+# releases. Everything except an actual database connection works without it.
+postgres = [
+    "psycopg[binary,pool]>=3.2",
+    "pgvector>=0.3.6",
+]
 dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",

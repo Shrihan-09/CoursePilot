@@ -1,6 +1,7 @@
 # Request Decision Trees
 
-Status: **design only.** None of these flows are implemented.
+Status: **mostly design.** Section 7 (the academic reasoning path) is
+implemented and tested as of Phase 3; flows 1-6 remain design.
 
 How to read these: every branch that could produce a wrong academic claim
 terminates in either a **deterministic check** or an **honest refusal**. There
@@ -267,3 +268,153 @@ A bare "yes" here is a promise CoursePilot is not positioned to make.
 6. **Always attach sources** to Rutgers-derived claims.
 7. **Always disclaim**: CoursePilot is a planning aid; the student's official
    Rutgers advising record and academic advisor govern.
+
+---
+
+## 7. The academic reasoning path (Phase 3 — implemented)
+
+This is the first flow in this document with a working implementation behind
+it. **No LLM is involved at any step.**
+
+```
+USER REQUEST  ("what do I still need?")
+      │
+      ▼
+IDENTIFY INTENT                       ← not implemented (Phase 6 router)
+      │
+      ▼
+IDENTIFY STUDENT  ─── unknown ──────► ask; never assume
+      │
+      ▼
+IDENTIFY PROGRAM  ─── unknown ──────► ASK. Never infer a major.
+      │                                 A plan for the wrong program is worse
+      │                                 than no plan and more convincing.
+      ▼
+IDENTIFY CATALOG YEAR ─ unknown ────► ask, or use matriculation year and
+      │                                 STATE the assumption
+      ▼
+LOAD PROGRAM VERSION
+      │   student.catalog_year MUST equal version.catalog_year
+      │   mismatch ──► BLOCKING finding, status = INSUFFICIENT_DATA
+      │                Never audit against another year's rules.
+      ▼
+LOAD REQUIREMENT GRAPH
+      │   recursive tree for THIS version only
+      │   no requirements ──► INSUFFICIENT_DATA (never "complete")
+      ▼
+LOAD COURSE ELIGIBILITY
+      │   requirement_course_option: which courses CAN satisfy what
+      ▼
+LOAD STUDENT RECORD
+      │   completed / in_progress / planned
+      │   planned courses are excluded — an intention is not evidence
+      │   failing grades excluded, with a WARNING finding
+      ▼
+ALLOCATE                              ← the hard step
+      │   maximum bipartite matching, most-constrained-first
+      │   deterministic: same inputs → same allocation
+      ▼
+EVALUATE each node against its allocation
+      │   all_of     every child satisfied
+      │   any_of     >= min_count children satisfied
+      │   choose_n   >= min_count courses AND group constraints hold
+      │   credits    >= min_credits accumulated
+      │   course     the specific course completed
+      ▼
+DERIVE OVERALL STATUS
+      ├── all satisfied ─────────────► COMPLETE
+      ├── only in-progress remaining ► IN_PROGRESS
+      ├── any indeterminate ─────────► INSUFFICIENT_DATA
+      └── otherwise ─────────────────► INCOMPLETE
+      ▼
+STRUCTURED RESULT (Pydantic DegreeAuditResult)
+      every requirement carries its status, its reason, its allocated
+      courses, and the source prose it was curated from
+```
+
+### Where this flow refuses to guess
+
+| Situation | Response |
+|---|---|
+| Program unknown | Ask. Never infer from coursework. |
+| Catalog year mismatch | BLOCKING finding; refuse to audit. |
+| No requirements defined | `INSUFFICIENT_DATA`, never `COMPLETE`. |
+| Unknown requirement type | `INDETERMINATE`, never a pass. |
+| Course not in the catalog | Reported unallocated, never invented. |
+| In-progress coursework | `PROVISIONALLY_SATISFIED`, never `SATISFIED`. |
+| Rule not modeled (grade/exclusion/residency) | Recorded as not evaluated; not silently ignored. |
+
+### Requirement allocation (the substantive decision)
+
+Rutgers publishes **no allocation rules** — the catalog says only "see a
+computer science adviser". So CoursePilot defines its own, explicitly:
+
+```
+maximum bipartite matching (Kuhn's algorithm)
+  left   = the student's countable courses
+  right  = requirement SLOTS (a choose-5 contributes 5 slots)
+  edge   = course is eligible for that requirement
+  goal   = maximise filled slots
+```
+
+**Maximum cardinality alone is not enough** — found against real data.
+`01:198:344` is eligible for both the required `CS_344` node and the 53-option
+elective pool. Both are one slot, so the matching was indifferent, and it
+filled an elective slot while reporting a *required* course unsatisfied.
+
+Slots are therefore ordered **most-constrained-first**: fewer eligible options
+wins. A `course` requirement (one possible course) outranks a large pool. This
+never shrinks the matching — it only breaks ties among equally large matchings,
+choosing the one that serves scarce requirements first.
+
+Determinism comes from sorting both sides before matching, so the same inputs
+always produce the same allocation. An audit that changed between page loads
+would be untrustworthy regardless of correctness.
+
+Full reasoning: `backend/app/services/audit/allocation.py`.
+
+---
+
+## 8. Program-level rules in the audit path (Phase 3.5)
+
+Rules are evaluated **after** the requirement tree and can only ever make the
+verdict worse, never better.
+
+```
+REQUIREMENT TREE EVALUATED
+      │
+      ▼
+LOAD PROGRAM RULES for this ProgramVersion
+      │
+      ├── rule.is_evaluable == False ──► NOT_EVALUABLE
+      │                                   + WARNING finding
+      │                                   + degree can never be COMPLETE
+      │
+      ├── max_grade_count ──► count matching grades on COMPLETED courses
+      │                       over allowed  ──► UNSATISFIED (BLOCKING)
+      │
+      ├── course_exclusion ─► always SATISFIED (it describes how credit
+      │                       counts, it is not a condition to meet)
+      │                       affected courses: no allocation, no credit
+      │
+      └── residency ────────► only if the data supports it
+      ▼
+DERIVE OVERALL STATUS
+      ├── any rule UNSATISFIED ─────────────► INCOMPLETE
+      ├── tree complete + rule NOT_EVALUABLE ► INDETERMINATE
+      ├── all satisfied, nothing unchecked ──► COMPLETE
+      └── otherwise ─────────────────────────► INCOMPLETE
+```
+
+### The guarantee this adds
+
+> Every modeled requirement being satisfied is **not** the same as a complete
+> degree.
+
+If an authoritative rule exists that CoursePilot cannot check, the audit
+returns `INDETERMINATE` and says which rule and why. A student is told to
+confirm with an advisor rather than being told they are finished.
+
+Exclusions are applied **before** allocation, so an excluded course cannot
+satisfy a requirement even when it is otherwise eligible - `01:198:405` is a
+300-level CS course and would otherwise count as an elective.

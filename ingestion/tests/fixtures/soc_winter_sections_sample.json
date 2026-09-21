@@ -1,0 +1,1127 @@
+[
+  {
+    "campusLocations": [
+      {
+        "code": "O",
+        "description": "O"
+      }
+    ],
+    "subject": "050",
+    "openSections": 1,
+    "synopsisUrl": "https://amerstudies.rutgers.edu/academics/undergraduate/course-descriptions",
+    "title": "AMER FILM DIRECTORS",
+    "preReqNotes": "",
+    "courseString": "01:050:267",
+    "school": {
+      "code": "01",
+      "description": "School of Arts and Sciences"
+    },
+    "credits": 3,
+    "subjectDescription": "American Studies",
+    "coreCodes": [
+      {
+        "id": "2027001050267  121",
+        "year": "2027",
+        "term": "0",
+        "supplement": "  ",
+        "effective": "20270",
+        "coreCodeReferenceId": "121",
+        "coreCode": "SOEHS",
+        "coreCodeDescription": "SOE: Approved Humanities/Social Science",
+        "description": "SOE: Approved Humanities/Social Science",
+        "code": "SOEHS",
+        "unit": "01",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "course": "267",
+        "subject": "050",
+        "lastUpdated": 1728323919000
+      }
+    ],
+    "expandedTitle": "AMERICAN FILM DIRECTORS",
+    "courseFeeDescr": "",
+    "mainCampus": "NB",
+    "subjectNotes": "",
+    "courseNumber": "267",
+    "creditsObject": {
+      "code": "3_0",
+      "description": "3.0 credits"
+    },
+    "level": "U",
+    "campusCode": "NB",
+    "subjectGroupNotes": "",
+    "offeringUnitCode": "01",
+    "offeringUnitTitle": null,
+    "courseDescription": "",
+    "sections": [
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "Y",
+        "examCode": "C",
+        "specialPermissionAddCode": null,
+        "crossListedSections": [
+          {
+            "courseNumber": "267",
+            "supplementCode": "  ",
+            "sectionNumber": "90",
+            "offeringUnitCampus": "NB",
+            "primaryRegistrationIndex": "11623",
+            "offeringUnitCode": "01",
+            "registrationIndex": "10591",
+            "subjectCode": "175"
+          }
+        ],
+        "sectionNotes": "ONLINE ASYNCHRONOUS WITH ONLINE SYNCHRONOUS RECITATIONS TUES&FRI 9AM-10:20AMCOURSE MEETS 12/23 ",
+        "specialPermissionDropCode": null,
+        "crossListedSectionType": "2",
+        "instructors": [
+          {
+            "name": "NIGRIN, ALBERT"
+          }
+        ],
+        "number": "90",
+        "finalExam": null,
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": null,
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [
+          {
+            "code": "05",
+            "description": "Go to http://canvas.rutgers.edu"
+          }
+        ],
+        "instructorsText": "NIGRIN, ALBERT",
+        "minors": [],
+        "examCodeText": "During class hour",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "O",
+            "description": "O"
+          }
+        ],
+        "index": "11623",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": null,
+        "commentsText": "Go to http://canvas.rutgers.edu",
+        "subtitle": "AMERICAN FILM DIRECTORS",
+        "crossListedSectionsText": "01:175:267:90 (10591)",
+        "sectionCourseType": "O",
+        "meetingTimes": [
+          {
+            "campusLocation": "O",
+            "roomNumber": "",
+            "campusAbbrev": "ONL",
+            "campusName": "ONLINE",
+            "startTimeMilitary": "0900",
+            "buildingCode": "",
+            "meetingModeDesc": "RECIT",
+            "endTimeMilitary": "1020",
+            "meetingModeCode": "03",
+            "baClassHours": "",
+            "pmCode": "A",
+            "meetingDay": "T",
+            "startTime": "0900",
+            "endTime": "1020"
+          },
+          {
+            "campusLocation": "O",
+            "roomNumber": "",
+            "campusAbbrev": "ONL",
+            "campusName": "ONLINE",
+            "startTimeMilitary": "0900",
+            "buildingCode": "",
+            "meetingModeDesc": "RECIT",
+            "endTimeMilitary": "1020",
+            "meetingModeCode": "03",
+            "baClassHours": "",
+            "pmCode": "A",
+            "meetingDay": "F",
+            "startTime": "0900",
+            "endTime": "1020"
+          },
+          {
+            "campusLocation": "O",
+            "roomNumber": "",
+            "campusAbbrev": "ONL",
+            "campusName": "ONLINE",
+            "startTimeMilitary": "",
+            "buildingCode": "",
+            "meetingModeDesc": "ONLINE INSTRUCTION(INTERNET)",
+            "endTimeMilitary": "",
+            "meetingModeCode": "90",
+            "baClassHours": "B",
+            "pmCode": "",
+            "meetingDay": "",
+            "startTime": "",
+            "endTime": ""
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      }
+    ],
+    "supplementCode": "  ",
+    "courseFee": "0",
+    "unitNotes": "",
+    "courseNotes": ""
+  },
+  {
+    "campusLocations": [
+      {
+        "code": "O",
+        "description": "O"
+      }
+    ],
+    "subject": "175",
+    "openSections": 1,
+    "synopsisUrl": "https://www.cinemastudies.rutgers.edu/academics/undergraduate-students/course-descriptions",
+    "title": "AMER FILM DIRECTORS",
+    "preReqNotes": "",
+    "courseString": "01:175:267",
+    "school": {
+      "code": "01",
+      "description": "School of Arts and Sciences"
+    },
+    "credits": 3,
+    "subjectDescription": "Cinema Studies",
+    "coreCodes": [],
+    "expandedTitle": "AMERICAN FILM DIRECTORS                                                         ",
+    "courseFeeDescr": "",
+    "mainCampus": "NB",
+    "subjectNotes": "",
+    "courseNumber": "267",
+    "creditsObject": {
+      "code": "3_0",
+      "description": "3.0 credits"
+    },
+    "level": "U",
+    "campusCode": "NB",
+    "subjectGroupNotes": "",
+    "offeringUnitCode": "01",
+    "offeringUnitTitle": null,
+    "courseDescription": "",
+    "sections": [
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "Y",
+        "examCode": "C",
+        "specialPermissionAddCode": null,
+        "crossListedSections": [
+          {
+            "courseNumber": "267",
+            "supplementCode": "  ",
+            "sectionNumber": "90",
+            "offeringUnitCampus": "NB",
+            "primaryRegistrationIndex": "10591",
+            "offeringUnitCode": "01",
+            "registrationIndex": "11623",
+            "subjectCode": "050"
+          }
+        ],
+        "sectionNotes": "ONLINE ASYNCHRONOUS WITH ONLINE SYNCHRONOUS RECITATIONS TUES&FRI 9AM-10:20AM COURSE MEETS 12/23/26-1/15/27",
+        "specialPermissionDropCode": null,
+        "crossListedSectionType": "1",
+        "instructors": [
+          {
+            "name": "NIGRIN, ALBERT"
+          }
+        ],
+        "number": "90",
+        "finalExam": null,
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": null,
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [
+          {
+            "code": "05",
+            "description": "Go to http://canvas.rutgers.edu"
+          }
+        ],
+        "instructorsText": "NIGRIN, ALBERT",
+        "minors": [],
+        "examCodeText": "During class hour",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "O",
+            "description": "O"
+          }
+        ],
+        "index": "10591",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": null,
+        "commentsText": "Go to http://canvas.rutgers.edu",
+        "subtitle": "",
+        "crossListedSectionsText": "01:050:267:90 (11623)",
+        "sectionCourseType": "O",
+        "meetingTimes": [
+          {
+            "campusLocation": "O",
+            "roomNumber": "",
+            "campusAbbrev": "ONL",
+            "campusName": "ONLINE",
+            "startTimeMilitary": "0900",
+            "buildingCode": "",
+            "meetingModeDesc": "RECIT",
+            "endTimeMilitary": "1020",
+            "meetingModeCode": "03",
+            "baClassHours": "",
+            "pmCode": "A",
+            "meetingDay": "T",
+            "startTime": "0900",
+            "endTime": "1020"
+          },
+          {
+            "campusLocation": "O",
+            "roomNumber": "",
+            "campusAbbrev": "ONL",
+            "campusName": "ONLINE",
+            "startTimeMilitary": "0900",
+            "buildingCode": "",
+            "meetingModeDesc": "RECIT",
+            "endTimeMilitary": "1020",
+            "meetingModeCode": "03",
+            "baClassHours": "",
+            "pmCode": "A",
+            "meetingDay": "F",
+            "startTime": "0900",
+            "endTime": "1020"
+          },
+          {
+            "campusLocation": "O",
+            "roomNumber": "",
+            "campusAbbrev": "ONL",
+            "campusName": "ONLINE",
+            "startTimeMilitary": "",
+            "buildingCode": "",
+            "meetingModeDesc": "ONLINE INSTRUCTION(INTERNET)",
+            "endTimeMilitary": "",
+            "meetingModeCode": "90",
+            "baClassHours": "B",
+            "pmCode": "",
+            "meetingDay": "",
+            "startTime": "",
+            "endTime": ""
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      }
+    ],
+    "supplementCode": "  ",
+    "courseFee": "0",
+    "unitNotes": "",
+    "courseNotes": ""
+  },
+  {
+    "campusLocations": [
+      {
+        "code": "O",
+        "description": "O"
+      }
+    ],
+    "subject": "190",
+    "openSections": 1,
+    "synopsisUrl": "http://classics.rutgers.edu/courses?id=131:courses-syllabi-archive-article&catid=44:syllabi-archive-category",
+    "title": "CRIMINALS & SAINTS",
+    "preReqNotes": "(01:355:101 COLLEGE WRITING )<em> OR </em>(01:355:103 EXPOSITION &ARGUMENT )<em> OR </em>(01:355:104 COLLEGE WRITING EXTENDED )<em> OR </em>(21:355:102 ENGLISH COMPOSITION )<em> OR </em>(50:989:102 ENGLISH COMPOSITION II )",
+    "courseString": "01:190:323",
+    "school": {
+      "code": "01",
+      "description": "School of Arts and Sciences"
+    },
+    "credits": 3,
+    "subjectDescription": "Classics",
+    "coreCodes": [
+      {
+        "id": "2027001190323  121",
+        "year": "2027",
+        "term": "0",
+        "supplement": "  ",
+        "effective": "20270",
+        "coreCodeReferenceId": "121",
+        "coreCode": "SOEHS",
+        "coreCodeDescription": "SOE: Approved Humanities/Social Science",
+        "description": "SOE: Approved Humanities/Social Science",
+        "code": "SOEHS",
+        "unit": "01",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "course": "323",
+        "subject": "190",
+        "lastUpdated": 1728323919000
+      },
+      {
+        "id": "2027001190323  27",
+        "year": "2027",
+        "term": "0",
+        "supplement": "  ",
+        "effective": "20270",
+        "coreCodeReferenceId": "27",
+        "coreCode": "WCd",
+        "coreCodeDescription": "Writing and Communication in a Discipline",
+        "description": "Writing and Communication in a Discipline",
+        "code": "WCd",
+        "unit": "01",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "course": "323",
+        "subject": "190",
+        "lastUpdated": 1468423822000
+      },
+      {
+        "id": "2027001190323  28",
+        "year": "2027",
+        "term": "0",
+        "supplement": "  ",
+        "effective": "20270",
+        "coreCodeReferenceId": "28",
+        "coreCode": "WCr",
+        "coreCodeDescription": "Writing and Communication, Revision",
+        "description": "Writing and Communication, Revision",
+        "code": "WCr",
+        "unit": "01",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "course": "323",
+        "subject": "190",
+        "lastUpdated": 1468423831000
+      }
+    ],
+    "expandedTitle": "CRIMINALS AND SAINTS: POWER IN GREEK    POLITICAL LIFE AND IMAGINATION",
+    "courseFeeDescr": "",
+    "mainCampus": "NB",
+    "subjectNotes": "",
+    "courseNumber": "323",
+    "creditsObject": {
+      "code": "3_0",
+      "description": "3.0 credits"
+    },
+    "level": "U",
+    "campusCode": "NB",
+    "subjectGroupNotes": "",
+    "offeringUnitCode": "01",
+    "offeringUnitTitle": null,
+    "courseDescription": "",
+    "sections": [
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "Y",
+        "examCode": "T",
+        "specialPermissionAddCode": null,
+        "crossListedSections": [],
+        "sectionNotes": "COURSE MEETS: 12/23/26 - 1/15/27",
+        "specialPermissionDropCode": null,
+        "crossListedSectionType": "0",
+        "instructors": [
+          {
+            "name": "CHEW, KRISTINA"
+          }
+        ],
+        "number": "90",
+        "finalExam": null,
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": null,
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [],
+        "instructorsText": "CHEW, KRISTINA",
+        "minors": [],
+        "examCodeText": "T",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "O",
+            "description": "O"
+          }
+        ],
+        "index": "11507",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": null,
+        "commentsText": "",
+        "subtitle": "",
+        "crossListedSectionsText": "",
+        "sectionCourseType": "O",
+        "meetingTimes": [
+          {
+            "campusLocation": "O",
+            "roomNumber": "",
+            "campusAbbrev": "ONL",
+            "campusName": "ONLINE",
+            "startTimeMilitary": "",
+            "buildingCode": "",
+            "meetingModeDesc": "ONLINE INSTRUCTION(INTERNET)",
+            "endTimeMilitary": "",
+            "meetingModeCode": "90",
+            "baClassHours": "B",
+            "pmCode": "",
+            "meetingDay": "",
+            "startTime": "",
+            "endTime": ""
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      }
+    ],
+    "supplementCode": "  ",
+    "courseFee": "0",
+    "unitNotes": "",
+    "courseNotes": ""
+  },
+  {
+    "campusLocations": [
+      {
+        "code": "S",
+        "description": "Study Abroad"
+      }
+    ],
+    "subject": "959",
+    "openSections": 1,
+    "synopsisUrl": "",
+    "title": "STDY ABROAD PERU",
+    "preReqNotes": "",
+    "courseString": "01:959:388",
+    "school": {
+      "code": "01",
+      "description": "School of Arts and Sciences"
+    },
+    "credits": null,
+    "subjectDescription": "Study Abroad",
+    "coreCodes": [],
+    "expandedTitle": "",
+    "courseFeeDescr": "",
+    "mainCampus": "NB",
+    "subjectNotes": "",
+    "courseNumber": "388",
+    "creditsObject": {
+      "code": "BA",
+      "description": "Credits by arrangement"
+    },
+    "level": "U",
+    "campusCode": "NB",
+    "subjectGroupNotes": "",
+    "offeringUnitCode": "01",
+    "offeringUnitTitle": null,
+    "courseDescription": "",
+    "sections": [
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "Y",
+        "examCode": "O",
+        "specialPermissionAddCode": "16",
+        "crossListedSections": [],
+        "sectionNotes": "",
+        "specialPermissionDropCode": "3",
+        "crossListedSectionType": "0",
+        "instructors": [
+          {
+            "name": "MEREGALLI FERRE"
+          }
+        ],
+        "number": "01",
+        "finalExam": null,
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": "3",
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [
+          {
+            "code": "79",
+            "description": "Study Abroad application required; please visit global.rutgers.edu/study-abroad"
+          }
+        ],
+        "instructorsText": "MEREGALLI FERRE",
+        "minors": [],
+        "examCodeText": "No final exam",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "S",
+            "description": "Study Abroad"
+          }
+        ],
+        "index": "11600",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": "Department",
+        "commentsText": "Study Abroad application required; please visit global.rutgers.edu/study-abroad",
+        "subtitle": "Worldstrides: Global Studies in Lima",
+        "crossListedSectionsText": "",
+        "sectionCourseType": "T",
+        "meetingTimes": [
+          {
+            "campusLocation": "S",
+            "roomNumber": "",
+            "campusAbbrev": "**",
+            "campusName": "STUDY ABROAD",
+            "startTimeMilitary": "",
+            "buildingCode": "",
+            "meetingModeDesc": "STUDY ABROAD",
+            "endTimeMilitary": "",
+            "meetingModeCode": "29",
+            "baClassHours": "B",
+            "pmCode": "",
+            "meetingDay": "",
+            "startTime": "",
+            "endTime": ""
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      }
+    ],
+    "supplementCode": "  ",
+    "courseFee": "0",
+    "unitNotes": "",
+    "courseNotes": ""
+  },
+  {
+    "campusLocations": [
+      {
+        "code": "S",
+        "description": "Study Abroad"
+      }
+    ],
+    "subject": "959",
+    "openSections": 1,
+    "synopsisUrl": "",
+    "title": "STUDY ABROAD CZECH",
+    "preReqNotes": "",
+    "courseString": "01:959:431",
+    "school": {
+      "code": "01",
+      "description": "School of Arts and Sciences"
+    },
+    "credits": null,
+    "subjectDescription": "Study Abroad",
+    "coreCodes": [],
+    "expandedTitle": "STUDY ABROAD IN THE CZECH REPUBLIC",
+    "courseFeeDescr": "",
+    "mainCampus": "NB",
+    "subjectNotes": "",
+    "courseNumber": "431",
+    "creditsObject": {
+      "code": "BA",
+      "description": "Credits by arrangement"
+    },
+    "level": "U",
+    "campusCode": "NB",
+    "subjectGroupNotes": "",
+    "offeringUnitCode": "01",
+    "offeringUnitTitle": null,
+    "courseDescription": "",
+    "sections": [
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "Y",
+        "examCode": "O",
+        "specialPermissionAddCode": "16",
+        "crossListedSections": [],
+        "sectionNotes": "",
+        "specialPermissionDropCode": "3",
+        "crossListedSectionType": "0",
+        "instructors": [
+          {
+            "name": "MEREGALLI FERRE"
+          }
+        ],
+        "number": "01",
+        "finalExam": null,
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": "3",
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [
+          {
+            "code": "79",
+            "description": "Study Abroad application required; please visit global.rutgers.edu/study-abroad"
+          }
+        ],
+        "instructorsText": "MEREGALLI FERRE",
+        "minors": [],
+        "examCodeText": "No final exam",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "S",
+            "description": "Study Abroad"
+          }
+        ],
+        "index": "11601",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": "Department",
+        "commentsText": "Study Abroad application required; please visit global.rutgers.edu/study-abroad",
+        "subtitle": "USAC Study in Prague",
+        "crossListedSectionsText": "",
+        "sectionCourseType": "T",
+        "meetingTimes": [
+          {
+            "campusLocation": "S",
+            "roomNumber": "",
+            "campusAbbrev": "**",
+            "campusName": "STUDY ABROAD",
+            "startTimeMilitary": "",
+            "buildingCode": "",
+            "meetingModeDesc": "STUDY ABROAD",
+            "endTimeMilitary": "",
+            "meetingModeCode": "29",
+            "baClassHours": "B",
+            "pmCode": "",
+            "meetingDay": "",
+            "startTime": "",
+            "endTime": ""
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      }
+    ],
+    "supplementCode": "  ",
+    "courseFee": "0",
+    "unitNotes": "",
+    "courseNotes": ""
+  },
+  {
+    "campusLocations": [
+      {
+        "code": "O",
+        "description": "O"
+      }
+    ],
+    "subject": "960",
+    "openSections": 1,
+    "synopsisUrl": "https://stat.rutgers.edu/course-descriptions",
+    "title": "BASIC STAT FOR RSRCH",
+    "preReqNotes": "Any Course EQUAL or GREATER Than: (01:640:112 PRECALCULUS PART II )",
+    "courseString": "01:960:401",
+    "school": {
+      "code": "01",
+      "description": "School of Arts and Sciences"
+    },
+    "credits": 3,
+    "subjectDescription": "Statistics",
+    "coreCodes": [
+      {
+        "id": "2027001960401  21",
+        "year": "2027",
+        "term": "0",
+        "supplement": "  ",
+        "effective": "20270",
+        "coreCodeReferenceId": "21",
+        "coreCode": "ITR",
+        "coreCodeDescription": "Information Technology and Research",
+        "description": "Information Technology and Research",
+        "code": "ITR",
+        "unit": "01",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "course": "401",
+        "subject": "960",
+        "lastUpdated": 1468423768000
+      },
+      {
+        "id": "2027001960401  23",
+        "year": "2027",
+        "term": "0",
+        "supplement": "  ",
+        "effective": "20270",
+        "coreCodeReferenceId": "23",
+        "coreCode": "QQ",
+        "coreCodeDescription": "Quantitative Information",
+        "description": "Quantitative Information",
+        "code": "QQ",
+        "unit": "01",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "course": "401",
+        "subject": "960",
+        "lastUpdated": 1468423785000
+      },
+      {
+        "id": "2027001960401  24",
+        "year": "2027",
+        "term": "0",
+        "supplement": "  ",
+        "effective": "20270",
+        "coreCodeReferenceId": "24",
+        "coreCode": "QR",
+        "coreCodeDescription": "Mathematical or Formal Reasoning",
+        "description": "Mathematical or Formal Reasoning",
+        "code": "QR",
+        "unit": "01",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "course": "401",
+        "subject": "960",
+        "lastUpdated": 1468423795000
+      }
+    ],
+    "expandedTitle": "BASIC STATISTICS FOR RESEARCH",
+    "courseFeeDescr": "",
+    "mainCampus": "NB",
+    "subjectNotes": "",
+    "courseNumber": "401",
+    "creditsObject": {
+      "code": "3_0",
+      "description": "3.0 credits"
+    },
+    "level": "U",
+    "campusCode": "NB",
+    "subjectGroupNotes": "",
+    "offeringUnitCode": "01",
+    "offeringUnitTitle": null,
+    "courseDescription": "",
+    "sections": [
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "Y",
+        "examCode": "C",
+        "specialPermissionAddCode": null,
+        "crossListedSections": [],
+        "sectionNotes": "COURSE MEETS 12/23/26- 1/15/27 STUDENTS TAKING 401 WILL NOT RECEIVE CREDIT FOR 201,211,212, 285,384 OR 484",
+        "specialPermissionDropCode": null,
+        "crossListedSectionType": "0",
+        "instructors": [
+          {
+            "name": "AGRE, LYNN"
+          }
+        ],
+        "number": "90",
+        "finalExam": null,
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": null,
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [
+          {
+            "code": "AM",
+            "description": "Course uses online tool for student authentication and test-taking - webcam and high-speed internet required"
+          },
+          {
+            "code": "35",
+            "description": "See online schedule for prereqs"
+          },
+          {
+            "code": "AL",
+            "description": "Course may require: Webcam, Microphone, Phone Camera or Scanner"
+          },
+          {
+            "code": "05",
+            "description": "Go to http://canvas.rutgers.edu"
+          }
+        ],
+        "instructorsText": "AGRE, LYNN",
+        "minors": [],
+        "examCodeText": "During class hour",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "O",
+            "description": "O"
+          }
+        ],
+        "index": "00036",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": null,
+        "commentsText": "Course uses online tool for student authentication and test-taking - webcam and high-speed internet required, See online schedule for prereqs, Course may require: Webcam, Microphone, Phone Camera or Scanner, Go to http://canvas.rutgers.edu",
+        "subtitle": "",
+        "crossListedSectionsText": "",
+        "sectionCourseType": "O",
+        "meetingTimes": [
+          {
+            "campusLocation": "O",
+            "roomNumber": "",
+            "campusAbbrev": "ONL",
+            "campusName": "ONLINE",
+            "startTimeMilitary": "",
+            "buildingCode": "",
+            "meetingModeDesc": "ONLINE INSTRUCTION(INTERNET)",
+            "endTimeMilitary": "",
+            "meetingModeCode": "90",
+            "baClassHours": "B",
+            "pmCode": "",
+            "meetingDay": "",
+            "startTime": "",
+            "endTime": ""
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      }
+    ],
+    "supplementCode": "  ",
+    "courseFee": "0",
+    "unitNotes": "",
+    "courseNotes": ""
+  },
+  {
+    "campusLocations": [
+      {
+        "code": "O",
+        "description": "O"
+      }
+    ],
+    "subject": "050",
+    "openSections": 1,
+    "synopsisUrl": "https://amerstudies.rutgers.edu/academics/undergraduate/course-descriptions",
+    "title": "HIST&CULT OF HIP HOP",
+    "preReqNotes": "",
+    "courseString": "01:050:247",
+    "school": {
+      "code": "01",
+      "description": "School of Arts and Sciences"
+    },
+    "credits": 3,
+    "subjectDescription": "American Studies",
+    "coreCodes": [
+      {
+        "id": "2027001050247  121",
+        "year": "2027",
+        "term": "0",
+        "supplement": "  ",
+        "effective": "20270",
+        "coreCodeReferenceId": "121",
+        "coreCode": "SOEHS",
+        "coreCodeDescription": "SOE: Approved Humanities/Social Science",
+        "description": "SOE: Approved Humanities/Social Science",
+        "code": "SOEHS",
+        "unit": "01",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "course": "247",
+        "subject": "050",
+        "lastUpdated": 1728323919000
+      }
+    ],
+    "expandedTitle": "HISTORY AND CULTURE OF HIP HOP",
+    "courseFeeDescr": "",
+    "mainCampus": "NB",
+    "subjectNotes": "",
+    "courseNumber": "247",
+    "creditsObject": {
+      "code": "3_0",
+      "description": "3.0 credits"
+    },
+    "level": "U",
+    "campusCode": "NB",
+    "subjectGroupNotes": "",
+    "offeringUnitCode": "01",
+    "offeringUnitTitle": null,
+    "courseDescription": "",
+    "sections": [
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "Y",
+        "examCode": "A",
+        "specialPermissionAddCode": null,
+        "crossListedSections": [],
+        "sectionNotes": "COURSE MEETS: 12/23/26 - 1/15/27",
+        "specialPermissionDropCode": null,
+        "crossListedSectionType": "0",
+        "instructors": [
+          {
+            "name": "ALMIRON"
+          }
+        ],
+        "number": "90",
+        "finalExam": null,
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": null,
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [
+          {
+            "code": "46",
+            "description": "Online Course Requires RU Email Account and Broadband Connection"
+          },
+          {
+            "code": "05",
+            "description": "Go to http://canvas.rutgers.edu"
+          }
+        ],
+        "instructorsText": "ALMIRON",
+        "minors": [],
+        "examCodeText": "By arrangement",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "O",
+            "description": "O"
+          }
+        ],
+        "index": "06344",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": null,
+        "commentsText": "Online Course Requires RU Email Account and Broadband Connection, Go to http://canvas.rutgers.edu",
+        "subtitle": "",
+        "crossListedSectionsText": "",
+        "sectionCourseType": "O",
+        "meetingTimes": [
+          {
+            "campusLocation": "O",
+            "roomNumber": "",
+            "campusAbbrev": "ONL",
+            "campusName": "ONLINE",
+            "startTimeMilitary": "",
+            "buildingCode": "",
+            "meetingModeDesc": "ONLINE INSTRUCTION(INTERNET)",
+            "endTimeMilitary": "",
+            "meetingModeCode": "90",
+            "baClassHours": "B",
+            "pmCode": "",
+            "meetingDay": "",
+            "startTime": "",
+            "endTime": ""
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      }
+    ],
+    "supplementCode": "  ",
+    "courseFee": "0",
+    "unitNotes": "",
+    "courseNotes": ""
+  },
+  {
+    "campusLocations": [
+      {
+        "code": "S",
+        "description": "Study Abroad"
+      }
+    ],
+    "subject": "959",
+    "openSections": 1,
+    "synopsisUrl": "",
+    "title": "STDY ABROAD ARGENTIN",
+    "preReqNotes": "",
+    "courseString": "01:959:301",
+    "school": {
+      "code": "01",
+      "description": "School of Arts and Sciences"
+    },
+    "credits": null,
+    "subjectDescription": "Study Abroad",
+    "coreCodes": [],
+    "expandedTitle": "",
+    "courseFeeDescr": "",
+    "mainCampus": "NB",
+    "subjectNotes": "",
+    "courseNumber": "301",
+    "creditsObject": {
+      "code": "BA",
+      "description": "Credits by arrangement"
+    },
+    "level": "U",
+    "campusCode": "NB",
+    "subjectGroupNotes": "",
+    "offeringUnitCode": "01",
+    "offeringUnitTitle": null,
+    "courseDescription": "",
+    "sections": [
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "Y",
+        "examCode": "O",
+        "specialPermissionAddCode": "16",
+        "crossListedSections": [],
+        "sectionNotes": "",
+        "specialPermissionDropCode": "3",
+        "crossListedSectionType": "0",
+        "instructors": [
+          {
+            "name": "VAGELLI"
+          }
+        ],
+        "number": "01",
+        "finalExam": null,
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": "3",
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [
+          {
+            "code": "79",
+            "description": "Study Abroad application required; please visit global.rutgers.edu/study-abroad"
+          }
+        ],
+        "instructorsText": "VAGELLI",
+        "minors": [],
+        "examCodeText": "No final exam",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "S",
+            "description": "Study Abroad"
+          }
+        ],
+        "index": "00955",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": "Department",
+        "commentsText": "Study Abroad application required; please visit global.rutgers.edu/study-abroad",
+        "subtitle": "Exploration of Biodiversity of Patagonia",
+        "crossListedSectionsText": "",
+        "sectionCourseType": "T",
+        "meetingTimes": [
+          {
+            "campusLocation": "S",
+            "roomNumber": "",
+            "campusAbbrev": "**",
+            "campusName": "STUDY ABROAD",
+            "startTimeMilitary": "",
+            "buildingCode": "",
+            "meetingModeDesc": "STUDY ABROAD",
+            "endTimeMilitary": "",
+            "meetingModeCode": "29",
+            "baClassHours": "B",
+            "pmCode": "",
+            "meetingDay": "",
+            "startTime": "",
+            "endTime": ""
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      }
+    ],
+    "supplementCode": "  ",
+    "courseFee": "0",
+    "unitNotes": "",
+    "courseNotes": ""
+  }
+]

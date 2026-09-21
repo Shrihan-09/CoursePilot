@@ -1,0 +1,276 @@
+{
+  "_README": [
+    "SAS Core Curriculum, catalog year 2026-2027.",
+    "",
+    "TWO AUTHORITATIVE SOURCES, each for a different fact:",
+    "",
+    "  1. GOAL DEFINITIONS + REQUIREMENT STRUCTURE (this file, curated):",
+    "     sasoue.rutgers.edu/core/core-learning-goals - the SAS Office of",
+    "     Undergraduate Education publishes the goals, their official codes,",
+    "     their wording, the area groupings, and the credit/course counts.",
+    "     Published as prose, so this structure is a HUMAN DERIVATION and every",
+    "     node carries the sentence it came from.",
+    "",
+    "  2. COURSE -> GOAL ELIGIBILITY (NOT in this file):",
+    "     Rutgers SOC `coreCodes`, which publishes certification as structured",
+    "     data. Eligibility is ingested from the SOC archive, never curated by",
+    "     hand - a hand-maintained course list would be stale within a term.",
+    "",
+    "CODES NOT INCLUDED, and why:",
+    "  SOEHS  School of Engineering humanities/social science - not SAS Core",
+    "  GVT    'SEBS Core: Government/Regulatory Analysis' - SEBS, not SAS",
+    "  ECN    'SEBS Core: Economic Analysis' - SEBS, not SAS",
+    "  CE     description literally reads 'Non-Core: Community Engagement'",
+    "  ITR    'Information Technology and Research' - certified on 34 courses in",
+    "         SOC but NOT listed as a current goal by either official SAS page.",
+    "         Recorded as a SOURCE CONFLICT rather than guessed at.",
+    "  WC     'Writing and Communication 01:355:101' - 3 courses in SOC, not",
+    "         listed as a current goal. Also a source conflict.",
+    "",
+    "CASE NOTE: the official page writes WCR/WCD; SOC writes WCr/WCd. Same",
+    "goals. Matching is case-insensitive on the code - see the normalizer."
+  ],
+  "source": {
+    "url": "https://sasoue.rutgers.edu/core/core-learning-goals",
+    "secondary_url": "https://sasundergrad.rutgers.edu/degree-requirements/core",
+    "catalog_year": "2026-2027",
+    "retrieved_at": "2026-09-18",
+    "kind": "rutgers_department_page",
+    "curation_status": "curated_from_prose"
+  },
+  "school": {
+    "code": "SAS",
+    "name": "School of Arts and Sciences",
+    "campus_code": "NB"
+  },
+  "program_version": {
+    "_why": "Applied to the TARGET version. Core is the reason it must share.",
+    "sharing_policy": "share_across_systems",
+    "source_prose": "A course used to meet core goals may also be used to fulfill a major or minor requirement."
+  },
+  "requirement_system": "core",
+  "goals": [
+    {
+      "code": "CCD",
+      "name": "Diversities and Social Inequalities",
+      "description": "Analyze the degree to which forms of human differences and stratifications among social groups shape individual and group experiences of, and perspectives on, contemporary issues."
+    },
+    {
+      "code": "CCO",
+      "name": "Our Common Future",
+      "description": "Analyze a contemporary global issue from a multidisciplinary perspective."
+    },
+    {
+      "code": "NS",
+      "name": "Natural Sciences",
+      "description": "Understand and apply basic principles and concepts in the physical or biological sciences."
+    },
+    {
+      "code": "HST",
+      "name": "Historical Analysis",
+      "description": "Explain the development of some aspect of a society or culture over time."
+    },
+    {
+      "code": "SCL",
+      "name": "Social Analysis",
+      "description": "Understand different theories about human culture, social identity, economic entities, political systems, and other forms of social organization."
+    },
+    {
+      "code": "AHo",
+      "name": "Philosophical and Theoretical Issues",
+      "description": "Examine critically philosophical and other theoretical issues concerning the nature of reality, human experience, knowledge, value, and/or cultural production."
+    },
+    {
+      "code": "AHp",
+      "name": "Arts and Literatures",
+      "description": "Analyze arts and/or literatures in themselves and in relation to specific histories, values, languages, cultures, and technologies."
+    },
+    {
+      "code": "AHq",
+      "name": "Nature of Languages",
+      "description": "Understand the nature of human languages and their speakers."
+    },
+    {
+      "code": "AHr",
+      "name": "Critical Creative Expression",
+      "description": "Engage critically in the process of creative expression."
+    },
+    {
+      "code": "WCr",
+      "name": "Writing and Communication, Revision",
+      "description": "Communicate complex ideas effectively, in standard written English, to a general audience, and respond effectively to editorial feedback from peers, instructors, &/or supervisors through successive drafts & revision."
+    },
+    {
+      "code": "WCd",
+      "name": "Writing and Communication in a Discipline",
+      "description": "Communicate effectively in modes appropriate to a discipline or area of inquiry; evaluate and critically assess sources and use the conventions of attribution and citation correctly; and analyze and synthesize information and ideas from multiple sources to generate new insights."
+    },
+    {
+      "code": "QQ",
+      "name": "Quantitative Information",
+      "description": "Formulate, evaluate, and communicate conclusions and inferences from quantitative information."
+    },
+    {
+      "code": "QR",
+      "name": "Mathematical or Formal Reasoning",
+      "description": "Apply effective and efficient mathematical or other formal processes to reason and to solve problems."
+    }
+  ],
+  "requirements": [
+    {
+      "code": "SAS_CORE",
+      "name": "SAS Core Curriculum",
+      "requirement_type": "all_of",
+      "sort_order": 0,
+      "parent": null,
+      "source_prose": "Students generally will complete the core in 10 to 14 courses of 3 or 4 credits each."
+    },
+    {
+      "code": "CORE_CC",
+      "name": "Contemporary Challenges",
+      "requirement_type": "all_of",
+      "sort_order": 0,
+      "parent": "SAS_CORE",
+      "source_prose": "Contemporary Challenges (2 courses required; 1 from each category)"
+    },
+    {
+      "code": "CORE_CCD",
+      "name": "Diversities and Social Inequalities",
+      "requirement_type": "choose_n",
+      "sort_order": 0,
+      "parent": "CORE_CC",
+      "min_count": 1,
+      "goal": "CCD",
+      "source_prose": "2 courses required; 1 from each category"
+    },
+    {
+      "code": "CORE_CCO",
+      "name": "Our Common Future",
+      "requirement_type": "choose_n",
+      "sort_order": 1,
+      "parent": "CORE_CC",
+      "min_count": 1,
+      "goal": "CCO",
+      "source_prose": "2 courses required; 1 from each category"
+    },
+    {
+      "code": "CORE_AOI",
+      "name": "Areas of Inquiry",
+      "requirement_type": "all_of",
+      "sort_order": 1,
+      "parent": "SAS_CORE",
+      "source_prose": "Areas of Inquiry"
+    },
+    {
+      "code": "CORE_NS",
+      "name": "Natural Sciences",
+      "requirement_type": "credits",
+      "sort_order": 0,
+      "parent": "CORE_AOI",
+      "min_credits": 6,
+      "goal": "NS",
+      "notes": "The source states credits (6) but no course count for NS, so this is modeled as a credit requirement rather than inventing a number of courses.",
+      "source_prose": "Natural Sciences [NS] (6 credits)"
+    },
+    {
+      "code": "CORE_HSA",
+      "name": "Historical and Social Analysis",
+      "requirement_type": "all_of",
+      "sort_order": 1,
+      "parent": "CORE_AOI",
+      "source_prose": "Historical and Social Analysis (6 credits; 2 courses required)"
+    },
+    {
+      "code": "CORE_HST",
+      "name": "Historical Analysis",
+      "requirement_type": "choose_n",
+      "sort_order": 0,
+      "parent": "CORE_HSA",
+      "min_count": 1,
+      "goal": "HST",
+      "source_prose": "Historical Analysis [HST] (3 credits)"
+    },
+    {
+      "code": "CORE_SCL",
+      "name": "Social Analysis",
+      "requirement_type": "choose_n",
+      "sort_order": 1,
+      "parent": "CORE_HSA",
+      "min_count": 1,
+      "goal": "SCL",
+      "source_prose": "Social Analysis [SCL] (3 credits)"
+    },
+    {
+      "code": "CORE_AH",
+      "name": "Arts and the Humanities",
+      "requirement_type": "choose_n",
+      "sort_order": 2,
+      "parent": "CORE_AOI",
+      "min_count": 2,
+      "goals": [
+        "AHo",
+        "AHp",
+        "AHq",
+        "AHr"
+      ],
+      "notes": "Two INDEPENDENT conditions: min_count=2 courses AND min_distinct_categories=2 goals. A single course certified for two AH goals therefore cannot satisfy the area on its own - it is one course.",
+      "source_prose": "Arts and the Humanities [AH] (6 credits) Students must take two degree credit-bearing courses and meet at least two of these goals.",
+      "min_distinct_categories": 2
+    },
+    {
+      "code": "CORE_CSP",
+      "name": "Cognitive Skills and Processes",
+      "requirement_type": "all_of",
+      "sort_order": 2,
+      "parent": "SAS_CORE",
+      "source_prose": "Cognitive Skills and Processes"
+    },
+    {
+      "code": "CORE_WC",
+      "name": "Writing and Communication",
+      "requirement_type": "choose_n",
+      "sort_order": 0,
+      "parent": "CORE_CSP",
+      "min_count": 3,
+      "goals": [
+        "WCr",
+        "WCd"
+      ],
+      "source_prose": "Writing and Communication (9 credits; 3 courses required)"
+    },
+    {
+      "code": "CORE_QFR",
+      "name": "Quantitative and Formal Reasoning",
+      "requirement_type": "choose_n",
+      "sort_order": 1,
+      "parent": "CORE_CSP",
+      "min_count": 2,
+      "goals": [
+        "QQ",
+        "QR"
+      ],
+      "source_prose": "Quantitative and Formal Reasoning (6 credits; 2 courses required)"
+    }
+  ],
+  "known_conflicts": [
+    {
+      "code": "ITR",
+      "soc_description": "Information Technology and Research",
+      "issue": "Certified on courses in SOC but not listed as a current goal by sasoue.rutgers.edu or sasundergrad.rutgers.edu.",
+      "resolution": "No requirement node created. Eligibility rows are reported as unmapped rather than dropped or invented."
+    },
+    {
+      "code": "WC",
+      "soc_description": "Writing and Communication 01:355:101",
+      "issue": "Certified on 3 courses in SOC but not listed as a current goal; the official page lists WCR and WCD.",
+      "resolution": "No requirement node created; reported as unmapped."
+    }
+  ],
+  "target_program": {
+    "_why": "Core requirements are attached to the STUDENT'S program version, tagged requirement_system='core'. They are not a separate program: the audit engine evaluates one ProgramVersion, and sharing only works when major and core requirements live in the same tree.",
+    "school_code": "SAS",
+    "program_code": "198",
+    "degree_type": "BA",
+    "catalog_year": "2026-2027"
+  }
+}

@@ -2,22 +2,26 @@
 name = "coursepilot-ingestion"
 version = "0.1.0"
 description = "Rutgers data ingestion pipeline for CoursePilot."
-requires-python = ">=3.12,<3.14"
+requires-python = ">=3.12"
 
-# Deliberately minimal. Scraping dependencies (playwright, beautifulsoup4) are
-# NOT added yet — no scraper is being written in this phase, and unused heavy
-# dependencies rot. They go in when the first real source is implemented.
+# Note: this package imports the ORM models from `coursepilot-backend`
+# (app.models). That is a known coupling, tracked in docs/ARCHITECTURE.md:
+# the shared models should eventually move into their own package that both
+# the backend and ingestion depend on. Install the backend editable alongside:
+#     pip install -e ./backend -e ./ingestion
 dependencies = [
     "httpx>=0.27",
     "pydantic>=2.9",
-    "sqlalchemy[asyncio]>=2.0.36",
-    "psycopg[binary]>=3.2",
-    "tenacity>=9.0",       # retry/backoff for flaky sources
-    "structlog>=24.4",
+    "sqlalchemy>=2.0.36",
+    "tenacity>=9.0",
 ]
 
 [project.optional-dependencies]
+# Playwright/BeautifulSoup are deliberately absent. The SOC source is JSON, so
+# no browser engine or HTML parser is needed. They go in when a source that
+# actually requires them is implemented (e.g. the course catalog).
 dev = ["pytest>=8.3", "ruff>=0.7", "mypy>=1.13"]
+postgres = ["psycopg[binary]>=3.2"]
 
 [build-system]
 requires = ["hatchling"]
@@ -28,3 +32,10 @@ packages = ["coursepilot_ingestion"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = [
+    "error",
+    "ignore::pytest.PytestCacheWarning",
+]
+markers = [
+    "db: requires a live database connection",
+]

@@ -9,9 +9,10 @@ from __future__ import annotations
 
 from enum import StrEnum
 from functools import lru_cache
+from typing import Annotated
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Environment(StrEnum):
@@ -51,7 +52,14 @@ class Settings(BaseSettings):
 
     # --- API ---
     api_v1_prefix: str = "/api/v1"
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    # NoDecode is required: pydantic-settings JSON-decodes complex types (list,
+    # dict) from a dotenv file BEFORE field validators run, so the documented
+    # comma-separated form (CORS_ORIGINS=http://a,http://b) would raise a
+    # SettingsError instead of reaching _split_origins below. NoDecode hands
+    # the raw string to the validator, which is what we want.
+    cors_origins: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["http://localhost:3000"]
+    )
 
     # --- LLM ---
     # "echo" is a deterministic no-network fake. It is the default so that a

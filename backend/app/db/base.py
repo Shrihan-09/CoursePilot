@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import MetaData, func
+from sqlalchemy import DateTime, MetaData, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 NAMING_CONVENTION = {
@@ -35,5 +35,13 @@ class TimestampMixin:
     these record when CoursePilot's row changed, while `SourceRef.retrieved_at`
     records when the underlying Rutgers fact was fetched. Both are needed."""
 
-    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(server_default=func.now(), onupdate=func.now())
+    # timezone=True is not optional for audit columns. A naive timestamp is
+    # ambiguous the moment the server's timezone changes or the data is read
+    # from elsewhere, and "when did we retrieve this?" is a question this
+    # project has to answer precisely.
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )

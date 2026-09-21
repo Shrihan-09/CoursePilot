@@ -1,0 +1,208 @@
+{
+  "_README": [
+    "MANUALLY CURATED from official Rutgers catalog prose. This is a DERIVATION,",
+    "not a machine extraction: Rutgers publishes the CS major requirements as an",
+    "English paragraph, not as structured data. Every node below carries the",
+    "sentence it came from so the derivation can be re-checked against the source.",
+    "",
+    "KNOWN GAP: the prose says electives come 'from a designated list of courses",
+    "in computer science and related disciplines ... For details, see a computer",
+    "science adviser or the departmental website.' That designated list is NOT",
+    "published in the catalog. Only the constraints the prose states directly are",
+    "encoded here; the non-CS elective options are deliberately absent rather",
+    "than invented."
+  ],
+  "source": {
+    "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/computer-science-198",
+    "catalog_year": "2026-2027",
+    "retrieved_at": "2026-09-13",
+    "kind": "rutgers_official_catalog",
+    "curation_status": "curated_from_prose"
+  },
+  "school": {
+    "code": "SAS",
+    "name": "School of Arts and Sciences",
+    "campus_code": "NB"
+  },
+  "program": {
+    "code": "198",
+    "name": "Computer Science",
+    "degree_type": "BA"
+  },
+  "program_version": {
+    "catalog_year": "2026-2027",
+    "total_credits_min": 51,
+    "total_credits_max": 55,
+    "source_prose": "The B.A. option requires 51-55 credits (depending on 3-credit or 4-credit elective options); the B.S. option requires 67-72 credits."
+  },
+  "requirements": [
+    {
+      "code": "CS_BA",
+      "name": "Computer Science B.A. Major",
+      "requirement_type": "all_of",
+      "sort_order": 0,
+      "parent": null,
+      "source_prose": "The basic major, leading to a bachelor of arts (B.A.) degree, consists of: 1) six required courses in computer science, 01:198:111, 112, 205, 206, 211, and 344; 2) three courses in mathematics, 01:640:151-152 and 01:640:250; and 3) five electives from a designated list of courses in computer science and related disciplines."
+    },
+    {
+      "code": "CS_CORE",
+      "name": "Required Computer Science Courses",
+      "requirement_type": "all_of",
+      "sort_order": 0,
+      "parent": "CS_BA",
+      "source_prose": "six required courses in computer science, 01:198:111, 112, 205, 206, 211, and 344"
+    },
+    {
+      "code": "CS_111",
+      "name": "Introduction to Computer Science",
+      "requirement_type": "course",
+      "sort_order": 0,
+      "parent": "CS_CORE",
+      "courses": [
+        "01:198:111"
+      ]
+    },
+    {
+      "code": "CS_112",
+      "name": "Data Structures",
+      "requirement_type": "course",
+      "sort_order": 1,
+      "parent": "CS_CORE",
+      "courses": [
+        "01:198:112"
+      ]
+    },
+    {
+      "code": "CS_205",
+      "name": "Introduction to Discrete Structures I",
+      "requirement_type": "course",
+      "sort_order": 2,
+      "parent": "CS_CORE",
+      "courses": [
+        "01:198:205"
+      ]
+    },
+    {
+      "code": "CS_206",
+      "name": "Introduction to Discrete Structures II",
+      "requirement_type": "course",
+      "sort_order": 3,
+      "parent": "CS_CORE",
+      "courses": [
+        "01:198:206"
+      ]
+    },
+    {
+      "code": "CS_211",
+      "name": "Computer Architecture",
+      "requirement_type": "course",
+      "sort_order": 4,
+      "parent": "CS_CORE",
+      "courses": [
+        "01:198:211"
+      ]
+    },
+    {
+      "code": "CS_344",
+      "name": "Design and Analysis of Computer Algorithms",
+      "requirement_type": "course",
+      "sort_order": 5,
+      "parent": "CS_CORE",
+      "courses": [
+        "01:198:344"
+      ]
+    },
+    {
+      "code": "CS_MATH",
+      "name": "Mathematics Requirement",
+      "requirement_type": "all_of",
+      "sort_order": 1,
+      "parent": "CS_BA",
+      "source_prose": "three courses in mathematics, 01:640:151-152 and 01:640:250"
+    },
+    {
+      "code": "MATH_151",
+      "name": "Calculus I",
+      "requirement_type": "course",
+      "sort_order": 0,
+      "parent": "CS_MATH",
+      "courses": [
+        "01:640:151"
+      ]
+    },
+    {
+      "code": "MATH_152",
+      "name": "Calculus II",
+      "requirement_type": "course",
+      "sort_order": 1,
+      "parent": "CS_MATH",
+      "courses": [
+        "01:640:152"
+      ]
+    },
+    {
+      "code": "MATH_250",
+      "name": "Introductory Linear Algebra",
+      "requirement_type": "course",
+      "sort_order": 2,
+      "parent": "CS_MATH",
+      "courses": [
+        "01:640:250"
+      ]
+    },
+    {
+      "code": "CS_ELECTIVES",
+      "name": "Computer Science Electives",
+      "requirement_type": "choose_n",
+      "sort_order": 2,
+      "parent": "CS_BA",
+      "min_count": 5,
+      "max_outside_subject": 2,
+      "constraint_subject_code": "198",
+      "min_at_level": 300,
+      "min_at_level_count": 2,
+      "notes": "The catalog defers the designated elective list to the department; only CS courses at the 300 level or above are encoded here, which the prose supports directly. Non-CS elective options are NOT encoded because the catalog does not publish them.",
+      "source_prose": "five electives from a designated list of courses in computer science and related disciplines (e.g., electrical engineering, mathematics). At most, two of the five electives may be taken outside the Department of Computer Science; at least two must be computer science courses at the 300 level or above.",
+      "eligible_course_query": {
+        "subject_code": "198",
+        "min_course_number": 300
+      }
+    }
+  ],
+  "rules_not_yet_modeled": [
+    {
+      "rule": "At most two of the five electives may be taken outside the Department of Computer Science; at least two must be CS at the 300 level or above.",
+      "why_not": "IMPLEMENTED as group constraints on CS_ELECTIVES (max_outside_subject / min_at_level), not as a program rule."
+    }
+  ],
+  "program_rules": [
+    {
+      "code": "CS_MAX_D",
+      "name": "At most one grade of D in required major courses",
+      "rule_type": "max_grade_count",
+      "grade": "D",
+      "max_count": 1,
+      "is_evaluable": true,
+      "source_prose": "No more than one grade of D can be accepted in the courses required for the major."
+    },
+    {
+      "code": "CS_EXCLUDED",
+      "name": "Courses that earn no credit for declared CS majors",
+      "rule_type": "course_exclusion",
+      "excluded_course_strings": "01:198:105,01:198:107,01:198:110,01:198:142,01:198:170,01:198:405",
+      "is_evaluable": true,
+      "source_prose": "Declared computer science majors (198) will not receive credit (major or degree) for subsequent enrollment in computer science 105, 107,110, 142, 170, or 405."
+    },
+    {
+      "code": "CS_RESIDENCY",
+      "name": "Minimum seven courses in the Rutgers-New Brunswick CS department",
+      "rule_type": "residency",
+      "min_count": 7,
+      "subject_code": "198",
+      "offering_unit_code": "01",
+      "is_evaluable": false,
+      "not_evaluable_reason": "The rule requires knowing which courses were taken AT Rutgers-New Brunswick. StudentCourse records no transfer provenance, and a cross-listed course carries another department's code, so the count cannot be computed without guessing. Rutgers publishes no transfer-equivalence rule we could apply here.",
+      "source_prose": "A minimum of seven courses must be taken in the Rutgers University-New Brunswick Department of Computer Science."
+    }
+  ]
+}

@@ -247,19 +247,41 @@ custom build. `scripts/init_db.sql` enables `vector`, `pg_trgm`, and
 | Repo structure, Docker, Postgres+pgvector | **Working** |
 | FastAPI app, `/health`, `/ready`, `/meta` | **Working** |
 | Settings, structured logging | **Working** |
-| Provenance / validation / plan schemas | **Types only** |
 | LLM provider abstraction + echo fake | **Working** |
 | Next.js app + status page | **Working** |
-| Alembic wiring | **Configured, zero migrations** |
-| ORM models | **Empty on purpose** |
-| Retrieval, planner, validators, skills | **Contracts only** |
-| Ingestion | **Documented only** |
+| Validation / plan schemas | **Types only** |
+| ORM models (`data_source`, `subject`, `course`, `course_offering`) | **Working, verified on PostgreSQL 16.15** |
+| ORM models (`course_section`, `section_meeting`, `section_instructor`, `section_cross_listing`) | **Working, verified on PostgreSQL 16.15** |
+| Alembic migrations `27348b5d362d` → `ef89e1066a73` | **Applied on PostgreSQL** |
+| SOC course ingestion pipeline | **Working, verified end-to-end on PostgreSQL** |
+| SOC section ingestion pipeline | **Working; 11,992 sections / 17,457 meetings loaded** |
+| Retrieval, planner, validators (academic), skills | **Contracts only** |
+
+### PostgreSQL verification status — COMPLETE (2026-09-09)
+
+Verified against PostgreSQL 16.15 (`pgvector/pgvector:pg16`), not merely
+SQLite:
+
+* migration applies from scratch; `uuid` native, `numeric(4,1)`,
+  `timestamp with time zone` + `now()` all render correctly
+* UNIQUE, CHECK, and FK constraints confirmed enforced **by the database
+  itself**, by attempting direct SQL violations
+* real Rutgers SOC data ingested end-to-end; at full term scale this is
+  4,391 courses / 4,400 offerings / 11,992 sections / 17,457 meetings
+* re-ingestion is idempotent (identical row counts, zero inserts)
+* 138 tests pass, 0 skipped
+
+Test isolation: the `db`-marked tests TRUNCATE, so they run against a separate
+`coursepilot_test` database via `TEST_DATABASE_URL`. Pointing them at the
+development database destroys ingested data.
 
 ## 8. Deliberately not built yet
 
-Rutgers scraping/API integration · the agent · RAG · embeddings · degree
-planner · schedule optimizer · registration predictor · Google Calendar ·
-discussions · authentication.
+Prerequisite parsing (prose is stored verbatim, unparsed) · course descriptions
+(SOC provides none) · section restriction lists (majors/minors/honors) ·
+enrollment and seat counts (**SOC provides none**) · degree requirements · the
+agent · RAG · embeddings · degree planner · schedule optimizer · registration
+predictor · Google Calendar · discussions · authentication.
 
 Authentication deserves a note: it is absent because it is not needed to
 validate the architecture, but it is required before any real student data is

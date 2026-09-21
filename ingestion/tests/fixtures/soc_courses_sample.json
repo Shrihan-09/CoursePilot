@@ -1,0 +1,1362 @@
+[
+  {
+    "campusLocations": [
+      {
+        "code": "4",
+        "description": "Cook/Douglass"
+      }
+    ],
+    "subject": "750",
+    "openSections": 0,
+    "synopsisUrl": "http://www.physics.rutgers.edu/homes-ugcourses.shtml",
+    "title": "PHYSICS FOR SCIENCES",
+    "preReqNotes": "Any Course EQUAL or GREATER Than: (01:640:112 PRECALCULUS PART II )",
+    "courseString": "01:750:193",
+    "school": {
+      "code": "01",
+      "description": "School of Arts and Sciences"
+    },
+    "credits": 4,
+    "subjectDescription": "Physics",
+    "coreCodes": [],
+    "expandedTitle": "PHYSICS FOR THE SCIENCES",
+    "courseFeeDescr": "",
+    "mainCampus": "NB",
+    "subjectNotes": "",
+    "courseNumber": "193",
+    "creditsObject": {
+      "code": "4_0",
+      "description": "4.0 credits"
+    },
+    "level": "U",
+    "campusCode": "NB",
+    "subjectGroupNotes": "",
+    "offeringUnitCode": "01",
+    "offeringUnitTitle": null,
+    "courseDescription": "",
+    "sections": [
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "N",
+        "examCode": "I",
+        "specialPermissionAddCode": null,
+        "crossListedSections": [],
+        "sectionNotes": "PREREQ: 01:640:112 OR HIGHER; MUST REGISTER FOR BOTH REC AND LAB SECTION IN SAME SEMESTER. ",
+        "specialPermissionDropCode": null,
+        "crossListedSectionType": "0",
+        "instructors": [
+          {
+            "name": "GENTILE"
+          }
+        ],
+        "number": "01",
+        "finalExam": "12/18/2026 - 1200 - 0300 PM",
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "CLOSED",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": null,
+        "subtopic": "",
+        "openStatus": false,
+        "comments": [],
+        "instructorsText": "GENTILE",
+        "minors": [],
+        "examCodeText": "Physics",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "4",
+            "description": "Cook/Douglass"
+          }
+        ],
+        "index": "13352",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": null,
+        "commentsText": "",
+        "subtitle": "",
+        "crossListedSectionsText": "",
+        "sectionCourseType": "T",
+        "meetingTimes": [
+          {
+            "campusLocation": "4",
+            "roomNumber": "101",
+            "campusAbbrev": "D/C",
+            "campusName": "DOUGLAS/COOK",
+            "startTimeMilitary": "1415",
+            "buildingCode": "HCK",
+            "meetingModeDesc": "LEC",
+            "endTimeMilitary": "1510",
+            "meetingModeCode": "02",
+            "baClassHours": "",
+            "pmCode": "P",
+            "meetingDay": "M",
+            "startTime": "0215",
+            "endTime": "0310"
+          },
+          {
+            "campusLocation": "4",
+            "roomNumber": "101",
+            "campusAbbrev": "D/C",
+            "campusName": "DOUGLAS/COOK",
+            "startTimeMilitary": "1415",
+            "buildingCode": "HCK",
+            "meetingModeDesc": "LEC",
+            "endTimeMilitary": "1510",
+            "meetingModeCode": "02",
+            "baClassHours": "",
+            "pmCode": "P",
+            "meetingDay": "W",
+            "startTime": "0215",
+            "endTime": "0310"
+          },
+          {
+            "campusLocation": "4",
+            "roomNumber": "207",
+            "campusAbbrev": "D/C",
+            "campusName": "DOUGLAS/COOK",
+            "startTimeMilitary": "1550",
+            "buildingCode": "HSB",
+            "meetingModeDesc": "RECIT",
+            "endTimeMilitary": "1710",
+            "meetingModeCode": "03",
+            "baClassHours": "",
+            "pmCode": "P",
+            "meetingDay": "M",
+            "startTime": "0350",
+            "endTime": "0510"
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      }
+    ],
+    "supplementCode": "  ",
+    "courseFee": "0",
+    "unitNotes": "",
+    "courseNotes": "CREDIT NOT GIVEN FOR MORE THAN ONE OUT OF 750:203, 750:193, 750:201"
+  },
+  {
+    "campusLocations": [
+      {
+        "code": "4",
+        "description": "Cook/Douglass"
+      }
+    ],
+    "subject": "750",
+    "openSections": 0,
+    "synopsisUrl": "http://www.physics.rutgers.edu/homes-ugcourses.shtml",
+    "title": "PHYSICS FOR SCI LAB",
+    "preReqNotes": "",
+    "courseString": "01:750:193",
+    "school": {
+      "code": "01",
+      "description": "School of Arts and Sciences"
+    },
+    "credits": 0,
+    "subjectDescription": "Physics",
+    "coreCodes": [],
+    "expandedTitle": "PHYSICS FOR THE SCIENCES",
+    "courseFeeDescr": "",
+    "mainCampus": "NB",
+    "subjectNotes": "",
+    "courseNumber": "193",
+    "creditsObject": {
+      "code": "0_0",
+      "description": "0.0 credits"
+    },
+    "level": "U",
+    "campusCode": "NB",
+    "subjectGroupNotes": "",
+    "offeringUnitCode": "01",
+    "offeringUnitTitle": null,
+    "courseDescription": "",
+    "sections": [
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "N",
+        "examCode": "A",
+        "specialPermissionAddCode": null,
+        "crossListedSections": [],
+        "sectionNotes": "MUST REGISTER FOR BOTH REC AND LAB SECTION IN SAME SEMESTER  ",
+        "specialPermissionDropCode": null,
+        "crossListedSectionType": "0",
+        "instructors": [
+          {
+            "name": "GENTILE"
+          }
+        ],
+        "number": "20",
+        "finalExam": "By Arrangement",
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "CLOSED",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": null,
+        "subtopic": "",
+        "openStatus": false,
+        "comments": [],
+        "instructorsText": "GENTILE",
+        "minors": [],
+        "examCodeText": "By arrangement",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "4",
+            "description": "Cook/Douglass"
+          }
+        ],
+        "index": "13361",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": null,
+        "commentsText": "",
+        "subtitle": "",
+        "crossListedSectionsText": "",
+        "sectionCourseType": "T",
+        "meetingTimes": [
+          {
+            "campusLocation": "4",
+            "roomNumber": "207",
+            "campusAbbrev": "D/C",
+            "campusName": "DOUGLAS/COOK",
+            "startTimeMilitary": "1550",
+            "buildingCode": "HSB",
+            "meetingModeDesc": "LAB",
+            "endTimeMilitary": "1850",
+            "meetingModeCode": "05",
+            "baClassHours": "",
+            "pmCode": "P",
+            "meetingDay": "W",
+            "startTime": "0350",
+            "endTime": "0650"
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      }
+    ],
+    "supplementCode": "LB",
+    "courseFee": "0",
+    "unitNotes": "",
+    "courseNotes": "CREDIT NOT GIVEN FOR MORE THAN ONE OUT OF 750:203, 750:193, 750:201"
+  },
+  {
+    "campusLocations": [
+      {
+        "code": "4",
+        "description": "Cook/Douglass"
+      }
+    ],
+    "subject": "400",
+    "openSections": 1,
+    "synopsisUrl": "",
+    "title": "FOOD CHEMISTRY FUND",
+    "preReqNotes": "",
+    "courseString": "16:400:513",
+    "school": {
+      "code": "16",
+      "description": "The School of Graduate Studies - New Brunswick"
+    },
+    "credits": 3,
+    "subjectDescription": "Food Science",
+    "coreCodes": [],
+    "expandedTitle": "",
+    "courseFeeDescr": "",
+    "mainCampus": "NB",
+    "subjectNotes": "",
+    "courseNumber": "513",
+    "creditsObject": {
+      "code": "3_0",
+      "description": "3.0 credits"
+    },
+    "level": "G",
+    "campusCode": "NB",
+    "subjectGroupNotes": "",
+    "offeringUnitCode": "16",
+    "offeringUnitTitle": null,
+    "courseDescription": "",
+    "sections": [
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "N",
+        "examCode": "A",
+        "specialPermissionAddCode": null,
+        "crossListedSections": [],
+        "sectionNotes": "PREREQ: ORGANIC CHEMISTRY",
+        "specialPermissionDropCode": null,
+        "crossListedSectionType": "0",
+        "instructors": [
+          {
+            "name": "SCHAICH, KAREN"
+          }
+        ],
+        "number": "01",
+        "finalExam": "By Arrangement",
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": null,
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [],
+        "instructorsText": "SCHAICH, KAREN",
+        "minors": [],
+        "examCodeText": "By arrangement",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "4",
+            "description": "Cook/Douglass"
+          }
+        ],
+        "index": "19370",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": null,
+        "commentsText": "",
+        "subtitle": "",
+        "crossListedSectionsText": "",
+        "sectionCourseType": "T",
+        "meetingTimes": [
+          {
+            "campusLocation": "4",
+            "roomNumber": "102",
+            "campusAbbrev": "D/C",
+            "campusName": "DOUGLAS/COOK",
+            "startTimeMilitary": "1740",
+            "buildingCode": "FSW",
+            "meetingModeDesc": "LEC",
+            "endTimeMilitary": "1900",
+            "meetingModeCode": "02",
+            "baClassHours": "",
+            "pmCode": "P",
+            "meetingDay": "M",
+            "startTime": "0540",
+            "endTime": "0700"
+          },
+          {
+            "campusLocation": "4",
+            "roomNumber": "102",
+            "campusAbbrev": "D/C",
+            "campusName": "DOUGLAS/COOK",
+            "startTimeMilitary": "1740",
+            "buildingCode": "FSW",
+            "meetingModeDesc": "LEC",
+            "endTimeMilitary": "1900",
+            "meetingModeCode": "02",
+            "baClassHours": "",
+            "pmCode": "P",
+            "meetingDay": "W",
+            "startTime": "0540",
+            "endTime": "0700"
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      }
+    ],
+    "supplementCode": "  ",
+    "courseFee": "0",
+    "unitNotes": "",
+    "courseNotes": ""
+  },
+  {
+    "campusLocations": [
+      {
+        "code": "Z",
+        "description": "Off campus"
+      }
+    ],
+    "subject": "400",
+    "openSections": 1,
+    "synopsisUrl": "",
+    "title": "FOOD CHEMISTRY FUND",
+    "preReqNotes": "",
+    "courseString": "16:400:513",
+    "school": {
+      "code": "16",
+      "description": "The School of Graduate Studies - New Brunswick"
+    },
+    "credits": 3,
+    "subjectDescription": "Food Science",
+    "coreCodes": [],
+    "expandedTitle": "",
+    "courseFeeDescr": "",
+    "mainCampus": "NB",
+    "subjectNotes": "",
+    "courseNumber": "513",
+    "creditsObject": {
+      "code": "3_0",
+      "description": "3.0 credits"
+    },
+    "level": "G",
+    "campusCode": "OB",
+    "subjectGroupNotes": "",
+    "offeringUnitCode": "16",
+    "offeringUnitTitle": null,
+    "courseDescription": "",
+    "sections": [
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "N",
+        "examCode": "A",
+        "specialPermissionAddCode": null,
+        "crossListedSections": [],
+        "sectionNotes": "DISTANCE LEARNING",
+        "specialPermissionDropCode": null,
+        "crossListedSectionType": "0",
+        "instructors": [],
+        "number": "85",
+        "finalExam": "By Arrangement",
+        "majors": [],
+        "openToText": "UNIT/MAJOR: 16/400 (The School of Graduate Studies - New Brunswick / MAJ: Food Science)",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": null,
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [],
+        "instructorsText": "",
+        "minors": [],
+        "examCodeText": "By arrangement",
+        "campusCode": "OB",
+        "sectionCampusLocations": [
+          {
+            "code": "Z",
+            "description": "Off campus"
+          }
+        ],
+        "index": "19371",
+        "unitMajors": [
+          {
+            "unitCode": "16",
+            "majorCode": "400"
+          }
+        ],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": null,
+        "commentsText": "",
+        "subtitle": "",
+        "crossListedSectionsText": "",
+        "sectionCourseType": "T",
+        "meetingTimes": [
+          {
+            "campusLocation": "Z",
+            "roomNumber": "",
+            "campusAbbrev": "OFF",
+            "campusName": "OFF CAMPUS",
+            "startTimeMilitary": "1740",
+            "buildingCode": "",
+            "meetingModeDesc": "LEC",
+            "endTimeMilitary": "1900",
+            "meetingModeCode": "02",
+            "baClassHours": "",
+            "pmCode": "P",
+            "meetingDay": "M",
+            "startTime": "0540",
+            "endTime": "0700"
+          },
+          {
+            "campusLocation": "Z",
+            "roomNumber": "",
+            "campusAbbrev": "OFF",
+            "campusName": "OFF CAMPUS",
+            "startTimeMilitary": "1740",
+            "buildingCode": "",
+            "meetingModeDesc": "LEC",
+            "endTimeMilitary": "1900",
+            "meetingModeCode": "02",
+            "baClassHours": "",
+            "pmCode": "P",
+            "meetingDay": "W",
+            "startTime": "0540",
+            "endTime": "0700"
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      }
+    ],
+    "supplementCode": "  ",
+    "courseFee": "0",
+    "unitNotes": "",
+    "courseNotes": ""
+  },
+  {
+    "campusLocations": [
+      {
+        "code": "NA",
+        "description": "N/A"
+      }
+    ],
+    "subject": "013",
+    "openSections": 1,
+    "synopsisUrl": "https://www.amesall.rutgers.edu/academics/undergraduate-program/course-descriptions",
+    "title": "INDEPENDENT STUDY",
+    "preReqNotes": "",
+    "courseString": "01:013:321",
+    "school": {
+      "code": "01",
+      "description": "School of Arts and Sciences"
+    },
+    "credits": null,
+    "subjectDescription": "African, Middle Eastern, and South Asian Languages and Literatures",
+    "coreCodes": [],
+    "expandedTitle": "",
+    "courseFeeDescr": "",
+    "mainCampus": "NB",
+    "subjectNotes": "",
+    "courseNumber": "321",
+    "creditsObject": {
+      "code": "BA",
+      "description": "Credits by arrangement"
+    },
+    "level": "U",
+    "campusCode": "NB",
+    "subjectGroupNotes": "",
+    "offeringUnitCode": "01",
+    "offeringUnitTitle": null,
+    "courseDescription": "",
+    "sections": [
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "N",
+        "examCode": "A",
+        "specialPermissionAddCode": "03",
+        "crossListedSections": [],
+        "sectionNotes": "REQUIRED FACULTY PROCTOR PERMISSION OF DEPT. CHAIR  ",
+        "specialPermissionDropCode": null,
+        "crossListedSectionType": "0",
+        "instructors": [
+          {
+            "name": "SELIM, SAMAH"
+          }
+        ],
+        "number": "01",
+        "finalExam": "By Arrangement",
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": null,
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [],
+        "instructorsText": "SELIM, SAMAH",
+        "minors": [],
+        "examCodeText": "By arrangement",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "NA",
+            "description": "N/A"
+          }
+        ],
+        "index": "10094",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": "Department staff",
+        "commentsText": "",
+        "subtitle": "",
+        "crossListedSectionsText": "",
+        "sectionCourseType": "T",
+        "meetingTimes": [
+          {
+            "campusLocation": "",
+            "roomNumber": "",
+            "campusAbbrev": "",
+            "campusName": "",
+            "startTimeMilitary": "",
+            "buildingCode": "",
+            "meetingModeDesc": "LEC",
+            "endTimeMilitary": "",
+            "meetingModeCode": "02",
+            "baClassHours": "B",
+            "pmCode": "",
+            "meetingDay": "",
+            "startTime": "",
+            "endTime": ""
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      }
+    ],
+    "supplementCode": "  ",
+    "courseFee": "0",
+    "unitNotes": "",
+    "courseNotes": ""
+  },
+  {
+    "campusLocations": [
+      {
+        "code": "1",
+        "description": "College Avenue"
+      }
+    ],
+    "subject": "050",
+    "openSections": 1,
+    "synopsisUrl": "https://amerstudies.rutgers.edu/academics/undergraduate/course-descriptions",
+    "title": "TPCS IN AMER STUDIES",
+    "preReqNotes": "",
+    "courseString": "01:050:282",
+    "school": {
+      "code": "01",
+      "description": "School of Arts and Sciences"
+    },
+    "credits": 1.5,
+    "subjectDescription": "American Studies",
+    "coreCodes": [],
+    "expandedTitle": "TOPICS IN AMERICAN STUDIES",
+    "courseFeeDescr": "",
+    "mainCampus": "NB",
+    "subjectNotes": "ALL COURSE DESCRIPTIONS CAN BE FOUND ON THE AMERICAN STUDIES HOMEPAGE AT: \r\nhttp://amerstudies.rutgers.edu/courses-menu/course-offerings\r\n",
+    "courseNumber": "282",
+    "creditsObject": {
+      "code": "1_5",
+      "description": "1.5 credits"
+    },
+    "level": "U",
+    "campusCode": "NB",
+    "subjectGroupNotes": "",
+    "offeringUnitCode": "01",
+    "offeringUnitTitle": null,
+    "courseDescription": "",
+    "sections": [
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "N",
+        "examCode": "C",
+        "specialPermissionAddCode": "04",
+        "crossListedSections": [],
+        "sectionNotes": "ASIAN AMERICAN LIVING- LEARNING COMMUNITY. CONTACT ARIEL LEGET FOR SPN TO ADD/DROP.",
+        "specialPermissionDropCode": "2",
+        "crossListedSectionType": "0",
+        "instructors": [
+          {
+            "name": "BHATTACHARYA"
+          }
+        ],
+        "number": "01",
+        "finalExam": "12/17/2026 - 0800 - 1100 AM",
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": "2",
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [],
+        "instructorsText": "BHATTACHARYA",
+        "minors": [],
+        "examCodeText": "During class hour",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "1",
+            "description": "College Avenue"
+          }
+        ],
+        "index": "10151",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": "Instructor",
+        "commentsText": "",
+        "subtitle": "",
+        "crossListedSectionsText": "",
+        "sectionCourseType": "T",
+        "meetingTimes": [
+          {
+            "campusLocation": "1",
+            "roomNumber": "220",
+            "campusAbbrev": "CAC",
+            "campusName": "COLLEGE AVENUE",
+            "startTimeMilitary": "1400",
+            "buildingCode": "SC",
+            "meetingModeDesc": "LEC",
+            "endTimeMilitary": "1520",
+            "meetingModeCode": "02",
+            "baClassHours": "",
+            "pmCode": "P",
+            "meetingDay": "F",
+            "startTime": "0200",
+            "endTime": "0320"
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      }
+    ],
+    "supplementCode": "  ",
+    "courseFee": "0",
+    "unitNotes": "",
+    "courseNotes": ""
+  },
+  {
+    "campusLocations": [
+      {
+        "code": "5",
+        "description": "Downtown New Brunswick"
+      },
+      {
+        "code": "O",
+        "description": "O"
+      }
+    ],
+    "subject": "013",
+    "openSections": 1,
+    "synopsisUrl": "https://www.amesall.rutgers.edu/academics/undergraduate-program/course-descriptions",
+    "title": "INTERMED ARABIC I",
+    "preReqNotes": "(01:013:141 ELEMENTARY ARABIC II )<em> OR </em>(01:013:145 ACCELERATED ARABIC )<em> OR </em>(01:074:141 ELEMENTARY ARABIC II )<em> OR </em>(01:074:145 ACCELERATED ARABIC 1 )",
+    "courseString": "01:013:240",
+    "school": {
+      "code": "01",
+      "description": "School of Arts and Sciences"
+    },
+    "credits": 4,
+    "subjectDescription": "African, Middle Eastern, and South Asian Languages and Literatures",
+    "coreCodes": [
+      {
+        "id": "2026901013240  121",
+        "year": "2026",
+        "term": "9",
+        "supplement": "  ",
+        "lastUpdated": 1728323919000,
+        "description": "SOE: Approved Humanities/Social Science",
+        "effective": "20269",
+        "coreCodeReferenceId": "121",
+        "coreCode": "SOEHS",
+        "coreCodeDescription": "SOE: Approved Humanities/Social Science",
+        "code": "SOEHS",
+        "unit": "01",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "course": "240",
+        "subject": "013"
+      }
+    ],
+    "expandedTitle": "INTERMEDIATE ARABIC I",
+    "courseFeeDescr": "",
+    "mainCampus": "NB",
+    "subjectNotes": "",
+    "courseNumber": "240",
+    "creditsObject": {
+      "code": "4_0",
+      "description": "4.0 credits"
+    },
+    "level": "U",
+    "campusCode": "NB",
+    "subjectGroupNotes": "",
+    "offeringUnitCode": "01",
+    "offeringUnitTitle": null,
+    "courseDescription": "",
+    "sections": [
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "N",
+        "examCode": "D",
+        "specialPermissionAddCode": null,
+        "crossListedSections": [
+          {
+            "courseNumber": "240",
+            "supplementCode": "  ",
+            "sectionNumber": "90",
+            "offeringUnitCampus": "NB",
+            "primaryRegistrationIndex": "10079",
+            "offeringUnitCode": "01",
+            "registrationIndex": "10080",
+            "subjectCode": "074"
+          }
+        ],
+        "sectionNotes": "PREREQ: 01:013:141 OR 01:013:145 OR 01:074:141 OR 01:074:145 OR PLACEMENT ",
+        "specialPermissionDropCode": null,
+        "crossListedSectionType": "3",
+        "instructors": [
+          {
+            "name": "HABBAL, MANAR"
+          }
+        ],
+        "number": "01",
+        "finalExam": "12/20/2026 - 0400 - 0700 PM",
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": null,
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [
+          {
+            "code": "05",
+            "description": "Go to http://canvas.rutgers.edu"
+          },
+          {
+            "code": "23",
+            "description": "Hybrid Section - Some Meetings Online"
+          }
+        ],
+        "instructorsText": "HABBAL, MANAR",
+        "minors": [],
+        "examCodeText": "Spanish",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "5",
+            "description": "Downtown New Brunswick"
+          },
+          {
+            "code": "O",
+            "description": "O"
+          }
+        ],
+        "index": "10079",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": null,
+        "commentsText": "Go to http://canvas.rutgers.edu, Hybrid Section - Some Meetings Online",
+        "subtitle": "",
+        "crossListedSectionsText": "01:074:240:90 (10080)",
+        "sectionCourseType": "H",
+        "meetingTimes": [
+          {
+            "campusLocation": "5",
+            "roomNumber": "403",
+            "campusAbbrev": "DNB",
+            "campusName": "DOWNTOWN NB",
+            "startTimeMilitary": "1400",
+            "buildingCode": "SPR",
+            "meetingModeDesc": "LEC",
+            "endTimeMilitary": "1520",
+            "meetingModeCode": "02",
+            "baClassHours": "",
+            "pmCode": "P",
+            "meetingDay": "T",
+            "startTime": "0200",
+            "endTime": "0320"
+          },
+          {
+            "campusLocation": "5",
+            "roomNumber": "403",
+            "campusAbbrev": "DNB",
+            "campusName": "DOWNTOWN NB",
+            "startTimeMilitary": "1400",
+            "buildingCode": "SPR",
+            "meetingModeDesc": "LEC",
+            "endTimeMilitary": "1520",
+            "meetingModeCode": "02",
+            "baClassHours": "",
+            "pmCode": "P",
+            "meetingDay": "H",
+            "startTime": "0200",
+            "endTime": "0320"
+          },
+          {
+            "campusLocation": "O",
+            "roomNumber": "",
+            "campusAbbrev": "ONL",
+            "campusName": "ONLINE",
+            "startTimeMilitary": "",
+            "buildingCode": "",
+            "meetingModeDesc": "ONLINE INSTRUCTION(INTERNET)",
+            "endTimeMilitary": "",
+            "meetingModeCode": "90",
+            "baClassHours": "B",
+            "pmCode": "",
+            "meetingDay": "",
+            "startTime": "",
+            "endTime": ""
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      }
+    ],
+    "supplementCode": "  ",
+    "courseFee": "0",
+    "unitNotes": "",
+    "courseNotes": "ON-LINE SECTION AVAILABLE UNDER 01:074:240:01 OPEN ONLY TO STUDENTS PROHIBITED BY WEBREG FROM REGISTERING FOR IN-PERSON SECTIONS."
+  },
+  {
+    "campusLocations": [
+      {
+        "code": "1",
+        "description": "College Avenue"
+      }
+    ],
+    "subject": "013",
+    "openSections": 1,
+    "synopsisUrl": "https://www.amesall.rutgers.edu/academics/undergraduate-program/course-descriptions",
+    "title": "COMICS MIDEAST",
+    "preReqNotes": "",
+    "courseString": "01:013:130",
+    "school": {
+      "code": "01",
+      "description": "School of Arts and Sciences"
+    },
+    "credits": 3,
+    "subjectDescription": "African, Middle Eastern, and South Asian Languages and Literatures",
+    "coreCodes": [
+      {
+        "id": "2026901013130  20",
+        "year": "2026",
+        "term": "9",
+        "supplement": "  ",
+        "lastUpdated": 1468423759000,
+        "description": "Historical Analysis",
+        "effective": "20269",
+        "coreCodeReferenceId": "20",
+        "coreCode": "HST",
+        "coreCodeDescription": "Historical Analysis",
+        "code": "HST",
+        "unit": "01",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "course": "130",
+        "subject": "013"
+      },
+      {
+        "id": "2026901013130  121",
+        "year": "2026",
+        "term": "9",
+        "supplement": "  ",
+        "lastUpdated": 1728323919000,
+        "description": "SOE: Approved Humanities/Social Science",
+        "effective": "20269",
+        "coreCodeReferenceId": "121",
+        "coreCode": "SOEHS",
+        "coreCodeDescription": "SOE: Approved Humanities/Social Science",
+        "code": "SOEHS",
+        "unit": "01",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "course": "130",
+        "subject": "013"
+      }
+    ],
+    "expandedTitle": "COMICS IN THE MIDDLE EAST",
+    "courseFeeDescr": "",
+    "mainCampus": "NB",
+    "subjectNotes": "",
+    "courseNumber": "130",
+    "creditsObject": {
+      "code": "3_0",
+      "description": "3.0 credits"
+    },
+    "level": "U",
+    "campusCode": "NB",
+    "subjectGroupNotes": "",
+    "offeringUnitCode": "01",
+    "offeringUnitTitle": null,
+    "courseDescription": "",
+    "sections": [
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "N",
+        "examCode": "C",
+        "specialPermissionAddCode": null,
+        "crossListedSections": [
+          {
+            "courseNumber": "130",
+            "supplementCode": "  ",
+            "sectionNumber": "01",
+            "offeringUnitCampus": "NB",
+            "primaryRegistrationIndex": "10054",
+            "offeringUnitCode": "01",
+            "registrationIndex": "10055",
+            "subjectCode": "685"
+          }
+        ],
+        "sectionNotes": "",
+        "specialPermissionDropCode": null,
+        "crossListedSectionType": "1",
+        "instructors": [
+          {
+            "name": "KOERBER"
+          }
+        ],
+        "number": "01",
+        "finalExam": "12/21/2026 - 0800 - 1100 PM",
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": null,
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [],
+        "instructorsText": "KOERBER",
+        "minors": [],
+        "examCodeText": "During class hour",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "1",
+            "description": "College Avenue"
+          }
+        ],
+        "index": "10054",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": null,
+        "commentsText": "",
+        "subtitle": "",
+        "crossListedSectionsText": "01:685:130:01 (10055)",
+        "sectionCourseType": "T",
+        "meetingTimes": [
+          {
+            "campusLocation": "1",
+            "roomNumber": "025B",
+            "campusAbbrev": "CAC",
+            "campusName": "COLLEGE AVENUE",
+            "startTimeMilitary": "1930",
+            "buildingCode": "ED",
+            "meetingModeDesc": "LEC",
+            "endTimeMilitary": "2050",
+            "meetingModeCode": "02",
+            "baClassHours": "",
+            "pmCode": "P",
+            "meetingDay": "M",
+            "startTime": "0730",
+            "endTime": "0850"
+          },
+          {
+            "campusLocation": "1",
+            "roomNumber": "025B",
+            "campusAbbrev": "CAC",
+            "campusName": "COLLEGE AVENUE",
+            "startTimeMilitary": "1930",
+            "buildingCode": "ED",
+            "meetingModeDesc": "LEC",
+            "endTimeMilitary": "2050",
+            "meetingModeCode": "02",
+            "baClassHours": "",
+            "pmCode": "P",
+            "meetingDay": "W",
+            "startTime": "0730",
+            "endTime": "0850"
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      }
+    ],
+    "supplementCode": "  ",
+    "courseFee": "0",
+    "unitNotes": "",
+    "courseNotes": ""
+  },
+  {
+    "campusLocations": [
+      {
+        "code": "5",
+        "description": "Downtown New Brunswick"
+      },
+      {
+        "code": "NA",
+        "description": "N/A"
+      }
+    ],
+    "subject": "081",
+    "openSections": 1,
+    "synopsisUrl": "https://www.masongross.rutgers.edu/degrees-programs/art-design/courses/",
+    "title": "VISITING ARTISTS",
+    "preReqNotes": "",
+    "courseString": "08:081:521",
+    "school": {
+      "code": "08",
+      "description": "Mason Gross School of the Arts (Graduate)"
+    },
+    "credits": 4,
+    "subjectDescription": "Art",
+    "coreCodes": [],
+    "expandedTitle": "",
+    "courseFeeDescr": "",
+    "mainCampus": "NB",
+    "subjectNotes": "",
+    "courseNumber": "521",
+    "creditsObject": {
+      "code": "4_0",
+      "description": "4.0 credits"
+    },
+    "level": "G",
+    "campusCode": "NB",
+    "subjectGroupNotes": "",
+    "offeringUnitCode": "08",
+    "offeringUnitTitle": null,
+    "courseDescription": "",
+    "sections": [
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "N",
+        "examCode": "U",
+        "specialPermissionAddCode": "03",
+        "crossListedSections": [],
+        "sectionNotes": "MFA MAJORS ONLY COURSE FEE APPLICABLE  ",
+        "specialPermissionDropCode": "3",
+        "crossListedSectionType": "0",
+        "instructors": [
+          {
+            "name": "OLESON, JEANINE"
+          },
+          {
+            "name": "TE NYENHUIS"
+          }
+        ],
+        "number": "01",
+        "finalExam": "Project/Paper",
+        "majors": [
+          {
+            "code": "081",
+            "isUnitCode": false,
+            "isMajorCode": true
+          }
+        ],
+        "openToText": "MAJ: 081 (Professional Visual Arts)",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": "3",
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [
+          {
+            "code": "05",
+            "description": "Go to http://canvas.rutgers.edu"
+          }
+        ],
+        "instructorsText": "OLESON, JEANINE; TE NYENHUIS",
+        "minors": [],
+        "examCodeText": "U",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "5",
+            "description": "Downtown New Brunswick"
+          },
+          {
+            "code": "NA",
+            "description": "N/A"
+          }
+        ],
+        "index": "15846",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": "Department staff",
+        "commentsText": "Go to http://canvas.rutgers.edu",
+        "subtitle": "",
+        "crossListedSectionsText": "",
+        "sectionCourseType": "T",
+        "meetingTimes": [
+          {
+            "campusLocation": "5",
+            "roomNumber": "110",
+            "campusAbbrev": "DNB",
+            "campusName": "DOWNTOWN NB",
+            "startTimeMilitary": "1900",
+            "buildingCode": "CSB",
+            "meetingModeDesc": "LEC",
+            "endTimeMilitary": "2200",
+            "meetingModeCode": "02",
+            "baClassHours": "",
+            "pmCode": "P",
+            "meetingDay": "W",
+            "startTime": "0700",
+            "endTime": "1000"
+          },
+          {
+            "campusLocation": "",
+            "roomNumber": "",
+            "campusAbbrev": "",
+            "campusName": "",
+            "startTimeMilitary": "",
+            "buildingCode": "",
+            "meetingModeDesc": "PROJ-IND",
+            "endTimeMilitary": "",
+            "meetingModeCode": "19",
+            "baClassHours": "B",
+            "pmCode": "",
+            "meetingDay": "",
+            "startTime": "",
+            "endTime": ""
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      }
+    ],
+    "supplementCode": "  ",
+    "courseFee": "0",
+    "unitNotes": "",
+    "courseNotes": ""
+  },
+  {
+    "campusLocations": [
+      {
+        "code": "1",
+        "description": "College Avenue"
+      }
+    ],
+    "subject": "013",
+    "openSections": 1,
+    "synopsisUrl": "https://www.amesall.rutgers.edu/academics/undergraduate-program/course-descriptions",
+    "title": "LITERARY EGYPT",
+    "preReqNotes": "",
+    "courseString": "01:013:120",
+    "school": {
+      "code": "01",
+      "description": "School of Arts and Sciences"
+    },
+    "credits": 3,
+    "subjectDescription": "African, Middle Eastern, and South Asian Languages and Literatures",
+    "coreCodes": [
+      {
+        "id": "2026901013120  20",
+        "year": "2026",
+        "term": "9",
+        "supplement": "  ",
+        "lastUpdated": 1468423759000,
+        "description": "Historical Analysis",
+        "effective": "20269",
+        "coreCodeReferenceId": "20",
+        "coreCode": "HST",
+        "coreCodeDescription": "Historical Analysis",
+        "code": "HST",
+        "unit": "01",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "course": "120",
+        "subject": "013"
+      },
+      {
+        "id": "2026901013120  121",
+        "year": "2026",
+        "term": "9",
+        "supplement": "  ",
+        "lastUpdated": 1728323919000,
+        "description": "SOE: Approved Humanities/Social Science",
+        "effective": "20269",
+        "coreCodeReferenceId": "121",
+        "coreCode": "SOEHS",
+        "coreCodeDescription": "SOE: Approved Humanities/Social Science",
+        "code": "SOEHS",
+        "unit": "01",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "course": "120",
+        "subject": "013"
+      }
+    ],
+    "expandedTitle": "LITERARY EGYPT",
+    "courseFeeDescr": "",
+    "mainCampus": "NB",
+    "subjectNotes": "",
+    "courseNumber": "120",
+    "creditsObject": {
+      "code": "3_0",
+      "description": "3.0 credits"
+    },
+    "level": "U",
+    "campusCode": "NB",
+    "subjectGroupNotes": "",
+    "offeringUnitCode": "01",
+    "offeringUnitTitle": null,
+    "courseDescription": "",
+    "sections": [
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "N",
+        "examCode": "C",
+        "specialPermissionAddCode": null,
+        "crossListedSections": [
+          {
+            "courseNumber": "120",
+            "supplementCode": "  ",
+            "sectionNumber": "01",
+            "offeringUnitCampus": "NB",
+            "primaryRegistrationIndex": "10052",
+            "offeringUnitCode": "01",
+            "registrationIndex": "10053",
+            "subjectCode": "074"
+          }
+        ],
+        "sectionNotes": "",
+        "specialPermissionDropCode": null,
+        "crossListedSectionType": "1",
+        "instructors": [
+          {
+            "name": "SELIM, SAMAH"
+          }
+        ],
+        "number": "01",
+        "finalExam": "12/21/2026 - 0400 - 0700 PM",
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": null,
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [],
+        "instructorsText": "SELIM, SAMAH",
+        "minors": [],
+        "examCodeText": "During class hour",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "1",
+            "description": "College Avenue"
+          }
+        ],
+        "index": "10052",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": null,
+        "commentsText": "",
+        "subtitle": "",
+        "crossListedSectionsText": "01:074:120:01 (10053)",
+        "sectionCourseType": "T",
+        "meetingTimes": [
+          {
+            "campusLocation": "1",
+            "roomNumber": "A2",
+            "campusAbbrev": "CAC",
+            "campusName": "COLLEGE AVENUE",
+            "startTimeMilitary": "1550",
+            "buildingCode": "HH",
+            "meetingModeDesc": "LEC",
+            "endTimeMilitary": "1710",
+            "meetingModeCode": "02",
+            "baClassHours": "",
+            "pmCode": "P",
+            "meetingDay": "T",
+            "startTime": "0350",
+            "endTime": "0510"
+          },
+          {
+            "campusLocation": "1",
+            "roomNumber": "A2",
+            "campusAbbrev": "CAC",
+            "campusName": "COLLEGE AVENUE",
+            "startTimeMilitary": "1550",
+            "buildingCode": "HH",
+            "meetingModeDesc": "LEC",
+            "endTimeMilitary": "1710",
+            "meetingModeCode": "02",
+            "baClassHours": "",
+            "pmCode": "P",
+            "meetingDay": "H",
+            "startTime": "0350",
+            "endTime": "0510"
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      }
+    ],
+    "supplementCode": "  ",
+    "courseFee": "0",
+    "unitNotes": "",
+    "courseNotes": ""
+  }
+]
