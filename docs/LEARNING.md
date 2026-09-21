@@ -2896,3 +2896,265 @@ and exact course equality the wrong one?
 - Rainbow matchings and colour-constrained assignment
 - Hopcroft-Karp, if a requirement ever needs thousands of candidates
 - Differential testing: two implementations as a correctness oracle
+
+---
+
+# Lesson 11: When the Optimum Is Not Worth Computing (and When It Is)
+
+## What We Built
+
+An oracle, a proof, a decomposition, and a measurement — and no change to how
+CoursePilot allocates anything.
+
+Lesson 9 said the allocator optimizes the wrong thing. This phase asked what
+it would take to optimize the right thing, and the answer turned out to be
+more interesting than "write an optimizer".
+
+---
+
+## Concepts
+
+### Write the model down before arguing about the algorithm
+
+The first real work was not code. It was this:
+
+```
+allocation = set of (course, requirement, category) triples
+    (1) capacity     at most n(r) courses on r
+    (2) single use   a course appears once PER SYSTEM
+    (3) eligibility  only where the catalog allows
+    (4) category     each chosen category is one the course holds
+
+r SATISFIED  iff  it holds n(r) courses AND covers d(r) distinct categories
+```
+
+Everything afterwards — the complexity proof, the decomposition, the oracle —
+is a consequence of those five lines. Arguments about "should we use flow or
+ILP" are unanswerable until they exist, because you cannot say whether a
+model expresses a constraint you have not written down.
+
+**And the model caught a bug in my own thinking.** I first wrote constraint
+(4) as *"the chosen categories within a requirement must be distinct"*. That
+is wrong, and the oracle failed a test because of it: two courses certified
+under the same category **can** both be allocated — the allocation is legal
+and simply does not satisfy. Encoding distinctness as *validity* makes the
+failing case unrepresentable instead of unsatisfying, which would have
+deleted the exact situation Phase 4.2 exists to report.
+
+Validity and satisfaction are different questions. Collapsing them hides
+failures rather than finding them.
+
+### Find which constraint causes the hardness, not just that it is hard
+
+"This is NP-hard" is where thinking usually stops. It should be where it
+starts, because the useful question is *which part*.
+
+Maximize-satisfied-requirements reduces from Set Packing:
+
+```
+sets S_1..S_m over universe U
+  one course per element, one requirement per set with n(R_i) = |S_i|
+  R_i satisfied <=> all of S_i allocated to it
+  single-use    => satisfied requirements are pairwise disjoint
+  hence  max satisfied = maximum set packing
+```
+
+Now narrow it. **If every threshold is 1, the problem is in P** — a
+requirement is satisfied exactly when its one slot is filled, so
+maximize-satisfied *is* maximum-cardinality matching, which is what the
+allocator already computes.
+
+That reframes everything. The existing algorithm is not a heuristic hoping
+for the best; it is **exactly optimal** on single-course requirements. The
+hardness lives entirely in thresholds of 2 or more, and on the real Rutgers
+instance that is **four nodes**: `CORE_AH`, `CORE_QFR`, `CORE_WC`,
+`CS_ELECTIVES`.
+
+**The habit:** after proving hardness, go looking for the restricted case
+your data actually lives in. "NP-hard in general, polynomial on 13 of our 17
+requirements" is a completely different engineering situation from "NP-hard".
+
+### Decomposition beats cleverness
+
+The measurement that decided the phase:
+
+```
+a realistic 19-course CS transcript
+
+whole-instance exhaustive search    TOO LARGE (> 5,000,000 states)
+decomposed exhaustive search        17.6 ms, exact
+```
+
+Same problem, same brute-force method, same answer — intractable one way and
+trivial the other. The difference is noticing that the bipartite graph of
+courses against requirements falls into connected components that share no
+course and no constraint, so each is an independent instance. The objective
+is a sum, and sums decompose.
+
+That transcript was chosen to be the *hard* case: a real junior CS major's
+courses cluster in one subject, which is when you would expect coupling. It
+still split into 8 components, the largest being 8 courses against 5
+requirements.
+
+**The general lesson:** before reaching for a better algorithm, check whether
+the problem is actually one problem. An exponential method on eight tiny
+instances beats a sophisticated method on one big one.
+
+### Know exactly where your decomposition breaks
+
+Components are built from slot-consuming requirements. An `all_of` group
+spanning two components **re-couples them**, because a group's satisfaction is
+a conjunction, not a sum — and conjunctions do not decompose.
+
+So the recommendation counts *leaf* satisfaction only, and that restriction
+is load-bearing. A result that holds under a condition you have not stated is
+a result waiting to be misapplied.
+
+### Build the oracle before the optimizer
+
+The oracle enumerates every legal allocation and returns the best. It is slow
+on purpose, simple on purpose, and shares no code with the allocator on
+purpose — an oracle that reuses the implementation it checks inherits its
+blind spots.
+
+Two details that matter more than they look:
+
+- It **re-validates** each allocation from scratch rather than trusting its
+  own enumerator. A bug then surfaces as an invalid allocation, not as a
+  confidently wrong optimum.
+- It **raises** past its state bound instead of returning the best found so
+  far. An oracle that silently degrades agrees with whatever it is checking —
+  the same principle as `INDETERMINATE` in Lesson 5.
+
+With it, "is the allocator good enough?" stopped being a debate: **8 of 60
+real transcripts, 13%**.
+
+### Measuring beats predicting — twice over
+
+Both surprises this phase came from measurement, and both went against the
+expected direction.
+
+**Case H, the motivating example, is a tie.** It was expected to be the
+poster child for a global objective. Enumerating every optimum gives four
+allocations all scoring (1 satisfied, 2 slots) — including both the current
+answer and the "better" one. Every objective considered is indifferent. Only
+a *weighting* could break the tie, and no Rutgers source ranks AH against
+CCD.
+
+So the headline example needed no fix at all, while the unglamorous dead-end
+case — a course spent on a requirement that can never finish — turned out to
+be the real defect driving nearly all 13%.
+
+**And the search is not the expensive part.** The oracle averages 0.9 ms
+against the engine's 13.2 ms. The intuition that "optimal is too slow" was
+simply wrong here; the database round-trip costs more than the exhaustive
+search it precedes.
+
+### Optimization moves value, and someone has to agree
+
+The finding that stopped implementation. Of the 8 suboptimal instances:
+
+```
+3 of 8   optimum strictly DOMINATES   more completions, nothing lost
+5 of 8   optimum TRADES               a completion bought by dropping another
+```
+
+Concretely:
+
+```
+engine  : CORE_SCL satisfied
+optimal : CORE_HST + CORE_QFR satisfied, CORE_SCL drops to nothing
+```
+
+Net +1 completion — and a student sees a finished requirement become
+unfinished after adding an unrelated course. Rutgers describes its own audit
+doing exactly this, so it is not wrong. But "not wrong" is not the same as
+"the behaviour we want", and that difference is not an engineering question.
+
+**A maximization moves value between things people care about.** When the
+losers are visible, "optimal" needs a product decision, not just a proof.
+
+The useful move was splitting the fix by whether it needs that permission:
+dominance-only improvements (3 of 8) need nobody's agreement, because nothing
+regresses. The rest waits.
+
+### Shipping nothing, on purpose
+
+No production code changed. That was the correct outcome, and it is worth
+being able to recognise:
+
+- the headline case turned out to need no fix;
+- the real defect splits into a part that needs a product decision and a part
+  that does not;
+- the recommendation is specific, measured, and staged, so whoever implements
+  it starts with an oracle, a bound, and a known defect rate.
+
+**A phase that ends with a proof, a measurement and a decision point has
+produced something.** The failure mode is shipping an optimizer whose
+tradeoffs nobody agreed to, and then discovering them through a student
+asking why their completed requirement became incomplete.
+
+---
+
+## Important Code
+
+| File | Why |
+|---|---|
+| [oracle.py](backend/app/services/audit/oracle.py) | the formal model, executable; independent by design |
+| [test_global_objective.py](ingestion/tests/test_global_objective.py) | cases 1–7, oracle correctness, decomposition |
+| [DATA_MODEL.md](docs/DATA_MODEL.md) | section 19: model, complexity, measurements, recommendation |
+
+## What Could Go Wrong?
+
+- **Arguing about algorithms before writing the model.**
+- **Encoding a satisfaction condition as a validity constraint.** It deletes
+  the failing case instead of reporting it.
+- **Stopping at "NP-hard".** The restricted case is where the data lives.
+- **Assuming exhaustive search is too slow.** Measure; here it beat the
+  database.
+- **Decomposing without stating what breaks it.** `all_of` groups do.
+- **An oracle that shares code with the thing it checks**, or that degrades
+  silently instead of refusing.
+- **Shipping an optimization whose losers nobody agreed to.**
+
+## What I Should Be Able To Explain
+
+1. Write the five constraints of the allocation model from memory.
+2. Why is category distinctness a satisfaction condition and not a validity
+   one? What breaks if you swap them?
+3. Give the Set Packing reduction. Which constraint creates the hardness?
+4. Why is the problem polynomial when every threshold is 1, and how many real
+   requirements is that true for?
+5. Why does a 19-course transcript blow up whole but solve in 18 ms split?
+6. What kind of requirement re-couples two components, and why?
+7. Why must the oracle raise rather than return its best-so-far?
+8. Case H: what did the enumeration show, and why does no objective fix it?
+9. What separates the 3 dominance cases from the 5 trade cases?
+10. Why did this phase ship no production code?
+
+## Try It Yourself
+
+**A.** Re-add distinctness to `is_valid` in the oracle. Which test fails, and
+what does its failure message tell you about the difference between "illegal"
+and "unsatisfying"?
+
+**B.** Build a curriculum that does NOT decompose — one pool eligible for
+every course — and run the benchmark. At how many courses does the decomposed
+search stop helping? This is the fallback case the recommendation requires.
+
+**C.** Implement the dominance-only stage: accept a re-allocation only when it
+completes strictly more requirements and loses no partial progress. Run it
+against the 60-transcript comparison. Do you recover exactly 3 of the 8?
+
+**D.** Add `all_of` groups to the oracle's objective, counting satisfied
+groups as well as leaves. Find an instance where two components are no longer
+independent, and explain what that costs the recommendation in 19.9.
+
+## Further Learning
+
+- Set packing and maximum coverage: hardness and approximation bounds
+- Fixed-parameter tractability — when "hard" is parameterised by the thing
+  that stays small
+- Treewidth and problem decomposition
+- Differential testing with exhaustive oracles
+- Pareto dominance versus scalarized objectives in multi-criteria decisions
