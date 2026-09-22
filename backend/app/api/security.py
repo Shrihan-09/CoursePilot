@@ -63,14 +63,17 @@ path itself is exercised rather than skipped.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import time
+import uuid
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 
 from fastapi import Depends, Header, HTTPException, Request, status
 
-from app.core.config import Environment, Settings, get_settings
+from app.api.auth import AuthenticationError, build_verifier
+from app.core.config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -83,28 +86,28 @@ _DEV_SCHEME = "devtoken"
 
 @dataclass(frozen=True, slots=True)
 class Principal:
-    """An authenticated caller.
+    """An authenticated caller, resolved to a CoursePilot account.
 
-    `student_ref` is the ONLY way a request reaches student data, and it
-    comes from the credential. There is deliberately no constructor path
-    that takes it from a request body.
+    `account_id` is the STABLE internal identity and is what rate limits and
+    logs key on. The provider subject can change (an identity migration, a
+    recreated account); `account_id` cannot, so anything hung off it survives.
+
+    There is deliberately no constructor path that takes a student reference
+    from a request body.
     """
 
+    account_id: uuid.UUID
     subject: str
-    student_ref: str
-    #: How the identity was established, for logs and for refusing dev
-    #: credentials in production.
-    method: str = _DEV_SCHEME
+    issuer: str
+    provider: str
 
     def redacted(self) -> str:
-        """A stable, non-reversible handle for logs.
+        """Stable, non-reversible handle for logs.
 
-        A NetID is personal data. Logs need to correlate requests, not to
-        identify people, so they get a short digest instead.
+        The account id is an internal UUID rather than personal data, but it
+        is still hashed so a log leak does not hand over a join key.
         """
-        import hashlib
-
-        return hashlib.sha256(self.subject.encode()).hexdigest()[:12]
+        return hashlib.sha256(str(self.account_id).encode()).hexdigest()[:12]
 
 
 class RateLimitExceeded(HTTPException):
@@ -205,14 +208,21 @@ def get_principal(
     authorization: str | None = Header(default=None),
     settings: Settings = Depends(get_settings),
 ) -> Principal:
-    """Resolve the caller. The ONLY source of student identity.
+    """Verify the credential and resolve it to a CoursePilot account.
 
-    Development scheme: `Authorization: Bearer devtoken:<student_ref>`.
+    Two steps that must stay distinct:
 
-    It is deliberately trivial - and deliberately impossible to enable by
-    accident. A real deployment replaces this function (or the dependency
-    override) with SSO/JWT verification; every route and every test already
-    depends on the *dependency*, so that swap touches one file.
+      1. **authentication** - a `TokenVerifier` decides the credential is
+         genuine and yields an external subject;
+      2. **account resolution** - that subject is mapped to a `UserAccount`,
+         provisioning one on first login.
+
+    Fails **closed**: with no verifier configured every credential is
+    refused. A server that authenticates nobody is broken; one that
+    authenticates everybody is breached.
+
+    Every failure produces the same opaque 401. Distinguishing "bad
+    signature" from "unknown account" would make this a probing oracle.
     """
     if not authorization:
         raise _unauthenticated("Authentication required.")
@@ -221,25 +231,31 @@ def get_principal(
     if scheme.lower() != "bearer" or not credential.strip():
         raise _unauthenticated("Invalid authentication scheme.")
 
-    credential = credential.strip()
-
-    if not settings.dev_auth_enabled:
-        # No other scheme is implemented yet. Failing closed is the only
-        # honest behaviour: there is no production verifier to fall back to.
+    verifier = build_verifier(settings)
+    if verifier is None:
         raise _unauthenticated("Authentication is not configured on this server.")
 
-    if settings.coursepilot_env is Environment.PRODUCTION:
-        # Belt and braces: even if someone sets DEV_AUTH_ENABLED in prod.
-        logger.error("dev_auth_refused_in_production")
-        raise _unauthenticated("Authentication is not configured on this server.")
+    try:
+        authenticated = verifier.verify(credential.strip())
+    except AuthenticationError:
+        raise _unauthenticated("Invalid credential.") from None
 
-    prefix, _, student_ref = credential.partition(":")
-    if prefix != _DEV_SCHEME or not student_ref:
-        raise _unauthenticated("Invalid credential.")
-    if len(student_ref) > MAX_SUBJECT_CHARS:
-        raise _unauthenticated("Invalid credential.")
+    from app.db.session import get_sync_sessionmaker
+    from app.services.accounts import AccountDisabled, resolve_account
 
-    return Principal(subject=student_ref, student_ref=student_ref, method=_DEV_SCHEME)
+    try:
+        with get_sync_sessionmaker()() as session:
+            account = resolve_account(session, authenticated)
+            principal = Principal(
+                account_id=account.id,
+                subject=authenticated.subject,
+                issuer=authenticated.issuer,
+                provider=authenticated.provider,
+            )
+            session.commit()
+            return principal
+    except AccountDisabled:
+        raise _unauthenticated("Invalid credential.") from None
 
 
 def enforce_request_rate_limit(
@@ -254,7 +270,10 @@ def enforce_request_rate_limit(
     caller never reaches the limiter at all - they were already refused.
     """
     if settings.rate_limit_enabled:
-        get_request_limiter(settings).check(f"req:{principal.subject}")
+        # Keyed on the STABLE internal account id, never on the provider
+        # subject, an email, or a student reference - those can change or be
+        # chosen by the caller.
+        get_request_limiter(settings).check(f"req:{principal.account_id}")
     return principal
 
 

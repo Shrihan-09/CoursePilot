@@ -34,7 +34,8 @@ the request does that work in a worker thread with a sync session.
 | Condition | Response |
 |---|---|
 | malformed body / oversized field | 422 (FastAPI validation) |
-| student or course not found | 404 |
+| authenticated, no linked academic record | 409 |
+| course not found | 404 |
 | provider unavailable, timeout, or error | 200 with the deterministic explanation |
 | model output invalid | 200 with the deterministic explanation |
 | Degree Engine failure | 500 - never disguised as a successful explanation |
@@ -58,7 +59,7 @@ from sqlalchemy import select
 from app.api.security import Principal, enforce_request_rate_limit, get_model_limiter
 from app.core.config import Settings, get_settings
 from app.db.session import get_sync_sessionmaker
-from app.models import Course, Student
+from app.models import Course, UserAccount
 from app.services.audit.baseline import compute_baseline
 from app.services.audit.engine import DegreeAuditEngine
 from app.services.explanations import (
@@ -115,18 +116,30 @@ class ExplanationResponse(BaseModel):
 
 def _build_explanation(
     settings: Settings,
-    student_ref: str,
+    account_id,
     course_key: str,
     explanation_type: ExplanationType,
 ):
-    """All synchronous work for one request. Runs in a worker thread."""
+    """All synchronous work for one request. Runs in a worker thread.
+
+    The student is resolved by OWNERSHIP (`student.user_id == account_id`),
+    never by a name the caller supplied. There is no query in this function
+    that a client can influence toward another person's record.
+    """
+    from app.services.accounts import AccountNotLinked, resolve_owned_student
+
     sessionmaker = get_sync_sessionmaker()
     with sessionmaker() as session:
-        student = session.scalar(
-            select(Student).where(Student.external_ref == student_ref)
-        )
-        if student is None:
-            return None, "student"
+        account = session.get(UserAccount, account_id)
+        if account is None:
+            # Authenticated but no account row: from the caller's side this
+            # is indistinguishable from owning nothing, and reporting it as
+            # an internal error would leak that distinction.
+            return None, "unlinked"
+        try:
+            student = resolve_owned_student(session, account)
+        except AccountNotLinked:
+            return None, "unlinked"
 
         course = session.scalar(
             select(Course).where(
@@ -202,7 +215,7 @@ async def explain_recommendation(
         outcome, missing = await run_in_threadpool(
             _build_explanation,
             settings,
-            principal.student_ref,
+            principal.account_id,
             payload.course_key,
             ExplanationType(payload.explanation_type),
         )
@@ -218,13 +231,22 @@ async def explain_recommendation(
 
     if outcome is None:
         logger.info(
-            "explanation_not_found",
-            extra={"request_id": request_id, "missing": missing},
+            "explanation_unavailable",
+            extra={"request_id": request_id, "reason": missing},
         )
-        # A missing student and a missing course are reported identically.
-        # Distinguishing them would leak whether a given student exists to
-        # anyone holding a credential, and the caller can only ever ask about
-        # themselves anyway.
+        if missing == "unlinked":
+            # A distinct, controlled state: authentication succeeded, but no
+            # academic record is linked to this account. Reporting it as 404
+            # would tell the user their own data is missing; reporting it as
+            # 403 would imply they were refused. 409 says the account is not
+            # in a state where this request is meaningful yet.
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "No academic record is linked to this account. "
+                    "Linking requires verification and cannot be self-served."
+                ),
+            )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No such recommendation.",
