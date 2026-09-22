@@ -1,0 +1,244 @@
+"""Grounded explanation endpoint (Phase 5.2, Parts G-J, O, Q, R).
+
+## The contract, and the shape it deliberately refuses
+
+```
+POST /api/v1/explanations/recommendation
+{ "student_ref": "...", "course_key": "01:198:344", "explanation_type": "..." }
+```
+
+The request names a **student and a course**. It does not carry the decision.
+That is the whole point: the backend re-derives the audit from the database,
+so a client cannot submit
+
+```json
+{"satisfaction": true, "credits": 99}
+```
+
+and have it become authoritative. There is no field on the request body that
+can reach an academic fact, and there is no free-text `prompt` field that
+could reach the model as a question.
+
+The model never sees the HTTP request. It sees evidence the Degree Engine
+produced.
+
+## Why the work runs in a thread
+
+The audit engine, the optimizer and the search index are synchronous by
+design. Rather than rewrite the deterministic core to suit the transport,
+the request does that work in a worker thread with a sync session.
+
+## Failure policy (Part J)
+
+| Condition | Response |
+|---|---|
+| malformed body / oversized field | 422 (FastAPI validation) |
+| student or course not found | 404 |
+| provider unavailable, timeout, or error | 200 with the deterministic explanation |
+| model output invalid | 200 with the deterministic explanation |
+| Degree Engine failure | 500 - never disguised as a successful explanation |
+
+The last row matters most. A domain failure must not be dressed up as a
+confident AI answer; if the audit could not run, there is nothing to explain.
+"""
+
+from __future__ import annotations
+
+import logging
+import time
+import uuid
+from typing import Literal
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.concurrency import run_in_threadpool
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+
+from app.core.config import Settings, get_settings
+from app.db.session import get_sync_sessionmaker
+from app.models import Course, Student
+from app.services.audit.baseline import compute_baseline
+from app.services.audit.engine import DegreeAuditEngine
+from app.services.explanations import (
+    ExplanationType,
+    RecommendationExplanationService,
+)
+from app.services.explanations.providers import build_explanation_model
+from app.services.search.bm25 import build_bm25
+from app.services.search.documents import build_course_documents
+from app.services.search.synonyms import ExpandingSearcher
+
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/explanations", tags=["explanations"])
+
+_COURSE_KEY = r"^\d{2}:\d{3}:\d{3}$"
+
+
+class RecommendationExplanationRequest(BaseModel):
+    """Identifies an existing decision. Carries no academic claim."""
+
+    student_ref: str = Field(min_length=1, max_length=64)
+    course_key: str = Field(pattern=_COURSE_KEY)
+    explanation_type: Literal[
+        "why_recommended", "how_it_helps", "what_is_course", "why_not_recommended"
+    ] = "why_recommended"
+
+    model_config = {"extra": "forbid"}
+
+
+class ExplanationResponse(BaseModel):
+    """Validated explanation data only - never raw provider output."""
+
+    summary: str
+    reasons: list[str] = []
+    course_information: list[str] = []
+    limitations: list[str] = []
+    citations: list[str] = []
+    #: "deterministic" or "model". Surfaced so a caller can tell whether a
+    #: model was involved at all.
+    generated_by: str
+    grounded: bool
+    used_model: bool
+    request_id: str
+
+
+def _build_explanation(
+    settings: Settings,
+    student_ref: str,
+    course_key: str,
+    explanation_type: ExplanationType,
+):
+    """All synchronous work for one request. Runs in a worker thread."""
+    sessionmaker = get_sync_sessionmaker()
+    with sessionmaker() as session:
+        student = session.scalar(
+            select(Student).where(Student.external_ref == student_ref)
+        )
+        if student is None:
+            return None, "student"
+
+        course = session.scalar(
+            select(Course).where(
+                Course.course_string == course_key, Course.supplement_code == ""
+            )
+        )
+        if course is None:
+            return None, "course"
+
+        audit = DegreeAuditEngine(session).audit(student)
+        baseline = compute_baseline(session, student).satisfied
+
+        documents = build_course_documents(session)
+        by_key = {d.course_key: d for d in documents}
+        searcher = ExpandingSearcher(build_bm25(documents))
+
+        service = RecommendationExplanationService(
+            documents_by_key=by_key,
+            searcher=searcher,
+            model=build_explanation_model(settings),
+        )
+
+        if explanation_type is ExplanationType.WHY_NOT_RECOMMENDED:
+            outcome = service.explain_not_recommended(audit, course_key)
+        elif explanation_type is ExplanationType.WHAT_IS_COURSE:
+            outcome = service.describe_course(course_key)
+        else:
+            outcome = service.explain_recommendation(
+                audit,
+                course_key,
+                explanation_type=explanation_type,
+                baseline_satisfied=baseline,
+            )
+        return outcome, None
+
+
+@router.post(
+    "/recommendation",
+    response_model=ExplanationResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Explain a decision CoursePilot has already made",
+)
+async def explain_recommendation(
+    payload: RecommendationExplanationRequest,
+    settings: Settings = Depends(get_settings),
+) -> ExplanationResponse:
+    request_id = uuid.uuid4().hex[:12]
+    started = time.perf_counter()
+
+    # Structured logging carries identifiers and timings, never student data,
+    # never prompts, never model responses.
+    logger.info(
+        "explanation_requested",
+        extra={
+            "request_id": request_id,
+            "course_key": payload.course_key,
+            "explanation_type": payload.explanation_type,
+            "provider": settings.explanation_provider,
+        },
+    )
+
+    try:
+        outcome, missing = await run_in_threadpool(
+            _build_explanation,
+            settings,
+            payload.student_ref,
+            payload.course_key,
+            ExplanationType(payload.explanation_type),
+        )
+    except Exception:
+        # A Degree Engine failure is NOT an explanation. Surfacing it as a
+        # 500 keeps a domain error from being dressed up as a confident
+        # answer.
+        logger.exception("explanation_failed", extra={"request_id": request_id})
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Unable to compute a degree audit for this request.",
+        ) from None
+
+    if outcome is None:
+        logger.info(
+            "explanation_not_found",
+            extra={"request_id": request_id, "missing": missing},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=(
+                "No such student." if missing == "student" else "No such course."
+            ),
+        )
+
+    elapsed_ms = (time.perf_counter() - started) * 1000
+    logger.info(
+        "explanation_completed",
+        extra={
+            "request_id": request_id,
+            "used_model": outcome.used_model,
+            "grounded": outcome.grounded,
+            "rejected": bool(outcome.rejection_problems),
+            "latency_ms": round(elapsed_ms, 1),
+        },
+    )
+    if outcome.rejection_problems:
+        # Logged so a drifting provider is visible, with the reasons but not
+        # the response text.
+        logger.warning(
+            "model_output_rejected",
+            extra={
+                "request_id": request_id,
+                "problems": list(outcome.rejection_problems),
+            },
+        )
+
+    explanation = outcome.explanation
+    return ExplanationResponse(
+        summary=explanation.summary,
+        reasons=list(explanation.reasons),
+        course_information=list(explanation.course_information),
+        limitations=list(explanation.limitations),
+        citations=list(explanation.citations),
+        generated_by=explanation.generated_by,
+        grounded=outcome.grounded,
+        used_model=outcome.used_model,
+        request_id=request_id,
+    )
