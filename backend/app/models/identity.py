@@ -63,7 +63,17 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, String, UniqueConstraint, Uuid
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin
@@ -99,6 +109,15 @@ class UserAccount(Base, TimestampMixin):
     #: re-enabled by a default.
     disabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    #: Administrative authority. Server-only: there is no request field that
+    #: can set it, and no token claim is trusted to grant it. The FIRST admin
+    #: is created by someone with direct database access, which is the
+    #: correct trust root - a self-service path to admin would be a
+    #: privilege-escalation endpoint by another name.
+    is_admin: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
+
     # passive_deletes="all": do NOT let the ORM null out student.user_id when
     # an account is deleted. SQLAlchemy's default is to orphan the child
     # first, which silently defeats the RESTRICT this FK was given - the
@@ -126,6 +145,82 @@ class UserAccount(Base, TimestampMixin):
         return f"<UserAccount {self.identity_provider}:{self.id}>"
 
 
+#: What happened to a link. A closed set, because the audit trail is only
+#: useful if its vocabulary is fixed.
+LINK_ACTION_LINKED = "linked"
+LINK_ACTION_UNLINKED = "unlinked"
+LINK_ACTIONS = (LINK_ACTION_LINKED, LINK_ACTION_UNLINKED)
+
+
+class StudentLinkEvent(Base, TimestampMixin):
+    """An append-only record of a change in who may reach an academic record.
+
+    ## Why this exists
+
+    Linking changes **access to a person's transcript**. That is exactly the
+    kind of operation that must be answerable after the fact: which record,
+    which account, who did it, what they did, and when. Without a trail, an
+    incorrect link is indistinguishable from a correct one.
+
+    ## What it is NOT
+
+    Security metadata, never an academic fact. A `StudentLinkEvent` is not a
+    requirement, a completion, an audit result or a recommendation, and the
+    Degree Engine neither reads nor knows about this table. The dependency
+    runs one way:
+
+        API / security  ->  Student  ->  Degree Engine
+
+    ## What is deliberately absent
+
+    No tokens, no credentials, no claims, no academic content. The trail
+    answers "who changed access to what", and anything beyond that would be
+    turning a security log into a second copy of student data.
+
+    Rows are never updated or deleted by application code: an unlink is a
+    NEW row, not an edit of the old one. A trail you can rewrite is not a
+    trail.
+    """
+
+    __tablename__ = "student_link_event"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+
+    #: RESTRICT, not CASCADE: the history of an access change must not vanish
+    #: because a row it refers to was removed.
+    student_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("student.id", ondelete="RESTRICT"), index=True
+    )
+    user_account_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("user_account.id", ondelete="RESTRICT"), index=True
+    )
+    #: The administrator who performed it. Kept even when it equals the
+    #: subject account, because "who acted" and "who was affected" are
+    #: different questions.
+    performed_by_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("user_account.id", ondelete="RESTRICT"), index=True
+    )
+
+    action: Mapped[str] = mapped_column(String(16))
+    #: Free-text operator note - why the link was made. Never a secret, and
+    #: length-bounded so it cannot become a data dump.
+    reason: Mapped[str | None] = mapped_column(Text)
+
+    __table_args__ = (
+        CheckConstraint(
+            # BARE name: the metadata naming convention prefixes it with
+            # ck_<table>_. Passing an already-prefixed name produces
+            # ck_student_link_event_student_link_event_... - the doubling
+            # bug this project has hit in three previous migrations.
+            "action IN ('linked','unlinked')", name="action_known"
+        ),
+        Index("ix_student_link_event_student_time", "student_id", "created_at"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<StudentLinkEvent {self.action} student={self.student_id}>"
+
+
 def student_owner_column() -> Mapped[uuid.UUID | None]:
     """The column added to `Student`. Defined here to keep ownership in one
     file; `Student` imports it."""
@@ -137,4 +232,13 @@ def student_owner_column() -> Mapped[uuid.UUID | None]:
     )
 
 
-__all__ = ["PROVIDER_DEV", "PROVIDER_OIDC", "UserAccount", "student_owner_column"]
+__all__ = [
+    "LINK_ACTIONS",
+    "LINK_ACTION_LINKED",
+    "LINK_ACTION_UNLINKED",
+    "PROVIDER_DEV",
+    "PROVIDER_OIDC",
+    "StudentLinkEvent",
+    "UserAccount",
+    "student_owner_column",
+]

@@ -48,7 +48,14 @@ from app.models.requirements import (
     School,
     SharingPolicy,
 )
-from app.models.identity import PROVIDER_DEV, PROVIDER_OIDC, UserAccount
+from app.models.identity import (
+    LINK_ACTION_LINKED,
+    LINK_ACTION_UNLINKED,
+    PROVIDER_DEV,
+    PROVIDER_OIDC,
+    StudentLinkEvent,
+    UserAccount,
+)
 from app.models.student import EnrollmentStatus, Student, StudentCourse
 from app.models.sections import (
     CourseSection,
@@ -81,6 +88,7 @@ __all__ = [
     "PROVIDER_DEV",
     "PROVIDER_OIDC",
     "Student",
+    "StudentLinkEvent",
     "UserAccount",
     "StudentCourse",
     "Subject",
