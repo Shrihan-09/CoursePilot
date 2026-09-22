@@ -87,6 +87,31 @@ class Settings(BaseSettings):
     # Upper bound on request bodies for the explanation endpoint. Prevents a
     # client from pushing unbounded text toward a provider.
     explanation_max_query_chars: int = 200
+    # Server-owned model bounds. The client cannot override any of these -
+    # none of them is a request field, by design.
+    explanation_max_output_tokens: int = 1_500
+    explanation_max_context_chars: int = 12_000
+    # One provider call per request. SDK-level retries are bounded inside the
+    # provider; this caps how many calls the application may initiate.
+    explanation_max_provider_calls: int = 1
+    # SDK-level retries for TRANSIENT failures only (connection, 408, 409,
+    # 429, 5xx). Deliberately low: each retry is another billable call, so a
+    # single user request must not fan out into several. Authentication and
+    # validation failures are never retried - they would fail identically.
+    explanation_provider_retries: int = 1
+
+    # --- API security (Phase 5.3) ---
+    # Development authentication. OFF by default, refused in production even
+    # if switched on, and never a production mechanism.
+    dev_auth_enabled: bool = False
+    # In-memory, per-process. Does not coordinate across workers - see the
+    # limitations note in app/api/security.py.
+    rate_limit_enabled: bool = True
+    rate_limit_requests: int = 60
+    # Deliberately lower: every model call costs money, so spend gets its own
+    # budget rather than sharing the request budget.
+    rate_limit_model_calls: int = 10
+    rate_limit_window_seconds: float = 60.0
 
     # --- Retrieval (not implemented yet) ---
     retrieval_strategy: RetrievalStrategy = RetrievalStrategy.HYBRID
