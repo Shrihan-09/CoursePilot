@@ -23,29 +23,34 @@ Investigated before writing any of this:
 holds a real person". So this phase is that landing, at the smallest size
 that is actually safe.
 
-## The identity model, and why it needs no migration
+## The identity model (superseded by Phases 5.4-5.5)
+
+Phase 5.3 matched `Student.external_ref` against a credential-derived
+`student_ref`. Phases 5.4 and 5.5 replaced that with a real account model,
+and this module was updated with it. The current chain is:
 
 ```
 Authorization: Bearer <token>
         |
-        v
-Principal(subject=..., student_ref=...)      <- server-derived
+        v  verified by a TokenVerifier (app/api/auth.py)
+AuthenticatedPrincipal(subject, issuer)
         |
-        v
-Student.external_ref == principal.student_ref
+        v  resolved / provisioned
+Principal(account_id=UserAccount.id, ...)      <- server-derived
+        |
+        v  Student.user_id == account_id
+academic data
 ```
 
-A principal's `student_ref` is **derived from the credential**, never read
-from the request body. That is the whole security property: `student_ref`
-was removed from the public request schema, so a caller can no longer name a
-student at all. Student A cannot ask about Student B because there is
-nowhere to put "B".
+`external_ref` establishes nothing; Phase 5.5's investigation found it is an
+ingestion label, never evidence of identity. Ownership is a foreign key an
+administrator sets deliberately (see `app/api/v1/routes/admin.py`).
 
-That gives real data isolation **without** a `user` table or a
-`student.user_id` column, so `alembic check` stays clean. A proper account
-model is still the right eventual answer - see the limitations in
-DATA_MODEL.md section 25 - but ownership enforced by *absence of a field* is
-stronger than ownership enforced by a check someone can forget to write.
+The 5.3 property still holds and still matters: a caller cannot name a
+student at all, because no request schema has a field for one. Student A
+cannot ask about Student B because there is nowhere to put "B". What 5.4
+added is that the ownership it resolves to is now enforced by the database
+rather than by a naming convention.
 
 ## Development tokens are opt-in and loud
 
@@ -160,8 +165,16 @@ class SlidingWindowLimiter:
 #:
 #: A single combined limit would either be too loose to protect spend or too
 #: tight to allow ordinary deterministic use, which needs no provider at all.
+#: A third budget arrives in Phase 5.5:
+#:
+#:   link - bounds the BLAST RADIUS of a compromised admin credential
+#:
+#: There is no secret to guess in the linking workflow, so this is not a
+#: brute-force control. It exists because a leaked admin token reusing the
+#: 60-request budget could reassign sixty academic records a minute.
 _request_limiter: SlidingWindowLimiter | None = None
 _model_limiter: SlidingWindowLimiter | None = None
+_link_limiter: SlidingWindowLimiter | None = None
 
 
 def get_request_limiter(settings: Settings | None = None) -> SlidingWindowLimiter:
@@ -186,11 +199,23 @@ def get_model_limiter(settings: Settings | None = None) -> SlidingWindowLimiter:
     return _model_limiter
 
 
+def get_link_limiter(settings: Settings | None = None) -> SlidingWindowLimiter:
+    global _link_limiter
+    settings = settings or get_settings()
+    if _link_limiter is None:
+        _link_limiter = SlidingWindowLimiter(
+            limit=settings.rate_limit_link_operations,
+            window_seconds=settings.rate_limit_window_seconds,
+        )
+    return _link_limiter
+
+
 def reset_limiters() -> None:
     """Test hook. Not called by application code."""
-    global _request_limiter, _model_limiter
+    global _request_limiter, _model_limiter, _link_limiter
     _request_limiter = None
     _model_limiter = None
+    _link_limiter = None
 
 
 def _unauthenticated(detail: str) -> HTTPException:
@@ -283,6 +308,7 @@ __all__ = [
     "RateLimitExceeded",
     "SlidingWindowLimiter",
     "enforce_request_rate_limit",
+    "get_link_limiter",
     "get_model_limiter",
     "get_principal",
     "get_request_limiter",

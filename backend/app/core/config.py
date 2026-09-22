@@ -120,6 +120,14 @@ class Settings(BaseSettings):
     # budget rather than sharing the request budget.
     rate_limit_model_calls: int = 10
     rate_limit_window_seconds: float = 60.0
+    # --- Student linking (Phase 5.5) ---
+    # Linking gets its own budget rather than reusing the 60-request one.
+    # An administrator links a handful of people in a sitting, so a low
+    # ceiling is generous for real use while sharply bounding a compromised
+    # admin credential: reusing 60/min would let one leaked token reassign
+    # sixty academic records a minute. It is not a brute-force control -
+    # there is no secret to guess - it is a blast-radius control.
+    rate_limit_link_operations: int = 10
 
     # --- Retrieval (not implemented yet) ---
     retrieval_strategy: RetrievalStrategy = RetrievalStrategy.HYBRID
