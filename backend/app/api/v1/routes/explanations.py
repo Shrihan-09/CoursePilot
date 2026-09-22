@@ -3,13 +3,14 @@
 ## The contract, and the shape it deliberately refuses
 
 ```
+Authorization: Bearer <credential>
 POST /api/v1/explanations/recommendation
-{ "student_ref": "...", "course_key": "01:198:344", "explanation_type": "..." }
+{ "course_key": "01:198:344", "explanation_type": "..." }
 ```
 
-The request names a **student and a course**. It does not carry the decision.
-That is the whole point: the backend re-derives the audit from the database,
-so a client cannot submit
+The request names a **course**. The STUDENT comes from the authenticated
+principal (Phase 5.3), and the decision is re-derived from the database, so a
+client can neither name another student nor submit
 
 ```json
 {"satisfaction": true, "credits": 99}
@@ -54,6 +55,7 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
+from app.api.security import Principal, enforce_request_rate_limit, get_model_limiter
 from app.core.config import Settings, get_settings
 from app.db.session import get_sync_sessionmaker
 from app.models import Course, Student
@@ -76,9 +78,17 @@ _COURSE_KEY = r"^\d{2}:\d{3}:\d{3}$"
 
 
 class RecommendationExplanationRequest(BaseModel):
-    """Identifies an existing decision. Carries no academic claim."""
+    """Names a course. Carries no identity and no academic claim.
 
-    student_ref: str = Field(min_length=1, max_length=64)
+    `student_ref` was REMOVED in Phase 5.3. The student comes from the
+    authenticated principal, so a caller cannot name a student at all - which
+    is why Student A cannot request Student B's audit. There is nowhere to
+    put "B".
+
+    There is likewise no `provider`, `max_tokens` or `temperature`: model
+    bounds are server configuration, not client input.
+    """
+
     course_key: str = Field(pattern=_COURSE_KEY)
     explanation_type: Literal[
         "why_recommended", "how_it_helps", "what_is_course", "why_not_recommended"
@@ -161,6 +171,7 @@ def _build_explanation(
 )
 async def explain_recommendation(
     payload: RecommendationExplanationRequest,
+    principal: Principal = Depends(enforce_request_rate_limit),
     settings: Settings = Depends(get_settings),
 ) -> ExplanationResponse:
     request_id = uuid.uuid4().hex[:12]
@@ -172,17 +183,26 @@ async def explain_recommendation(
         "explanation_requested",
         extra={
             "request_id": request_id,
+            # A hashed handle, never the NetID: logs correlate requests, they
+            # do not identify people.
+            "principal": principal.redacted(),
             "course_key": payload.course_key,
             "explanation_type": payload.explanation_type,
             "provider": settings.explanation_provider,
         },
     )
 
+    # Model-call budget, checked BEFORE any work. Separate from the request
+    # budget because this one protects spend: a provider call costs tokens
+    # and a deterministic explanation does not.
+    if settings.rate_limit_enabled and settings.explanation_provider != "none":
+        get_model_limiter(settings).check(f"model:{principal.subject}")
+
     try:
         outcome, missing = await run_in_threadpool(
             _build_explanation,
             settings,
-            payload.student_ref,
+            principal.student_ref,
             payload.course_key,
             ExplanationType(payload.explanation_type),
         )
@@ -201,11 +221,13 @@ async def explain_recommendation(
             "explanation_not_found",
             extra={"request_id": request_id, "missing": missing},
         )
+        # A missing student and a missing course are reported identically.
+        # Distinguishing them would leak whether a given student exists to
+        # anyone holding a credential, and the caller can only ever ask about
+        # themselves anyway.
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=(
-                "No such student." if missing == "student" else "No such course."
-            ),
+            detail="No such recommendation.",
         )
 
     elapsed_ms = (time.perf_counter() - started) * 1000

@@ -58,10 +58,17 @@ PROVIDER_ANTHROPIC = "anthropic"
 
 @dataclass(slots=True)
 class LLMProviderExplanationModel:
-    """Adapts an `LLMProvider` to the `ExplanationModel` port."""
+    """Adapts an `LLMProvider` to the `ExplanationModel` port.
+
+    Also the place server-owned COST bounds are applied. `max_output_tokens`
+    and `max_context_chars` come from settings and are not reachable from a
+    request body - there is no field for them, by design.
+    """
 
     provider: LLMProvider
     name: str = field(default="")
+    max_output_tokens: int = 1_500
+    max_context_chars: int = 12_000
 
     def __post_init__(self) -> None:
         if not self.name:
@@ -75,19 +82,33 @@ class LLMProviderExplanationModel:
 
         Raises on any failure; the service treats that as "fall back", which
         is why nothing is caught here.
+
+        The context is truncated to a server-owned bound before it is sent.
+        Evidence is already small - decision facts plus one course
+        description - so this is a backstop against a pathological catalog
+        entry rather than an expected path, and truncating costs tokens
+        rather than correctness: the deterministic explanation is unaffected.
         """
         import anyio.from_thread
+
+        context = request.context
+        if len(context) > self.max_context_chars:
+            logger.warning(
+                "explanation context truncated",
+                extra={"chars": len(context), "limit": self.max_context_chars},
+            )
+            context = context[: self.max_context_chars]
 
         async def _call() -> str:
             completion = await self.provider.complete(
                 role=Role.SUMMARIZER,
-                messages=[Message(role="user", content=request.context)],
+                messages=[Message(role="user", content=context)],
                 system=request.system_prompt,
                 # Asking for structured output. The response is still
                 # validated against CoursePilot's facts downstream - a schema
                 # proves shape, not truthfulness.
                 schema={"type": "object"},
-                max_tokens=1_500,
+                max_tokens=self.max_output_tokens,
             )
             return completion.text
 
@@ -118,7 +139,12 @@ def build_explanation_model(settings: Settings):
     if choice == PROVIDER_ECHO:
         from app.llm.providers.echo import EchoProvider
 
-        return LLMProviderExplanationModel(EchoProvider(), name="echo")
+        return LLMProviderExplanationModel(
+            EchoProvider(),
+            name="echo",
+            max_output_tokens=settings.explanation_max_output_tokens,
+            max_context_chars=settings.explanation_max_context_chars,
+        )
 
     if choice == PROVIDER_ANTHROPIC:
         try:
@@ -129,13 +155,19 @@ def build_explanation_model(settings: Settings):
                 model=settings.llm_model_planner,
                 effort=settings.llm_effort,
                 timeout_seconds=settings.explanation_timeout_seconds,
+                max_retries=settings.explanation_provider_retries,
             )
         except ProviderNotConfiguredError as exc:
             # Expected in development. Logged without the key, and without
             # the exception text, which names the variable.
             logger.info("explanation provider unavailable: %s", exc)
             return NoModel()
-        return LLMProviderExplanationModel(provider, name="anthropic")
+        return LLMProviderExplanationModel(
+            provider,
+            name="anthropic",
+            max_output_tokens=settings.explanation_max_output_tokens,
+            max_context_chars=settings.explanation_max_context_chars,
+        )
 
     logger.warning("unknown EXPLANATION_PROVIDER %r; using deterministic output", choice)
     return NoModel()
