@@ -19,6 +19,7 @@ os.environ.setdefault("LLM_PROVIDER", "echo")
 # Development authentication, for tests only. Explicitly opt-in and refused
 # outright when the environment is production - see app/api/security.py.
 os.environ.setdefault("DEV_AUTH_ENABLED", "true")
+os.environ.setdefault("AUTH_PROVIDER", "dev")
 
 
 @pytest.fixture
@@ -51,6 +52,40 @@ def _fresh_rate_limits():
     reset_limiters()
 
 
-def auth(student_ref: str = "student-a") -> dict[str, str]:
-    """Development credential for a given student."""
-    return {"Authorization": f"Bearer devtoken:{student_ref}"}
+def auth(subject: str = "subject-a") -> dict[str, str]:
+    """Development credential. NOT authentication - see app/api/auth.py."""
+    return {"Authorization": f"Bearer dev:{subject}"}
+
+
+@pytest.fixture
+async def authenticated_client(request) -> AsyncIterator[AsyncClient]:
+    """A client whose requests carry an authenticated principal.
+
+    Overrides the `get_principal` DEPENDENCY rather than weakening
+    authentication, which is what Phase 5.4's brief asks for: the route still
+    depends on the real dependency, and the override supplies a principal the
+    way a verified token would.
+
+    Using the override also keeps this suite free of a database. Account
+    provisioning talks to Postgres, so the full credential -> account path is
+    covered by the `db`-marked tests instead.
+    """
+    import uuid as _uuid
+
+    from app.api.security import Principal, get_principal
+    from app.main import create_app
+
+    marker = request.node.get_closest_marker("principal")
+    account_id = _uuid.UUID(int=1) if marker is None else marker.args[0]
+
+    app = create_app()
+    app.dependency_overrides[get_principal] = lambda: Principal(
+        account_id=account_id,
+        subject="subject-a",
+        issuer="coursepilot-dev",
+        provider="dev",
+    )
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
+    app.dependency_overrides.clear()

@@ -29,8 +29,8 @@ from app.core.config import Environment
 ENDPOINT = "/api/v1/explanations/recommendation"
 
 
-def auth(student_ref: str = "student-a") -> dict[str, str]:
-    return {"Authorization": f"Bearer devtoken:{student_ref}"}
+def auth(subject: str = "subject-a") -> dict[str, str]:
+    return {"Authorization": f"Bearer dev:{subject}"}
 
 
 # ==========================================================================
@@ -92,7 +92,7 @@ def test_dev_auth_is_refused_in_production(settings) -> None:
         update={"dev_auth_enabled": True, "coursepilot_env": Environment.PRODUCTION}
     )
     with pytest.raises(HTTPException) as caught:
-        get_principal(authorization="Bearer devtoken:someone", settings=production)
+        get_principal(authorization="Bearer dev:someone", settings=production)
     assert caught.value.status_code == 401
 
 
@@ -101,7 +101,7 @@ def test_disabled_dev_auth_fails_closed(settings) -> None:
 
     disabled = settings.model_copy(update={"dev_auth_enabled": False})
     with pytest.raises(HTTPException) as caught:
-        get_principal(authorization="Bearer devtoken:someone", settings=disabled)
+        get_principal(authorization="Bearer dev:someone", settings=disabled)
     assert caught.value.status_code == 401
 
 
@@ -111,7 +111,7 @@ def test_oversized_subject_is_rejected(settings) -> None:
     enabled = settings.model_copy(update={"dev_auth_enabled": True})
     with pytest.raises(HTTPException):
         get_principal(
-            authorization=f"Bearer devtoken:{'x' * (MAX_SUBJECT_CHARS + 1)}",
+            authorization=f"Bearer dev:{'x' * 300}",
             settings=enabled,
         )
 
@@ -136,32 +136,36 @@ def test_a_caller_cannot_name_another_student() -> None:
         assert naming not in fields
 
 
-async def test_student_ref_in_the_body_is_rejected(client: AsyncClient) -> None:
+async def test_student_ref_in_the_body_is_rejected(authenticated_client: AsyncClient) -> None:
     """Even attempting to supply one is a 422, not a silently ignored field."""
-    response = await client.post(
+    response = await authenticated_client.post(
         ENDPOINT,
         json={"course_key": "01:198:344", "student_ref": "student-b"},
-        headers=auth("student-a"),
     )
     assert response.status_code == 422
 
 
-def test_identity_comes_only_from_the_credential(settings) -> None:
-    enabled = settings.model_copy(update={"dev_auth_enabled": True})
-    principal = get_principal(authorization="Bearer devtoken:ru-abc", settings=enabled)
-    assert principal.student_ref == "ru-abc"
-    assert principal.subject == "ru-abc"
+def test_identity_comes_only_from_the_credential() -> None:
+    """The subject is read from the credential, never from a request.
+
+    Exercises the verifier directly: account resolution needs a database and
+    is covered by the db-marked tests.
+    """
+    from app.api.auth import DevSubjectVerifier
+
+    authenticated = DevSubjectVerifier().verify("dev:ru-abc")
+    assert authenticated.subject == "ru-abc"
+    assert authenticated.provider == "dev"
 
 
-async def test_nonexistent_student_and_course_are_indistinguishable(
-    client: AsyncClient,
+async def test_unlinked_account_is_a_controlled_state(
+    authenticated_client: AsyncClient,
 ) -> None:
-    """Distinguishing them would make the endpoint a student-existence oracle."""
-    response = await client.post(
-        ENDPOINT, json={"course_key": "01:198:344"}, headers=auth("no-such-student")
+    """Authenticated, owning nothing: a normal state, reported explicitly."""
+    response = await authenticated_client.post(
+        ENDPOINT, json={"course_key": "01:198:344"}
     )
-    assert response.status_code == 404
-    assert response.json()["detail"] == "No such recommendation."
+    assert response.status_code == 409
 
 
 # ==========================================================================
@@ -203,20 +207,22 @@ def test_limits_are_per_identity() -> None:
         limiter.check("a", now=100.1)
 
 
-async def test_endpoint_returns_429_when_over_the_limit(client: AsyncClient, settings) -> None:
+async def test_endpoint_returns_429_when_over_the_limit(
+    authenticated_client: AsyncClient, settings
+) -> None:
     from app.api import security
 
     security.reset_limiters()
     security._request_limiter = security.SlidingWindowLimiter(limit=2, window_seconds=60)
 
-    headers = auth("rate-limited")
-    first = await client.post(ENDPOINT, json={"course_key": "01:198:344"}, headers=headers)
-    second = await client.post(ENDPOINT, json={"course_key": "01:198:344"}, headers=headers)
-    third = await client.post(ENDPOINT, json={"course_key": "01:198:344"}, headers=headers)
+    body = {"course_key": "01:198:344"}
+    first = await authenticated_client.post(ENDPOINT, json=body)
+    second = await authenticated_client.post(ENDPOINT, json=body)
+    third = await authenticated_client.post(ENDPOINT, json=body)
 
-    # The first two get as far as the audit (404 here: no such student).
-    assert first.status_code in (200, 404)
-    assert second.status_code in (200, 404)
+    # The first two get as far as ownership resolution (409: unlinked).
+    assert first.status_code in (200, 404, 409)
+    assert second.status_code in (200, 404, 409)
     assert third.status_code == 429
     assert third.headers.get("retry-after")
     security.reset_limiters()
@@ -242,21 +248,17 @@ def test_client_cannot_select_the_provider() -> None:
     assert "model" not in fields
 
 
-async def test_provider_field_in_the_body_is_rejected(client: AsyncClient) -> None:
-    response = await client.post(
-        ENDPOINT,
-        json={"course_key": "01:198:344", "provider": "anthropic"},
-        headers=auth(),
+async def test_provider_field_in_the_body_is_rejected(authenticated_client: AsyncClient) -> None:
+    response = await authenticated_client.post(
+        ENDPOINT, json={"course_key": "01:198:344", "provider": "anthropic"}
     )
     assert response.status_code == 422
 
 
-async def test_token_overrides_are_rejected(client: AsyncClient) -> None:
+async def test_token_overrides_are_rejected(authenticated_client: AsyncClient) -> None:
     for field in ("max_tokens", "temperature", "max_output_tokens"):
-        response = await client.post(
-            ENDPOINT,
-            json={"course_key": "01:198:344", field: 1_000_000},
-            headers=auth(),
+        response = await authenticated_client.post(
+            ENDPOINT, json={"course_key": "01:198:344", field: 1_000_000}
         )
         assert response.status_code == 422, field
 
@@ -359,21 +361,27 @@ def test_timeout_is_bounded_by_configuration(settings) -> None:
 
 
 def test_principal_is_hashed_for_logs() -> None:
-    principal = Principal(subject="ru-netid-123", student_ref="ru-netid-123")
+    import uuid
+
+    account_id = uuid.UUID(int=7)
+    principal = Principal(
+        account_id=account_id, subject="ru-netid-123", issuer="i", provider="dev"
+    )
     redacted = principal.redacted()
     assert "ru-netid-123" not in redacted
+    assert str(account_id) not in redacted
     assert len(redacted) == 12
     # Stable, so requests can still be correlated.
-    assert redacted == Principal(subject="ru-netid-123", student_ref="x").redacted()
+    assert redacted == Principal(
+        account_id=account_id, subject="other", issuer="j", provider="oidc"
+    ).redacted()
 
 
 async def test_logs_omit_credentials_and_academic_content(
-    client: AsyncClient, caplog
+    authenticated_client: AsyncClient, caplog
 ) -> None:
     caplog.set_level(logging.INFO)
-    await client.post(
-        ENDPOINT, json={"course_key": "01:198:344"}, headers=auth("secret-netid")
-    )
+    await authenticated_client.post(ENDPOINT, json={"course_key": "01:198:344"})
     text = "\n".join(
         record.getMessage() + str(getattr(record, "__dict__", {})) for record in caplog.records
     )

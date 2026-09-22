@@ -29,8 +29,8 @@ from app.services.explanations.providers import (
 ENDPOINT = "/api/v1/explanations/recommendation"
 
 
-def auth(student_ref: str = "student-a") -> dict[str, str]:
-    return {"Authorization": f"Bearer devtoken:{student_ref}"}
+def auth(subject: str = "subject-a") -> dict[str, str]:
+    return {"Authorization": f"Bearer dev:{subject}"}
 
 
 # ==========================================================================
@@ -93,22 +93,22 @@ def test_explanation_settings_do_not_duplicate_credentials(settings) -> None:
 # ==========================================================================
 
 
-async def test_arbitrary_prompt_is_rejected(client: AsyncClient) -> None:
+async def test_arbitrary_prompt_is_rejected(authenticated_client: AsyncClient) -> None:
     """THE boundary test.
 
     There is no prompt field, and unknown fields are forbidden, so a client
     cannot route a free-text question to the model as an academic request.
     """
-    response = await client.post(
+    response = await authenticated_client.post(
         ENDPOINT, json={"prompt": "What classes should I take?"}, headers=auth()
     )
     assert response.status_code == 422
 
 
-async def test_client_cannot_assert_an_academic_fact(client: AsyncClient) -> None:
+async def test_client_cannot_assert_an_academic_fact(authenticated_client: AsyncClient) -> None:
     """A client must not be able to submit satisfaction/credits and have
     them become authoritative."""
-    response = await client.post(
+    response = await authenticated_client.post(
         ENDPOINT,
         json={"course_key": "01:198:344", "satisfaction": True, "credits": 99},
         headers=auth(),
@@ -130,8 +130,8 @@ def test_request_schema_has_no_academic_fields() -> None:
     assert not (fields & forbidden)
 
 
-async def test_malformed_course_key_is_rejected(client: AsyncClient) -> None:
-    response = await client.post(
+async def test_malformed_course_key_is_rejected(authenticated_client: AsyncClient) -> None:
+    response = await authenticated_client.post(
         ENDPOINT, json={"course_key": "CS 344"}, headers=auth()
     )
     assert response.status_code == 422
@@ -142,21 +142,24 @@ async def test_oversized_credential_is_rejected(client: AsyncClient) -> None:
     response = await client.post(
         ENDPOINT,
         json={"course_key": "01:198:344"},
-        headers={"Authorization": "Bearer devtoken:" + "x" * 500},
+        headers={"Authorization": "Bearer dev:" + "x" * 500},
     )
     assert response.status_code == 401
 
 
-async def test_unknown_student_returns_404(client: AsyncClient) -> None:
-    response = await client.post(
-        ENDPOINT,
-        json={"course_key": "01:198:344"},
-        headers=auth("definitely-not-a-student"),
+async def test_authenticated_but_unlinked_account_gets_409(
+    authenticated_client: AsyncClient,
+) -> None:
+    """A verified identity does not prove which academic record is yours.
+
+    409, not 404 (which would say the user's own data is missing) and not 403
+    (which would imply refusal).
+    """
+    response = await authenticated_client.post(
+        ENDPOINT, json={"course_key": "01:198:344"}
     )
-    assert response.status_code == 404
-    # Missing student and missing course are indistinguishable: telling them
-    # apart would make the endpoint a student-existence oracle.
-    assert response.json()["detail"] == "No such recommendation."
+    assert response.status_code == 409
+    assert "linked" in response.json()["detail"].lower()
 
 
 def test_response_model_exposes_how_it_was_produced() -> None:
