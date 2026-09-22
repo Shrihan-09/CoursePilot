@@ -61,6 +61,12 @@ plugins = ["pydantic.mypy"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+# The conftest design rule says database-backed tests "opt in explicitly and
+# are marked `db`". Registering the marker is what makes that real rather
+# than a comment - an unregistered mark is only a warning.
+markers = [
+    "db: requires a PostgreSQL database (DATABASE_URL_SYNC)",
+]
 filterwarnings = [
     # Warnings are errors: an unnoticed DeprecationWarning today is a broken
     # build on the next dependency bump.

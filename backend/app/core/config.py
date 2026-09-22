@@ -103,6 +103,14 @@ class Settings(BaseSettings):
     # --- API security (Phase 5.3) ---
     # Development authentication. OFF by default, refused in production even
     # if switched on, and never a production mechanism.
+    # Which verifier resolves a bearer credential.
+    #   none - refuse every credential (fail closed; the default)
+    #   dev  - NON-PRODUCTION subject tokens, requires dev_auth_enabled
+    #   oidc - standards-based JWT verification against a JWKS endpoint
+    auth_provider: str = "none"
+    oidc_issuer: str | None = None
+    oidc_audience: str | None = None
+    oidc_jwks_uri: str | None = None
     dev_auth_enabled: bool = False
     # In-memory, per-process. Does not coordinate across workers - see the
     # limitations note in app/api/security.py.
