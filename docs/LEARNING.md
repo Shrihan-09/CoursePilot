@@ -4659,3 +4659,265 @@ of how much a fail-open default can hide.
 - Rate limiting in distributed systems and shared-state coordination
 - Privacy-preserving logging, pseudonymisation and data minimisation
 - Threat modelling an API surface rather than hardening it ad hoc
+
+---
+
+# Lesson 18: Identity, Ownership, and Why a Label Is Not a Credential
+
+## What We Built
+
+A real account model, standards-based token verification, and database-
+enforced ownership — with the Degree Engine untouched and one existing
+student record preserved without inventing an owner for it.
+
+---
+
+## Concepts
+
+### Authentication and authorization, concretely
+
+```
+authentication   who are you?      a credential is VERIFIED
+authorization    what may you see? an identity is MATCHED to data
+```
+
+Phase 5.3 did neither, and it is worth being precise about why, because it
+looked like it did:
+
+```python
+Authorization: Bearer devtoken:student-a     # asserted, never verified
+Student.external_ref == "student-a"          # a label, not an owner
+```
+
+The caller *said* who they were and the server believed it. Removing
+`student_ref` from the body meant one caller could not name another — but
+everyone could still be anyone.
+
+### A label is not a credential
+
+`Student.external_ref` is nullable, client-visible, written by the ingestion
+path, and freely typeable. It answers **which row**.
+
+`student.user_id` is a foreign key only the server writes, derived from a
+verified token. It answers **which person**.
+
+Only the second can authorise anything. The distinction generalises: any
+identifier a client has ever seen is a name, not a proof, no matter how
+unguessable it looks.
+
+### Two identities, because they change for different reasons
+
+```
+(identity_provider, external_subject)   how a token finds the account
+UserAccount.id                          what the rest of the system uses
+```
+
+The provider's `sub` can change — a university migrates IdPs, an account is
+recreated. `UserAccount.id` must not, because rate-limit keys and logs hang
+off it.
+
+Making `sub` the primary key is the tempting shortcut and it welds your
+entire graph to one vendor's identifier. **When an external system's ID
+leaks into your primary keys, changing that system becomes a data
+migration.**
+
+(And: the table is `user_account`, because `user` is reserved in PostgreSQL.)
+
+### Verification is policy plus a library you did not write
+
+Never hand-roll JWT crypto. But the library only checks what you tell it to,
+so the *policy* is yours:
+
+```python
+algorithms=["RS256", ...]   # NOT what the token declares
+issuer=...                  # a valid token from elsewhere is not valid here
+audience=...                # minted for another service? not ours
+options={"require": ["exp", "iss", "aud", "sub"]}
+leeway=60                   # skew extends a revoked token's life
+```
+
+Two attacks these stop, both of which trust the token about itself:
+
+- **`alg: none`** — the token says it needs no signature;
+- **HMAC confusion** — the token says `HS256`, and a naive verifier uses the
+  *public* key as a shared secret, which the attacker also has.
+
+An asymmetric-only allow-list refuses both by configuration. A test here
+assembles the HMAC forgery **by hand**, because PyJWT refuses to even encode
+one — good library behaviour, but the test needs the *verifier* to be what
+rejects it.
+
+### Fail closed, and make that the default
+
+```python
+verifier = build_verifier(settings)
+if verifier is None:
+    raise unauthenticated()
+```
+
+No configuration, incomplete OIDC settings, an unknown provider, dev auth in
+production — all return `None`, and every credential is then refused.
+
+**A server that authenticates nobody is broken. One that authenticates
+everybody is breached.** The broken one gets a bug report; the breached one
+does not.
+
+The dev scheme also lives in its own provider namespace (`dev`, not `oidc`),
+so even leaked into production it could not impersonate a real user —
+identity is `(provider, subject)`.
+
+### Provisioning is safe; linking is not
+
+The most important distinction in this phase:
+
+```
+verified token -> create UserAccount     automatic
+UserAccount    -> link to a Student      NOT automatic
+```
+
+A verified identity proves **who someone is**. It does not prove **which
+academic record belongs to them**. A `sub` is an opaque provider key;
+`external_ref` is an ingestion label. Matching them would be a guess wearing
+the costume of a lookup — and the guess would hand someone another person's
+transcript.
+
+So a new account exists and owns nothing, and the API says so with `409`.
+Not `404`, which would tell users their own data is missing; not `403`, which
+would imply refusal. **"Not yet in a state where this request is meaningful"
+is a real answer**, and modelling it beats inventing a record.
+
+### Database constraints are the only authority under concurrency
+
+```python
+account = session.scalar(select(...))
+if account is None:
+    session.add(UserAccount(...))       # two requests can both reach here
+```
+
+Two concurrent first-logins both see "no account" and both insert. The
+`if` cannot prevent this; `UNIQUE(identity_provider, external_subject)` can.
+The code catches `IntegrityError` and re-reads — the loser of the race
+converges on the winner's row.
+
+Same reasoning for one-account-one-student: `UNIQUE(student.user_id)` is what
+makes it true, and the service check is a nicer error message on top.
+
+### The ORM can quietly undo your constraint
+
+`ondelete="RESTRICT"` was supposed to mean an academic record cannot be
+deleted out from under itself. The test deleting an account expected a
+refusal and got a success:
+
+```
+session.delete(account)
+ -> SQLAlchemy NULLS student.user_id first
+ -> then deletes the parent, unopposed
+ -> the academic record is silently orphaned
+```
+
+The database constraint was correct the whole time. The ORM's default
+relationship behaviour stepped around it. `passive_deletes="all"` defers
+entirely to the database.
+
+**A constraint you have not watched fire is a constraint you have not
+tested.** This one only surfaced because three ownership tests were made to
+stop skipping.
+
+### Tests that skip are tests that do not exist
+
+Three ownership tests began as:
+
+```python
+if version is None:
+    pytest.skip("no program version in the test database")
+```
+
+They skipped — quietly, in green output — and they were the three that
+mattered most. Building their own data made them run, and the very first
+run found the `passive_deletes` defect.
+
+**Treat a skip in a security test as a failure until proven otherwise.**
+
+### Override the dependency; never weaken the check
+
+Tests need an authenticated caller without a database or an IdP. The wrong
+fix is a flag that makes authentication optional; then the one path that must
+never break is the one never exercised.
+
+The right fix is FastAPI's `dependency_overrides`: the route still depends on
+the real dependency, and the test supplies a principal the way a verified
+token would. The production path keeps no test-shaped hole in it.
+
+### Why the Degree Engine must not know about OAuth
+
+The engine answers *what is academically true for this transcript?* That does
+not depend on who asked, which IdP verified them, or whether their token has
+expired.
+
+Keeping identity at the API boundary means the engine stays a pure function
+of academic data — which is what made it verifiable against an oracle back in
+Phase 4.3 — and the proof that authentication changed nothing is a diff:
+`554` and `619`, unchanged.
+
+**If adding a user table had changed an allocation result, one of those two
+systems would be badly wrong.**
+
+---
+
+## Important Code
+
+| File | Why |
+|---|---|
+| [models/identity.py](backend/app/models/identity.py) | the account, the constraints, and the `passive_deletes` note |
+| [api/auth.py](backend/app/api/auth.py) | verification policy and the Rutgers findings |
+| [services/accounts.py](backend/app/services/accounts.py) | provisioning vs linking, held apart |
+| [tests/test_auth_accounts.py](backend/tests/test_auth_accounts.py) | forged tokens and constraints proven by the database |
+
+## What Could Go Wrong?
+
+- **Treating a client-visible label as a credential.**
+- **Using an external `sub` as your primary key.**
+- **Trusting the token's own `alg`.**
+- **Accepting a valid token from the wrong issuer or audience.**
+- **Failing open** when auth configuration is missing.
+- **Auto-linking an account to a record** because the strings looked similar.
+- **Relying on `if not exists`** under concurrency.
+- **Assuming a database constraint fires** when an ORM sits in front of it.
+- **Letting a security test skip.**
+- **Disabling authentication in tests** instead of overriding the dependency.
+
+## What I Should Be Able To Explain
+
+1. Why was the Phase 5.3 `devtoken` not authentication?
+2. Why is `external_ref` unusable for authorization?
+3. Give two reasons not to make the provider `sub` a primary key.
+4. Explain `alg: none` and HMAC confusion, and what stops both here.
+5. Why must `build_verifier` return `None` rather than something permissive?
+6. Why is provisioning automatic but linking not?
+7. Why 409 rather than 404 or 403 for an unlinked account?
+8. Why can't `if not exists: create` prevent duplicate accounts?
+9. How did an ORM default defeat `ondelete=RESTRICT`?
+10. Why does the Degree Engine know nothing about any of this?
+
+## Try It Yourself
+
+**A.** Remove `passive_deletes="all"` and run the RESTRICT test. Then explain
+what a user would experience: whose record, in what state, and would anyone
+notice?
+
+**B.** Add `"HS256"` to `ALLOWED_ALGORITHMS` and run the HMAC test. You now
+have a working forgery — write the three lines an attacker needs.
+
+**C.** Make `link_student` match on `external_ref == principal.subject`. It
+will look like it works. Describe the transcript disclosure it causes.
+
+**D.** Drop `UNIQUE(identity_provider, external_subject)` and hammer
+`resolve_account` from two threads with the same subject. Count the rows.
+
+## Further Learning
+
+- OAuth 2.0 vs OpenID Connect: authorization vs authentication
+- JWT structure, JWS signatures, and JWKS key rotation
+- Algorithm-confusion attacks and allow-list design
+- SAML/Shibboleth in higher education, and OIDC bridges
+- Identity lifecycle: provisioning, linking, deprovisioning, `sub` migration

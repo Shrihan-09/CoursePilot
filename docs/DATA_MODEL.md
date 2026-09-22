@@ -3198,3 +3198,249 @@ SQLite      554 passed   (same as Phase 5.1 and 5.2)
 PostgreSQL  619 passed   (same as Phase 5.1 and 5.2)
 alembic check: no new upgrade operations - NO migration
 ```
+
+---
+
+## 26. Real authentication and account ownership (Phase 5.4)
+
+> **Authentication establishes who the user is. Authorization determines what
+> that user may access. The Degree Engine remains the sole authority for
+> academic correctness.**
+
+```
+External Identity Provider
+        |  iss + sub
+        v
+AuthenticatedPrincipal          verified, provider-neutral
+        |
+        v
+UserAccount.id                  CoursePilot's stable internal identity
+        |  owns
+        v
+Student.id
+        |
+        v
+Academic data
+```
+
+### 26.1 What was wrong with Phase 5.3
+
+Phase 5.3 removed `student_ref` from the request body, so a caller could no
+longer name another student. That was real progress and it was not
+authentication:
+
+- the credential **asserted** an identity and nothing verified it;
+- `Student` had **no owner**, so "whose record is this?" had no answer in the
+  data at all.
+
+Two ideas needed separating, and this section is that separation.
+
+### 26.2 Why `Student.external_ref` is not authentication
+
+`external_ref` is a **label**: nullable, client-visible, written by the
+ingestion and test paths, and freely typeable. It identifies a row. It says
+nothing about who may read it.
+
+Ownership is `student.user_id` — a foreign key only the server can write,
+derived from a verified token. The difference is not cosmetic: a label
+answers *which row*, a credential answers *which person*, and only the second
+can authorise anything.
+
+Likewise, a **client-supplied `student_ref` is not authorization**. It is the
+caller asserting an answer to the question being asked. Phase 5.3 fixed that
+by deleting the field; Phase 5.4 makes the underlying relationship real.
+
+### 26.3 External identity vs internal identity
+
+| | Changes when | Used for |
+|---|---|---|
+| `(identity_provider, external_subject)` | the university migrates IdPs, an account is recreated | finding the account from a token |
+| `UserAccount.id` | **never** | rate-limit keys, logs, every internal reference |
+
+Making the provider's `sub` the primary key would weld CoursePilot's internal
+graph to one vendor's identifier — the exact coupling the provider-neutral
+boundary exists to prevent.
+
+Note the table is **`user_account`**: `user` is reserved in PostgreSQL.
+
+### 26.4 Cardinality, reasoned rather than assumed
+
+`student.user_id` is **nullable** and **UNIQUE**:
+
+- *nullable* — an unlinked academic record is a real, expected state;
+- *unique* — one account must not accumulate student records; an academic
+  record is never shared between people.
+
+A person with two programmes would need a second `Student`, because the audit
+engine evaluates exactly one `ProgramVersion` (Phase 4). CoursePilot has no
+dual-programme support and no product decision about it, so the stricter
+constraint ships now. Relaxing it later is a dropped constraint; adding it
+later to data that has already violated it is much worse.
+
+### 26.5 Token verification
+
+Cryptography is PyJWT's. This project decides **policy**:
+
+| check | why |
+|---|---|
+| signature | the only thing that makes any other claim meaningful |
+| algorithm allow-list (asymmetric only) | rejects `alg: none` and HMAC confusion by configuration, not by trusting the token's own declaration |
+| `iss` | a valid token from another issuer is not valid here |
+| `aud` | a token minted for another service must not be replayable at ours |
+| `exp` / `nbf` | expiry is the only revocation most IdPs offer |
+| `sub` required | an identity with no subject is not an identity |
+| 60s clock skew | generous skew extends the life of a revoked token |
+
+**Everything fails closed.** No configuration, incomplete OIDC settings, an
+unknown provider, or dev auth in production all yield *no verifier*, and
+every credential is then refused. A server that authenticates nobody is
+broken; one that authenticates everybody is breached.
+
+Only a minimal claim subset is carried forward. `groups`, `is_admin` and
+anything else are dropped, because a claim that reaches the application is a
+claim something may eventually trust.
+
+### 26.6 Provisioning is automatic; linking is not
+
+```
+verified token -> provision UserAccount        automatic, safe
+UserAccount    -> link to a Student            NOT automatic
+```
+
+Provisioning is safe: the account is created *from* the verified subject and
+owns nothing. The `UNIQUE(identity_provider, external_subject)` constraint —
+not the `if not exists` — is what makes two concurrent first-logins produce
+one account.
+
+**Linking is an ownership claim over real academic data, and nothing in a
+token establishes it.** A `sub` is an opaque provider key; `external_ref` is
+an ingestion label. Matching them would be a guess wearing the costume of a
+lookup.
+
+So a new account exists and owns nothing, and the API says so:
+
+```
+409  No academic record is linked to this account.
+```
+
+Not `404` (which would claim the user's own data is missing) and not `403`
+(which would imply refusal). The account is simply not yet in a state where
+the request is meaningful.
+
+`link_student` is internal, unreachable from any request, and refuses to move
+an already-owned record. The safe production mechanisms — a verified student
+number claim, an out-of-band one-time code, administrator-assisted linking —
+all need something this project does not have yet.
+
+### 26.7 What Rutgers actually offers
+
+Researched against current official documentation, not assumed:
+
+- Rutgers IT publicly documents **CAS, Shibboleth (SAML) and LDAP/RAD**, with
+  an "SSO Decision Flow" for choosing between them, and directs integrators
+  to its identity-management support portal;
+- **no public OIDC/OAuth 2.0 discovery endpoint or self-service client
+  registration is documented**;
+- integration requires engaging Rutgers IT for approval and credentials.
+
+Consequences:
+
+> **Rutgers live SSO is NOT verified by this phase, and cannot be from this
+> environment.** There is no registered client and no credential.
+
+A Rutgers deployment would need either an OIDC bridge in front of
+CAS/Shibboleth, or a SAML verifier implementing the same `TokenVerifier`
+protocol — which is the point of the protocol.
+
+What *is* verified: the full validation path, against real RS256 tokens
+signed by a key the test suite generates. That proves the checks work. It
+does not prove Rutgers.
+
+### 26.8 Development authentication
+
+`Bearer dev:<subject>` — and it is **not authentication**:
+
+- requires `AUTH_PROVIDER=dev` **and** `DEV_AUTH_ENABLED=true`, both off by
+  default;
+- refused outright when the environment is production;
+- issues principals under the **`dev` provider**, a different namespace from
+  `oidc`. Even leaked into production it could not impersonate a real user,
+  because identity is `(provider, subject)`.
+
+Tests override the `get_principal` **dependency** rather than weakening
+authentication, so the route still depends on the real dependency and the
+backend suite still needs no database.
+
+### 26.9 Rate limiting and logging
+
+Both now key on `UserAccount.id` — the stable internal identity — rather than
+the provider subject, an email, or a student reference, any of which can
+change or be chosen by the caller. Budgets are unchanged (60 requests, 10
+model calls per identity per minute).
+
+Logs carry a **hashed** account handle. Never logged: tokens, `Authorization`
+headers, API keys, full JWT payloads, prompts, model responses, academic
+content.
+
+### 26.10 Migration
+
+```
+d0821611331c -> d35eb3a64b5d
+```
+
+Creates `user_account`; adds `student.user_id` NULLABLE + UNIQUE + FK
+`ondelete=RESTRICT`. **No backfill**: the existing student row's
+`external_ref` is not evidence of ownership, and assigning one would be
+inventing a claim. `NOT NULL` is deliberately not enforced yet.
+
+Tested: fresh upgrade, downgrade, re-upgrade, and an upgrade against a **copy
+of the real dev database** — 1 student and 11 course rows preserved,
+correctly unlinked. Constraints verified by the database rejecting writes:
+duplicate identity, second student for one account, and account deletion
+while owning a record.
+
+**A defect the RESTRICT test caught:** SQLAlchemy's default relationship
+behaviour nulls the child FK *before* deleting the parent, so deleting an
+account silently orphaned an academic record instead of being refused.
+`passive_deletes="all"` defers entirely to the database and makes the
+constraint real.
+
+### 26.11 Measured
+
+```
+no credential          401   (rejected before account or audit work)
+authenticated, unlinked 409
+authenticated, linked   200   warm 317 ms
+```
+
+Phase 5.3 baseline was ~320 ms warm. Authentication, account resolution and
+ownership lookup add **no measurable overhead**; the ~230 ms BM25 rebuild
+still dominates and is still deliberately uncached.
+
+### 26.12 Limitations
+
+**Genuine:**
+
+1. **Rutgers live SSO is unverified** (26.7) — this is the headline
+   limitation.
+2. **No linking mechanism exists in production.** Every account starts
+   unlinked and there is no safe self-service path; 409 is the honest
+   response, not a finished feature.
+3. **Rate limiting is still per-process and in-memory** (section 25.4).
+4. **No token revocation beyond expiry**, which is what most IdPs offer.
+5. **No admin surface** for linking, disabling, or auditing accounts.
+
+**Intentionally deferred:** account deletion/merge flows, provider-subject
+migration, multi-programme students, and any password-based login —
+CoursePilot should not become its own identity provider.
+
+### 26.13 Unchanged
+
+Allocation, category allocation, the optimizer, baseline semantics, sharing
+policy, course eligibility, BM25 ranking, `CourseDocument`, Phase 5.1
+explanation facts, Phase 5.2 provider behaviour and Phase 5.3 fallback.
+
+```
+SQLite      554 passed   (unchanged)
+PostgreSQL  619 passed   (unchanged)
+```
