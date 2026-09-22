@@ -48,6 +48,7 @@ from app.models.requirements import (
     School,
     SharingPolicy,
 )
+from app.models.identity import PROVIDER_DEV, PROVIDER_OIDC, UserAccount
 from app.models.student import EnrollmentStatus, Student, StudentCourse
 from app.models.sections import (
     CourseSection,
@@ -77,7 +78,10 @@ __all__ = [
     "SectionCrossListing",
     "SectionInstructor",
     "SectionMeeting",
+    "PROVIDER_DEV",
+    "PROVIDER_OIDC",
     "Student",
+    "UserAccount",
     "StudentCourse",
     "Subject",
 ]

@@ -29,6 +29,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin
+from app.models.identity import UserAccount  # noqa: F401  (relationship target)
 
 
 class EnrollmentStatus(StrEnum):
@@ -46,13 +47,30 @@ class EnrollmentStatus(StrEnum):
 
 
 class Student(Base, TimestampMixin):
-    """Deliberately thin. Authentication is out of scope and must land before
-    this table holds a real person."""
+    """One student's academic record.
+
+    Phase 5.4 gave this table an owner. `external_ref` is NOT authentication:
+    it is a label the ingestion/test path uses, it is client-visible, and
+    anyone could have typed it. Ownership is `user_id`, which can only be set
+    by the server from a verified token.
+    """
 
     __tablename__ = "student"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     external_ref: Mapped[str | None] = mapped_column(String(64))
+
+    # Nullable: an unlinked student record is a real, expected state - a
+    # verified identity does not by itself prove WHICH academic record
+    # belongs to that person. UNIQUE: one account owns at most one student.
+    # ondelete=RESTRICT: deleting an account must never cascade away an
+    # academic record.
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("user_account.id", ondelete="RESTRICT"),
+        nullable=True,
+        unique=True,
+        index=True,
+    )
 
     # The catalog year whose rules bind this student. Stored explicitly rather
     # than inferred from a matriculation date: the binding is an academic
@@ -66,6 +84,7 @@ class Student(Base, TimestampMixin):
     courses: Mapped[list[StudentCourse]] = relationship(
         back_populates="student", cascade="all, delete-orphan"
     )
+    user: Mapped["UserAccount | None"] = relationship(back_populates="student")
 
     __table_args__ = (UniqueConstraint("external_ref", name="uq_student_external_ref"),)
 
