@@ -4394,3 +4394,268 @@ actually comes from?
 - Prompt injection: instruction/data separation and output-side defences
 - Graceful degradation versus failing loudly — choosing per failure class
 - Twelve-factor configuration and secret handling
+
+---
+
+# Lesson 17: Security That Wraps a System Instead of Rewriting It
+
+## What We Built
+
+Authentication, data isolation, rate limiting and AI cost controls around
+CoursePilot — with the Degree Engine completely untouched and no migration.
+
+The most important line of code in the phase is one I **deleted**.
+
+---
+
+## Concepts
+
+### Authentication and authorization are different questions
+
+```
+authentication   who are you?        -> a credential is verified
+authorization    what may you see?   -> an identity is matched to data
+```
+
+Conflating them is how systems end up trusting a client-supplied user ID: the
+caller proved *something* (they had a token), so the server assumes they
+proved *everything* (this is their data).
+
+CoursePilot's Phase 5.2 endpoint had neither. It accepted:
+
+```json
+{"student_ref": "anyone-at-all", "course_key": "01:198:344"}
+```
+
+and returned that student's audit. Not because of a bug — because nothing
+was ever asked.
+
+### The strongest authorization check is a field that does not exist
+
+The obvious fix is a check:
+
+```python
+if payload.student_ref != principal.student_ref:
+    raise HTTPException(403)
+```
+
+The fix that was actually applied is smaller:
+
+```python
+class RecommendationExplanationRequest(BaseModel):
+    course_key: str
+    explanation_type: Literal[...]
+    # student_ref is GONE
+```
+
+The student now comes from the credential. **Student A cannot request Student
+B because there is nowhere to put "B".**
+
+Why that is better than the check:
+
+- a check can be forgotten on the next endpoint; an absent field cannot be
+  populated;
+- a check needs a test to prove it runs; an absent field is proven by the
+  schema itself;
+- there is no `403` to get wrong, because "authenticated but not allowed" is
+  not a reachable state.
+
+**Prefer designs where the unsafe request cannot be expressed** over designs
+where it is expressed and then rejected.
+
+### Dependency injection is what makes that swappable
+
+FastAPI's `Depends` is not just wiring. It is the seam that lets a
+deliberately fake auth scheme become a real one without touching a route:
+
+```python
+principal: Principal = Depends(enforce_request_rate_limit)
+```
+
+The route knows it has a `Principal`. It does not know whether that came from
+a dev token, SSO, or a test override. When Rutgers SSO lands, one function
+changes.
+
+It also means tests can **override the dependency rather than bypass it**, so
+the authorization path is exercised rather than skipped — the usual failure
+of "we mock out auth in tests" is that auth is then the one thing never
+tested.
+
+### A dev backdoor must be loud, opt-in, and impossible in production
+
+Local development needs an identity without a Rutgers account. That need is
+real, and it is exactly how backdoors ship.
+
+Three guards, not one:
+
+```
+DEV_AUTH_ENABLED defaults to False          - off unless chosen
+refused when environment is production      - even if someone sets it
+fails CLOSED when disabled                  - no fallback to trust
+```
+
+The third is the subtle one. With dev auth off there is no other verifier, so
+the honest behaviour is to reject **every** credential. A system that
+"couldn't verify, so allowed it" is worse than one with no auth at all,
+because it looks protected.
+
+### Rate limiting: money is not the same resource as CPU
+
+Most rate limiting protects compute. An AI endpoint has a second, stranger
+resource: **spend**. So CoursePilot has two budgets.
+
+```
+60 requests / identity / minute      protects the database and audit engine
+10 model calls / identity / minute   protects money
+```
+
+One combined limit cannot serve both. Set it high enough for ordinary
+deterministic explanations (which cost nothing) and it permits 60 billable
+calls a minute; set it low enough to protect spend and ordinary use breaks.
+
+The model budget is also checked **before** the database work, so a caller
+over their spend limit costs nothing at all.
+
+And the limiter's weakness is written in its own docstring: it is in-memory
+and per-process, so N workers means N × the limit. **A limitation you
+document is a known quantity; one you discover in production is an incident.**
+
+### Retries quietly multiply cost
+
+This is the AI-specific trap. A retry policy designed for a flaky HTTP call
+behaves very differently when each attempt is billable:
+
+```
+1 user request  ->  3 retries  ->  3 charges
+```
+
+Two decisions followed:
+
+- **retry only transient classes.** The SDK retries connection errors, 408,
+  409, 429 and 5xx — never 400/401/403/404. A bad credential fails
+  identically on attempt two; retrying it burns time and money for nothing.
+- **never retry a validation failure.** When the model returns something that
+  contradicts the decision facts, CoursePilot does **not** ask again more
+  firmly. It discards the response and uses the deterministic explanation. A
+  test pins this by scripting two responses and asserting the second is never
+  consumed.
+
+**"Retry until it works" is a cost bug when the operation has a price.**
+
+### Timeouts belong at a layer that can still answer
+
+A provider that hangs must not hang the API. But the useful question is not
+"where do we put a timeout" — it is *what do we do when it fires*.
+
+Because the deterministic explanation already exists before any model call,
+the answer is free: on timeout, return the correct explanation without the
+model's phrasing. **Never invent an explanation because the provider was
+slow.**
+
+A timeout is only safe when something correct remains to fall back to.
+
+### Log for correlation, not identification
+
+Logs need to answer "what happened to request X", not "what is student Y
+studying".
+
+```python
+"principal": principal.redacted()    # 12 chars of SHA-256
+```
+
+Stable enough to trace one caller through a debugging session; useless for
+identifying a person. Never logged at all: credentials, `Authorization`
+headers, API keys, prompts, model responses, academic content.
+
+A test asserts the NetID and the token are absent from captured logs — because
+"we don't log secrets" is a claim, and claims decay.
+
+### Deterministic validation is still the real defence
+
+Every control in this phase is about the *request*. None of them stops a
+model from asserting something false, and none of them was asked to.
+
+That job still belongs to the Phase 5.2 validator comparing model output
+against CoursePilot's facts. Security controls who may ask; validation
+controls what may be said. **Layers fail for different reasons, which is why
+they are layers.**
+
+### Why security belongs outside the Degree Engine
+
+The engine answers one question: *what is academically true for this
+transcript?* That answer does not depend on who is asking, how often they
+asked, or whether they have a token.
+
+Keeping security outside means:
+
+- the engine stays a pure function of academic data, which is what made it
+  testable and verifiable against an oracle in Phase 4.3;
+- security can change (SSO, Redis limits, quotas) without re-verifying
+  allocation;
+- the proof is a diff — `554` and `619` tests, unchanged.
+
+**If adding authentication had changed an allocation result, something would
+have been deeply wrong with one of the two.**
+
+---
+
+## Important Code
+
+| File | Why |
+|---|---|
+| [api/security.py](backend/app/api/security.py) | identity, limiter, and the limitations written down |
+| [routes/explanations.py](backend/app/api/v1/routes/explanations.py) | the schema with nowhere to name a student |
+| [explanations/providers.py](backend/app/services/explanations/providers.py) | server-owned token and context bounds |
+| [tests/test_api_security.py](backend/tests/test_api_security.py) | the Part 20 matrix, including the cost tests |
+
+## What Could Go Wrong?
+
+- **Trusting a client-supplied user ID** because a token was present.
+- **Checking ownership** where you could have removed the field.
+- **Mocking out auth in tests**, leaving the one path never exercised.
+- **A dev backdoor** with no environment guard, or one that fails open.
+- **One rate limit** for compute and for spend.
+- **Retrying a billable call** on non-transient errors.
+- **Retrying a validation failure** — asking the model again, more firmly.
+- **A timeout with nothing correct to fall back to.**
+- **Logging a NetID** because it was convenient for debugging.
+- **Putting security inside the engine**, so every auth change re-opens
+  academic correctness.
+
+## What I Should Be Able To Explain
+
+1. What is the difference between authentication and authorization here?
+2. Why is removing `student_ref` stronger than adding a 403 check?
+3. What does `Depends` buy beyond wiring?
+4. Name the three guards on development auth, and why "fail closed" matters.
+5. Why two rate-limit budgets instead of one?
+6. How can a retry policy triple a bill?
+7. Why is a validation failure never retried?
+8. Why is a timeout safe here but dangerous in a system without a fallback?
+9. Why hash the principal in logs rather than omit it?
+10. What evidence shows the Degree Engine is unchanged?
+
+## Try It Yourself
+
+**A.** Add `student_ref` back to the request model and use it instead of the
+principal. Which test fails? Now write the one-line curl that reads another
+student's audit.
+
+**B.** Set `explanation_provider_retries` to 5 and script a provider that
+always 429s. Count the provider calls for one user request, and multiply by a
+per-call price.
+
+**C.** Run two workers and hammer the endpoint. Show that the rate limit is
+effectively doubled, then explain what a shared store would change.
+
+**D.** Make `get_principal` return a default identity when `DEV_AUTH_ENABLED`
+is false instead of raising. Which tests still pass? That set is the measure
+of how much a fail-open default can hide.
+
+## Further Learning
+
+- OAuth2/OIDC and JWT verification; why "decode" is not "verify"
+- Rate limiting algorithms: sliding window vs token bucket vs leaky bucket
+- Rate limiting in distributed systems and shared-state coordination
+- Privacy-preserving logging, pseudonymisation and data minimisation
+- Threat modelling an API surface rather than hardening it ad hoc

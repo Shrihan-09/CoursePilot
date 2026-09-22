@@ -3013,3 +3013,188 @@ is no migration.
 4. **Stateless and single-turn** — no conversation, memory, or agent loop, by
    design.
 5. **The unsupported-claim check remains a heuristic**, one of four layers.
+
+---
+
+## 25. API security, request identity and AI cost controls (Phase 5.3)
+
+> **Security wraps CoursePilot. Security does not redefine CoursePilot.**
+
+Nothing in this section touches the Degree Engine. It decides *who is asking*
+and *how often they may ask*; what is academically true remains entirely the
+engine's business.
+
+### 25.1 What existed before (investigated, not assumed)
+
+| | Status before Phase 5.3 |
+|---|---|
+| authentication | **none** - no `get_current_user`, no bearer handling, no JWT |
+| rate limiting | **none** |
+| middleware | CORS only |
+| user table | **does not exist** |
+| ownership link | **does not exist** - `Student` has no owner column |
+| student identity | `Student.external_ref`, nullable unique `String(64)` |
+| request IDs | per-route only (added for explanations in Phase 5.2) |
+
+`Student`'s own docstring already said authentication "must land before this
+table holds a real person". This phase is that landing.
+
+### 25.2 Identity: derived from the credential, never from the body
+
+```
+Authorization: Bearer <credential>
+        |
+        v
+Principal(subject=..., student_ref=...)     <- server-derived
+        |
+        v
+Student.external_ref == principal.student_ref
+```
+
+**`student_ref` was removed from the request schema.** That is the entire
+isolation property, and it is why no migration was needed:
+
+> Student A cannot request Student B's audit because there is nowhere to put
+> "B".
+
+Ownership enforced by the **absence of a field** is stronger than ownership
+enforced by a check, because there is no code path to forget. A test asserts
+the schema contains only `course_key` and `explanation_type`, and that
+supplying `student_ref` is a 422 rather than a silently ignored field.
+
+A `user` table with `student.user_id` would model ownership more properly and
+is the right eventual answer — recorded in 25.9 rather than rushed into a
+security phase.
+
+### 25.3 Development authentication
+
+Scheme: `Authorization: Bearer devtoken:<student_ref>`.
+
+- **off** unless `DEV_AUTH_ENABLED=true` (default `false`);
+- **refused when the environment is production**, even if enabled;
+- fails **closed**: with dev auth disabled there is no other verifier, so
+  every credential is rejected rather than falling back to trust.
+
+Tests override the dependency rather than bypassing it, so the authorization
+path is exercised rather than skipped. Replacing this with SSO/JWT touches
+one function, because every route depends on the *dependency*.
+
+### 25.4 Rate limiting: two budgets, because they protect different things
+
+```
+requests / identity / window     protects the database and audit engine
+model calls / identity / window  protects MONEY
+```
+
+Defaults: 60 requests and **10 model calls** per 60 s, per identity. A single
+combined limit would be either too loose to protect spend or too tight for
+ordinary deterministic use, which needs no provider at all. The model budget
+is checked **before** any database work and is skipped entirely when
+`EXPLANATION_PROVIDER=none`.
+
+**Stated limitation:** the limiter is in-memory and per-process. It does not
+survive a restart and does not coordinate across workers, so N workers means
+N × the limit. Acceptable for single-process development; **not a production
+control**. A shared store is the eventual answer.
+
+### 25.5 AI cost controls
+
+| Bound | Setting | Why |
+|---|---|---|
+| output tokens | `explanation_max_output_tokens` (1500) | caps billable output |
+| context size | `explanation_max_context_chars` (12000) | truncates a pathological catalog entry |
+| provider calls | `explanation_max_provider_calls` (1) | one request must not fan out |
+| SDK retries | `explanation_provider_retries` (1) | **every retry is another billable call** |
+| timeout | `explanation_timeout_seconds` (30) | a provider cannot hang the API |
+
+None of these is a request field. `provider`, `max_tokens` and `temperature`
+are absent from the schema, so an attempt to set them is a 422.
+
+Truncation costs **tokens, not correctness**: the deterministic explanation
+is unaffected, and a truncated or rejected response still falls back to it.
+
+**Retry policy.** The SDK retries only transient classes (connection, 408,
+409, 429, 5xx) and never 400/401/403/404 — a bad credential would fail
+identically, so retrying it only burns time. A *validation* failure is never
+retried either: a rejected response does not trigger a second "corrective"
+call, which a test pins by asserting the scripted model's second response is
+left unconsumed.
+
+### 25.6 Error contract
+
+| Condition | Response |
+|---|---|
+| missing / malformed / unverifiable credential | **401** + `WWW-Authenticate: Bearer` |
+| over the request or model budget | **429** + `Retry-After` |
+| malformed body, unknown field, bad course key | **422** |
+| student or course not found | **404**, identical detail for both |
+| provider unavailable, timeout, invalid output | **200**, deterministic explanation |
+| Degree Engine failure | **500** |
+
+Two deliberate choices:
+
+- **401s never say why.** "Wrong token" and "no such student" must be
+  indistinguishable, or the endpoint becomes an account oracle.
+- **404 is the same message for a missing student and a missing course.**
+  The caller can only ever ask about themselves, so distinguishing them
+  leaks only whether a student record exists.
+
+There is no `403`. With identity derived from the credential there is no
+"authenticated but not allowed" state to report — the request cannot name
+another student in the first place.
+
+### 25.7 Privacy
+
+Logged: `request_id`, a **hashed** principal handle, route, provider,
+outcome, latency, and rejection reasons.
+
+Never logged: credentials, `Authorization` headers, API keys, NetIDs, prompts,
+model responses, or academic content. A NetID is personal data, so logs get a
+12-character SHA-256 prefix — stable enough to correlate requests, useless for
+identifying a person. Tests assert the credential and the subject are absent
+from captured logs.
+
+### 25.8 Measured impact
+
+```
+warm endpoint latency      ~320 ms   (Phase 5.2 baseline: ~320 ms - unchanged)
+  index rebuild            ~230 ms   still dominant, still not cached
+  audit + baseline          ~65 ms
+unauthenticated request     1.4 ms   rejected before any database work
+```
+
+Authentication and rate limiting add **no measurable overhead**, and refusing
+a bad request is ~230× cheaper than serving a good one.
+
+Caching the BM25 rebuild remains deliberately out of scope (Part 24): it
+introduces invalidation, freshness and ingestion-coordination decisions that
+belong in their own phase.
+
+### 25.9 Limitations — stated plainly
+
+1. **This is not production authentication.** The dev scheme trusts the
+   token's contents; it verifies nothing. It is off by default and refused in
+   production, but a real deployment needs SSO/JWT before it holds real
+   student data.
+2. **No user/account model.** Isolation works because the schema cannot name
+   a student, not because ownership is modelled. A `user` table with
+   `student.user_id` is the proper fix.
+3. **Rate limiting is per-process and in-memory** (25.4).
+4. **Live provider still unverified** — no API key in this environment, so
+   the opt-in smoke test skips.
+5. **No global request-ID middleware**; the explanation route generates its
+   own.
+6. **CORS is the development default** (`http://localhost:3000`, not `*`),
+   which is correct for now and will need revisiting with a real frontend.
+
+### 25.10 Unchanged by this phase
+
+Allocation, category allocation, the global optimizer, baseline semantics,
+requirement satisfaction, course eligibility, sharing policy, BM25 ranking,
+catalog authority and the Phase 5.1 explanation facts.
+
+```
+SQLite      554 passed   (same as Phase 5.1 and 5.2)
+PostgreSQL  619 passed   (same as Phase 5.1 and 5.2)
+alembic check: no new upgrade operations - NO migration
+```
