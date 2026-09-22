@@ -25,6 +25,12 @@ postgres = [
     "psycopg[binary,pool]>=3.2",
     "pgvector>=0.3.6",
 ]
+# The live explanation provider. Optional so a fresh clone, CI, and every
+# ordinary test run work with no vendor package and no API key - the
+# deterministic path is the default, not a fallback nobody exercises.
+ai = [
+    "anthropic>=0.40",
+]
 dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
