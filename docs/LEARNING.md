@@ -4921,3 +4921,313 @@ will look like it works. Describe the transcript disclosure it causes.
 - Algorithm-confusion attacks and allow-list design
 - SAML/Shibboleth in higher education, and OIDC bridges
 - Identity lifecycle: provisioning, linking, deprovisioning, `sub` migration
+
+
+---
+
+# Lesson 19: Verification You Cannot Perform, and the Honest Way Around It
+
+## What We Built
+
+An administrator-assisted linking workflow with an append-only audit trail,
+closing Phase 5.4's honest gap — every account existed and owned nothing.
+
+---
+
+## Concepts
+
+### The question a design has to answer first
+
+Phase 5.4 ended with a verified identity and no way to say which transcript
+it belonged to. The obvious move was sitting right there:
+
+```python
+Student.external_ref == principal.subject     # tempting, and wrong
+```
+
+It would have worked in the demo. The single student row in the development
+database has `external_ref = 'smoke-1'`, so all it takes is a dev user whose
+subject is `smoke-1`.
+
+Before writing anything, the question worth asking is: **what does this
+field actually prove?** For `external_ref` the answers came out like this —
+no production code creates `Student` rows at all, the only value present was
+written by a smoke test, the field appears in no API response, and it is
+derived from no Rutgers identifier.
+
+So it proves *nothing about a person*. It is a name someone typed. Matching
+it against a cryptographically verified subject would have produced code
+where one side was rigorous and the other was a guess — and the guess is the
+one that decides who reads a transcript.
+
+A useful habit: when a field is about to become load-bearing for security,
+go and find out who writes it and why. Often the answer is "a fixture."
+
+### Choosing between mechanisms you cannot build yet
+
+Four linking models were on the table, and only one of them could actually
+be built *today*:
+
+| model | status | why |
+|---|---|---|
+| IdP claim matching | **unavailable** | Rutgers releases no such claim |
+| one-time code | **deferred** | no trusted channel to deliver it |
+| administrator-assisted | **chosen** | verification happens out of band, and really happens |
+| hybrid | premature | you cannot hybridise one working mechanism |
+
+The interesting one is the deferral. A one-time code *feels* more secure — it
+involves a secret, and secrets feel like security. But a code is only as
+trustworthy as the channel that delivers it, and here there is no channel:
+no email integration, no SMS, no registrar feed. An administrator would
+generate the code and then hand it to the person **they just verified in
+person**.
+
+So what does the code add? Storage, hashing, expiry, replay handling,
+brute-force protection, a lockout policy — and exactly zero additional
+verification. That is security theatre with a real operational bill.
+
+The general shape: **a security mechanism that adds a secret without adding
+a verification step has added only risk.** Ask what the mechanism knows that
+you did not already know without it.
+
+### Where verification is allowed to live outside the software
+
+Administrator-assisted linking can feel like a cop-out — a human does the
+hard part. But look at what each design actually verifies:
+
+```
+claim matching    the IdP verified them, and told us so        (strong, unavailable)
+one-time code     an admin verified them, then we added ritual (no stronger)
+admin-assisted    an admin verified them                       (honest)
+```
+
+The middle option is not more secure than the last; it is the last one with
+extra machinery. Universities already have identity verification — it is
+called showing up at an office with an ID card. Software does not have to
+re-implement every trust step. It has to be clear about which ones it is
+performing and which ones it is recording.
+
+What the software *does* owe you is attribution: who made this decision,
+about whom, and when.
+
+### Append-only, and what "append-only" has to mean in SQL
+
+An audit trail is only worth having if it cannot be quietly tidied up:
+
+```sql
+student_link_event(student_id, user_account_id, performed_by_id,
+                   action, reason, created_at)
+  -- all three FKs: ON DELETE RESTRICT
+  -- action: CHECK (action IN ('linked','unlinked'))
+```
+
+The `RESTRICT` clauses are the load-bearing part. Without them, deleting an
+account would delete or orphan the evidence of what that account was given
+access to — and the natural clean-up ("this account is gone, remove its
+rows") is exactly the action an attacker wants. **An audit trail that a
+later operation can erase is not an audit trail.**
+
+The `CHECK` earns its place separately: a Python constant tells the
+application what is valid; the constraint tells the *database*. Only the
+second one still applies when someone writes a row from psql.
+
+### Two races that look like one
+
+Concurrent linking has two failure modes, and only one of them a unique
+constraint catches.
+
+```
+race 1   two students, one account
+         UNIQUE(student.user_id) -- the database refuses the second
+
+race 2   one student, two accounts
+         both read user_id IS NULL
+         both UPDATE
+         the second silently overwrites the first
+```
+
+Race 2 passes every application check and violates no constraint, because a
+unique index constrains *across* rows and says nothing about one row's
+history. The fix is a row lock:
+
+```python
+student = session.get(Student, student_id, with_for_update=True)
+```
+
+Worth internalising: `UNIQUE` protects an invariant over the table.
+`SELECT … FOR UPDATE` protects a read-then-write over a row. They are not
+substitutes, and a check-then-act sequence needs the second one.
+
+### Why authority belongs in a column and not in a token
+
+```python
+if principal.claims["is_admin"]:      # authority that travels
+if account.is_admin:                  # authority that is looked up
+```
+
+The first is convenient and has a nasty property: a token minted before a
+demotion still says `admin` until it expires. The claim is a *photograph* of
+authority at issue time. Revocation cannot reach into a credential already
+in someone's hands.
+
+Reading the column costs one indexed lookup per request and is always
+current. Phase 5.4 dropped `groups` and `is_admin` from the claim subset for
+precisely this reason — and Phase 5.5 is where that restraint paid off.
+
+### A route that must never run in production is still a route
+
+The bootstrap problem: only an admin can link, only the database can grant
+`is_admin`, so a fresh deployment is deadlocked. Something has to break in
+from outside.
+
+The tempting version:
+
+```python
+@router.post("/bootstrap/admin")          # guarded by a setting
+def bootstrap(...):
+    if settings.coursepilot_env is PRODUCTION:
+        raise HTTPException(403)
+```
+
+This ships an endpoint that grants administrative access, is reachable in
+production, and is protected by one environment variable being read
+correctly. It will appear in the OpenAPI schema. It will be found.
+
+The command version has no listener at all:
+
+```
+python -m app.cli.dev_bootstrap grant-admin --provider dev --subject alice
+```
+
+It runs only where someone already has shell access and database
+credentials — and at that point they could set the column by hand anyway, so
+it grants no new capability. It just makes the supported path the easy one.
+
+**Guarding a dangerous feature is weaker than not exposing it.** When
+something must not be reachable, the strongest control is having nothing to
+reach.
+
+### Enumeration, and ordering your checks
+
+Two endpoints, same logic, very different leakage:
+
+```
+check admin -> look up student      403 whether or not it exists
+look up student -> check admin      404 vs 403 tells you which ids are real
+```
+
+Ordering authorization before lookup is free and removes an oracle. The same
+instinct explains why the administrator names the person by *identity*
+(provider + subject) rather than by account id: naming by id would require
+some way to find ids, and any way to find ids is an enumeration surface.
+
+And the responses stay thin — `{student_id, linked, event_recorded}`. A
+response is an information channel. An administrative one should confirm the
+operation, not become a convenient reader for other people's data.
+
+### Rate limiting when there is no secret to guess
+
+Phase 5.3's limits protect the database and the money. Linking has neither
+concern — it is two inserts and there is nothing to brute-force, because the
+workflow contains no secret.
+
+It still gets a limit, for a different reason:
+
+```
+60/min   a leaked admin token reassigns 60 transcripts a minute
+10/min   a leaked admin token reassigns 10, and the audit trail records all of them
+```
+
+That is **blast radius**, not brute force. The two get conflated because
+both produce a 429, but they answer different questions: brute-force limits
+ask "how many guesses?", blast-radius limits ask "how much damage before
+someone notices?"
+
+One detail matters: the budget is charged *after* authorization. Charge it
+before, and any authenticated nobody can exhaust an administrator's
+allowance — a denial of service handed out for free.
+
+### Security metadata is not an academic fact
+
+`student_link_event` records who was authorized to read a record. That is
+real, durable, important — and it is not academic data. The Degree Engine
+never reads it, and a test enforces that by asserting the engine package
+mentions none of `UserAccount`, `is_admin`, `StudentLinkEvent` or
+`Principal`.
+
+The consequence is worth stating plainly: **a degree audit returns identical
+results before and after linking.** Linking changes who may ask. It does not
+change what is true.
+
+This is the same boundary as the LLM one. The engine is the sole authority
+for academic correctness; everything else — retrieval, explanation,
+authentication, ownership — arranges itself around that and never reaches
+in.
+
+### Unlinking is not deleting
+
+```python
+student.user_id = None        # unlink
+session.delete(student)       # destroys the transcript via CASCADE
+```
+
+`StudentCourse` cascades from `Student`. If "unlink" were ever implemented
+as "delete the student", the first correction of an administrator's typo
+would erase somebody's academic history. It is a separate operation with a
+separate endpoint for that reason, and the record, its courses and its audit
+history all survive — leaving a legible `linked -> unlinked -> linked`
+history when a mistake is fixed.
+
+---
+
+## Self-Check
+
+1. The development database has one student with `external_ref = 'smoke-1'`.
+   Why is that not enough to link anyone?
+2. A one-time code involves a secret and administrator-assisted linking does
+   not. Why is the second one not weaker?
+3. What does `UNIQUE(student.user_id)` fail to prevent, and what prevents it?
+4. A token was issued at 09:00 carrying `is_admin: true`. The person is
+   demoted at 09:05. What happens at 09:10, under each design?
+5. Why is a bootstrap *endpoint* guarded by an environment variable weaker
+   than a bootstrap *command*?
+6. Why does authorization run before the student lookup?
+7. The linking limit is 10/minute. What attack does that stop — and what
+   attack does it explicitly not stop?
+8. What would break if `student_link_event`'s foreign keys were
+   `ON DELETE CASCADE`?
+9. Why must a degree audit return the same result before and after linking?
+10. Why does the administrator supply a provider and subject rather than an
+    account id?
+
+## Try It Yourself
+
+**A.** Implement the tempting version: `link_student` matching
+`external_ref == principal.subject`. Then sign in as a dev user with subject
+`smoke-1` and describe exactly whose data you are now reading.
+
+**B.** Remove `with_for_update=True` and run two link requests for the same
+student concurrently from different accounts. Read the row and the events
+afterwards, then say which rule was violated.
+
+**C.** Change `require_admin_principal` to look up the student before
+checking `is_admin`. As a non-admin, use the status codes to find out which
+student ids exist.
+
+**D.** Change `student_link_event`'s FKs to `ON DELETE CASCADE`. Link an
+account, unlink it, delete the account, then try to answer "who was given
+access to this record last March?"
+
+**E.** Move the rate-limit check above the admin check. As a non-admin, make
+ten requests, then try a real administrative link.
+
+## Further Learning
+
+- Identity proofing and NIST 800-63A assurance levels (IAL1/IAL2/IAL3)
+- Out-of-band verification, and where trust legitimately leaves the software
+- Append-only and write-once storage; tamper-evident logs and hash chaining
+- Optimistic vs pessimistic concurrency; `SELECT … FOR UPDATE` and isolation
+  levels
+- Capability revocation, and why stateless tokens make it hard
+- Account enumeration as a vulnerability class (OWASP WSTG-IDNT)
+- Blast-radius thinking: least privilege, rate limits as containment

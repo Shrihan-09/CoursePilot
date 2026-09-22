@@ -3444,3 +3444,288 @@ explanation facts, Phase 5.2 provider behaviour and Phase 5.3 fallback.
 SQLite      554 passed   (unchanged)
 PostgreSQL  619 passed   (unchanged)
 ```
+
+
+---
+
+## 27. Student linking, provisioning and the audit trail (Phase 5.5)
+
+> Authentication establishes identity. **Student linking** establishes which
+> academic record that identity is authorized to use. The Degree Engine
+> remains the sole authority for academic correctness.
+
+Phase 5.4 ended with a working account model and an honest gap: every
+account was unlinked, and `409` was a truthful answer rather than a finished
+feature. This section closes that gap.
+
+### 27.1 What the existing student data actually proves
+
+Investigated before any design, because the tempting shortcut was to match
+`Student.external_ref` against the token subject.
+
+| question | finding |
+|---|---|
+| how many students exist? | **one**, `external_ref = 'smoke-1'`, 11 course rows |
+| who writes `external_ref`? | test fixtures and the smoke-test path |
+| does production code create `Student` rows? | **no code path does** |
+| is it exposed in any API response? | **no** |
+| is it derived from a Rutgers identifier? | **no** — it is an ingestion label |
+
+So `external_ref` is a synthetic name, not an identifier of a person. A
+value chosen by whoever ran a script cannot authorize access to a
+transcript, and matching it against a verified `sub` would be a guess
+wearing the costume of a lookup. **Phase 5.3's `student_ref` is not
+reintroduced as trust anywhere in this phase.**
+
+### 27.2 Choosing the linking model
+
+Four models were considered against what CoursePilot can actually verify
+**today**, not what it might verify eventually.
+
+| model | verdict |
+|---|---|
+| **A. administrator-assisted** | **chosen** |
+| B. one-time code | deferred |
+| C. IdP claim matching | unavailable |
+| D. hybrid | premature |
+
+**C is unavailable, not merely unimplemented.** It is the right long-term
+answer: a verified claim carrying the student number needs no human in the
+loop. But Rutgers SSO is unverified (section 26.7), Rutgers publishes
+CAS/Shibboleth rather than OIDC, and no such claim is released to this
+project. Building against a claim that does not arrive would produce code
+that looks like verification and performs none.
+
+**B is deferred for a specific reason, not vagueness.** A one-time code is
+only as trustworthy as the channel that delivers it, and CoursePilot has no
+trusted channel — no email integration, no SMS, no registrar feed. A code
+generated here and relayed by an administrator adds a whole secret lifecycle
+(storage, hashing, expiry, replay and brute-force surface) **without adding
+any verification beyond what the administrator already did in person**. It
+would be security theatre with real operational cost. When a delivery
+channel exists, B becomes worth building; until then it is strictly worse
+than A.
+
+**A is chosen** because the verification step is real and simply happens
+outside the software: an administrator checks a person's identity the way
+universities already do, then records the result. There is no secret to
+store, no channel to trust, and no brute-force surface, because nothing is
+being guessed.
+
+### 27.3 Administrative authority
+
+```sql
+user_account.is_admin  BOOLEAN NOT NULL DEFAULT false
+```
+
+Three properties, each deliberate:
+
+1. **It is a database column, not a token claim.** A claim is asserted by an
+   identity provider and travels inside a credential, so it outlives its own
+   revocation — a token minted before a demotion still says `admin`. The
+   column is re-read on every request.
+2. **No request can set it.** It appears in no request schema, and
+   `extra="forbid"` rejects a client that invents the field.
+3. **It defaults to false**, so a newly provisioned account has no authority
+   at all.
+
+Phase 5.4 already drops `groups` and `is_admin` from token claims for
+exactly this reason; this section is why that mattered.
+
+### 27.4 The linking API
+
+```
+POST /api/v1/admin/students/{student_id}/link
+     { "identity_provider": "oidc", "external_subject": "...", "reason": "..." }
+
+POST /api/v1/admin/students/{student_id}/unlink
+     { "reason": "..." }
+```
+
+The administrator names the person by the **identity they verified**, never
+by an account id. That is what keeps account enumeration out of the
+workflow: no step requires listing or searching accounts, so no step can be
+turned into a listing.
+
+**A student id does appear in the path, and it grants nothing.** This is not
+Phase 5.3's vulnerability returning. There, *naming* a student granted
+access to it. Here the authority comes from `is_admin`, checked before the
+lookup; a non-admin receives an identical 403 whether the id is real or
+fabricated. Identifying a candidate record and being authorized to use it
+are different things, and only the second is what the endpoint acts on.
+
+**Responses are thin** — `{student_id, linked, event_recorded}`. No account
+id, no subject, no roster detail. A response is an information channel, and
+an administrative one should not double as a way to read other people's data
+back out.
+
+| outcome | status |
+|---|---|
+| no credential | 401 |
+| authenticated, not an administrator | 403 |
+| student does not exist | 404 |
+| named identity has no account (never signed in) | 404 |
+| student already owned / account already owns one | 409 |
+| unlinking something not linked | 409 |
+
+### 27.5 Provisioning is not linking, and an admin cannot conjure an account
+
+The 404 for an unknown identity is a design decision. An administrator
+typing a NetID must **not** create an account, because then the account
+table would record what an operator believed rather than what an identity
+provider attested. The person signs in first — which is itself evidence
+their IdP accepted them — and the administrator then links the record.
+
+### 27.6 Transactional consistency and concurrency
+
+Linking changes who may read a transcript, so "it was linked, but we do not
+know by whom" is not an acceptable state. The ownership change and its audit
+event are written in **one transaction**: both land or neither does.
+
+Two distinct races, handled by two distinct mechanisms:
+
+| race | mechanism |
+|---|---|
+| two students, one account | `UNIQUE (student.user_id)` — the database refuses the second |
+| **one student, two accounts** | `SELECT … FOR UPDATE` on the student row |
+
+The second deserves attention. A unique constraint says nothing about a
+single row's *history*: both transactions read `user_id IS NULL`, both
+update, and the later one silently overwrites the earlier. No constraint
+catches that, and the result is exactly the reassignment rule 2 forbids. The
+row lock is what makes the check-then-write atomic.
+
+### 27.7 The audit trail
+
+```sql
+student_link_event(
+  id, student_id, user_account_id, performed_by_id,
+  action IN ('linked','unlinked'), reason, created_at)
+```
+
+Append-only. Nothing in the application updates or deletes a row, and all
+three foreign keys are `ON DELETE RESTRICT` — an account that is named by
+the history cannot be deleted even after it owns nothing. **An audit trail a
+later action can erase is not an audit trail.**
+
+`action` is constrained by the database, not only by a Python constant, so
+an unknown value is refused at the point of writing.
+
+### 27.8 These events are not academic facts
+
+The table records *who was authorized to see a record and when*. It records
+nothing about credits, grades, terms, requirements or eligibility, and the
+Degree Engine never reads it. A test asserts the engine package contains no
+reference to `UserAccount`, `is_admin`, `StudentLinkEvent` or `Principal`,
+so the boundary is checked rather than merely intended.
+
+Consequently a degree audit produces identical results before and after
+linking. Linking changes **who may ask**; it does not change **what is
+true**.
+
+### 27.9 Unlinking deletes nothing
+
+Only `student.user_id` is cleared. `StudentCourse` cascades from `Student`,
+so implementing "unlink" as "delete the student" would destroy a transcript
+— which is precisely why unlinking is its own operation with its own
+endpoint. The record, its courses and its audit history all survive, and the
+record can be re-linked afterwards, leaving a legible
+`linked → unlinked → linked` history.
+
+### 27.10 Rate limiting
+
+Linking gets its own budget (10 per identity per minute) rather than reusing
+the 60-request one. This is **not** a brute-force control — there is no
+secret to guess — it is a blast-radius control: a leaked administrator token
+reusing the request budget could reassign sixty academic records a minute.
+
+The budget is charged **after** authorization, so a rejected non-admin
+cannot exhaust an administrator's allowance.
+
+### 27.11 Development bootstrap
+
+Only an administrator can link, and only the database can grant `is_admin`,
+so a fresh deployment needs something outside the request path to create the
+first administrator.
+
+That something is a command, `python -m app.cli.dev_bootstrap`, **not a
+bootstrap endpoint**. A route that must never run in production is still a
+route in production: reachable, fuzzable, and one misread environment
+variable from granting admin to a stranger. A command has no listener at
+all, runs only where someone already holds shell and database credentials,
+and additionally refuses to run when `COURSEPILOT_ENV` is production.
+
+It does not create accounts, and it cannot reassign an owned record — it
+calls the same `link_student` with the same refusals.
+
+### 27.12 Migration
+
+`d35eb3a64b5d -> 0e8148bec496`. Adds `user_account.is_admin` (server default
+`false`) and `student_link_event`. It **backfills nothing**: no synthetic
+"linked" event is invented for existing data, because an audit trail that
+contains events which never happened is worse than one that starts empty.
+
+Verified against a **copy** of the real development database (never the
+source):
+
+```
+before   1 student, 11 course rows, 2 accounts
+after    1 student, 11 course rows, 2 accounts
+         is_admin = false for both accounts
+         0 link events
+         student still unlinked
+upgrade -> downgrade -> upgrade   data identical
+alembic check                     no new upgrade operations
+```
+
+### 27.13 Performance
+
+```
+no credential                       401     0.96 ms
+authenticated non-admin             403    18.78 ms
+admin, student not found            404    40.18 ms
+admin link (incl. per-run db reset) 200    73.08 ms
+explanation, linked account         200   270.11 ms
+```
+
+The explanation endpoint is the Phase 5.4 comparison point and its ~320 ms
+warm baseline is unchanged — still dominated by the ~230 ms BM25 rebuild.
+Linking is a couple of indexed lookups and two inserts; the 403 and 404
+figures are essentially one round trip to Postgres for the `is_admin` read.
+
+### 27.14 Limitations
+
+**Genuine:**
+
+1. **Rutgers live SSO is still unverified.** Phase 5.5 changes nothing here,
+   and the admin-assisted model was chosen precisely so that it does not
+   depend on a claim Rutgers does not release.
+2. **Linking depends on a human doing the verification correctly.** The
+   software records the decision; it does not make it. A careless
+   administrator is an unhandled failure mode, and the audit trail is the
+   mitigation — it makes the mistake attributable, not impossible.
+3. **No self-service linking.** A student cannot claim their own record, so
+   onboarding does not scale beyond a small cohort. Model C is the fix and
+   is blocked on Rutgers.
+4. **No admin UI.** Two JSON endpoints and a CLI.
+5. **Rate limiting remains per-process and in-memory** (section 25.4), so it
+   is not a production control.
+6. **No audit-read API.** Events are queryable only via SQL.
+7. **`is_admin` is a single flag**, not a role model. Fine for one kind of
+   administrator; it will not stretch to several.
+
+**Intentionally deferred:** one-time codes (27.2), self-service claiming,
+bulk linking, admin-initiated account disabling, and audit export.
+
+### 27.15 Unchanged
+
+Allocation, category allocation, the optimizer, baseline semantics, sharing
+policy, course eligibility, BM25 ranking, `CourseDocument`, Phase 5.1
+explanation facts, Phase 5.2 provider behaviour, Phase 5.3 fallback and
+Phase 5.4 token validation.
+
+```
+SQLite      554 passed,  66 skipped   (unchanged)
+PostgreSQL  619 passed,   1 skipped   (unchanged)
+Backend     132 passed,   2 skipped   (was 99; +33)
+```
