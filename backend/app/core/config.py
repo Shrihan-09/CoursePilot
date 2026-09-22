@@ -70,6 +70,24 @@ class Settings(BaseSettings):
     llm_effort: str = "high"
     anthropic_api_key: str | None = None
 
+    # --- Grounded explanations (Phase 5.2) ---
+    # Deliberately SEPARATE from llm_provider: the explanation layer and the
+    # (future) agent layer are different consumers with different risk
+    # profiles, and enabling one must not silently enable the other.
+    # Credentials and model names are NOT duplicated - they are read from the
+    # llm_* settings above.
+    #
+    # "none" is the default so a fresh clone and CI run with no API key and
+    # take the deterministic path, which is Phase 5.1's safety property.
+    #   none      - deterministic explanations only
+    #   echo      - non-network fake provider, for exercising the model path
+    #   anthropic - live provider (requires ANTHROPIC_API_KEY)
+    explanation_provider: str = "none"
+    explanation_timeout_seconds: float = 30.0
+    # Upper bound on request bodies for the explanation endpoint. Prevents a
+    # client from pushing unbounded text toward a provider.
+    explanation_max_query_chars: int = 200
+
     # --- Retrieval (not implemented yet) ---
     retrieval_strategy: RetrievalStrategy = RetrievalStrategy.HYBRID
     reranker_enabled: bool = False
