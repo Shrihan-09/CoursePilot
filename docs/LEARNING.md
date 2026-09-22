@@ -5231,3 +5231,300 @@ ten requests, then try a real administrative link.
 - Capability revocation, and why stateless tokens make it hard
 - Account enumeration as a vulnerability class (OWASP WSTG-IDNT)
 - Blast-radius thinking: least privilege, rate limits as containment
+
+
+---
+
+# Lesson 20: Five Questions, Five Layers, and the API That Answers None of Them
+
+## What We Built
+
+A read-only authenticated endpoint that returns a student their own academic
+record - and a second one that returns the Degree Engine's verdict on it,
+unmodified.
+
+---
+
+## Concepts
+
+### Five questions that sound like one
+
+"Show me my degree progress" is one sentence and five questions:
+
+```
+who is asking?              identity          a verified JWT
+which record is theirs?     ownership         Student.user_id
+what is recorded?           academic FACTS    StudentCourse rows
+what does it mean?          INTERPRETATION    the Degree Engine
+what is this course?        description       the catalog
+```
+
+Each has a different authority, and each failure looks different. Confusing
+identity with ownership means one person reads another's transcript.
+Confusing facts with interpretation means the software tells a student they
+have graduated when they have not.
+
+The API's job is to route each question to its owner and assemble the
+answers. That is all. The moment it starts answering one itself, there are
+two authorities for that question, and two authorities is the same as none -
+because when they disagree, nothing decides which is right.
+
+### The endpoint that takes no arguments
+
+The obvious design is the one every tutorial shows:
+
+```
+GET /students/{student_id}
+    -> load student
+    -> check student.user_id == principal.account_id
+    -> 403 if not
+```
+
+That is a correct design. It is also a design whose correctness rests on one
+`if`, in one handler, which every future handler must remember to copy.
+
+The alternative:
+
+```
+GET /student/context        no path parameter, no query, no body
+    -> student = the one this account owns
+```
+
+Nothing is checked, because nothing was supplied. There is no parameter to
+forget to validate, no id to compare, and no way for a client to express the
+request "give me *that* student" - the vocabulary does not contain it.
+
+This is the Phase 5.3 idea again, and it generalises: **a control enforced
+by the absence of a field beats a control enforced by a check.** Checks are
+things people remember. Absences are things people cannot use.
+
+A concrete consequence worth noticing: the isolation tests for this endpoint
+throw every identifier the other student genuinely has - student id,
+external_ref, account id, provider subject - at it as query parameters, and
+assert they are *ignored*. That test is only meaningful because there is no
+code path that could read them. In the `{student_id}` design the same test
+would be asserting that one `if` statement still exists.
+
+### Proving a negative test can fail
+
+There is a trap in tests like this. A test asserting "the response does not
+contain B's data" passes trivially if the endpoint is broken, if the fixture
+is empty, or if the assertion has a typo.
+
+So the isolation test was checked by deliberately introducing the bug:
+
+```python
+# MUTATION: honour a client-supplied student_id
+if student_id:
+    return build_student_context(session, session.get(Student, student_id))
+```
+
+The test failed, with the two students' course codes in the diff. Then the
+mutation was reverted and it passed again.
+
+**A negative test you have never seen fail is a negative test you should not
+trust.** Ten minutes of mutating your own code is worth more than ten more
+assertions.
+
+### A plausible number in the wrong place
+
+The context response deliberately contains no credit total. That looks like
+an omission; it is the most considered decision in the phase.
+
+```python
+total = sum(c.credits_earned for c in completed)   # one line, and wrong
+```
+
+Arithmetically it is fine. The sum of recorded credits is a fact. The
+problem is what a client does with it: renders it next to "51-55 credits
+required". At that moment the number has been read as *credits toward the
+degree*, and that is a different, smaller number - program rules exclude
+some coursework, and only the engine knows which (`credits_excluded`).
+
+The API would have produced a true number that communicates a falsehood.
+
+The general shape: **a derived value inherits the meaning of wherever it is
+displayed, not the meaning you intended when you computed it.** If you
+cannot control where a number lands, the safe move is to let the authority
+that understands it publish it - here, the audit - and publish nothing that
+merely resembles it.
+
+Notice that this is not a purity argument. Totals are available; they come
+from `/student/audit`, where `credits_applicable_to_degree` means exactly
+what it says.
+
+### Measure before you separate, then separate for the better reason
+
+Whether the audit belonged inside the context response was settled with
+numbers rather than taste:
+
+```
+context   ~2 ms    2,849 bytes
+audit    ~33 ms   24,277 bytes
+```
+
+An 8.5x payload for a client rendering a transcript is a real cost. But
+the cost argument is the weaker half of the answer.
+
+The stronger half: **facts and interpretations change at different times.** A
+fact changes when a record is edited. An interpretation changes when the
+*rules* are recurated - which may happen without any student doing anything.
+Two things with different invalidation lifetimes do not belong in one
+response, because the cheap one then gets recomputed on the expensive one's
+schedule.
+
+Cost arguments age badly - hardware gets faster, payloads get compressed. A
+lifetime argument does not.
+
+### Benchmarks measure what they measure
+
+The service-level numbers said 2 ms and 33 ms. The endpoint-level numbers
+said 31.6 ms and 45.3 ms. That is not a contradiction and it is not noise:
+
+```
+open sync session + SELECT 1 (NullPool)   20.93 ms
+```
+
+About 21 ms of every request is opening a Postgres connection, a deliberate
+earlier decision (a pooled sync engine leaked sockets). Subtract it and the
+real work is ~11 ms and ~24 ms.
+
+Two habits come out of this. First, **when a measurement surprises you,
+measure the thing underneath it** before theorising. Second, a fixed cost
+added to both sides of a comparison compresses the ratio and can talk you
+out of a separation that is still correct - the payload difference and the
+lifetime difference were both untouched by it.
+
+And the specific thing worth checking was checked: the explanation endpoint
+pays ~230 ms rebuilding the BM25 index on every call. Returning a student's
+own record must not, and a test asserts the route module never imports
+`build_bm25` or `build_course_documents`. An endpoint that quietly rebuilds
+global state to answer a narrow question is a bug that hides as a
+performance problem.
+
+### Three lists, not one with a flag
+
+```python
+courses: [ {course, status}, ... ]          # tempting
+completed / in_progress / planned           # kept
+```
+
+The flat version is smaller and more "flexible". It is also an invitation:
+a client with a flag will filter on it, and a client filtering on it has
+started deciding what counts. Once it writes `status != "planned"` it has
+re-implemented a rule the engine owns - and it will get it wrong, because
+in-progress coursework satisfies requirements only *provisionally*, which
+you cannot express with a filter.
+
+Keeping them separate does not prevent a determined client from doing the
+wrong thing. It removes the path of least resistance, which is most of what
+API design can actually do.
+
+There is a smaller sibling decision in the same code: a status the database
+permits but the code does not recognise is **dropped**, not guessed into a
+bucket. Filing an unknown status under "completed" would fabricate academic
+fact - and a default branch is exactly where that kind of fabrication hides.
+
+### Joins that manufacture rows
+
+```python
+.join(Course, Course.id == StudentCourse.course_id)     # 1:1, safe
+.join(CourseOffering, ...)                              # 1:N, fabricates
+```
+
+A course offered in three terms would come back three times, and a client
+would render a transcript with a course taken three times. **A duplicated
+row is a fabricated fact**, no less than an invented one - and it is far
+easier to ship, because the join looked harmless and the test data had one
+offering.
+
+The test for this creates three offerings deliberately and asserts one
+entry. Test data that is too tidy hides exactly this class of bug.
+
+### Returning someone else's model, on purpose
+
+`/student/audit` returns `DegreeAuditResult` - the engine's own domain model
+- serialized directly. Everywhere else in this codebase that would be the
+mistake the response models exist to prevent.
+
+Here it is the point. Any reshaping is an opportunity to omit a finding,
+round a credit, or "simplify" a status, and each of those is the API forming
+a second opinion about academic correctness. The test is blunt:
+
+```python
+assert served == direct.model_dump(mode="json")
+```
+
+The cost is real and is written down: an internal model is now a published
+contract, and changing it is a breaking change. That is the trade - and the
+reason it is worth taking is that the alternative trade is worse in a way
+that no one would notice until a student believed they had graduated.
+
+### Read-only has to be structural too
+
+"Read-only" is not a property of intent. `POST /student/context` returning
+405 is the guarantee, and a test asserts it for every verb on both routes,
+because the claim being made is that a frontend *cannot* fabricate a grade -
+not that it is not supposed to.
+
+Mutation was deferred rather than sketched. A half-designed write path in a
+read phase is how a client ends up authoring its own transcript.
+
+---
+
+## Self-Check
+
+1. Name the five questions in "show me my degree progress" and the authority
+   that owns each.
+2. Why is an endpoint with no parameters safer than one that checks
+   ownership on a path parameter?
+3. `sum(credits_earned)` is arithmetically correct. Why is it not in the
+   response?
+4. The context/audit split was justified on cost and on invalidation
+   lifetime. Which argument survives faster hardware, and why?
+5. Service-level: 2 ms and 33 ms. Endpoint-level: 31.6 ms and 45.3 ms. What
+   explains the gap, and how would you confirm it?
+6. What would a client do with `[{course, status}]` that three separate
+   lists discourage?
+7. Why does joining `CourseOffering` fabricate academic facts?
+8. `/student/audit` returns the engine's internal model directly. What is
+   the cost, and why is it worth paying?
+9. How do you know the cross-user isolation test is capable of failing?
+10. Why does an unrecognised status get dropped rather than defaulted?
+
+## Try It Yourself
+
+**A.** Add `?student_id=` support to the context route and run the isolation
+tests. Read the diff. Then revert and confirm they pass - you have now
+verified the test, not just the code.
+
+**B.** Add `"credits_total": sum(...)` to the response. Mock up a UI that
+renders it beside "51-55 credits required", then run the audit and compare
+with `credits_applicable_to_degree`. Write down the sentence a student would
+believe.
+
+**C.** Join `CourseOffering` into the context query. Seed three offerings for
+one enrolled course. Count the rows the student sees.
+
+**D.** Flatten the three lists into one with a `status` field, then write the
+client code that computes "requirements met". Note the exact line where you
+started re-implementing the Degree Engine.
+
+**E.** Point the context endpoint at a pooled engine and re-measure all four
+latencies. Then decide whether that change belongs in a read-boundary phase.
+
+**F.** Reshape `/student/audit` to "just the summary". List every finding
+that disappears.
+
+## Further Learning
+
+- Layered architecture: orchestration vs domain logic; the anaemic API
+- Capability-based security: the object you hold *is* the permission
+- Insecure Direct Object Reference (IDOR) and designs where the id never
+  reaches the server (OWASP API1:2023)
+- Read models, CQRS, and why reads and interpretations cache differently
+- Contract design: published schemas, versioning, and the cost of exposing
+  an internal model
+- Mutation testing (mutmut, cosmic-ray) as evidence a test suite has teeth
+- Fan-out bugs in ORM joins; `selectinload` vs `joinedload` and row
+  multiplication

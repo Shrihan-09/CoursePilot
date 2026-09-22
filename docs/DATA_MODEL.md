@@ -3729,3 +3729,272 @@ SQLite      554 passed,  66 skipped   (unchanged)
 PostgreSQL  619 passed,   1 skipped   (unchanged)
 Backend     132 passed,   2 skipped   (was 99; +33)
 ```
+
+
+---
+
+## 28. The authenticated student context API (Phase 5.6)
+
+> The client never selects the Student record.
+
+Phases 5.4 and 5.5 built identity, ownership and linking. Nothing yet let a
+student *read their own record*. This section is that read boundary, and
+nothing more: it is read-only, it orchestrates, and it decides nothing
+academic.
+
+### 28.1 Five layers
+
+```
+OIDC JWT            identity         who is asking           app/api/auth.py
+UserAccount         ownership        which record is theirs  app/services/accounts.py
+Student + rows      academic FACTS   what is recorded        app/services/student_context.py
+Degree Engine       INTERPRETATION   what it means           app/services/audit/
+Catalog / search    description      what a course is        app/services/search/
+```
+
+Each layer answers a different question, and the failure mode this section
+guards against is a layer quietly answering the layer below's question. An
+API that sums credits has started interpreting. An API that decides a
+requirement is met has become a second Degree Engine - and two authorities
+for academic correctness means no authority at all.
+
+### 28.2 The endpoints
+
+```
+GET /api/v1/student/context     academic facts
+GET /api/v1/student/audit       the Degree Engine's own result
+```
+
+Both are **singular and parameterless**. No `{student_id}` in the path, no
+query selector, no request body, no field anywhere that names a person. The
+student is resolved by ownership alone:
+
+```
+principal.account_id -> UserAccount -> Student.user_id == account.id
+```
+
+This is Phase 5.3's property carried forward, and it is stronger than a
+check: **there is no input to validate.** A parameter nobody remembered to
+reject cannot exist if the endpoint takes no parameters. Student A cannot
+read Student B because there is nowhere to put "B".
+
+No `GET /students/{id}` self-service route was created. The only
+parameterised student path in the whole API is Phase 5.5's admin linking
+route, which is gated on `is_admin` before it looks anything up.
+
+### 28.3 Why two endpoints and not one
+
+Measured on the development database **before** deciding:
+
+| | service cost | payload |
+|---|---|---|
+| context (facts) | ~2 ms | 2,849 bytes |
+| audit (interpretation) | ~33 ms | 24,277 bytes |
+
+Bundling would make every read of a course list carry the full requirement
+tree, the allocation list and every rule result - an 8.5x payload for a
+client that wanted to render a transcript.
+
+The cost argument is the smaller half. The real reason is that facts and
+interpretation **change at different times**: a fact changes when a record
+is edited, an interpretation changes when the *rules* are recurated. They
+cache and invalidate differently, and merging them would force the cheap one
+to be recomputed whenever the expensive one became stale.
+
+And the separation is itself the boundary: a client that wants to know
+whether a requirement is satisfied must ask the engine. It cannot add up the
+context and decide for itself, because the context deliberately does not
+contain enough to do so.
+
+### 28.4 What the context response contains
+
+```json
+{
+  "program": {
+    "program_name": "...", "program_code": "...", "degree_type": "...",
+    "school_code": "...", "school_name": "...",
+    "catalog_year": "...", "program_version_catalog_year": "...",
+    "total_credits_min": "...", "total_credits_max": "...",
+    "curation_status": "unverified", "source_url": null
+  },
+  "academic_record": {
+    "completed":   [ {course_string, supplement_code, title, term_code,
+                      grade, credits_earned, catalog_credits, source_kind} ],
+    "in_progress": [ ... ],
+    "planned":     [ ... ]
+  }
+}
+```
+
+Three decisions worth stating:
+
+**Two catalog years, not one.** `Student.catalog_year` is the binding; the
+program version has its own. They are normally identical, and a mismatch is
+a real academic problem the engine raises as a blocking finding. Collapsing
+them into one field would make the API quietly disagree with the audit.
+
+**`curation_status` is exposed.** It is `unverified` until a human has
+checked the curation against published prose. A student reading their
+requirements is entitled to know that.
+
+**`source_kind` is exposed.** It reads `student_self_reported` until a
+registrar feed exists. CoursePilot is reasoning from evidence the student
+supplied, and saying so is the honest thing.
+
+### 28.5 What is deliberately absent
+
+| omitted | why |
+|---|---|
+| `Student.id`, `Student.user_id`, `UserAccount.id` | an identifier the client never receives is one it cannot replay, and nothing here needs one - the account already selects the record |
+| `Student.external_ref` | a label, not an identity (section 27.1). Publishing it would hand clients a name and an incentive to start passing it back |
+| identity-provider subject, JWT claims, `is_admin` | security metadata has no business in an academic response |
+| `student_link_event` history | it records who was authorized to read this record, which is exactly what a read of the record should not hand out |
+| **credit totals** | see below |
+
+**The totals decision.** `sum(credits_earned)` is one line away and it would
+be wrong - not arithmetically, but in meaning. A client rendering "38
+credits" beside a degree requirement is reading it as *credits toward the
+degree*, and that number is smaller: program rules exclude some coursework
+(`credits_excluded` in the audit), and only the engine knows which. **A
+plausible number in the wrong place is worse than no number.** Totals come
+from the audit, where they carry the engine's meaning.
+
+### 28.6 Status semantics are preserved exactly
+
+`completed`, `in_progress` and `planned` stay three separate lists. The
+engine treats them differently - completed satisfies, in-progress satisfies
+only provisionally, and planned satisfies nothing at all (section 21's
+baseline semantics) - and flattening them here would invite a client to
+re-invent a rule the engine already owns.
+
+A status the database CHECK permits but the code does not recognise is
+**dropped rather than guessed** into a bucket. Silently filing an unknown
+status under "completed" would fabricate academic fact.
+
+### 28.7 One row in, one row out
+
+The query joins `Course` on `course_id` and nothing else. Joining
+`CourseOffering` or `CourseSection` would fan a single record row into one
+per term or per section, and a duplicated course is a fabricated course. A
+test creates three offerings for one enrolled course and asserts the
+response contains exactly one entry.
+
+A retake is a different matter: the same course in two terms is two genuine
+rows, because `(student, course, term)` is the natural key. Both appear,
+ordered by course string then term - never by UUID, which is stable within a
+database and meaningless across a re-ingest.
+
+### 28.8 Unlinked accounts
+
+Unchanged from Phases 5.4/5.5: **409 Conflict**. Not 404, which would tell a
+student their own record is missing; not 403, which would imply refusal. An
+account with no local row returns the same 409, because distinguishing it
+would leak that an account once existed.
+
+### 28.9 No mutation surface
+
+No `POST`, `PUT`, `PATCH` or `DELETE` exists on either route; they return
+405. The frontend cannot fabricate a completed course, a grade, a credit or
+a requirement through this API, because there is no verb that writes.
+
+Academic-record mutation is **explicitly deferred**. No such architecture
+exists yet, and inventing one inside a read phase would be the fastest route
+to a client-authored transcript.
+
+### 28.10 Rate limiting
+
+No new limiter. The existing authenticated request budget (60/minute, keyed
+on the stable `UserAccount.id`) already fits: these are cheap reads, and
+what needs bounding is per-identity request volume, which that budget
+already bounds. Phase 5.5's separate linking budget existed because linking
+had a different blast radius; a read of one's own record does not.
+
+### 28.11 Performance
+
+Measured against a copy of the real development database (1 student, 11
+course rows), warm:
+
+```
+no credential                    401     0.80 ms
+authenticated, unlinked          409    22.03 ms
+GET /student/context             200    31.61 ms   2,849 bytes
+GET /student/audit               200    45.26 ms  24,277 bytes
+POST /explanations/recommendation 200  390.95 ms   (comparison point)
+```
+
+**About 21 ms of every one of those is connection setup**, not work:
+
+```
+open sync session + SELECT 1 (NullPool)   20.93 ms
+```
+
+`NullPool` is a deliberate Phase 5.2 choice - a pooled sync engine held
+sockets open for the life of the process and leaked them at exit. So the
+real work is roughly 1 ms (409), 11 ms (context) and 24 ms (audit), and the
+endpoint-level gap between context and audit looks smaller than the
+service-level gap only because a fixed cost dominates both.
+
+**The context endpoint does not rebuild the search index.** The ~230 ms BM25
+rebuild visible in the explanation endpoint's 391 ms is absent here, and a
+test asserts the route module references neither `build_bm25` nor
+`build_course_documents`. Returning a student's own record must not rebuild
+global retrieval state.
+
+Connection pooling is the obvious next win and is **not** taken in this
+phase: it is a cross-cutting change to a decision made for a good reason,
+and scoping it into a read-boundary phase would be exactly the kind of
+opportunistic edit that makes a change hard to review.
+
+### 28.12 Migration
+
+**None.** Everything the endpoints need already exists: `Student`,
+`StudentCourse`, `Course`, `Program`, `ProgramVersion`, `School`, and
+`student.user_id` from Phase 5.4. `alembic check` reports no new upgrade
+operations. A migration created merely to support an endpoint would be
+schema churn.
+
+Operational note: the development database `coursepilot` is still at
+`d35eb3a64b5d` (Phase 5.4). Phase 5.5's migration was verified against
+copies and never applied to the source, so it remains outstanding there.
+
+### 28.13 Limitations
+
+**Genuine:**
+
+1. **~21 ms of fixed connection cost** per request (28.11). Pooling is the
+   fix and is deliberately out of scope.
+2. **The audit is recomputed on every request.** At ~24 ms of work that is
+   acceptable now; it will not stay acceptable with a real cohort, and
+   nothing caches it. Caching was not added prematurely, and doing it right
+   needs an invalidation story tied to recuration.
+3. **`DegreeAuditResult` is the public contract of `/student/audit`.** The
+   endpoint returns the engine's domain model directly, which is honest -
+   there is no second opinion - but it means an internal model is now a
+   published API shape, and changing it is a breaking change.
+4. **A pre-existing serialization wart** surfaces here: the engine assigns
+   `int` 0 to `satisfied_credits`, declared `Decimal`, producing a Pydantic
+   warning. Cosmetic, and left alone because fixing it means touching engine
+   code during a read-boundary phase.
+5. **No pagination.** A record is tens of rows; a transcript is not a feed.
+   It will need pagination long before it needs it urgently.
+6. **No academic-record mutation**, so records still arrive only through
+   ingestion or direct SQL.
+7. **One student per account** (Phase 5.4's UNIQUE), so dual-degree students
+   are not representable.
+
+**Intentionally deferred:** record mutation, transcript upload, caching,
+pagination, connection pooling, and any planning surface.
+
+### 28.14 Unchanged
+
+Allocation, category allocation, the optimizer, baseline semantics, sharing
+policy, course eligibility, BM25 ranking, `CourseDocument`, Phase 5.1
+explanation facts, Phase 5.2 provider behaviour, Phase 5.3 fallback, Phase
+5.4 token validation and Phase 5.5 linking authorization.
+
+```
+SQLite      554 passed,  66 skipped   (unchanged)
+PostgreSQL  619 passed,   1 skipped   (unchanged)
+Backend     168 passed,   2 skipped   (was 132; +36)
+alembic check                          clean, no migration added
+```
