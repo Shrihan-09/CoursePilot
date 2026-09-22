@@ -29,6 +29,10 @@ from app.services.explanations.providers import (
 ENDPOINT = "/api/v1/explanations/recommendation"
 
 
+def auth(student_ref: str = "student-a") -> dict[str, str]:
+    return {"Authorization": f"Bearer devtoken:{student_ref}"}
+
+
 # ==========================================================================
 # configuration: no credentials still works
 # ==========================================================================
@@ -95,7 +99,9 @@ async def test_arbitrary_prompt_is_rejected(client: AsyncClient) -> None:
     There is no prompt field, and unknown fields are forbidden, so a client
     cannot route a free-text question to the model as an academic request.
     """
-    response = await client.post(ENDPOINT, json={"prompt": "What classes should I take?"})
+    response = await client.post(
+        ENDPOINT, json={"prompt": "What classes should I take?"}, headers=auth()
+    )
     assert response.status_code == 422
 
 
@@ -104,12 +110,8 @@ async def test_client_cannot_assert_an_academic_fact(client: AsyncClient) -> Non
     them become authoritative."""
     response = await client.post(
         ENDPOINT,
-        json={
-            "student_ref": "someone",
-            "course_key": "01:198:344",
-            "satisfaction": True,
-            "credits": 99,
-        },
+        json={"course_key": "01:198:344", "satisfaction": True, "credits": 99},
+        headers=auth(),
     )
     assert response.status_code == 422
 
@@ -118,32 +120,43 @@ def test_request_schema_has_no_academic_fields() -> None:
     from app.api.v1.routes.explanations import RecommendationExplanationRequest
 
     fields = set(RecommendationExplanationRequest.model_fields)
-    assert fields == {"student_ref", "course_key", "explanation_type"}
-    forbidden = {"satisfaction", "credits", "requirement_code", "prompt", "context"}
+    # Phase 5.3 removed student_ref: identity comes from the credential, so a
+    # caller cannot name a student at all.
+    assert fields == {"course_key", "explanation_type"}
+    forbidden = {
+        "satisfaction", "credits", "requirement_code", "prompt", "context",
+        "student_ref", "student_id", "provider", "max_tokens", "temperature",
+    }
     assert not (fields & forbidden)
 
 
 async def test_malformed_course_key_is_rejected(client: AsyncClient) -> None:
     response = await client.post(
-        ENDPOINT, json={"student_ref": "s", "course_key": "CS 344"}
+        ENDPOINT, json={"course_key": "CS 344"}, headers=auth()
     )
     assert response.status_code == 422
 
 
-async def test_oversized_student_ref_is_rejected(client: AsyncClient) -> None:
+async def test_oversized_credential_is_rejected(client: AsyncClient) -> None:
+    """Bounded before any database or model work."""
     response = await client.post(
-        ENDPOINT, json={"student_ref": "x" * 500, "course_key": "01:198:344"}
+        ENDPOINT,
+        json={"course_key": "01:198:344"},
+        headers={"Authorization": "Bearer devtoken:" + "x" * 500},
     )
-    assert response.status_code == 422
+    assert response.status_code == 401
 
 
 async def test_unknown_student_returns_404(client: AsyncClient) -> None:
     response = await client.post(
         ENDPOINT,
-        json={"student_ref": "definitely-not-a-student", "course_key": "01:198:344"},
+        json={"course_key": "01:198:344"},
+        headers=auth("definitely-not-a-student"),
     )
     assert response.status_code == 404
-    assert "student" in response.json()["detail"].lower()
+    # Missing student and missing course are indistinguishable: telling them
+    # apart would make the endpoint a student-existence oracle.
+    assert response.json()["detail"] == "No such recommendation."
 
 
 def test_response_model_exposes_how_it_was_produced() -> None:
