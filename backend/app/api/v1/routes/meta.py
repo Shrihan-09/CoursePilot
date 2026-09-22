@@ -19,7 +19,11 @@ class Capabilities(BaseModel):
     """`False` means "not built yet", not "disabled by config"."""
 
     course_search: bool = False
-    degree_audit: bool = False
+    #: Phase 5.6: GET /api/v1/student/audit exposes the deterministic engine
+    #: to an authenticated, linked student. True because the endpoint exists
+    #: and works, not because the engine does - it has worked since Phase 3,
+    #: and a capability flag describes what a client can actually call.
+    degree_audit: bool = True
     semester_planning: bool = False
     schedule_generation: bool = False
     registration_likelihood: bool = False

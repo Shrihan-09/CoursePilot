@@ -20,7 +20,9 @@ async def test_meta_reports_unimplemented_capabilities(client: AsyncClient) -> N
 
     # Guards against shipping a UI for features that don't exist. As features
     # land, these flip to True here and in the endpoint together.
-    assert body["capabilities"]["degree_audit"] is False
+    # Phase 5.6 landed GET /api/v1/student/audit, so degree_audit is now True.
+    assert body["capabilities"]["degree_audit"] is True
+    assert body["capabilities"]["course_search"] is False
     assert body["capabilities"]["schedule_generation"] is False
 
     # No Rutgers data has been ingested, and we must not imply otherwise.
