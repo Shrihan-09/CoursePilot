@@ -186,8 +186,8 @@ def _load_context(account_id) -> StudentContext | None:
         return build_student_context(session, student)
 
 
-def _run_audit(account_id) -> DegreeAuditResult | None:
-    from app.services.audit.engine import DegreeAuditEngine
+def _run_audit(account_id) -> tuple[DegreeAuditResult, bool] | None:
+    from app.services.audit.cached_audit import audit_with_cache
 
     with get_sync_sessionmaker()() as session:
         student = _resolve(session, account_id)
@@ -196,7 +196,12 @@ def _run_audit(account_id) -> DegreeAuditResult | None:
         # The engine's own result, unmodified. The route does not re-derive,
         # post-process, filter or "helpfully" summarise it - a second opinion
         # about academic correctness is exactly what must not exist.
-        return DegreeAuditEngine(session).audit(student)
+        #
+        # Phase 5.7 caches that result. The cache is keyed on a hash of the
+        # engine's actual inputs, so a hit is only possible when a fresh
+        # computation would produce the same bytes; the route cannot tell the
+        # difference and neither can the client.
+        return audit_with_cache(session, student)
 
 
 def _to_response(context: StudentContext) -> StudentContextResponse:
@@ -284,25 +289,33 @@ async def student_audit(
 ) -> DegreeAuditResult:
     started = time.perf_counter()
     try:
-        result = await run_in_threadpool(_run_audit, principal.account_id)
+        outcome = await run_in_threadpool(_run_audit, principal.account_id)
     except Exception:
         # A Degree Engine failure is never dressed up as a successful audit.
         # An empty or partial result would read as "you have satisfied
         # nothing", which is a false academic statement.
+        #
+        # A CACHE failure never reaches here: every cache operation falls
+        # back to computing fresh, so a broken cache costs latency, not a 500.
         logger.exception("student_audit_failed")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Unable to compute a degree audit for this account.",
         ) from None
 
-    if result is None:
+    if outcome is None:
         raise _unlinked()
 
+    result, from_cache = outcome
+    # `from_cache` is observability, and stays here. It is deliberately NOT
+    # in the response: Phase 5.6's contract is a DegreeAuditResult, and
+    # whether a cache was involved is not an academic fact.
     logger.info(
         "student_audit_served",
         extra={
             "principal": principal.redacted(),
             "status": result.status.value,
+            "cache": "hit" if from_cache else "miss",
             "latency_ms": round((time.perf_counter() - started) * 1000, 1),
         },
     )
