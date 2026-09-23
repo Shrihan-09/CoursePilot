@@ -52,6 +52,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 
 from app.api.security import Principal, get_link_limiter, get_principal
+from app.core.metrics import get_metrics
 from app.core.config import Settings, get_settings
 from app.db.session import get_sync_sessionmaker
 from app.models import Student, UserAccount
@@ -102,11 +103,10 @@ class LinkResponse(BaseModel):
     event_recorded: bool
 
 
-def require_admin_principal(
+def require_admin_account(
     principal: Principal = Depends(get_principal),
-    settings: Settings = Depends(get_settings),
 ) -> Principal:
-    """Authorize the caller as an administrator, then charge the link budget.
+    """Authorize the caller as an administrator. Charges no budget.
 
     Runs before any student lookup, so a non-admin cannot learn whether a
     record exists. 403 rather than 404: the caller is authenticated and
@@ -130,9 +130,23 @@ def require_admin_principal(
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized."
             ) from None
+    return principal
 
-    # Charged only to callers who passed authorization, so a rejected
-    # non-admin cannot burn an administrator's budget.
+
+def require_admin_principal(
+    principal: Principal = Depends(require_admin_account),
+    settings: Settings = Depends(get_settings),
+) -> Principal:
+    """Administrator, plus the LINKING budget. For mutating link routes only.
+
+    Split from `require_admin_account` in Phase 5.8: a read-only operational
+    endpoint must not spend the 10/min budget that exists to bound how many
+    academic records a compromised admin credential can reassign. Those are
+    different risks and deserve different budgets.
+
+    Charged only to callers who passed authorization, so a rejected non-admin
+    cannot burn an administrator's allowance.
+    """
     if settings.rate_limit_enabled:
         get_link_limiter(settings).check(f"link:{principal.account_id}")
     return principal
@@ -250,3 +264,27 @@ async def unlink(
         extra={"student_id": str(student_id), "by": principal.redacted()},
     )
     return LinkResponse(student_id=student_id, linked=False, event_recorded=True)
+
+
+@router.get(
+    "/metrics",
+    summary="Operational counters for this process. Contains no identifiers.",
+)
+async def metrics(
+    principal: Principal = Depends(require_admin_account),
+) -> dict:
+    """Audit-cache counters and timings.
+
+    Admin-gated, reusing Phase 5.5's authorization rather than inventing a
+    second notion of who may see operational data.
+
+    **Per process and in memory**, the same limitation the rate limiter
+    carries: it does not survive a restart and does not aggregate across
+    workers, so N workers give N partial views. Enough to answer "is the
+    cache working?", and not a monitoring system.
+
+    Contains no student identifier, external ref, provider subject or audit
+    content - there is no API for attaching labels, so there is nowhere for
+    one to get in.
+    """
+    return get_metrics().snapshot()
