@@ -33,6 +33,7 @@ section restriction lists, cross-program double-counting policy.
 """
 
 from app.models.academic import Course, CourseOffering, Subject
+from app.models.audit_cache import StudentAuditCache
 from app.models.provenance import DataSource
 from app.models.requirements import (
     CatalogCourseEntry,
@@ -88,6 +89,7 @@ __all__ = [
     "PROVIDER_DEV",
     "PROVIDER_OIDC",
     "Student",
+    "StudentAuditCache",
     "StudentLinkEvent",
     "UserAccount",
     "StudentCourse",
