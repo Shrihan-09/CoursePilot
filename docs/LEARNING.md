@@ -5908,3 +5908,310 @@ down what would change your answer.
   disease
 - Determinism as an engineering property: reproducible builds, pure
   functions, and memoization
+
+
+---
+
+# Lesson 22: Invalidation by Discipline, by Construction, and by the Database
+
+## What We Built
+
+A compressed cache payload, a PostgreSQL-trigger-maintained rules version,
+and enough metrics to tell whether any of it works.
+
+---
+
+## Concepts
+
+### Three grades of "the cache will not go stale"
+
+Lesson 21 drew the line between remembering and constructing. There is a
+third grade above both, and this phase is where it becomes necessary:
+
+```
+1. DISCIPLINE     "remember to bump the counter"
+                  fails when someone adds a write path in eight months
+
+2. CONSTRUCTION   the key IS a hash of the inputs
+                  cannot go stale - but the application must READ the inputs
+                  to compute the key, every single time
+
+3. DATABASE       the engine that accepts the write maintains the version
+                  cannot go stale, and costs one row read
+```
+
+Grade 2 was Phase 5.7 and it was correct. Its cost was structural: proving
+"the rules have not changed" meant hashing every rule row, ~14 ms on every
+audit, hit or miss. You cannot make that cheap while the *application* is
+the thing doing the checking.
+
+Grade 3 moves the obligation to the only component that sees every write.
+
+```
+ORM event hooks    fire when the write went through SQLAlchemy
+database triggers  fire when the write reached the table
+```
+
+That gap is not hypothetical. Phase 5.7 rejected `MAX(updated_at)` precisely
+because a catalog fix applied in `psql` never touches an ORM-maintained
+column. A trigger has no such gap - `psql`, a migration, a bulk `UPDATE`, an
+ingestion job and the ORM all arrive at the table.
+
+**A guarantee is only as strong as the narrowest chokepoint it is enforced
+at.** The ORM is not a chokepoint. The table is.
+
+### Tests must enter through the same door the bug would
+
+The corollary is about testing, and it is the sharpest idea here.
+
+If the guarantee is "raw SQL cannot evade this", then a test that calls an
+application helper proves nothing:
+
+```python
+update_requirement(session, req, min_count=5)     # proves the helper works
+session.execute(text("UPDATE requirement SET ..."))  # proves the CLAIM
+```
+
+Every rules-version test mutates through raw SQL for exactly this reason.
+The claim is about the database boundary, so the test has to be made at the
+database boundary. A mock of the trigger would be a test of the mock.
+
+Generalised: **write the test at the layer where the guarantee is claimed,
+not at the layer that is convenient to call.**
+
+### The dependency trace that found a real bug
+
+Part 7 asked for the exact set of tables the audit reads, traced rather than
+recalled. That felt like paperwork until it turned up this:
+
+```python
+program = version.program
+...
+program_name=program.name, degree_type=program.degree_type,
+```
+
+`Program` is a field source for `DegreeAuditResult`, and Phase 5.7's
+fingerprint - the one built carefully, with reflective column enumeration,
+with tests - never hashed that table. Renaming a program served the old name
+from cache forever.
+
+The reflective enumeration protected against forgetting a **column**. Nobody
+had protected against forgetting a **table**.
+
+```
+reflection over columns   handles the field you add next year
+the trace over tables     handles the join you forgot this year
+```
+
+Worth sitting with: the Phase 5.7 design was *good*, and it was
+mechanically thorough in one dimension while being manually complete in
+another. Thoroughness inside a boundary does not establish that the boundary
+is in the right place. The only way to find that is to re-read what the code
+actually reads.
+
+### Measure the layer you are about to change
+
+The cold path cost ~44 ms in an INSERT. Two explanations were available:
+24 KB is a lot of bytes, or `text` columns are slow. They suggest different
+fixes, so the experiment separated them:
+
+```
+text,  24 KB    46.04 ms
+bytea, 24 KB    44.04 ms     <- type is not the cause
+bytea, 3.4 KB    2.22 ms     <- size is
+```
+
+Had the answer been "text is slow", compressing would have been beside the
+point. One extra experiment, five minutes, and the difference between fixing
+a cause and treating a symptom.
+
+### Compression as the alternative to a second domain model
+
+The payload anatomy is the interesting part:
+
+```
+JSON field NAMES        39.2%
+duplicate string values 13.2%
+null and empty fields   15.3%
+```
+
+Nearly 70% redundancy. The tempting fix is a compact schema: short keys,
+drop nulls, intern repeated strings. It would work.
+
+It would also create a second encoding of academic results that has to stay
+correct, forever, in step with `DegreeAuditResult`. Every field added to the
+audit would need adding in two places, and the failure mode of forgetting is
+a silently truncated academic record.
+
+zlib removes 85.6% - more than the compact schema would - for 0.17 ms and
+**no second representation**. The cache stays a serializer.
+
+The principle: **when a general mechanism captures the same redundancy a
+bespoke one would, the bespoke one is paying maintenance for nothing.** The
+redundancy that makes the payload big is precisely what compressors are good
+at; that is not a coincidence, it is what they are for.
+
+### Choosing where to be wrong
+
+The rules version is global: any program's change invalidates every
+student's cache. Per-program versioning is more precise and was rejected,
+and the reasoning is worth copying.
+
+Per-program requires each trigger to resolve its row's owning program
+version. For `requirement_course_option` that means reading through
+`requirement` - which may already be deleted when a cascading delete fires
+the trigger. Subtle ordering logic, in a correctness-critical path, for
+isolation nothing currently needs.
+
+But the deciding argument is the asymmetry:
+
+```
+over-invalidation    a recomputation             costs milliseconds
+under-invalidation   a stale degree audit        costs a student
+```
+
+**When a design can be wrong in two directions, find out whether the two
+directions cost the same.** They rarely do, and when they do not, the
+cheaper failure is not a compromise - it is the answer.
+
+The same asymmetry decides a smaller question: a statement matching zero
+rows still bumps the version. A spurious miss, deliberately.
+
+### A failure mode chosen on purpose
+
+Dropping `rules_version` while its triggers remain makes every write to a
+rules table fail. That looks like a flaw until you ask what the alternative
+is: rule writes silently succeeding *without* versioning - which is the
+stale audit this entire mechanism exists to prevent.
+
+So it is pinned by a test, as a property rather than a bug. **Fail-closed is
+a feature when the open failure is silent and the closed failure is loud.**
+
+### Not claiming what you cannot deliver
+
+The engine version still needs a human to bump it for semantic changes the
+policy names cannot see. Phase 5.8 was asked whether that could be
+automated, and the honest answer is no: the application has no deployment or
+build-version model, so a Git SHA would change for reasons unrelated to
+audit semantics *and* fail to change when a dependency altered them. Worse
+than nothing, because it would look automatic.
+
+**A mechanism that appears to solve a problem it does not solve is more
+dangerous than an acknowledged manual step.** The manual step is written
+down with the exact list of changes that require it.
+
+### Metrics with nowhere to put a secret
+
+The privacy rule is "never a student identifier in a metric label". The
+implementation is stronger than the rule:
+
+```python
+def increment(self, name: str, amount: int = 1) -> None:
+```
+
+There is no `labels` parameter. A test asserts there is no `labels`
+parameter. You cannot leak a student id into a metric because the function
+that would carry it does not exist.
+
+Same shape as Lesson 20's parameterless endpoint: **a control enforced by
+the absence of a capability beats a control enforced by a rule about how to
+use it.** Rules are things people follow; absences are things people cannot
+violate.
+
+This also bounds cardinality for free, which is the other way metrics
+systems fall over.
+
+### Define your metric semantics or they mean nothing
+
+"Hit rate" sounds self-explanatory until a request finds a stale row,
+recomputes, and someone has to decide what it counted as. If it is both a
+hit and a miss, the rate is meaningless.
+
+```
+exactly one of hit/miss per cache-consulting call
+a stale row is ONE miss, additionally counted as stale
+a bypassed call is neither - it never asked the cache
+hit rate before any traffic is None, not 0.0
+```
+
+That last one matters more than it looks. A cache with no traffic reporting
+"0% hit rate" reads exactly like a cache that is broken, and someone will
+spend an afternoon on it.
+
+### Two suites, one database
+
+Several runs failed intermittently. The cause was not the code: the
+ingestion suite was running concurrently against the same test database and
+TRUNCATEs tables. Run serially, seven consecutive clean runs.
+
+The reason to write this down is that the previous phase recorded a
+*similar-looking* symptom with a genuinely different cause - a four-hex-digit
+fixture collision. Two intermittent-failure entries that look alike and are
+not will mislead whoever reads them next.
+
+**When you diagnose flakiness, record the cause, not the symptom** - and
+when a new instance looks like an old one, check rather than assume. Here
+the tell was the wall time: 27 s became 76 s, which is contention, not a
+logic bug.
+
+---
+
+## Self-Check
+
+1. Name the three grades of invalidation guarantee and what each costs.
+2. Why can an ORM event hook not deliver the guarantee a trigger delivers?
+3. Why do the rules-version tests use raw SQL instead of the ORM?
+4. Phase 5.7 enumerated columns reflectively and still served a stale audit.
+   What did that protect against, and what did it not?
+5. `text 24 KB` and `bytea 24 KB` both took ~45 ms. What did that rule out,
+   and why did it matter?
+6. Compression removes more redundancy than a compact schema would. What
+   else does it avoid?
+7. Global versioning over-invalidates. Why is that the right trade here, and
+   what would change it?
+8. A statement matching zero rows still bumps the version. Defend that.
+9. Dropping `rules_version` breaks all rule writes. Why is that a feature?
+10. Why was the Git SHA rejected as an engine version?
+11. How is "no student id in a metric" enforced, and why is that stronger
+    than a policy?
+12. A request finds a stale row and recomputes. Hit, miss, or both?
+13. What was the actual cause of the intermittent test failures, and what
+    was the tell?
+
+## Try It Yourself
+
+**A.** Replace the trigger with a SQLAlchemy `after_update` event listener.
+Then recurate a requirement with `psql` and read the audit. Note that
+nothing in the application logs looks wrong.
+
+**B.** Remove `program` from `RULES_TABLES` and re-run the migration. Rename
+a program and read the audit twice. You have reproduced the Phase 5.7 bug.
+
+**C.** Make the trigger `FOR EACH ROW`. Bulk-update 800 eligibility rows and
+compare the version delta and the wall time.
+
+**D.** Store the payload uncompressed as `text` again and re-measure the cold
+path. Then store it base64-encoded and compare to `bytea`.
+
+**E.** Add a `labels: dict` parameter to `increment`. Notice how natural it
+feels to pass `student_id` - that is the whole argument for not having it.
+
+**F.** Count a stale miss as both a hit and a miss. Compute the hit rate over
+a workload where the rules change every third request, and say what the
+number means.
+
+**G.** Run the backend and ingestion suites concurrently against one
+database. Watch unrelated tests fail, and watch the wall time double.
+
+## Further Learning
+
+- Database triggers: statement-level vs row-level, transition tables,
+  `AFTER TRUNCATE`
+- Change Data Capture and logical replication as generalisations of this idea
+- Content-addressed vs version-addressed invalidation
+- Compression: LZ77, dictionary coding, and why structured text compresses
+  so well
+- PostgreSQL TOAST: out-of-line storage and the cost of wide rows
+- Metric cardinality explosions as an outage class; RED and USE methods
+- Test isolation: shared fixtures, database-per-worker, `pytest-xdist`
+- Fail-closed vs fail-open design in correctness-critical systems

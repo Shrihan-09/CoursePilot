@@ -4453,3 +4453,427 @@ PostgreSQL  619 passed,   1 skipped   (unchanged)
 Backend     217 passed,   2 skipped   (was 168; +49)
 alembic check                          clean
 ```
+
+
+---
+
+## 30. Cache payload, verified rules versioning and observability (Phase 5.8)
+
+Phase 5.7 left three measured problems. This section fixes two, makes the
+third visible, and corrects a stale-audit bug found while tracing the
+dependency graph.
+
+### 30.1 A stale-audit bug, found by doing the trace properly
+
+Part 7 asked for the exact rules mutation surface rather than an assumption.
+Tracing `DegreeAuditEngine.audit()` turned up this:
+
+```python
+program = version.program
+...
+program_name=program.name, program_code=program.code,
+degree_type=program.degree_type,
+```
+
+Those are fields of `DegreeAuditResult` - and Phase 5.7's `rules_fingerprint`
+never hashed the `program` table. Demonstrated against the real development
+data before being fixed:
+
+```
+rename program to "RENAMED PROGRAM"
+  rules fingerprint changed?    False
+  academic fingerprint changed? False
+  served from cache:            True
+  cached program_name:          Computer Science
+  fresh  program_name:          RENAMED PROGRAM     <- STALE
+```
+
+`program` is now in both the fingerprint and the trigger set. The lesson is
+not that a table was missed; it is that **"which rows does this computation
+read?" has to be answered by reading the code, not by recalling the design.**
+
+### 30.2 Where the cold path actually went
+
+Measured before changing anything:
+
+```
+academic fingerprint         1.65 ms
+rules fingerprint           13.86 ms      <- on EVERY audit, hit or miss
+full cache key              14.48 ms
+DegreeEngine.audit()        32.85 ms
+serialize                    0.12 ms
+deserialize                  0.21 ms
+row lookup                   1.36 ms
+INSERT + flush              44.56 ms      <- the cold-path cost
+commit                       3.63 ms
+```
+
+### 30.3 Payload anatomy, measured rather than guessed
+
+```
+total                       24,277 bytes
+  requirements              15,878   65.4%
+  allocation                 6,861   28.3%
+  rules                      1,673    6.9%
+
+JSON field NAMES             9,517   39.2%    <- largest single category
+duplicate string values      3,215   13.2%
+null fields                  1,601    6.6%
+empty fields                 2,110    8.7%
+```
+
+Nearly 40% of the payload is repeated key names such as `status`,
+`requirement_code` and `curation_status`. That is exactly the redundancy a
+hand-written compact schema would target - and exactly what a general
+compressor removes for free.
+
+### 30.4 Structural reduction considered first, then rejected
+
+Part 4 asks for structural reduction to be evaluated before compression. It
+was, and compression wins on the measurement:
+
+| approach | result |
+|---|---|
+| compact schema (short keys, drop nulls) | would target ~61% of the payload, needs a second representation of academic data to keep correct |
+| **zlib level 6** | removes **85.6%**, no second representation, no correctness surface |
+
+A compact schema would buy less and cost a parallel encoding of academic
+results that must stay in step with `DegreeAuditResult` forever. The cache
+stays a serializer, not a second domain model.
+
+### 30.5 Compression choice
+
+```
+zlib level 1   5,035 bytes (20.7%)  compress 0.05 ms  decompress 0.04 ms
+zlib level 6   3,487 bytes (14.4%)  compress 0.17 ms  decompress 0.02 ms
+zlib level 9   3,480 bytes (14.3%)  compress 0.28 ms  decompress 0.02 ms
+gzip level 6   3,499 bytes (14.4%)  compress 0.17 ms
+```
+
+Level 9 buys 7 bytes for 65% more CPU; level 1 costs 1.5 KB to save 0.12 ms.
+**Level 6 is the knee.** gzip is zlib plus a header, so it offers nothing
+here.
+
+Never pickle: the row crosses processes and deploys, and unpickling is code
+execution.
+
+### 30.6 Was it the size, or the column type?
+
+The decisive experiment, because "24 KB text is slow" and "text is slow" are
+different claims:
+
+```
+text,  24 KB raw json        insert 46.04 ms
+bytea, 24 KB uncompressed    insert 44.04 ms     <- type is not the cause
+text,  3.4 KB base64(zlib)   insert  2.41 ms
+bytea, 3.4 KB zlib           insert  2.22 ms     <- chosen
+```
+
+It is **size**. `bytea` is chosen over base64 text because base64 would
+inflate the bytes by a third to gain nothing, and compressed data is not
+text. Read cost was flat either way (~2.1 ms).
+
+### 30.7 Rules versioning: designs compared
+
+| design | verdict |
+|---|---|
+| A. trigger-maintained global version | **chosen** |
+| B. per-program-version counter | deferred |
+| C. full fingerprint (Phase 5.7) | kept as the fallback |
+| D. version + fingerprint verification | pointless - pays the fingerprint anyway |
+
+**B is deferred for a specific reason, not vagueness.** Per-program
+versioning needs each trigger to resolve its row's owning program version,
+and for `requirement_course_option` that means a lookup through
+`requirement` - which may already be gone when a cascading delete fires the
+trigger. Subtle ordering logic in a correctness-critical path, to buy
+program isolation that nothing currently needs: CoursePilot has one program,
+and recuration is a human reading catalog prose.
+
+The cost of A is over-invalidation - recurating Computer Science makes a
+History student's cache unreachable. Accepted, because **over-invalidation
+costs a recomputation and under-invalidation serves a student the wrong
+degree status.** B becomes worth its complexity when there are many programs
+*and* frequent recuration.
+
+**C is not discarded.** It remains the fallback wherever the triggers are
+absent, so the guarantee never depends on the optimization being available.
+
+### 30.8 The schema contract
+
+> Any database mutation capable of changing Degree Engine rule inputs also
+> changes `rules_version.version`.
+
+Enforced at the **database boundary**:
+
+```sql
+CREATE TRIGGER trg_rules_version_bump
+AFTER INSERT OR UPDATE OR DELETE OR TRUNCATE ON <table>
+FOR EACH STATEMENT EXECUTE FUNCTION bump_rules_version();
+```
+
+on `program`, `program_version`, `requirement`,
+`requirement_course_option` and `program_rule`.
+
+Statement-level, so recuration of 800 eligibility rows costs one bump rather
+than 800. TRUNCATE included, because emptying `requirement` obviously
+changes an audit and is not a row event. A statement matching zero rows
+still bumps - a spurious miss, in the safe direction.
+
+**Why a trigger and not an ORM hook:**
+
+```
+ORM event hooks    fire when the write went through SQLAlchemy
+database triggers  fire when the write reached the table
+```
+
+Phase 5.7 rejected `MAX(updated_at)` because ORM-maintained timestamps miss
+raw-SQL recuration. An ORM callback has the identical hole. The tests
+therefore mutate through **raw SQL** - calling an application helper and
+then asserting the version moved would prove only that the helper works.
+
+Verified: raw SQL INSERT / UPDATE / DELETE on each of the five tables, ORM
+insert/update/delete, bulk UPDATE (one bump, not per row), bulk DELETE,
+zero-match UPDATE, and that `user_account`, `student` and plain SELECTs do
+**not** bump.
+
+### 30.9 A deliberate, documented failure mode
+
+Dropping `rules_version` while its triggers remain makes every write to a
+rules table **fail**. That is pinned by a test, because it is the right
+direction to fail: the alternative is rule writes silently going
+unversioned, which is the stale audit the mechanism exists to prevent.
+Operationally the table and its triggers are created and dropped together,
+which is what the migration does.
+
+### 30.10 The token, and the fallback
+
+```
+v:<n>      trigger-maintained version   PostgreSQL      ~1.3 ms
+f:<sha>    full reflective fingerprint  anywhere       ~13.9 ms
+```
+
+The prefix keeps them unambiguous, so a row written under one mechanism is
+never read as the other - a mismatch is a miss, which is always safe.
+
+**The fallback is not a weaker guarantee**, it is the Phase 5.7 mechanism at
+Phase 5.7 speed. Falling back to "assume unchanged" is not offered.
+
+### 30.11 SQLite
+
+The triggers are PostgreSQL-specific and stated as such. SQLite gets the
+`rules_version` table but no triggers, and the application detects their
+absence and uses the fingerprint. No fake abstraction was built: a SQLite
+shim would claim a guarantee never tested against production semantics, and
+**SQLite behaviour cannot prove PostgreSQL trigger behaviour.**
+
+### 30.12 Engine version, unchanged and still partly manual
+
+```
+AUDIT_ENGINE_VERSION = "5.7.0"     explicit, bumped by a human
++ DEFAULT_OBJECTIVE.name           read from the live policy objects
++ DEFAULT_STRATEGY.name
+```
+
+Kept separate from `rules_token`: the database version answers "did the
+rules change", not "did Python change". Investigated whether anything could
+make the explicit half automatic - the application has no deployment or
+build-version model, so a Git SHA would be a number that changes for reasons
+unrelated to audit semantics and fails to change when a dependency alters
+them. **No automatic mechanism is claimed.**
+
+What still requires a developer to bump it: any change to allocation,
+evaluation, baseline semantics, tie-breaking, credit accounting, or finding
+text, that is not visible through the objective and strategy names.
+
+### 30.13 Observability
+
+No metrics library existed, and adopting one is a decision of its own, so
+`app/core/metrics.py` is the smallest thing that answers the questions asked.
+
+```
+audit_cache_hits_total            audit_cache_read_failures_total
+audit_cache_misses_total          audit_cache_write_failures_total
+audit_cache_stale_total           audit_cache_invalidations_total
+
+audit_duration_ms                 audit_cache_lookup_duration_ms
+audit_engine_duration_ms          audit_cache_write_duration_ms
+```
+
+**Semantics, defined rather than implied:** exactly one of hit/miss per
+cache-consulting call, never both. A stale row is **one miss**, additionally
+counted as stale so a stale miss is distinguishable from a cold one - they
+mean different things operationally. A `use_cache=False` call counts as
+neither, because it never asked the cache anything. `cache_hit_rate` is
+`None`, not `0.0`, before any traffic: a cache with no traffic has no hit
+rate, and 0% would read as a broken cache.
+
+**Cardinality policy:** metric names are constants in one file and there is
+**no API for attaching labels** - a test asserts `increment` and `observe`
+take no `labels` or `tags` parameter. That is stronger than a rule saying
+not to add student identifiers: there is nowhere to put one.
+
+Exposed at `GET /api/v1/admin/metrics`, reusing Phase 5.5's admin
+authorization rather than inventing a second notion of who may see
+operational data. That required splitting the admin dependency:
+`require_admin_account` authorizes, `require_admin_principal` additionally
+charges the **linking** budget. A read-only endpoint must not spend the
+10/min allowance that exists to bound how many records a compromised admin
+credential can reassign - different risks, different budgets.
+
+Per process and in memory, the same limitation the rate limiter documents.
+Not a monitoring system.
+
+### 30.14 Retention and the invalidation lifecycle
+
+Part 19's distinction matters:
+
+```
+logical invalidation   the token no longer matches; the row is unreachable
+physical deletion      the row is removed
+```
+
+Almost all invalidation here is **logical**. A recomputation overwrites the
+row in place - `student_id` is the primary key - so storage stays bounded at
+one row per student with no reaper and no accumulation of superseded
+versions. `invalidate_student_audit` is the only physical deletion, and it
+remains optional: it exists so a future mutation endpoint can reclaim a row
+promptly, not because correctness needs it.
+
+Growth is therefore O(students), and each row is ~3.4 KB rather than
+~24 KB. No cleanup job was added, and the reason is that there is nothing to
+clean up.
+
+### 30.15 Results
+
+```
+                          before        after
+rules-state determination  13.86 ms      1.27 ms      (11x)
+full cache key             14.48 ms      3.23 ms      (4.5x)
+cache payload              24,277 B      3,487 B      (14.4%)
+INSERT + flush             44.56 ms      3.08 ms      (14x)
+
+service layer
+  engine only (bypassed)   26.23 ms     ~32 ms        (machine variance)
+  cold miss                91.39 ms     61.17 ms
+  warm hit                 13.21 ms      5.8 ms       (2.3x)
+
+endpoint GET /student/audit
+  COLD                     95.09 ms     69.38 ms
+  WARM                     19.39 ms     15.5-19.0 ms
+  (control) /student/context 17.29 ms   16.4-22.0 ms
+```
+
+The endpoint warm figures are noise-dominated on this machine, so the
+**unchanged context endpoint is included as a control**: warm audit went
+from 1.12x the control to 0.87x it. The service-layer numbers isolate the
+change properly, and they are the ones to read.
+
+### 30.16 Break-even (Part 22)
+
+```
+Phase 5.7   miss overhead 65.16 ms   saving per hit 13.02 ms   -> ~5.0 hits
+Phase 5.8   miss overhead 20.19 ms   saving per hit 34.18 ms   -> <1 hit
+```
+
+The cache now **pays for itself on the first hit**. That changes the
+economics materially: in Phase 5.7 a student who loaded their audit twice
+and never returned was a net loss.
+
+### 30.17 Concurrency (development environment only)
+
+```
+   1 concurrent  total    33.5 ms  per-req 33.5 ms  {200: 1}    0 exceptions
+  10 concurrent  total   207.8 ms  per-req 20.8 ms  {200: 10}   0 exceptions
+  50 concurrent  total   766.6 ms  per-req 15.3 ms  {200: 50}   0 exceptions
+ 100 concurrent  total  1129.8 ms  per-req 11.3 ms  {200: 100}  0 exceptions
+
+metrics after: hits=161 misses=0 hit_rate=1.0 read_failures=0 write_failures=0
+```
+
+Pooling bounds hold, no transaction poisoning, no cross-student
+contamination, and the counters stay coherent under concurrency. **A laptop
+measurement against one PostgreSQL with one student; not a production
+capacity claim.**
+
+### 30.18 Failure behaviour, preserved
+
+Phase 5.7's corrected invariant is intact and re-tested: cache lookup
+failure, write failure, corrupt payload, **rules-version lookup failure**
+(new) and a missing cache table all roll back the poisoned transaction and
+fall through to a fresh audit. Cache failure never becomes audit failure.
+
+### 30.19 Derived state, still
+
+`DELETE FROM student_audit_cache` costs latency and nothing else - tested.
+The table holds opaque compressed bytes and no queryable academic fact, and
+the migration's column change simply discards the old cached bytes rather
+than converting them, which is only correct because the table is not a
+source of truth.
+
+### 30.20 Migration
+
+`9f217e335925 -> 2b11bfbd8874`.
+
+```
+fresh upgrade -> downgrade -> re-upgrade    clean
+alembic check                               no new upgrade operations
+triggers installed on all 5 declared tables
+rules_version: 1 row
+
+copy of the real dev database:
+  student 1 -> 1, student_course 11 -> 11, course 4415 -> 4415,
+  user_account 2 -> 2, student_link_event 0 -> 0, cache rows 0
+```
+
+### 30.21 A test-harness error worth recording
+
+Several backend runs failed intermittently mid-phase. The cause was **not**
+the code: the PostgreSQL ingestion suite was running concurrently against
+the same `coursepilot_test` database, and it TRUNCATEs tables. Run serially,
+the backend suite passed 7 consecutive times.
+
+Recorded because the Phase 5.7 notes contain a similar-looking entry with a
+genuinely different cause (a four-hex-digit fixture collision), and
+conflating the two would mislead whoever reads this next. **Two suites
+sharing one database cannot run concurrently.**
+
+### 30.22 Limitations
+
+**Genuine:**
+
+1. **Global rules version over-invalidates** (30.7). Every student
+   recomputes when any program's rules change.
+2. **`AUDIT_ENGINE_VERSION` still needs human judgement** (30.12). No
+   automatic mechanism is claimed.
+3. **Triggers are PostgreSQL-only.** SQLite silently uses the slower
+   fingerprint - correct, and a different performance profile from
+   production.
+4. **A missing `rules_version` table breaks rule writes** (30.9). Deliberate
+   and documented, but it means the table is now load-bearing for writes.
+5. **Metrics are per process and in memory**, with no export and no
+   percentiles - count/sum/min/max only.
+6. **A cache miss is still ~20 ms more expensive than no cache** (30.16),
+   down from ~65 ms.
+7. **`RULES_TABLES` cannot detect a rule-relevant table nobody declared.**
+   A test pins the declared list against the installed triggers, which
+   catches drift but not omission.
+8. **Concurrency figures are development-environment only.**
+
+**Intentionally deferred:** per-program rules versioning, metrics export,
+cache warming, a compact non-JSON encoding, academic-record mutation.
+
+### 30.23 Unchanged
+
+Allocation, category allocation, the optimizer, baseline semantics, sharing
+policy, course eligibility, BM25 ranking, `CourseDocument`, Phase 5.1
+explanation facts, Phase 5.2 provider behaviour, Phase 5.3 fallback, Phase
+5.4 token validation, Phase 5.5 linking authorization, the Phase 5.6
+response contracts and the Phase 5.7 pooling configuration.
+
+```
+SQLite      554 passed,  66 skipped   (unchanged)
+PostgreSQL  619 passed,   1 skipped   (unchanged)
+Backend     275 passed,   2 skipped   (was 217; +58)
+alembic check                          clean
+```
