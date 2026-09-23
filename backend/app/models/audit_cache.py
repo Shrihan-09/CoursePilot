@@ -14,7 +14,7 @@ engine would be given today:
 
 ```
 academic_fingerprint   the student's own facts
-rules_fingerprint      the program version, requirements, eligibility, rules
+rules_token            the rule state (see app/models/rules_version.py)
 engine_version         the engine's semantics and policy identities
 ```
 
@@ -49,7 +49,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import ForeignKey, String, Text, Uuid
+from sqlalchemy import ForeignKey, LargeBinary, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin
@@ -66,21 +66,37 @@ class StudentAuditCache(Base, TimestampMixin):
         Uuid, ForeignKey("student.id", ondelete="CASCADE"), primary_key=True
     )
 
-    #: SHA-256 hex digests of the audit inputs. Stored rather than compared
-    #: in SQL so a stale row is visible to an operator debugging a miss.
+    #: SHA-256 hex digest of the student's own audit inputs.
     academic_fingerprint: Mapped[str] = mapped_column(String(64))
-    rules_fingerprint: Mapped[str] = mapped_column(String(64))
+
+    #: Rule-state identity. NOT always a hash - Phase 5.8 made this a token
+    #: that is either the database-maintained rules version (`v:<n>`) or, on
+    #: a backend without the trigger, the full fingerprint (`f:<sha256>`).
+    #: The prefix keeps the two unambiguous, so a row written under one
+    #: mechanism can never be read as if it were the other.
+    rules_token: Mapped[str] = mapped_column(String(80))
+
     engine_version: Mapped[str] = mapped_column(String(64))
 
-    #: `DegreeAuditResult.model_dump_json()`. Text, not JSON/JSONB, on
-    #: purpose: JSONB reorders keys and normalizes numerics, which would mean
-    #: the bytes handed back to a client differ from the bytes a fresh audit
-    #: produced. A cache that returns *equivalent* data is not good enough
-    #: when the whole claim is that a hit and a miss are indistinguishable.
+    #: zlib-compressed `DegreeAuditResult.model_dump_json()`.
+    #:
+    #: Measured (Phase 5.8): 24,277 raw bytes insert in ~46 ms on this
+    #: PostgreSQL, while 3,487 compressed bytes insert in ~2.2 ms - the cold
+    #: path was dominated by payload SIZE, not by column type (a 24 KB bytea
+    #: was just as slow as 24 KB of text). Compression costs 0.15 ms and
+    #: decompression 0.02 ms, so it is close to free on both paths.
+    #:
+    #: `bytea` rather than base64 text: base64 would inflate the bytes by a
+    #: third to gain nothing, and compressed data is not text.
+    #:
+    #: The compressed bytes are of the EXACT json a fresh audit produces -
+    #: not JSONB, which reorders keys and normalizes numerics. A cache that
+    #: returns *equivalent* data is not good enough when the whole claim is
+    #: that a hit and a miss are indistinguishable.
     #:
     #: Never pickle - this row crosses processes and deploys, and unpickling
     #: is code execution.
-    result_json: Mapped[str] = mapped_column(Text)
+    result_blob: Mapped[bytes] = mapped_column(LargeBinary)
 
     def __repr__(self) -> str:
-        return f"<StudentAuditCache {self.student_id} {self.engine_version}>"
+        return f"<StudentAuditCache {self.student_id} {self.rules_token}>"
