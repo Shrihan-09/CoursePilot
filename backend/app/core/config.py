@@ -50,6 +50,28 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://coursepilot:coursepilot@localhost:5432/coursepilot"
     database_url_sync: str = "postgresql+psycopg://coursepilot:coursepilot@localhost:5432/coursepilot"
 
+    # --- Connection pooling (Phase 5.7) ---
+    # Derived from the deployment's real limits, not picked to look fast.
+    # Measured: PostgreSQL max_connections=100 (3 superuser-reserved), and
+    # FastAPI's default worker threadpool is 40, which is the real ceiling on
+    # CONCURRENT sync sessions. Per process the two engines can hold at most
+    # (pool_size + max_overflow) each, so 5+10 twice = 30 - leaving room for
+    # roughly three processes plus headroom for psql and migrations.
+    #
+    # Deliberately NOT sized to 40 to match the threadpool: past the pool
+    # limit requests QUEUE, which is a bounded, recoverable wait. Sizing the
+    # pool to the threadpool would instead push the bottleneck onto Postgres,
+    # where exhaustion is a hard connection error for the whole deployment.
+    db_pool_size: int = 5
+    db_max_overflow: int = 10
+    # Bounded wait rather than SQLAlchemy's 30s default: a request that has
+    # queued ten seconds for a connection has already failed the user, and a
+    # timeout is a far better signal than a hang.
+    db_pool_timeout: float = 10.0
+    # Recycle below any plausible server-side or proxy idle timeout, so a
+    # connection is retired by us rather than found dead by a query.
+    db_pool_recycle_seconds: int = 1800
+
     # --- API ---
     api_v1_prefix: str = "/api/v1"
     # NoDecode is required: pydantic-settings JSON-decodes complex types (list,

@@ -27,7 +27,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     )
     # Note: no database connection is opened at startup. The app must boot
     # even when Postgres is down — /ready reports the dependency instead.
+    # Engines are built lazily on first use, so this stays true with pooling.
     yield
+    # Phase 5.7: return every pooled connection before the process exits.
+    # Without this a bounded pool holds sockets open until the interpreter
+    # dies, which is precisely why the sync engine used to refuse to pool.
+    from app.db.session import dispose_engines_async
+
+    await dispose_engines_async()
     logger.info("CoursePilot backend shutting down")
 
 

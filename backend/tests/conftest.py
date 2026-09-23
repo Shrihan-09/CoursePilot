@@ -41,6 +41,21 @@ async def client() -> AsyncIterator[AsyncClient]:
         yield ac
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _dispose_engines_at_exit():
+    """Phase 5.7: the application's engines now pool.
+
+    A pool keeps sockets open until the interpreter exits, which pytest
+    reports as an unraisable ResourceWarning — the very thing that made the
+    sync engine use NullPool in Phase 5.2. Disposing here is the other half
+    of that fix; `app/main.py`'s lifespan does the same in production.
+    """
+    yield
+    from app.db.session import dispose_engines
+
+    dispose_engines()
+
+
 @pytest.fixture(autouse=True)
 def _fresh_rate_limits():
     """Rate limiters are process-global, so one test must not spend another
