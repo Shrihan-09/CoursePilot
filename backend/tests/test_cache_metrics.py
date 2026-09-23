@@ -25,8 +25,13 @@ from app.core.metrics import (
     AUDIT_CACHE_MISSES,
     AUDIT_CACHE_READ_FAILURES,
     AUDIT_CACHE_STALE,
+    AUDIT_CACHE_STALE_ACADEMIC,
+    AUDIT_CACHE_STALE_ENGINE,
+    AUDIT_CACHE_STALE_RULES,
+    AUDIT_CACHE_STALE_RULES_ONLY,
     AUDIT_CACHE_WRITE_FAILURES,
     AUDIT_DURATION,
+    AUDIT_FAILURES,
     ENGINE_DURATION,
     get_metrics,
 )
@@ -406,15 +411,57 @@ def test_there_is_no_api_for_attaching_a_label() -> None:
 
 
 def test_metric_names_are_a_fixed_declared_set() -> None:
-    """Cardinality is bounded because the names are constants in one file."""
+    """Cardinality is bounded because the names are constants in one file.
+
+    Asserts the PROPERTY rather than a count: a hardcoded number breaks
+    whenever a metric is added and tests nothing about cardinality. What
+    matters is that every name is a module-level constant, that they are
+    unique, and that no metric name is assembled at runtime from data - the
+    latter being how a student identifier would actually get in.
+
+    Uses the AST rather than line matching, so multi-line calls are read
+    correctly instead of being silently skipped or wrongly rejected.
+    """
+    import ast
+    import pathlib as _p
+
     from app.core import metrics as m
 
-    declared = {
-        getattr(m, n) for n in m.__all__
-        if isinstance(getattr(m, n), str) and not n.startswith("_")
-    }
-    assert len(declared) == 10
-    assert all(isinstance(d, str) for d in declared)
+    names = [n for n in m.__all__ if isinstance(getattr(m, n), str)]
+    declared = [getattr(m, n) for n in names]
+
+    assert declared, "no metric names declared"
+    assert len(set(declared)) == len(declared), "duplicate metric name"
+    assert all(n.isupper() for n in names), "metric names must be constants"
+    assert all(d.replace("_", "").isalnum() for d in declared)
+
+    root = _p.Path(__file__).resolve().parents[1] / "app"
+    checked = 0
+    for path in (root / "services" / "audit" / "cache.py",
+                 root / "services" / "audit" / "cached_audit.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            func = node.func
+            if not isinstance(func, ast.Attribute):
+                continue
+            if func.attr not in {"increment", "observe"} or not node.args:
+                continue
+            first = node.args[0]
+            # The name must be a bare module constant. An f-string, a
+            # concatenation or a subscript would mean a runtime-built metric
+            # name, which is exactly the unbounded-cardinality failure.
+            assert isinstance(first, ast.Name), (
+                f"{path.name}: metric name is not a constant reference: "
+                f"{ast.dump(first)[:80]}"
+            )
+            assert first.id in names, (
+                f"{path.name}: undeclared metric constant {first.id}"
+            )
+            checked += 1
+
+    assert checked > 0, "found no metric calls to check"
 
 
 @requires_db
@@ -517,3 +564,217 @@ async def test_the_metrics_response_carries_no_identifiers(app) -> None:
     assert student_id not in body
     assert subject not in body
     assert "counters" in body
+
+
+# ==========================================================================
+# invalidation cause attribution (Phase 5.9)
+# ==========================================================================
+
+
+@requires_db
+def test_an_academic_change_is_attributed_to_academic() -> None:
+    metrics = get_metrics()
+    with _session() as session:
+        scenario = _scenario(session)
+        session.commit()
+        student = scenario["student"]
+        audit_with_cache(session, student)
+        audit_with_cache(session, student)
+
+        session.add(StudentCourse(
+            student_id=student.id, course_id=_course(session).id,
+            term_code="20271", status="completed", grade="B",
+            credits_earned=decimal.Decimal("3.0"),
+        ))
+        session.commit()
+        audit_with_cache(session, student)
+
+    assert metrics.counter(AUDIT_CACHE_STALE_ACADEMIC) == 1
+    assert metrics.counter(AUDIT_CACHE_STALE_RULES) == 0
+    assert metrics.counter(AUDIT_CACHE_STALE_ENGINE) == 0
+    # Not a rules-only miss, so it is not a candidate for per-program saving.
+    assert metrics.counter(AUDIT_CACHE_STALE_RULES_ONLY) == 0
+
+
+@requires_db
+def test_a_rule_change_is_attributed_to_rules_only() -> None:
+    """The counter the per-program decision rests on."""
+    metrics = get_metrics()
+    with _session() as session:
+        scenario = _scenario(session)
+        session.commit()
+        student = scenario["student"]
+        audit_with_cache(session, student)
+        audit_with_cache(session, student)
+
+        session.get(Requirement, scenario["requirement"].id).min_count = 7
+        session.commit()
+        audit_with_cache(session, student)
+
+    assert metrics.counter(AUDIT_CACHE_STALE_RULES) == 1
+    assert metrics.counter(AUDIT_CACHE_STALE_RULES_ONLY) == 1
+    assert metrics.counter(AUDIT_CACHE_STALE_ACADEMIC) == 0
+
+
+@requires_db
+def test_an_engine_change_is_attributed_to_engine(monkeypatch) -> None:
+    metrics = get_metrics()
+    with _session() as session:
+        scenario = _scenario(session)
+        session.commit()
+        student = scenario["student"]
+        audit_with_cache(session, student)
+        audit_with_cache(session, student)
+
+        monkeypatch.setattr(
+            "app.services.audit.cache.AUDIT_ENGINE_VERSION", "5.9.0-next"
+        )
+        audit_with_cache(session, student)
+
+    assert metrics.counter(AUDIT_CACHE_STALE_ENGINE) == 1
+    assert metrics.counter(AUDIT_CACHE_STALE_RULES_ONLY) == 0
+
+
+@requires_db
+def test_simultaneous_changes_are_attributed_to_each_component() -> None:
+    """Several components can move together, and rules_only must NOT fire.
+
+    This is the case that would inflate the per-program case if counted
+    carelessly: the rules did change, but so did the student's record, so the
+    recomputation was required regardless of any versioning scheme.
+    """
+    metrics = get_metrics()
+    with _session() as session:
+        scenario = _scenario(session)
+        session.commit()
+        student = scenario["student"]
+        audit_with_cache(session, student)
+        audit_with_cache(session, student)
+
+        session.get(Requirement, scenario["requirement"].id).min_count = 5
+        session.add(StudentCourse(
+            student_id=student.id, course_id=_course(session).id,
+            term_code="20272", status="completed", grade="A",
+            credits_earned=decimal.Decimal("4.0"),
+        ))
+        session.commit()
+        audit_with_cache(session, student)
+
+    assert metrics.counter(AUDIT_CACHE_STALE) == 1
+    assert metrics.counter(AUDIT_CACHE_STALE_ACADEMIC) == 1
+    assert metrics.counter(AUDIT_CACHE_STALE_RULES) == 1
+    assert metrics.counter(AUDIT_CACHE_STALE_RULES_ONLY) == 0, (
+        "a miss that was required anyway must not be counted as avoidable"
+    )
+
+
+@requires_db
+def test_a_cold_miss_is_not_counted_as_an_invalidation() -> None:
+    """A cold cache is not a stale cache, and no versioning scheme avoids it.
+
+    Conflating the two is exactly the error the Phase 5.9 benchmark made on
+    its first run - 71 'avoidable' misses where the real figure was 30.
+    """
+    metrics = get_metrics()
+    with _session() as session:
+        scenario = _scenario(session)
+        session.commit()
+        audit_with_cache(session, scenario["student"])
+
+    assert metrics.counter(AUDIT_CACHE_MISSES) == 1
+    assert metrics.counter(AUDIT_CACHE_STALE) == 0
+    for name in (AUDIT_CACHE_STALE_ACADEMIC, AUDIT_CACHE_STALE_RULES,
+                 AUDIT_CACHE_STALE_ENGINE, AUDIT_CACHE_STALE_RULES_ONLY):
+        assert metrics.counter(name) == 0
+
+
+@requires_db
+def test_rules_only_is_a_subset_of_rules() -> None:
+    """An invariant the benchmark's arithmetic depends on."""
+    metrics = get_metrics()
+    with _session() as session:
+        scenario = _scenario(session)
+        session.commit()
+        student = scenario["student"]
+        audit_with_cache(session, student)
+
+        for index in range(3):
+            session.get(Requirement, scenario["requirement"].id).min_count = 3 + index
+            session.commit()
+            audit_with_cache(session, student)
+
+        session.add(StudentCourse(
+            student_id=student.id, course_id=_course(session).id,
+            term_code="20273", status="completed", grade="A",
+            credits_earned=decimal.Decimal("4.0"),
+        ))
+        session.get(Requirement, scenario["requirement"].id).min_count = 9
+        session.commit()
+        audit_with_cache(session, student)
+
+    assert (
+        metrics.counter(AUDIT_CACHE_STALE_RULES_ONLY)
+        <= metrics.counter(AUDIT_CACHE_STALE_RULES)
+    )
+    assert (
+        metrics.counter(AUDIT_CACHE_STALE)
+        <= metrics.counter(AUDIT_CACHE_MISSES)
+    )
+
+
+# ==========================================================================
+# audit failure
+# ==========================================================================
+
+
+@requires_db
+def test_an_engine_failure_is_counted_and_re_raised(monkeypatch) -> None:
+    """A caching phase must not hide a rising engine failure rate behind a
+    healthy hit rate - and must not swallow the exception either."""
+    from app.services.audit.engine import DegreeAuditEngine
+
+    metrics = get_metrics()
+    with _session() as session:
+        scenario = _scenario(session)
+        session.commit()
+
+        def boom(self, student, **kwargs):
+            raise RuntimeError("engine exploded")
+
+        monkeypatch.setattr(DegreeAuditEngine, "audit", boom)
+        with pytest.raises(RuntimeError):
+            audit_with_cache(session, scenario["student"])
+
+    assert metrics.counter(AUDIT_FAILURES) == 1
+
+
+@requires_db
+def test_a_successful_audit_counts_no_failure() -> None:
+    metrics = get_metrics()
+    with _session() as session:
+        scenario = _scenario(session)
+        session.commit()
+        audit_with_cache(session, scenario["student"])
+        audit_with_cache(session, scenario["student"])
+
+    assert metrics.counter(AUDIT_FAILURES) == 0
+    assert metrics.histogram(ENGINE_DURATION)["count"] >= 1
+
+
+@requires_db
+async def test_the_metrics_endpoint_exposes_the_new_counters(app) -> None:
+    with _session() as session:
+        admin = UserAccount(identity_provider="oidc",
+                            external_subject=f"adm-{uuid.uuid4()}", is_admin=True)
+        session.add(admin)
+        scenario = _scenario(session)
+        session.commit()
+        admin_id = admin.id
+        audit_with_cache(session, scenario["student"])
+        audit_with_cache(session, scenario["student"])
+
+    async with _client_as(app, admin_id) as ac:
+        body = (await ac.get("/api/v1/admin/metrics")).json()
+
+    assert "counters" in body
+    assert body["cache_hit_rate"] is not None
