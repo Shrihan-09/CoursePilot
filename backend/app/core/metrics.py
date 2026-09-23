@@ -46,6 +46,34 @@ AUDIT_CACHE_INVALIDATIONS = "audit_cache_invalidations_total"
 #: being cleared or the population is growing.
 AUDIT_CACHE_STALE = "audit_cache_stale_total"
 
+#: WHICH component of the key moved (Phase 5.9). A stale miss increments
+#: `audit_cache_stale_total` once, plus one counter per component that
+#: differs - so several of these can move together when a request has been
+#: idle across more than one kind of change, and their sum can exceed the
+#: stale total. That is deliberate: the question they answer is "what keeps
+#: invalidating this cache?", not "how many misses were there".
+#:
+#: Three separate NAMES rather than one counter with a `cause` label,
+#: because the registry deliberately has no label API (see the cardinality
+#: policy below).
+AUDIT_CACHE_STALE_ACADEMIC = "audit_cache_stale_academic_total"
+AUDIT_CACHE_STALE_RULES = "audit_cache_stale_rules_total"
+AUDIT_CACHE_STALE_ENGINE = "audit_cache_stale_engine_total"
+
+#: The one that matters for the per-program question: a stale miss where the
+#: ONLY thing that moved was the rules version. Those are the misses a
+#: per-program rules version could potentially have avoided - but only
+#: *potentially*, because a rule change inside the student's own program is
+#: a legitimate invalidation that any design must honour. Deciding which is
+#: which needs the per-program fingerprint, which costs ~14 ms and is
+#: therefore measured in the benchmark rather than on the hot path.
+AUDIT_CACHE_STALE_RULES_ONLY = "audit_cache_stale_rules_only_total"
+
+#: The engine raised. Counted because "audit succeeded" and "audit happened"
+#: are different facts, and a cache phase must not make a rising engine
+#: failure rate invisible.
+AUDIT_FAILURES = "audit_failures_total"
+
 # --- histograms (milliseconds) -------------------------------------------
 AUDIT_DURATION = "audit_duration_ms"
 AUDIT_CACHE_LOOKUP_DURATION = "audit_cache_lookup_duration_ms"
@@ -148,9 +176,14 @@ __all__ = [
     "AUDIT_CACHE_MISSES",
     "AUDIT_CACHE_READ_FAILURES",
     "AUDIT_CACHE_STALE",
+    "AUDIT_CACHE_STALE_ACADEMIC",
+    "AUDIT_CACHE_STALE_ENGINE",
+    "AUDIT_CACHE_STALE_RULES",
+    "AUDIT_CACHE_STALE_RULES_ONLY",
     "AUDIT_CACHE_WRITE_FAILURES",
     "AUDIT_CACHE_WRITE_DURATION",
     "AUDIT_DURATION",
+    "AUDIT_FAILURES",
     "ENGINE_DURATION",
     "MetricsRegistry",
     "get_metrics",

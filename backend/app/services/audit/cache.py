@@ -111,6 +111,10 @@ from app.core.metrics import (
     AUDIT_CACHE_LOOKUP_DURATION,
     AUDIT_CACHE_READ_FAILURES,
     AUDIT_CACHE_STALE,
+    AUDIT_CACHE_STALE_ACADEMIC,
+    AUDIT_CACHE_STALE_ENGINE,
+    AUDIT_CACHE_STALE_RULES,
+    AUDIT_CACHE_STALE_RULES_ONLY,
     AUDIT_CACHE_WRITE_DURATION,
     AUDIT_CACHE_WRITE_FAILURES,
     get_metrics,
@@ -351,11 +355,22 @@ class AuditCacheKey:
         )
 
     def matches(self, row: StudentAuditCache) -> bool:
-        return (
-            row.academic_fingerprint == self.academic
-            and row.rules_token == self.rules
-            and row.engine_version == self.engine
-        )
+        return not self.differences(row)
+
+    def differences(self, row: StudentAuditCache) -> tuple[str, ...]:
+        """Which components of the key moved. Empty means the row is usable.
+
+        Phase 5.9 needs to know *what* keeps invalidating the cache, and the
+        answer is three string comparisons the read path was already making.
+        """
+        moved = []
+        if row.academic_fingerprint != self.academic:
+            moved.append("academic")
+        if row.rules_token != self.rules:
+            moved.append("rules")
+        if row.engine_version != self.engine:
+            moved.append("engine")
+        return tuple(moved)
 
 
 def read_cached_audit(
@@ -385,7 +400,9 @@ def read_cached_audit(
 
     if row is None:
         return None
-    if not key.matches(row):
+
+    moved = key.differences(row)
+    if moved:
         # The common, healthy miss: inputs moved. Counted separately from a
         # cold miss because they mean different things operationally - many
         # STALE misses means the rules keep moving, many COLD misses means
@@ -394,7 +411,22 @@ def read_cached_audit(
         # Deliberately not deleted here: the recomputation overwrites it, and
         # a read path that writes is a read path that can fail in new ways.
         metrics.increment(AUDIT_CACHE_STALE)
-        logger.debug("audit_cache_stale")
+        if "academic" in moved:
+            metrics.increment(AUDIT_CACHE_STALE_ACADEMIC)
+        if "rules" in moved:
+            metrics.increment(AUDIT_CACHE_STALE_RULES)
+        if "engine" in moved:
+            metrics.increment(AUDIT_CACHE_STALE_ENGINE)
+        if moved == ("rules",):
+            # The Phase 5.9 question in one counter: invalidations where
+            # nothing about this student or this engine changed, only the
+            # global rules version. A per-program version could only help
+            # here - and only for the subset where the changed rule belonged
+            # to a DIFFERENT program, which this counter cannot tell (that
+            # needs the ~14 ms per-program fingerprint, so the benchmark
+            # measures it instead of the hot path).
+            metrics.increment(AUDIT_CACHE_STALE_RULES_ONLY)
+        logger.debug("audit_cache_stale", extra={"moved": ",".join(moved)})
         return None
 
     try:

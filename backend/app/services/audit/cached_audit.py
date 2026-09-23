@@ -37,6 +37,7 @@ from app.core.metrics import (
     AUDIT_CACHE_HITS,
     AUDIT_CACHE_MISSES,
     AUDIT_DURATION,
+    AUDIT_FAILURES,
     ENGINE_DURATION,
     get_metrics,
 )
@@ -55,9 +56,20 @@ logger = logging.getLogger(__name__)
 
 
 def _run_engine(session: Session, student: Student) -> DegreeAuditResult:
-    """Call the engine, timing it. The engine itself is untouched."""
+    """Call the engine, timing it. The engine itself is untouched.
+
+    A raised exception is counted and re-raised unchanged. Counting matters
+    because "an audit happened" and "an audit succeeded" are different facts,
+    and a caching phase must not make a rising engine failure rate invisible
+    behind a healthy-looking hit rate. Swallowing it would be far worse - the
+    route turns a Degree Engine failure into a 500 on purpose.
+    """
     started = time.perf_counter()
-    result = DegreeAuditEngine(session).audit(student)
+    try:
+        result = DegreeAuditEngine(session).audit(student)
+    except Exception:
+        get_metrics().increment(AUDIT_FAILURES)
+        raise
     get_metrics().observe(ENGINE_DURATION, (time.perf_counter() - started) * 1000)
     return result
 
