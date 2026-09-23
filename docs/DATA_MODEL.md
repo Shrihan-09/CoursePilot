@@ -3998,3 +3998,458 @@ PostgreSQL  619 passed,   1 skipped   (unchanged)
 Backend     168 passed,   2 skipped   (was 132; +36)
 alembic check                          clean, no migration added
 ```
+
+
+---
+
+## 29. Connection pooling and the audit cache (Phase 5.7)
+
+> The audit cache is **derived state**. It is never an authority and never a
+> source of academic truth.
+
+Two changes, both about repeating work that did not need repeating.
+
+### 29.1 Migration state, reconciled first
+
+Phase 5.6 left the development database one revision behind: Phase 5.5's
+migration had only ever been applied to copies.
+
+```
+before   alembic current -> d35eb3a64b5d
+         alembic heads   -> 0e8148bec496 (head)
+```
+
+A plain "behind by one", not a divergence. A backup copy was taken
+(`coursepilot_pre57_backup`), the migration applied through the normal
+workflow, and the result verified:
+
+```
+after    alembic current -> 0e8148bec496 (head)
+         alembic check   -> No new upgrade operations detected
+
+         student 1 -> 1      student_course 11 -> 11
+         course 4415 -> 4415 user_account 2 -> 2
+         is_admin false for both, 0 link events, student still unlinked
+```
+
+No academic data changed, nothing was reset or recreated.
+
+### 29.2 The connection lifecycle
+
+```
+request
+  |
+  v  session factory (one engine per process, lru_cached)
+SQLAlchemy Session
+  |
+  v  checkout from a BOUNDED pool
+pooled connection
+  |
+  v  transaction
+commit / rollback  ->  connection RETURNED to the pool
+  |
+  v  process shutdown
+dispose_engines()  ->  sockets actually closed
+```
+
+### 29.3 Why `NullPool` went, and why it was not simply wrong
+
+Phase 5.2 chose `NullPool` for a stated reason:
+
+> a pooled engine here holds connections open for the life of the process
+> and leaks them at interpreter exit (a ResourceWarning in tests)
+
+That observation was correct. The remedy aimed at the wrong end: the problem
+was never that connections were *pooled*, it was that **nothing ever
+disposed the engine**. `NullPool` removed the thing to dispose, and charged
+every request ~21 ms to do it.
+
+Phase 5.7 fixes the cause. A bounded pool, plus `dispose_engines()` wired
+into the application lifespan and into the test session teardown. The
+backend suite now runs with `-W error::ResourceWarning` and passes, so the
+warning that motivated the original choice is proven absent rather than
+avoided.
+
+Worth noting: the **async** engine had been pooled all along
+(`AsyncAdaptedQueuePool`, 5+10). Pooling was never rejected here in
+principle; it had simply never been extended to the sync engine that does
+the expensive work.
+
+### 29.4 Pool sizing, derived rather than picked
+
+| limit | value | source |
+|---|---|---|
+| PostgreSQL `max_connections` | 100 (3 superuser-reserved) | measured |
+| FastAPI worker threadpool | 40 | measured; the real ceiling on concurrent sync sessions |
+| `db_pool_size` | 5 | |
+| `db_max_overflow` | 10 | |
+| `db_pool_timeout` | 10 s | |
+| `db_pool_recycle_seconds` | 1800 | below any plausible idle timeout |
+| `pool_pre_ping` | true | kept from Phase 5.2 - survives a local Postgres restart |
+
+Per process the two engines hold at most 15 each, so 30 - room for roughly
+three processes plus headroom for `psql` and migrations.
+
+**The pool is deliberately not sized to the threadpool's 40.** Past the pool
+limit a request *queues*, which is a bounded, recoverable wait. Sizing the
+pool to 40 would move the bottleneck to PostgreSQL, where exhaustion is a
+hard connection error affecting the entire deployment rather than one slow
+request. The 10 s timeout replaces SQLAlchemy's 30 s default because a
+request that has queued ten seconds has already failed its user, and a
+timeout is a better signal than a hang.
+
+### 29.5 SQLite is left alone
+
+Pool arguments are applied only to non-SQLite URLs; `_pool_kwargs` returns
+`{}` for SQLite, which is the correct answer rather than a fallback.
+SQLAlchemy picks `SingletonThreadPool` for `:memory:` so the database
+survives between sessions on one thread. Forcing `QueuePool` there would
+hand different sessions **different empty databases**, and forcing it onto a
+file database invites cross-test connection sharing. The ingestion suite's
+isolation depends on those defaults.
+
+### 29.6 Pooling measurements (development environment)
+
+```
+bare session + SELECT 1, n=30
+  NullPool (Phase 5.6)   mean  21.98  median  19.05  min  15.54  max  33.82
+  bounded pool (5.7)     mean   3.69  median   3.69  min   2.48  max   4.99
+
+endpoints, n=25
+  401 no credential      mean   1.50   (was  0.80)
+  409 unlinked           mean   9.58   (was 22.03)
+  200 /student/context   mean  18.40   (was 31.61)
+  200 /student/audit     mean  44.95   (was 45.26)
+```
+
+The fixed ~21 ms is gone, reduced to ~3.7 ms of session setup, pre-ping and
+round trip. `/student/audit` barely moved, and that is the finding that
+motivated the second half of this phase: **connection setup was never the
+audit's bottleneck.** Its cost is engine CPU.
+
+### 29.7 What actually costs time in an audit
+
+```
+session checkout (pooled)              ~5.5 ms
+build_student_context (queries)        ~9   ms
+DegreeAuditEngine.audit()              ~26-31 ms
+serialize   (model_dump_json)           0.12 ms
+deserialize (model_validate_json)       0.19 ms
+serialized payload                     24,277 bytes
+```
+
+### 29.8 The cache invariant
+
+**A cached audit may be returned only when the cache key represents the same
+academic facts and rule state that would be supplied to the Degree Engine
+for a fresh computation.**
+
+```
+same student academic state
++ same applicable program / requirements / eligibility / rules
++ same engine semantics
+= same audit result
+```
+
+### 29.9 Invalidation by construction, not by discipline
+
+The obvious design is version counters that writers bump. It fails the same
+way every time: someone adds a write path, forgets the bump, and the system
+serves a **stale academic result** - silent, and about someone's degree.
+
+So the key is a hash of the input rows themselves:
+
+```
+academic_fingerprint   student facts
+rules_fingerprint      program version, requirements, eligibility, rules
+engine_version         engine semantics and policy identities
+```
+
+Change a grade, recurate a requirement, swap the objective, and the hash
+changes; the stored row no longer matches and is never read. **No
+invalidation call is required for correctness.**
+
+Columns are enumerated **reflectively** from each mapped table, so a column
+added to `Requirement` next year is covered automatically - and a test
+iterates every column of `Requirement`, `ProgramRule` and `ProgramVersion`
+asserting each one moves the fingerprint. A hand-written column list would
+silently omit a new column, and silently omitting an input from a cache key
+is exactly how a stale audit gets served.
+
+Timestamps are excluded, and a test asserts *that* too: they are the only
+columns that change without changing meaning.
+
+#### Rejected: `(count(*), max(updated_at))`
+
+Far cheaper than hashing ~800 eligibility rows, and wrong. `updated_at` is
+maintained by the ORM, so recuration applied as raw SQL - exactly how a
+hurried catalog fix gets made - would leave it untouched and the audit
+permanently stale. At ~9 ms the exact hash buys guaranteed correctness.
+
+### 29.10 Every input that invalidates
+
+| input | fingerprint | tested |
+|---|---|---|
+| course added / removed | academic | yes |
+| grade changed | academic | yes |
+| credits / status / term changed | academic | yes |
+| catalog year changed | academic | yes |
+| moved to another program version | academic | yes |
+| requirement recurated (`min_count`, any column) | rules | yes |
+| course eligibility added | rules | yes |
+| category certification changed | rules | yes |
+| sharing policy changed | rules | yes |
+| program rule (exclusion) added | rules | yes |
+| `AUDIT_ENGINE_VERSION` bumped | engine | yes |
+| `DEFAULT_OBJECTIVE` swapped | engine | yes |
+| `DEFAULT_STRATEGY` swapped | engine | yes |
+
+The recuration row is the one that makes a student-only key unacceptable: a
+student's facts can be untouched for a year while the audit changes because
+a requirement was re-read from the catalog.
+
+### 29.11 Engine version
+
+```
+AUDIT_ENGINE_VERSION = "5.7.0"          explicit, bumped by a human
++ DEFAULT_OBJECTIVE.name                 read from the live policy object
++ DEFAULT_STRATEGY.name
+```
+
+The Git SHA was not used - the application has no safe runtime mechanism for
+exposing one.
+
+The policy names are the safety net: swapping the adopted objective changes
+the key whether or not anyone remembered the constant. The explicit half
+covers what the names cannot see - a bug fix inside the allocator, a change
+to baseline semantics.
+
+**The rule:** bump `AUDIT_ENGINE_VERSION` when the engine can produce a
+different audit for identical inputs. Not for refactors that provably cannot
+change output. When in doubt, bump: the cost is one recomputation per
+student, and the cost of not bumping is telling a student the wrong thing.
+
+### 29.12 Storage
+
+A database table, `student_audit_cache`, chosen over the alternatives:
+
+| option | verdict |
+|---|---|
+| process-local dict | rejected - inconsistent across processes, lost on restart |
+| Redis | rejected - a new service and a new failure mode, with no evidence it is needed |
+| **database-backed snapshot** | **chosen** - multi-process consistent, durable, no new infrastructure |
+
+`student_id` is the primary key, so one live entry per student and a
+recomputation replaces it. Storage is bounded to O(students) with no reaper,
+and a superseded entry has nowhere to linger and be served by mistake.
+
+`ON DELETE CASCADE` from `student` - the opposite of `student_link_event`'s
+RESTRICT, deliberately. A link event is evidence and must outlive things; a
+cached audit is a recomputable artifact that must not outlive its student.
+Derived state must never block a delete.
+
+Entries are **student-scoped**. Two students with identical facts still get
+their own row: cross-student sharing would make a privacy bug one key
+collision away, for a saving that does not exist at this scale.
+
+### 29.13 Serialization
+
+`model_dump_json()` / `model_validate_json()`, round-trip asserted lossless.
+
+**Never pickle** - this row crosses processes and deploys, and unpickling is
+code execution. A test greps both cache modules for `pickle` and `eval(`.
+
+`result_json` is `Text`, not `JSON`/`JSONB`. JSONB reorders keys and
+normalizes numerics, so a cached response would differ byte-for-byte from a
+freshly computed one - unacceptable when the entire claim is that a hit and
+a miss are indistinguishable to the client.
+
+The pre-existing `int`/`Decimal` serialization warning from Phase 5.6
+survives the round trip harmlessly and was **not** fixed here: it lives in
+engine code, and Phase 5.6 deliberately left it alone for the same reason.
+
+### 29.14 Failure behaviour
+
+```
+cache unavailable | read fails | deserialize fails | write fails
+        -> compute a fresh audit
+```
+
+Never a stale result, never a 500. A test renames the table out from under a
+live request and asserts the audit still returns, byte-identical to a fresh
+computation.
+
+**A defect this found.** The first implementation caught the exception and
+returned `None` - and still broke the audit. PostgreSQL aborts the whole
+transaction on a failed statement, so every subsequent query on that
+session, *including the Degree Engine's*, failed with
+`InFailedSqlTransaction`. Swallowing the exception without rolling back
+turned "the cache is broken" into "the audit is broken". Every cache failure
+path now calls `_safe_rollback` before falling through. The test that
+renames the table is what caught it.
+
+### 29.15 Concurrency
+
+Several requests may miss at once and all compute. They write **identical
+bytes**, because the engine is deterministic over identical inputs and the
+fingerprints prove the inputs were identical. The race is benign: the cost
+is duplicated CPU under a cold key, never an incorrect result.
+
+No locking. Distributed locking buys nothing here and can stall a request in
+new ways. A test runs six concurrent audits across six sessions and asserts
+one distinct result and exactly one cache row.
+
+### 29.16 Cache measurements (development environment)
+
+```
+components (pooled session)
+  academic fingerprint                mean  1.35
+  rules fingerprint                   mean  9.21
+  full cache key                      mean 10.84
+  fresh DegreeEngine.audit()          mean 31.02
+  serialize                           mean  0.12
+  deserialize                         mean  0.19
+  cache row read + deserialize        mean  2.01
+
+endpoint GET /student/audit
+  COLD (cache cleared)   n=10   mean 95.09  median 93.53
+  WARM (cache hit)       n=20   mean 19.39  median 18.92
+
+service layer
+  engine only (cache bypassed)        mean 26.23
+  cold miss (key + engine + write)    mean 91.39
+  warm hit (key + row read)           mean 13.21
+```
+
+**The headline:** 45.26 ms warm audit before this phase, **19.39 ms** after
+pooling and caching - a 2.3x endpoint improvement, 4.9x against the cold
+path.
+
+**The honest cost:** a miss is *more* expensive than no cache at all -
+91 ms versus 26 ms at the service layer. Attributed by measurement:
+
+```
+existing-row lookup    1.42 ms
+insert + flush        44.08 ms   <- dominant
+commit                 4.11 ms
+```
+
+Inserting a 24 KB `Text` row costs ~44 ms on this machine. The identity map
+was ruled out as the cause (size 1 after an audit; a fresh session is just
+as slow), so it appears to be genuine row-write cost, plausibly TOAST
+compression. The cache therefore pays for itself from the *second* read of
+an unchanged state and is a clear win for any read-repeat pattern, but it is
+not free. Compressing the payload or storing a smaller projection is the
+obvious follow-up and was not taken here - it would broaden the phase.
+
+### 29.17 Concurrency behaviour (development environment only)
+
+```
+   1 concurrent  total    23.3 ms  per-req 23.3 ms  {200: 1}    0 exceptions
+  10 concurrent  total   166.5 ms  per-req 16.7 ms  {200: 10}   0 exceptions
+  50 concurrent  total   793.4 ms  per-req 15.9 ms  {200: 50}   0 exceptions
+ 100 concurrent  total  1473.1 ms  per-req 14.7 ms  {200: 100}  0 exceptions
+```
+
+No pool exhaustion, no errors, no connection explosion; per-request time
+falls as the pool warms and requests become cache hits. **This is a laptop
+measurement against one Postgres with one student, and is not a production
+capacity claim.** What it establishes is the shape - bounded queueing rather
+than failure - not a throughput number.
+
+### 29.18 Ownership stays where it was
+
+```
+Student academic facts -> Degree Engine -> DegreeAuditResult -> Audit Cache -> API
+```
+
+`DegreeAuditEngine` was **not modified**. It does not know the cache exists,
+and `audit_with_cache` is a wrapper that decides exactly one thing: whether
+to call the engine. The cache holds opaque serialized bytes and could not
+decide a requirement, a credit or an eligibility if it tried.
+
+Phase 5.6's API contract is preserved exactly: `GET /api/v1/student/audit`
+returns a `DegreeAuditResult` with no `cached`, `cache_age` or `cache_key`
+field. Whether a cache was involved is observability - it goes to the log
+line, not the academic domain object.
+
+### 29.19 Invalidation primitive
+
+```python
+invalidate_student_audit(session, student_id)
+```
+
+Not required for correctness - the fingerprints already guarantee a changed
+input is never served. It exists so a future academic-record mutation
+endpoint has an obvious place to say "this is now stale", reclaiming the row
+immediately instead of at the next read. It does not commit, so a mutation
+can invalidate inside its own transaction.
+
+Academic-record mutation remains **out of scope** and was not built.
+
+### 29.20 Recuration
+
+Requirement recuration currently happens through ingestion/load operations,
+which write `Requirement`, `RequirementCourseOption` and `ProgramRule` rows.
+No invalidation hook is needed there and none was added: the rules
+fingerprint is computed from those rows, so the next audit for any affected
+student misses automatically.
+
+This also means unrelated course ingestion does **not** invalidate every
+student's audit - only rows inside the student's own program version
+participate in `rules_fingerprint`.
+
+### 29.21 Migration
+
+`0e8148bec496 -> 9f217e335925`. Adds `student_audit_cache` and nothing else.
+Additive, no backfill, no academic row read or written.
+
+```
+fresh upgrade -> downgrade -> re-upgrade    clean
+alembic check                               no new upgrade operations
+copy of the real dev database:
+  student 1 -> 1, student_course 11 -> 11, course 4415 -> 4415,
+  user_account 2 -> 2, cache rows 0
+```
+
+### 29.22 Limitations
+
+**Genuine:**
+
+1. **A cache miss is ~3.5x more expensive than no cache** (29.16), dominated
+   by a ~44 ms insert of a 24 KB row.
+2. **The rules fingerprint costs ~9 ms on every audit**, hit or miss, and
+   scales with the size of the program's eligibility table. A verified
+   change-detection mechanism (a trigger-maintained version, not a timestamp
+   heuristic) would remove it; a timestamp heuristic was rejected in 29.9.
+3. **The pool is per process.** Sizing assumes roughly three processes
+   against a 100-connection PostgreSQL; a larger deployment needs the
+   numbers revisited or a proxy.
+4. **`AUDIT_ENGINE_VERSION` still depends on a human** for semantic changes
+   the policy names cannot see. The names cover the common case, not all of
+   it.
+5. **No cache metrics**, only log lines. Hit ratio is not currently
+   measurable without reading logs.
+6. **No reaper.** Storage is bounded to one row per student, which needs
+   nothing today and is not the same as never needing anything.
+7. **Concurrency figures are development-environment only** (29.17).
+
+**Intentionally deferred:** payload compression, a smaller cached
+projection, Redis or any external cache, cache warming, academic-record
+mutation, and connection pooling for the ingestion CLI (a separate process
+with its own engine).
+
+### 29.23 Unchanged
+
+Allocation, category allocation, the optimizer, baseline semantics, sharing
+policy, course eligibility, BM25 ranking, `CourseDocument`, Phase 5.1
+explanation facts, Phase 5.2 provider behaviour, Phase 5.3 fallback, Phase
+5.4 token validation, Phase 5.5 linking authorization and Phase 5.6 response
+contracts.
+
+```
+SQLite      554 passed,  66 skipped   (unchanged)
+PostgreSQL  619 passed,   1 skipped   (unchanged)
+Backend     217 passed,   2 skipped   (was 168; +49)
+alembic check                          clean
+```

@@ -5528,3 +5528,383 @@ that disappears.
 - Mutation testing (mutmut, cosmic-ray) as evidence a test suite has teeth
 - Fan-out bugs in ORM joins; `selectinload` vs `joinedload` and row
   multiplication
+
+
+---
+
+# Lesson 21: Caching Is an Invalidation Problem Wearing a Performance Costume
+
+## What We Built
+
+A bounded connection pool, and a cache for deterministic degree audits whose
+key is a hash of the engine's actual inputs.
+
+---
+
+## Concepts
+
+### Read the reason before you overturn the decision
+
+The sync engine used `NullPool`, and it cost ~21 ms per request. The easy
+move is to swap in a pool and enjoy the number. But the code said why:
+
+> a pooled engine here holds connections open for the life of the process
+> and leaks them at interpreter exit (a ResourceWarning in tests)
+
+That observation was **true**. What it got wrong was the remedy. The problem
+was never that connections were pooled; it was that nothing ever disposed
+the engine. `NullPool` made sure there was never anything to dispose - and
+charged every request for the privilege.
+
+So the fix was not "pool instead of NullPool". It was "pool **and** dispose",
+with `dispose_engines()` in the application lifespan and in test teardown,
+and the suite then run with `-W error::ResourceWarning` so the original
+symptom is proven absent rather than merely unmentioned.
+
+The habit: when you overturn an earlier decision, find its reason first. If
+you cannot restate why it was made, you are not yet qualified to reverse it -
+and when you can, you usually discover the reason was pointing at a
+different problem than the one the fix addressed.
+
+A detail worth noticing: the **async** engine had been pooled the whole
+time. The codebase had not rejected pooling in principle. It had applied a
+local fix in one place and never revisited it.
+
+### Sizing from limits, not from wishes
+
+```
+PostgreSQL max_connections   100   (measured)
+FastAPI worker threadpool     40   (measured)
+pool_size + max_overflow       15  (chosen)
+```
+
+The tempting choice is 40, to match the threadpool, so nothing ever waits.
+That is the wrong instinct, and the reason is about *where failure lands*:
+
+```
+pool smaller than threadpool  ->  requests QUEUE      bounded, recoverable
+pool equal to threadpool      ->  PostgreSQL saturates  hard error, everyone
+```
+
+Queueing degrades the request that queued. Connection exhaustion degrades
+the deployment. When you must choose where to put a bottleneck, put it
+somewhere that fails **locally and recoverably**.
+
+The same reasoning shortened `pool_timeout` from SQLAlchemy's 30 s default
+to 10 s. A request that has waited ten seconds has already failed its user;
+continuing to wait converts a signal into a hang.
+
+### Measure the thing you are about to optimize
+
+Pooling was supposed to make the audit endpoint fast. It did almost nothing:
+
+```
+/student/audit   45.26 ms before   ->   44.95 ms after
+```
+
+Because the ~21 ms was never the audit's problem. Breaking it down:
+
+```
+session checkout       ~5.5 ms
+engine CPU            ~26-31 ms    <- the actual cost
+serialize               0.12 ms
+```
+
+The fixed connection cost had dominated the *cheap* endpoints - the 409 path
+went 22 ms to 9.6 ms, context 31.6 to 18.4 - and was a rounding error on the
+expensive one. Optimizing the wrong layer produced a real improvement for
+three endpoints and no improvement for the one that motivated the work.
+
+Two lessons in one: profile before optimizing, and then **profile again
+after**, because "it got faster somewhere" is not the same as "the thing I
+cared about got faster".
+
+### The actual problem
+
+Once you know the audit costs 26 ms of CPU and the engine is deterministic,
+the shape of the answer is forced. Deterministic means *same inputs, same
+result, always*. So "is this stored result still correct?" collapses
+entirely into "are the inputs still the same?"
+
+That is the whole design. Everything else is bookkeeping.
+
+**Caching a deterministic computation is not a performance problem. It is an
+invalidation problem wearing a performance costume.** The speed is the easy
+half; the hard half is knowing when to stop trusting what you stored.
+
+### Invalidation by discipline vs invalidation by construction
+
+Two ways to know when a cached value went stale:
+
+```
+version counters   writers bump a number       -> correctness by DISCIPLINE
+input hashing      key IS a hash of the inputs -> correctness by CONSTRUCTION
+```
+
+Counters are cheaper and they fail the same way every time: someone adds a
+write path in eight months and forgets the bump. The system then serves a
+stale result, silently, forever. Here that means telling a student their
+degree status is something it is not.
+
+Hashing the inputs removes the failure mode rather than documenting it. If a
+grade changes, the hash changes, the stored row no longer matches, and it is
+simply never read. **No invalidation call is required for correctness.**
+
+The invalidation function still exists - `invalidate_student_audit` - but
+notice what it is *for*: promptness and storage hygiene, so a future
+mutation endpoint can reclaim a row immediately. Forgetting to call it costs
+one wasted recomputation. Forgetting to bump a counter costs a wrong answer.
+Those are not the same kind of mistake, and a design that converts the
+second into the first is worth paying for.
+
+### The input you will forget is the one that is not yours
+
+The obvious cache key is the student. It is wrong, and the reason is the
+most important idea in the phase:
+
+> A student's facts can be identical for a year while the audit changes
+> underneath them, because a requirement was re-read from the catalog.
+
+Recuration changes the *rules*, not the student. A student-keyed cache would
+serve the old verdict indefinitely, and nothing about the student would look
+suspicious.
+
+So the key has three parts - student facts, rule state, engine semantics -
+and each one earned its place by being a thing that changes independently of
+the other two:
+
+```
+academic_fingerprint   the student changed
+rules_fingerprint      the catalog changed
+engine_version         we changed
+```
+
+When you design a cache key, the discipline is to enumerate what the
+computation *reads*, not what it is *about*. An audit is about a student. It
+reads far more than one.
+
+### Reflection as a correctness tool
+
+Fingerprinting could hash a hand-written list of columns. Then someone adds
+`min_distinct_categories` to `Requirement` next year, does not know this
+file exists, and every audit using that column is silently stale.
+
+```python
+for column in row.__table__.columns:      # covered automatically
+    if column.name in _IGNORED_COLUMNS:
+        continue
+```
+
+Reflection here is not cleverness, it is the choice that fails safe. And it
+is backed by a test that iterates every column of three tables asserting
+each one moves the fingerprint - plus its mirror, asserting timestamps do
+*not*, because a cache that misses on every no-op UPDATE is its own kind of
+broken.
+
+Notice the general shape: **when forgetting something silently produces a
+wrong answer, make it impossible to forget rather than writing it down.**
+
+### Rejecting the cheap trick, with a reason
+
+The rules fingerprint costs ~9 ms because it hashes ~800 eligibility rows.
+The standard trick is much cheaper:
+
+```sql
+SELECT count(*), max(updated_at) FROM requirement WHERE ...
+```
+
+It is wrong here, and the reason is specific rather than aesthetic:
+`updated_at` is maintained by the ORM. Recuration applied as raw SQL - which
+is precisely how a hurried catalog fix gets made at 11pm - leaves it
+untouched, and the audit is then stale **permanently**.
+
+So: 9 ms for a guarantee, versus 1 ms for a heuristic with a silent failure
+mode in exactly the scenario the fingerprint exists to catch. That is not a
+close call. But it is only not-close because the failure mode was named. "It
+might not catch everything" would not have been enough to decide on.
+
+### Semantics change without data changing
+
+A cache key made only of data is still incomplete, because the *code* is an
+input:
+
+```
+different objective  -> different allocation -> different audit
+same database rows
+```
+
+Hence an engine version. Two halves, deliberately:
+
+```
+AUDIT_ENGINE_VERSION = "5.7.0"    explicit, bumped by a human
++ DEFAULT_OBJECTIVE.name          read from the live object
++ DEFAULT_STRATEGY.name
+```
+
+The second half is the safety net for the first. Swapping the adopted
+objective changes the key whether or not anyone remembers the constant -
+the same "make it impossible to forget" instinct as the reflection, applied
+to the part that could not be reflected.
+
+The explicit half still relies on judgement, for changes the names cannot
+see: a bug fix inside the allocator, a change to baseline semantics. That
+residual dependence on a human is a real limitation and is written down as
+one rather than hidden.
+
+### Swallowing an exception is not handling it
+
+The cache was written to fail open: catch everything, fall through to the
+engine. The test renamed the table out from under a live request - and the
+audit still failed.
+
+```python
+except Exception:
+    logger.warning(...)
+    return None          # looks safe. isn't.
+```
+
+PostgreSQL aborts the **whole transaction** on a failed statement. Every
+subsequent query on that session - including the Degree Engine's - then
+fails with `InFailedSqlTransaction`. The cache had caught its own exception
+and handed the caller a poisoned session.
+
+```python
+except Exception:
+    logger.warning(...)
+    _safe_rollback(session)   # the load-bearing line
+    return None
+```
+
+**"Cache failure is never audit failure" is a claim about state, not about
+control flow.** Catching the exception handles the *signal*; rolling back
+handles the *damage*. A fallback path that inherits broken state is not a
+fallback.
+
+And note how it was found: by a test that broke the dependency for real
+rather than mocking it to return `None`. A mock would have exercised the
+`except` branch and proved nothing, because the bug was in the state the
+real database was left in.
+
+### When a race is allowed to happen
+
+Three requests miss simultaneously. The textbook answer is single-flight or
+a distributed lock. Here the right answer is to let them race:
+
+```
+all three compute
+all three write IDENTICAL bytes   (deterministic engine, identical inputs)
+last writer wins, and every winner is correct
+```
+
+Determinism converts a correctness problem into a cost problem. The cost is
+duplicated CPU under a cold key; the price of avoiding it is a lock that can
+stall a request and fail in new ways.
+
+The reasoning worth keeping: **before you prevent a race, work out what it
+actually costs.** Some races produce wrong answers, and some produce the
+same answer twice.
+
+### Reporting the cost you did not want to find
+
+The headline is good: 45.26 ms to 19.39 ms warm. The rest of the measurement
+is not:
+
+```
+engine only, no cache       26.23 ms
+cold miss (key + engine + write)   91.39 ms
+warm hit                    13.21 ms
+```
+
+A miss is ~3.5x more expensive than having no cache at all, because
+inserting a 24 KB row costs ~44 ms on this machine. The cache pays for
+itself on the second read and is a clear win for a read-repeat workload -
+and it is a loss for a workload that never re-reads.
+
+That belongs in the report at the same volume as the speedup. A measurement
+that only ever confirms the change was good is not a measurement, it is
+advertising. And the shape of the cost tells you the next thing to do -
+compress the payload, or store less of it - which the flattering number
+never would have.
+
+### Derived state must be disposable
+
+One property makes everything above safe to get wrong:
+
+```sql
+DELETE FROM student_audit_cache;   -- costs latency, nothing else
+```
+
+The cache stores opaque bytes and no queryable academic fact. It cascades
+from the student rather than restricting - the exact opposite of the audit
+*events* from the linking phase, which are evidence and must outlive
+everything. Evidence restricts; derived state cascades, and choosing the
+wrong one of those two is how a cache quietly becomes a second source of
+truth.
+
+A test truncates the table and asserts the audit is byte-identical. That is
+the real definition of derived state: **you can delete all of it and lose
+nothing but time.**
+
+---
+
+## Self-Check
+
+1. `NullPool` cost 21 ms per request. What was the actual problem it was
+   solving, and why was removing the pool the wrong fix?
+2. Why is the pool smaller than the worker threadpool rather than equal
+   to it?
+3. Pooling barely improved `/student/audit` but halved `/student/context`.
+   Why?
+4. Why does "the engine is deterministic" reduce cache correctness to a
+   single question, and what is that question?
+5. What is the failure mode of version counters, and why does input hashing
+   not have it?
+6. A student's coursework has not changed in a year. Name two ways their
+   audit could legitimately be different today.
+7. Why are the fingerprint's columns enumerated reflectively?
+8. Why was `(count(*), max(updated_at))` rejected, in one specific sentence?
+9. Catching the exception was not enough to make cache failure survivable.
+   What else was required, and why?
+10. Three concurrent misses all recompute. Why is no lock needed?
+11. A cache miss is slower than having no cache. Why is that acceptable, and
+    when would it stop being?
+12. Why does the cache table CASCADE while `student_link_event` RESTRICTs?
+
+## Try It Yourself
+
+**A.** Delete `_safe_rollback` from the cache's read path and run the
+table-rename test. Read the error. Then explain why a `try/except` that
+returns cleanly still broke the audit.
+
+**B.** Change the key to `academic_fingerprint` only. Run the suite. Two
+tests fail - work out from their names alone which real-world event each one
+represents.
+
+**C.** Make `rules_fingerprint` return a constant. Five tests fail. That is
+what "a fake version that never changes" looks like from the outside.
+
+**D.** Add a column to `Requirement` and write an audit that depends on it.
+Confirm the fingerprint covers it without editing `cache.py`. Then switch to
+a hand-written column list and watch the stale audit appear.
+
+**E.** Set `pool_size=1, max_overflow=0` and fire 20 concurrent audits.
+Observe queueing. Then set `pool_timeout=0.1` and observe the other failure
+mode.
+
+**F.** Compress `result_json` with `zlib` before storing. Re-measure the cold
+path. Decide whether the complexity is worth the milliseconds - and write
+down what would change your answer.
+
+## Further Learning
+
+- Cache invalidation strategies: TTL, write-through, write-behind,
+  content-addressed keys
+- Content-addressed storage, and why Git keys objects by hash
+- Merkle trees for detecting change in large structures cheaply
+- Connection pool sizing; the little's-law view of pool size vs latency
+- PostgreSQL transaction abort semantics and `InFailedSqlTransaction`
+- TOAST: out-of-line storage and compression for large PostgreSQL values
+- Thundering herd, single-flight, and when the cure costs more than the
+  disease
+- Determinism as an engineering property: reproducible builds, pure
+  functions, and memoization
