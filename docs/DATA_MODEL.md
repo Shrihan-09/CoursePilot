@@ -4877,3 +4877,306 @@ PostgreSQL  619 passed,   1 skipped   (unchanged)
 Backend     275 passed,   2 skipped   (was 217; +58)
 alembic check                          clean
 ```
+
+
+---
+
+## 31. Is per-program invalidation worth it? (Phase 5.9)
+
+> **Decision: A - keep global invalidation.** At CoursePilot's actual scale
+> the collateral cost is *exactly zero*, and the alternative carries a
+> verified correctness hazard.
+
+This section adds almost no behaviour. It adds the instrumentation needed to
+answer a question Phase 5.8 deliberately left open, measures it, and records
+the answer with the conditions under which it should be revisited.
+
+### 31.1 The question
+
+Phase 5.8 chose a **global** trigger-maintained `rules_version`: any rule
+change anywhere invalidates every student's cached audit. The open question
+was whether that over-invalidation costs enough to justify per-program
+versioning.
+
+Phrased so it can be measured:
+
+> When one program's rules change, how much recomputation does the global
+> version cause that a per-program version could have avoided?
+
+### 31.2 What the metrics could not previously distinguish
+
+Phase 5.8 counted hits, misses, stale misses, read/write failures and
+invalidations. Two gaps mattered:
+
+| gap | why it mattered |
+|---|---|
+| *why* a row went stale | a stale miss caused by a student's own coursework is unavoidable under any design; one caused only by the rules version may not be |
+| audit **failure** | "an audit happened" and "an audit succeeded" are different facts, and a caching phase must not hide a rising engine failure rate behind a healthy hit rate |
+
+Added, as the smallest change that closes them:
+
+```
+audit_cache_stale_academic_total
+audit_cache_stale_rules_total
+audit_cache_stale_engine_total
+audit_cache_stale_rules_only_total     <- the decision counter
+audit_failures_total
+```
+
+Three separate **names**, not one counter with a `cause` label, because the
+registry deliberately has no label API (section 30.13). The cardinality
+policy survives the addition intact.
+
+`audit_cache_stale_rules_only_total` is the one that matters: a stale miss
+where the *only* thing that moved was the rules version. Those are the
+misses a per-program version could *potentially* avoid - potentially,
+because a rule change inside the student's own program is legitimate and any
+design must honour it.
+
+**Cost of the addition, measured:**
+
+```
+Phase 5.8  matches()      3 string compares      0.623 us/call
+Phase 5.9  differences()  same, returns a tuple  0.596 us/call
+metrics.increment                                0.228 us/call
+```
+
+A stale miss adds at most four increments (~0.9 us) against a ~30,000 us
+recomputation. **A cache hit adds none.** There is no measurable cost.
+
+### 31.3 The workload
+
+`backend/tests/benchmarks/audit_cache_workload.py`, run against a throwaway
+copy of the development database and refusing to run against the source. It
+is a benchmark, not a test: latencies are machine-dependent, so asserting
+them would produce a suite that fails when the laptop is busy.
+
+Ten rounds over P programs x 5 students, with a fixed mutation sequence
+covering cold start, repeated warm reads, one student's academic change, one
+program's rule change, one program's metadata change, and an engine-version
+change.
+
+### 31.4 Classifying a miss honestly
+
+Not every invalidation is wasteful, and the first run of this benchmark got
+that badly wrong - it reported **71** avoidable misses where the true figure
+was **30**, by counting cold starts and engine-version bumps as collateral.
+Neither is avoidable by any versioning scheme.
+
+The corrected classification reads the cause from the production counters
+per call rather than inferring it from the scenario:
+
+```
+cold (no cached row)                                -> unavoidable, not an invalidation
+academic or engine component moved                  -> NECESSARY under any design
+rules ONLY  AND  own program's fingerprint changed  -> NECESSARY
+rules ONLY  AND  own program's fingerprint same     -> COLLATERAL
+```
+
+The oracle for that last distinction is Phase 5.7's per-program
+`rules_fingerprint`, which still exists as the fallback path. It costs
+~14 ms, which is why it runs in the benchmark and not on the hot path.
+
+### 31.5 Results
+
+Per-program-count sweep, because the collateral fraction is a *function of
+the program count* and reporting one number for one arbitrary P would look
+like an empirical finding when it is a property of the fixture:
+
+| programs | audits | hit rate | rules-only misses | necessary | **collateral** | collateral share of audit time |
+|---|---|---|---|---|---|---|
+| **1** | 50 | 58.0% | 10 | 10 | **0** | **0.0%** |
+| 2 | 100 | 59.0% | 20 | 10 | 10 | 22.0% |
+| 4 | 200 | 59.5% | 40 | 10 | 30 | 29.9% |
+| 8 | 400 | 59.8% | 80 | 10 | 70 | 36.1% |
+| 16 | 800 | 59.9% | 160 | 10 | 150 | 37.8% |
+| 32 | 1600 | 59.9% | 320 | 10 | 310 | 40.2% |
+
+The collateral count follows **(P-1)/P** exactly - 10/20, 30/40, 70/80,
+310/320 - so the relationship is confirmed by measurement rather than
+asserted.
+
+Latency at P=4:
+
+```
+warm (hit)   mean  5.08   p50  4.86   p95  7.14
+cold (miss)  mean 33.41   p50 31.62   p95 47.22
+all          mean 16.55   p50  5.93   p95 38.57
+```
+
+### 31.6 The decisive number
+
+**CoursePilot has one program.** At P=1 the collateral count is zero, and it
+is zero not by approximation but by construction: with a single program
+there is no "other program" whose rules could invalidate anyone. A global
+rules version and a per-program rules version are **behaviourally
+identical** on the current data.
+
+Per-program versioning would today be a correctness risk taken on in
+exchange for a measured saving of **0 ms**.
+
+### 31.7 What per-program versioning would require
+
+Modelled rather than built (Part 5), and the ownership graph was read out of
+the schema rather than recalled:
+
+| table | how a trigger would find the affected program version |
+|---|---|
+| `program_version` | `NEW/OLD.id` - direct |
+| `program` | every version with `program_id = NEW/OLD.id` - **1:N fan-out** |
+| `requirement` | `NEW/OLD.program_version_id` - direct |
+| `program_rule` | `NEW/OLD.program_version_id` - direct |
+| `requirement_course_option` | `requirement.program_version_id` via `NEW/OLD.requirement_id` - **requires a lookup** |
+
+That last row is the problem, and the schema confirms it is not theoretical:
+
+```
+requirement_course_option.requirement_id  -> requirement       ON DELETE CASCADE
+requirement.parent_id                     -> requirement       ON DELETE CASCADE
+requirement.program_version_id            -> program_version   ON DELETE CASCADE
+program_version.program_id                -> program           ON DELETE CASCADE
+```
+
+Deleting a program cascades four levels down. When the option trigger fires,
+its parent requirement **may already be gone** - and so may the
+`program_version` row whose counter it was supposed to bump. A per-program
+design therefore needs to answer, correctly, what to bump when the thing
+that identifies "which program" has itself been deleted. The self-cascade on
+`requirement.parent_id` compounds it.
+
+Additional schema: a counter row per `program_version`, created atomically
+when a version is inserted (by the same trigger machinery that would need
+the version to exist), and a decision about what a *missing* counter row
+means - "never changed" or "unknown"? Only one of those is safe.
+
+Also established: no rule row belongs to more than one program version, so
+apart from `program` there is no genuine fan-out. Requirement *systems*
+(`major`, `core`) are shared within a program version, not across programs,
+so shared requirements do not complicate the mapping.
+
+### 31.8 Decision
+
+**A - keep global invalidation.**
+
+Evidence:
+
+1. **Measured collateral at current scale: zero.** The designs are
+   indistinguishable at P=1.
+2. Collateral scales as (P-1)/P, but is also multiplied by **recuration
+   frequency**, which is a human curating from published prose - rare by
+   nature. The benchmark deliberately recurates twice per ten rounds to make
+   the effect measurable at all; that rate is far above reality and should
+   not be read as a forecast.
+3. The alternative carries a **verified** cascade-ordering hazard (31.7) in
+   the one place a mistake produces a stale degree audit.
+4. Phase 5.8's asymmetry still holds: over-invalidation costs a
+   recomputation, under-invalidation tells a student the wrong thing about
+   their degree.
+
+> Adding precision to an invalidation scheme is only worth it when the
+> imprecision costs something. Here, today, it costs nothing measurable.
+
+### 31.9 When to revisit
+
+The revisit condition is now **observable in production**, which is the
+substantive thing this phase bought:
+
+```
+audit_cache_stale_rules_only_total / audit_cache_misses_total
+```
+
+Revisit when **all** of these hold:
+
+* more than one program version carries students (otherwise the saving is
+  provably zero);
+* rules-only misses are a large and sustained share of all misses - the
+  sweep suggests roughly a third of audit time becomes collateral once
+  P >= 4 *at the benchmark's recuration rate*;
+* the absolute wall time is worth the cascade-correctness work, which needs
+  real student and recuration counts, not a laptop fixture.
+
+Until then the counter costs 0.228 us and answers the question for free.
+
+### 31.10 Performance across phases
+
+Nothing in Phase 5.9 changes the caching mechanism, and the micro-benchmark
+in 31.2 bounds the added cost at under a microsecond per stale miss.
+
+| | Phase 5.7 | Phase 5.8 | Phase 5.9 |
+|---|---|---|---|
+| rules-state determination | 13.86 ms | 1.27 ms | unchanged mechanism |
+| cache-key construction | 14.48 ms | 3.23 ms | unchanged mechanism |
+| payload size | 24,277 B | 3,487 B | 3,487 B |
+| cache write (insert+flush) | 44.56 ms | 3.08 ms | unchanged |
+| warm hit (service) | 13.21 ms | ~5.8 ms | 5.08 ms (benchmark, P=4) |
+| cold miss (service) | 91.39 ms | 61.17 ms | 33.41 ms (benchmark, P=4) |
+
+**These columns are not directly comparable and should not be read as a
+trend.** They were taken on the same machine at different times, against
+different fixtures - the Phase 5.9 figures come from the synthetic benchmark
+(small programs, few courses) rather than the real CS program, which is why
+its cold path looks cheaper. Phase 5.9's own before/after is the
+microbenchmark in 31.2, which is the only measurement here that controls for
+everything except the change.
+
+A re-run of the Phase 5.8 harness during this phase produced uniformly
+slower numbers *including for the unchanged `/student/context` control*
+(29.04 ms against 16-22 ms), confirming machine variance rather than
+regression.
+
+### 31.11 Correctness
+
+Every Phase 5.8 guarantee re-verified by the existing suites, plus new
+regression tests for the attribution itself:
+
+* an academic change attributes to `academic`, never `rules_only`;
+* a rule change attributes to `rules` **and** `rules_only`;
+* an engine change attributes to `engine`;
+* **simultaneous** academic + rules changes attribute to both and
+  explicitly **not** to `rules_only` - a miss that was required anyway must
+  never be counted as avoidable;
+* a cold miss is not counted as an invalidation at all;
+* `rules_only <= rules` and `stale <= misses` as invariants;
+* an engine failure increments `audit_failures_total` and is **re-raised**,
+  not swallowed.
+
+The cardinality guard was strengthened from a hardcoded metric count - which
+broke on every addition while testing nothing - to an **AST** check that
+every `increment`/`observe` call passes a declared module constant.
+Mutation-verified: building a metric name as `f"stale_{student.id}"` fails
+it.
+
+### 31.12 Limitations
+
+**Genuine, and several of them constrain the conclusion:**
+
+1. **The benchmark is synthetic and tiny** - up to 32 programs x 5 students
+   x 6 courses, on one laptop. It establishes the *shape* of the cost, not
+   CoursePilot's production cost.
+2. **The recuration rate is invented** and far above reality. It had to be,
+   to make the effect measurable in ten rounds.
+3. **P=1 is the real datum**, and it is a datum about a project with one
+   ingested program - not evidence that per-program versioning is
+   unnecessary at scale.
+4. Metrics remain **per process and in memory**, with no export and no
+   percentiles; the benchmark computes p50/p95 from its own samples, not
+   from the registry.
+5. Trigger behaviour is **PostgreSQL-specific**; SQLite still uses the
+   fingerprint fallback, and SQLite results prove nothing about triggers.
+6. **Not measured:** cache behaviour under real student concurrency with
+   many distinct students, storage growth over time, and the cost of
+   recuration on a full-sized requirement tree (the real CS program has ~800
+   eligibility rows; benchmark programs have 6).
+
+### 31.13 Unchanged
+
+The Degree Engine, its objective, allocation, baseline semantics, the Phase
+5.6 API contract, Phase 5.7 pooling, and the Phase 5.8 cache mechanism,
+compression and trigger set. No migration was required and none was added.
+
+```
+SQLite      554 passed,  66 skipped   (unchanged)
+PostgreSQL  619 passed,   1 skipped   (unchanged)
+Backend     284 passed,   2 skipped   (was 275; +9)
+alembic check                          clean, no migration added
+```

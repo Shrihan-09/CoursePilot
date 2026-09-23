@@ -6215,3 +6215,251 @@ database. Watch unrelated tests fail, and watch the wall time double.
 - Metric cardinality explosions as an outage class; RED and USE methods
 - Test isolation: shared fixtures, database-per-worker, `pytest-xdist`
 - Fail-closed vs fail-open design in correctness-critical systems
+
+
+---
+
+# Lesson 23: Measuring Whether the Architecture Needs to Get Harder
+
+## What We Built
+
+Almost no behaviour. Five counters, a benchmark, and a decision: **do not**
+build per-program cache invalidation.
+
+---
+
+## Concepts
+
+### The phase whose output is a "no"
+
+Phase 5.8 ended with a known imprecision: a global rules version invalidates
+every student when any program's rules change. The obvious next move is to
+make it precise.
+
+The better next move is to find out whether the imprecision costs anything.
+
+That is an unusual kind of work, because its most likely output is *no new
+feature*. It is also the kind most often skipped, because "we made
+invalidation per-program" sounds like progress and "we measured it and left
+it alone" sounds like nothing happened. The second one is progress; it is
+just progress you can only see if you wrote down what you learned.
+
+The trap this avoids has a name in every codebase: machinery built for a
+scale that never arrived, which then has to be maintained, understood and
+worked around forever.
+
+### Instrument first, then ask
+
+The question was "how much recomputation is unnecessary?" and the system
+could not answer it. It counted stale misses, but not *why* a row went
+stale - and the whole question turns on why.
+
+```
+stale because the student's coursework changed   unavoidable, any design
+stale because the engine changed                 unavoidable, any design
+stale because the rules version moved            MAYBE avoidable
+```
+
+So the first work was five counters, the important one being
+`audit_cache_stale_rules_only_total`.
+
+Note what makes it cheap: the read path was **already** comparing the three
+key components. It just threw away which one differed. Turning `matches() ->
+bool` into `differences() -> tuple` cost 0.596 us against 0.623 us - inside
+the noise - and a cache *hit* records nothing at all.
+
+**The measurement you need is often one discarded intermediate value away.**
+Before adding instrumentation, check what the code already computes and
+throws out.
+
+### A number can be true and still not be evidence
+
+The first benchmark run said:
+
+```
+collateral invalidations: 71 of 81 misses     72.8% of audit time
+```
+
+That number was arithmetically correct and completely misleading. It counted
+as "avoidable":
+
+* **cold-start misses** - there was no cached row at all. No versioning
+  scheme in existence avoids a cold cache.
+* **engine-version misses** - the Python semantics changed, so every student
+  legitimately needed recomputing.
+
+The real figure was 30, not 71. The classification had quietly answered
+"which misses happened while no rule of this student's changed?" instead of
+"which misses would a better design have avoided?"
+
+Two habits come out of this. First: **when a measurement supports the
+exciting conclusion, attack it before believing it.** 72.8% would have
+justified building the complex thing. Second: the fix was to stop inferring
+the cause from the scenario name and read it from the counters the
+production code actually incremented - so the benchmark's classification
+cannot drift from what the cache really did.
+
+### The parameter that was secretly the answer
+
+Even corrected, "30 collateral misses, 28.6% of audit time" is not a fact
+about CoursePilot. It is a fact about `PROGRAMS = 4`, a number chosen
+because it seemed reasonable.
+
+Sweeping it changed the entire conclusion:
+
+```
+P=1     0 collateral     0.0%
+P=2    10                22.0%
+P=4    30                29.9%
+P=8    70                36.1%
+P=32  310                40.2%
+```
+
+The counts follow **(P-1)/P** exactly. And CoursePilot has **one program**,
+where collateral is not "small" or "negligible" but *zero by construction* -
+with one program there is no other program whose rules could invalidate
+anyone. The two designs are indistinguishable on the current data.
+
+The general point: **when you report a single number from a fixture you
+designed, ask which of your own choices determines it.** If the answer is
+"the one I picked arbitrarily", you have measured your fixture. Sweeping the
+parameter turns one number into a shape, and a shape supports a decision -
+including the decision about *when the answer changes*.
+
+### Model the alternative concretely enough to price it
+
+"Per-program versioning is more complex" is an assertion. Pricing it means
+reading the schema:
+
+```
+requirement_course_option.requirement_id -> requirement      ON DELETE CASCADE
+requirement.parent_id                    -> requirement      ON DELETE CASCADE
+requirement.program_version_id           -> program_version  ON DELETE CASCADE
+program_version.program_id               -> program          ON DELETE CASCADE
+```
+
+A per-program trigger on `requirement_course_option` has to find its owning
+program version *through* `requirement`. Deleting a program cascades four
+levels, so when that trigger fires the parent requirement may already be
+gone - and so may the counter row it was meant to bump. The design must then
+answer what a missing counter means, and only one answer ("unknown, so
+invalidate") is safe.
+
+That is a real, checkable hazard in exactly the place where a mistake
+produces a stale degree audit. Weighed against a measured saving of 0 ms, it
+is not a close call.
+
+**Complexity is not an aesthetic objection.** Price it by naming the
+specific thing that can go wrong, then compare against the measured benefit.
+Both sides of that comparison have to be concrete, or you are just trading
+adjectives.
+
+### Leave the trigger condition behind, not just the decision
+
+A decision without a revisit condition rots, because the conditions it
+depended on are in someone's head.
+
+```
+audit_cache_stale_rules_only_total / audit_cache_misses_total
+```
+
+That ratio is now emitted in production. The revisit condition is written
+down with it: more than one program with students, a sustained high
+rules-only share, and enough absolute wall time to be worth the cascade
+work. Whoever asks this question next starts with a number instead of an
+argument.
+
+**The output of a decision phase is three things: the decision, the evidence,
+and the condition under which the decision expires.**
+
+### Counting failures is part of counting successes
+
+A quieter addition: `audit_failures_total`. A caching phase optimises the
+happy path, and a hit rate climbing to 99% looks identical whether the
+remaining 1% succeeded or exploded.
+
+The engine failure is counted and **re-raised**, never swallowed - the route
+deliberately turns a Degree Engine failure into a 500, and a metric must
+observe that, not absorb it.
+
+**Instrumentation that only measures success will eventually reassure you
+about an outage.**
+
+### Test the property, not the tally
+
+The Phase 5.8 cardinality test asserted `len(declared) == 10`. Adding five
+metrics broke it - and it had never tested anything about cardinality, only
+that nobody had added a metric.
+
+Rewritten, it walks the **AST** of the cache modules and asserts every
+`increment`/`observe` argument is a declared module constant. Now
+`f"stale_{student.id}"` fails it - verified by writing exactly that and
+watching it fail.
+
+The first version broke on change while permitting the bug. The second
+permits change while catching the bug. **A test that only fails when
+something is added is not protecting the property it is named after.**
+
+### Know your measuring instrument
+
+Two readings during this phase were nonsense: a test file taking 30 minutes
+that normally takes 5 seconds, and an earlier suite reporting 12 hours. Both
+were the machine suspending, not the code.
+
+The tell was re-running with `--durations`: 5.67 s total, slowest test
+0.47 s. Likewise, an endpoint benchmark that looked like a regression was
+exonerated by the *unchanged control* endpoint being equally slow.
+
+**Always keep something in the measurement whose value you already know.** A
+control that moves tells you the instrument moved, not the subject.
+
+---
+
+## Self-Check
+
+1. Why is "we measured it and changed nothing" a successful phase outcome?
+2. What made the extra instrumentation nearly free?
+3. The first benchmark reported 72.8% avoidable. What two categories was it
+   wrongly including, and why is neither avoidable?
+4. Why is "30 collateral misses" not a fact about CoursePilot?
+5. What is the collateral fraction at P=1, and why is it that value *by
+   construction* rather than approximately?
+6. Describe the cascade hazard in per-program versioning, using the actual
+   foreign keys.
+7. What three things should a decision phase leave behind?
+8. Why is `audit_failures_total` worth a counter in a caching phase?
+9. Why was `assert len(declared) == 10` a bad test even before it broke?
+10. An endpoint benchmark looks 40% slower. How do you tell a regression from
+    a busy machine?
+
+## Try It Yourself
+
+**A.** Run the workload with `BENCH_PROGRAMS=1` and again with `32`. Note
+that the code, the cache and the trigger are identical in both, and only the
+fixture changed the conclusion.
+
+**B.** Re-break the classification: count cold misses as collateral. Watch
+the "avoidable" figure jump, and write down the decision you would have made
+from it.
+
+**C.** Make a change that is both academic and rules in one commit, then
+check `audit_cache_stale_rules_only_total`. Explain why it must stay at zero.
+
+**D.** Sketch the per-program trigger for `requirement_course_option`. Then
+delete a program and trace which triggers fire in which order, and what the
+option trigger can still see.
+
+**E.** Add a metric named from a student id and run the cardinality test.
+
+**F.** Time the suite, suspend the machine mid-run, and compare the reported
+duration to `--durations` output.
+
+## Further Learning
+
+- YAGNI, and the cost of speculative generality
+- Parameter sweeps and sensitivity analysis: when one number is not a result
+- Observability-driven decisions; SLO/error-budget reasoning
+- Cascading deletes, trigger firing order, and referential-action semantics
+- AST-based linting and custom static checks as tests
+- Benchmarking hygiene: controls, warm-up, machine noise, p50 vs p95
+- Writing decision records (ADRs) that include an expiry condition
