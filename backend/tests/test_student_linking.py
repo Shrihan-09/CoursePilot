@@ -79,7 +79,7 @@ def _program_version(session):
     session.flush()
 
     school = School(
-        code=f"S{suffix[:4]}",
+        code=f"S{suffix}",
         name="Test School",
         campus_code="NB",
         source_id=source.id,
@@ -89,7 +89,7 @@ def _program_version(session):
 
     program = Program(
         school_id=school.id,
-        code=suffix[:4],
+        code=suffix,
         name="Test Program",
         degree_type="BA",
         source_id=source.id,

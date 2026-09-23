@@ -125,13 +125,13 @@ def _scenario(session, *, n_courses=2):
     source = _source(session)
     suffix = uuid.uuid4().hex[:8]
     school = School(
-        code=f"S{suffix[:4]}", name="School", campus_code="NB", source_id=source.id
+        code=f"S{suffix}", name="School", campus_code="NB", source_id=source.id
     )
     session.add(school)
     session.flush()
     program = Program(
         school_id=school.id,
-        code=suffix[:4],
+        code=suffix,
         name="Cache Program",
         degree_type="BA",
         source_id=source.id,
@@ -146,7 +146,7 @@ def _scenario(session, *, n_courses=2):
 
     requirement = Requirement(
         program_version_id=version.id,
-        code=f"REQ_{suffix[:4]}",
+        code=f"REQ_{suffix}",
         name="Core requirement",
         requirement_type="choose_n",
         min_count=2,

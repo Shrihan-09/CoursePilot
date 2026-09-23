@@ -345,12 +345,12 @@ def _program_version(session):
     session.add(source)
     session.flush()
 
-    school = School(code=f"S{suffix[:4]}", name="Test School", campus_code="NB", source_id=source.id)
+    school = School(code=f"S{suffix}", name="Test School", campus_code="NB", source_id=source.id)
     session.add(school)
     session.flush()
 
     program = Program(
-        school_id=school.id, code=suffix[:4], name="Test Program",
+        school_id=school.id, code=suffix, name="Test Program",
         degree_type="BA", source_id=source.id,
     )
     session.add(program)
