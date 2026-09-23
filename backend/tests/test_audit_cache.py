@@ -681,7 +681,7 @@ def test_a_corrupt_cache_row_yields_a_fresh_audit(monkeypatch) -> None:
         assert after_miss > 0
 
         row = session.get(StudentAuditCache, student.id)
-        row.result_json = "{not json at all"
+        row.result_blob = b"not zlib at all"
         session.commit()
 
         result, from_cache = audit_with_cache(session, student)
@@ -887,9 +887,9 @@ def test_the_cache_stores_no_queryable_academic_facts() -> None:
     assert columns == {
         "student_id",
         "academic_fingerprint",
-        "rules_fingerprint",
+        "rules_token",
         "engine_version",
-        "result_json",
+        "result_blob",
         "created_at",
         "updated_at",
     }
