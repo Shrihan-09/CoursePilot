@@ -6463,3 +6463,250 @@ duration to `--durations` output.
 - AST-based linting and custom static checks as tests
 - Benchmarking hygiene: controls, warm-up, machine noise, p50 vs p95
 - Writing decision records (ADRs) that include an expiry condition
+
+
+---
+
+# Lesson 24: Observability Must Not Become a Second Source of Sensitive Data
+
+## What We Built
+
+A correlation id, request metrics, an error taxonomy, two failure matrices -
+and the removal of four identifier leaks that the *previous* phases' own
+documentation claimed did not exist.
+
+---
+
+## Concepts
+
+### A log is storage, and it is the storage with the loosest access control
+
+The database has row-level foreign keys, an ownership column, an admin flag
+and a linking audit trail. The log aggregator has a search box.
+
+Logs are shipped off the machine, retained longer than request data, read by
+more people, and rarely covered by the access model anyone designed for the
+database. So an identifier in a log is not a smaller version of an
+identifier in a table - it is often a *larger* exposure, because everything
+that made the table safe was left behind.
+
+That is the whole lesson in one sentence: **instrumentation is not exempt
+from the data policy it is instrumenting.**
+
+### Documentation is not evidence
+
+Phase 5.5 wrote, sincerely:
+
+> Structured logging carries identifiers and timings, never student data.
+
+> Counts and timing only. Never course codes, grades, titles or terms.
+
+Both were written next to code that did the right thing. And four *other*
+call sites logged `str(account.id)`, `str(student_id)`, `student.id` and
+`course_key` - written at different times, each locally reasonable, none
+checked against the policy the same repository had already stated.
+
+Nobody was careless. The policy lived in prose next to the compliant code,
+so it was invisible from everywhere else.
+
+**A rule that is documented but not enforced decays at exactly the rate the
+codebase grows.** The fix is not a better sentence; it is a test that fails.
+
+### Write the test that would have caught it
+
+The first guard I wrote was an AST check for `x.id` inside a `logger.*`
+call. It passed. Then I re-introduced the bug I had just fixed - raw
+`str(student_id)` in the admin log - and **it still passed**, for two
+separate reasons:
+
+* the static check matched `Attribute(attr='id')` but not `Name('student_id')`;
+* the dynamic log-capture test exercised context, audit and explanations,
+  none of which run the admin mutation path.
+
+A static check missed the shape, and a dynamic check missed the code path.
+Both were "passing" tests of a property neither actually verified.
+
+Two habits:
+
+1. **Re-introduce the bug.** A guard you have never seen fail is a guard
+   you have never tested. This one took four minutes and found two holes.
+2. **Static and dynamic cover different blind spots.** Static analysis sees
+   code that never runs in tests; dynamic tests see indirection that static
+   analysis cannot follow. For a property that matters, use both.
+
+### Exclude the non-identifying identifier, deliberately
+
+After strengthening it, the guard flagged five call sites - all logging
+`request_id`, which is the correlation id this very phase added.
+
+The heuristic "a name ending in `_id` is an identifier" is right about
+`student_id` and wrong about `request_id`, and the difference is not
+spelling. `request_id` is *designed* to be non-identifying: server-minted,
+opaque, unrelated to any account, and the entire point of putting it in
+logs.
+
+So the exclusion is a statement about the design, written into the test:
+entity identifiers are join keys into the academic tables; the correlation
+id is not one. Tuning a guard's heuristic is fine. Tuning it until it stops
+complaining is not - the difference is whether you can say *why* each
+exemption is safe.
+
+### The least diagnosable path was the most important one
+
+Before this phase an unhandled exception produced a bare 500: no
+correlation id, no metric, no log line tying it to anything. Every
+*handled* error was instrumented; the one nobody anticipated was not.
+
+That is the normal shape of the bug. You instrument the paths you thought
+about, and the paths you thought about are the ones that already work.
+
+A middleware fixes it structurally rather than by remembering: it wraps
+everything, including responses the route never produced, so the failure
+nobody predicted is correlated by the same mechanism as the ones everybody
+did.
+
+### Additive beats correct-but-breaking
+
+The first error envelope replaced FastAPI's `{"detail": ...}` with a
+structured `{"error": {...}}`. Cleaner. Two existing tests failed
+immediately - one asserting the 409 sentence that Phase 5.4 chose
+deliberately as part of its contract.
+
+The tests were right. A taxonomy is a good idea; breaking a working contract
+to deliver it is not. The envelope now carries `detail` unchanged *and*
+`error` alongside it.
+
+**When you improve an interface, ask whether the improvement requires
+removing anything.** Usually it does not, and "additive" converts a breaking
+change into a free one.
+
+### Sequential A/B measures drift, not change
+
+The first performance run measured all "before" samples, then all "after":
+
+```
+context   -3.2%      warm   -6.5%      cold  -22.8%      explain  +25.0%
+```
+
+A middleware that does a `uuid4`, a ContextVar set and three dict operations
+cannot make a request 22% *faster*. The numbers were measuring warm caches,
+machine load and thermal drift - everything except the change.
+
+Interleaving A and B sample-by-sample, alternating which runs first:
+
+```
+context  +0.55 ms (+3.3%)      warm  +0.21 ms (+1.5%)
+```
+
+Consistent, plausible, and stable. **When comparing two configurations,
+interleave them.** A block design silently attributes everything that
+happened during the second block to the second configuration.
+
+### Measure the mechanism separately from the logic
+
+Even the good numbers held a puzzle: the components sum to ~2.8 microseconds,
+but the endpoint delta was 200-550 microseconds - two orders of magnitude
+apart.
+
+The gap is not the instrumentation. It is Starlette's `BaseHTTPMiddleware`,
+which wraps each request in a task group and a streaming response. The cost
+buys the *mechanism*, not the measurement.
+
+That distinction matters because the two have different fixes. Optimising
+the counters would recover 2.8 microseconds; switching to pure ASGI
+middleware would recover most of the rest. Without separating them you would
+optimise the wrong one - and at 1.5-3.3% of a request, the honest answer is
+to do neither yet and write down why.
+
+### Failure matrices are tables you fill in, not exceptions you catch
+
+"Handle cache failures" is not a design. This is:
+
+```
+failure              recompute?  rollback?  discard?  response
+read failure         yes         YES        no        200 fresh
+corrupted payload    yes         no         overwrite 200 fresh
+table unavailable    yes         YES        no        200 fresh
+```
+
+Enumerating the rows forces the question that a `try/except Exception` never
+asks: *does this one need a rollback?* Three rows do and three do not, and
+the difference - database-level versus Python-level failure - is invisible
+until the table makes you say it out loud.
+
+The same applies to providers: timeout, 429, 503, empty response, malformed
+JSON and a fluent lie are one `except` clause and six different rows, two of
+which are not provider failures at all but *output* failures.
+
+### Break the dependency for real
+
+Every cache-failure row is tested by renaming the table or corrupting the
+stored bytes, not by mocking a function to return `None`.
+
+Phase 5.7 is why. A mocked failure exercises the `except` branch and proves
+the code does not crash. A real failure also leaves a PostgreSQL transaction
+aborted - and the bug that phase found was entirely in the state left
+behind, which no mock would have reproduced.
+
+**Mocks test control flow. Only real failures test state.**
+
+---
+
+## Self-Check
+
+1. Why is an identifier in a log often a larger exposure than the same
+   identifier in a database row?
+2. Phase 5.5's docs said logs carried no student data, and they were written
+   in good faith. How did four leaks coexist with that sentence?
+3. The first leak guard passed against a bug that had just been
+   re-introduced. Name both reasons.
+4. Why is `request_id` excluded from the identifier heuristic, and how is
+   that different from tuning a test until it stops failing?
+5. Why did the unhandled-exception path have no correlation id, and why is a
+   middleware the structural fix rather than a discipline fix?
+6. The structured error envelope broke two tests. Who was right, and what
+   was the resolution?
+7. A sequential A/B said the middleware made requests 22% faster. What was
+   actually being measured?
+8. Components sum to 2.8 us; the endpoint delta is 0.2-0.55 ms. Where does
+   the difference go, and why does locating it matter?
+9. In the cache failure matrix, which rows need a rollback and what
+   distinguishes them?
+10. Why is "empty response" counted as a rejection rather than a failure?
+11. Why does the service attempt the model exactly once?
+12. What can an operator infer from CoursePilot's metrics, and what can they
+    not?
+
+## Try It Yourself
+
+**A.** Re-introduce `str(student_id)` into the admin log. Confirm both
+guards fail now, then delete the dynamic one and confirm the static one
+still catches it - and vice versa.
+
+**B.** Remove the `redact_id` exemption from the static guard. Note how many
+legitimate call sites it flags, and what that would do to the guard's
+credibility over a year.
+
+**C.** Replace the interleaved benchmark with a sequential one and run it
+three times. Record how much the conclusion changes between runs.
+
+**D.** Delete `_safe_rollback` from the cache read path and run the failure
+matrix. Identify which rows fail and which still pass, and explain the
+split.
+
+**E.** Make the error envelope replace `detail` instead of adding to it. Run
+the suite and read which contracts you broke.
+
+**F.** Add a `labels: dict` parameter to `metrics.increment` and pass
+`{"student": student.id}`. Notice how natural it feels.
+
+## Further Learning
+
+- Structured logging, log levels, and retention as a privacy surface
+- Correlation vs tracing: request ids, spans, and W3C Trace Context
+- Data minimisation and purpose limitation (GDPR Art. 5) applied to telemetry
+- Metric cardinality explosions; why labels are the usual cause
+- Starlette `BaseHTTPMiddleware` vs pure ASGI middleware overhead
+- Failure-mode-and-effects analysis (FMEA) as a design table
+- Fault injection and chaos testing versus mocking
+- Error taxonomies and RFC 7807 problem details

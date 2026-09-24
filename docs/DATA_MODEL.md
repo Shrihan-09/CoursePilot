@@ -5180,3 +5180,267 @@ PostgreSQL  619 passed,   1 skipped   (unchanged)
 Backend     284 passed,   2 skipped   (was 275; +9)
 alembic check                          clean, no migration added
 ```
+
+
+---
+
+## 32. Production observability and failure-path hardening (Phase 5.10)
+
+> **Observability must not become a second source of sensitive data.**
+
+No new product functionality. This phase makes the path CoursePilot already
+has diagnosable, and closes the gaps a trace of the real request path
+exposed.
+
+### 32.1 What the trace found
+
+| gap | before | after |
+|---|---|---|
+| correlation | a `request_id` existed, but **only inside the explanations route** - not a header, not available to any other route | one id per request, in a ContextVar, on every log record and every response |
+| unhandled errors | **no exception handler registered**: a bare 500, no id, no metric - the least diagnosable path was the one that mattered most | correlated, counted, and opaque to the client |
+| request metrics | none | count by status class, latency histogram with percentiles |
+| error shape | FastAPI's `{"detail": ...}`, no machine-readable code | additive taxonomy alongside the unchanged `detail` |
+| explanation outcomes | a single "used_model" boolean | provider-unavailable / attempted / succeeded / failed / rejected, which need opposite operator responses |
+| **raw identifiers in logs** | `str(account.id)`, `str(student_id)`, `student.id`, `course_key` | hashed handles, or removed |
+
+That last row is a security finding, not a nicety. The project's own Phase
+5.5 documentation claimed logs carried "counts and timing only... the
+principal is the hashed handle" - and four call sites contradicted it.
+
+### 32.2 Correlation
+
+```
+request arrives
+  -> middleware mints an opaque id      server-generated, 16 hex chars
+  -> stored in a ContextVar             survives the run_in_threadpool hop
+  -> injected into every log record     by a filter, not by call sites
+  -> returned as X-Request-ID           on success AND on handled errors
+```
+
+Three deliberate properties:
+
+* **Server-generated.** A client-supplied `X-Request-ID` is ignored.
+  Honouring it would let a caller forge a shared id across users or write
+  attacker-chosen text into the log stream.
+* **Not derived from identity.** Deriving it from an account would make
+  every log line a disclosure and every cross-request correlation a way to
+  link a person's activity.
+* **Injected by a logging filter.** So the Degree Engine, the cache and the
+  providers are correlated without any of them knowing an HTTP layer
+  exists. A test asserts records emitted *inside the worker thread* carry
+  the request's id - if the ContextVar did not cross that hop, every line
+  from the code an operator most needs to trace would be uncorrelated.
+
+### 32.3 Error taxonomy
+
+Twelve codes, closed set: `authentication_error`, `authorization_error`,
+`unlinked_account`, `rate_limited`, `not_found`, `validation_error`,
+`degree_engine_error`, `cache_error`, `provider_error`,
+`model_validation_error`, `timeout`, `internal_error`.
+
+The envelope is **additive**:
+
+```json
+{
+  "detail": "No academic record is linked to this account. ...",
+  "error": {"code": "unlinked_account", "message": "...", "request_id": "..."}
+}
+```
+
+`detail` is unchanged because Phase 5.4 chose those sentences deliberately
+and clients depend on them. Adding machine-readable structure is not a
+reason to break a working contract - the first draft replaced `detail` and
+two existing tests correctly caught it.
+
+Two codes exist for metrics only and never reach a client: `cache_error`
+(the engine can always recompute) and `provider_error` (the deterministic
+explanation is the answer).
+
+**422 no longer echoes the input.** FastAPI's default body quotes the
+offending value back; for a request that put a credential in the wrong
+field that is a disclosure, and naming the failing field is a probing aid. A
+test posts a fake API key as a `course_key` and asserts it does not appear
+in the response.
+
+### 32.4 Metrics
+
+Building on the Phase 5.8/5.9 registry, which still has **no label API** -
+so none of these can carry an identifier.
+
+```
+request       http_requests_total / _2xx / _4xx / _5xx, http_request_duration_ms
+audit         cache hit / miss / stale{academic,rules,engine,rules_only}
+              engine duration, audit duration, audit_failures_total
+              cache read / write failures, invalidations
+explanation   deterministic, model attempted / succeeded / failed / rejected,
+              provider_unavailable, not_grounded
+auth          authentication_failures, authorization_failures,
+              unlinked_account, rate_limited
+stages        authentication, session acquire, ownership, academic
+              fingerprint, rules state, context build, serialization,
+              evidence, retrieval, model call, model validation
+```
+
+**Status class, not status code, and never the path.** A per-path counter
+grows with the URL space, and `/admin/students/{id}/link` would put a
+student id into a metric name.
+
+**Percentiles added.** Phase 5.9 listed their absence as a limitation; a
+mean hides exactly the tail an operator is paged about. Each histogram keeps
+a bounded ring of the most recent 512 observations and reports p50/p95/p99
+plus `sample`, so nobody reads a p99 built from four data points as
+meaningful. Bounded because an unbounded sample list is a slow memory leak.
+
+### 32.5 What is deliberately NOT measured
+
+* student, account, course or requirement identifiers, in any metric or log;
+* prompts, model responses, rendered evidence, source prose;
+* course keys - a single one looks harmless, but with a principal handle a
+  log aggregator accumulates a course history nobody decided to store there;
+* request paths, for the reason in 32.4;
+* per-user counters of any kind.
+
+**What an operator can infer:** how many requests, how they ended by class,
+how long they took, how often the cache helped and why it did not, how often
+the model was tried and how it failed, and where time went inside a request.
+
+**What an operator cannot infer:** who asked, what they asked about, what
+their academic record contains, or whether any particular student exists.
+
+### 32.6 Cache failure matrix (Part 6)
+
+| # | failure | recompute? | rollback? | discard entry? | response |
+|---|---|---|---|---|---|
+| 1 | cache read failure | yes | **yes** | no | 200, fresh |
+| 2 | cache write failure | n/a | yes | no | 200, already computed |
+| 3 | corrupted payload | yes | no | overwritten | 200, fresh |
+| 4 | decompression failure | yes | no | overwritten | 200, fresh |
+| 5 | malformed cached JSON | yes | no | overwritten | 200, fresh |
+| 6 | cache table unavailable | yes | **yes** | no | 200, fresh |
+| 7 | transaction already failed | yes | **yes** | no | 200, fresh |
+
+The rollback column is the load-bearing one, and it is the Phase 5.7 defect
+restated: PostgreSQL aborts the whole transaction on a failed statement, so
+catching a cache exception without clearing the transaction hands the Degree
+Engine a session where every query fails - turning "the cache is broken"
+into "the audit is broken". Python-level failures (3, 4, 5) need no
+rollback; database-level ones do.
+
+Stale entries are **overwritten, not deleted**: a read path that writes is a
+read path that can fail in new ways. Never a 500, and never a partial
+result - a bad payload produces a fresh audit, not a half-built one.
+
+Tested by breaking the dependency for real (renaming the table, corrupting
+the stored bytes), because a mock returning `None` would exercise the
+`except` branch and prove nothing about the state left behind.
+
+### 32.7 Provider failure matrix (Part 7)
+
+Every row returns a **correct explanation**; none returns an error.
+
+| failure | model used | counted as |
+|---|---|---|
+| timeout, connection error, 408, 409, 429, 500, 502, 503 | no | `model_failed` |
+| empty response | no | `model_rejected` |
+| malformed structured output | no | `model_rejected` |
+| unsupported claim (fluent but academically false) | no | `model_rejected` |
+| provider not configured | no | `provider_unavailable` |
+| success | yes | `model_succeeded` |
+
+The vendor boundary already collapses every SDK exception into one
+provider-neutral `ProviderError` carrying only the exception *class* - SDK
+errors can echo request bodies containing student data. Phase 5.10 makes
+that guarantee local rather than inherited: the service logs
+`type(exc).__name__` and no longer calls `logger.exception`, whose traceback
+can quote the rendered academic evidence.
+
+**No second retry layer.** Retries belong to the SDK, which retries only
+transient failures; a test asserts the service calls the model exactly once
+per request, because an application-level retry would turn one user request
+into several billable calls.
+
+`provider_unavailable` is counted apart from `model_failed` because they look
+identical in the response and need opposite responses from an operator:
+configure something, versus fix something.
+
+### 32.8 Performance
+
+Measured against a copy of the real development database, **interleaved
+sample-by-sample** so machine drift affects both sides equally.
+
+The first attempt ran all "before" samples then all "after" samples and
+produced deltas from -22.8% to +25.0% - impossible for a middleware that
+does a `uuid4`, a ContextVar set and three dict operations. Sequential
+blocks measured drift, not the change. Recording that here because the
+misleading version looked publishable.
+
+```
+GET /student/context        without  p50 16.67   with  p50 17.22   +0.55 ms  (+3.3%)
+GET /student/audit (warm)   without  p50 13.91   with  p50 14.12   +0.21 ms  (+1.5%)
+
+components, measured directly
+  new_request_id()                    1.099 us
+  ContextVar set + reset              0.247 us
+  metrics.increment                   0.242 us
+  metrics.observe (with reservoir)    0.957 us
+  -> instrumentation logic per request ~2.8 us
+```
+
+The instrumentation costs ~2.8 us; the measured endpoint delta is 0.2-0.55
+ms. **The gap is the middleware mechanism, not the instrumentation.**
+Starlette's `BaseHTTPMiddleware` wraps each call in a task group and a
+streaming response, and that is what the sub-millisecond cost buys. A pure
+ASGI middleware would avoid most of it and is the obvious change if this
+ever matters; at 1.5-3.3% of a request it does not yet.
+
+**Not measured meaningfully:** the explanation endpoint. It takes 4-5
+seconds because it rebuilds the BM25 index on every call - a deliberately
+deferred limitation from Phase 5.0, unrelated to this phase and large enough
+to swamp any observability signal.
+
+### 32.9 Migration
+
+**None.** No observability state is persisted, so no schema change is
+justified. `alembic check` remains clean. A metrics table was considered and
+rejected: it would make a derived, per-process artifact durable without
+making it distributed, which is the worst of both.
+
+### 32.10 Limitations
+
+**Genuine, and some constrain what the metrics are worth:**
+
+1. **Metrics remain per-process and in-memory.** No export, no aggregation
+   across workers, lost on restart. N workers give N partial views. This is
+   **not distributed observability** and must not be described as such.
+2. **Percentiles are over the last 512 observations per histogram**, not all
+   history and not a time window.
+3. **Admin URLs contain a student id** (`/admin/students/{id}/link`). The
+   application's own logs no longer carry it, but an ASGI server or proxy
+   access log will - a real exposure surface this phase cannot close from
+   inside the application, and the reason the log-privacy test filters to
+   CoursePilot's own loggers.
+4. **No tracing spans**, no parent/child relationships - one flat id per
+   request.
+5. **Rate limiting is still in-memory and per-process** (Phase 5.3).
+6. **Timing stages are instrumented but not all wired** - the audit path
+   records engine, cache lookup, cache write and total; several declared
+   stage metrics are available for callers that do not yet use them.
+7. **Live Rutgers SSO and the live Anthropic API remain unverified**; the
+   provider matrix uses a scripted model, which tests CoursePilot's
+   behaviour and not the vendor's.
+8. **The BM25 rebuild on every explanation request** remains the dominant
+   cost in that path and is untouched here.
+
+### 32.11 Unchanged
+
+The Degree Engine, its objective, allocation and baseline semantics; the
+Phase 5.6 response contracts; Phase 5.7 pooling; the Phase 5.8 cache
+mechanism and trigger set; Phase 5.9's global-invalidation decision; all
+status codes and their meanings.
+
+```
+SQLite      554 passed,  66 skipped   (unchanged)
+PostgreSQL  619 passed,   1 skipped   (unchanged)
+Backend     334 passed,   2 skipped   (was 284; +50)
+alembic check                          clean, no migration added
+```
