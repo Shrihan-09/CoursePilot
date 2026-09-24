@@ -53,6 +53,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.api.security import Principal, get_link_limiter, get_principal
 from app.core.metrics import get_metrics
+from app.core.observability import redact_id
 from app.core.config import Settings, get_settings
 from app.db.session import get_sync_sessionmaker
 from app.models import Student, UserAccount
@@ -217,7 +218,9 @@ async def link(
 
     logger.info(
         "student_link_recorded",
-        extra={"student_id": str(student_id), "by": principal.redacted()},
+        # Hashed: the audit TRAIL records the real ids durably and under
+        # access control. The log only needs to be correlatable.
+        extra={"student": redact_id(student_id), "by": principal.redacted()},
     )
     return LinkResponse(student_id=student_id, linked=True, event_recorded=True)
 
@@ -261,7 +264,9 @@ async def unlink(
 
     logger.info(
         "student_unlink_recorded",
-        extra={"student_id": str(student_id), "by": principal.redacted()},
+        # Hashed: the audit TRAIL records the real ids durably and under
+        # access control. The log only needs to be correlatable.
+        extra={"student": redact_id(student_id), "by": principal.redacted()},
     )
     return LinkResponse(student_id=student_id, linked=False, event_recorded=True)
 

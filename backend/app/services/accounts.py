@@ -58,6 +58,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.auth import AuthenticatedPrincipal
+from app.core.observability import redact_id
 from app.models import (
     LINK_ACTION_LINKED,
     LINK_ACTION_UNLINKED,
@@ -181,11 +182,16 @@ def link_student(
             )
         )
     session.flush()
+    # Hashed handles, not raw ids. A log line is shipped to an aggregator
+    # and kept longer than request data; a raw UserAccount.id there is a
+    # join key into the academic tables. The durable record of WHO linked
+    # WHOM is `student_link_event`, which is access-controlled - the log
+    # only needs to be correlatable, not identifying.
     logger.info(
         "student_linked",
         extra={
-            "account_id": str(account.id),
-            "performed_by": str((performed_by or account).id),
+            "account": redact_id(account.id),
+            "performed_by": redact_id((performed_by or account).id),
         },
     )
     return student
@@ -225,7 +231,8 @@ def unlink_student(
     session.flush()
     logger.info(
         "student_unlinked",
-        extra={"account_id": str(previous), "performed_by": str(performed_by.id)},
+        extra={"account": redact_id(previous),
+               "performed_by": redact_id(performed_by.id)},
     )
     return student
 

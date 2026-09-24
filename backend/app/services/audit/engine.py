@@ -26,6 +26,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.observability import redact_id
 from app.domain.audit import (
     Allocation,
     AuditFinding,
@@ -288,7 +289,7 @@ class DegreeAuditEngine:
             # optimum that was not proven.
             logger.info(
                 "global optimizer fell back for student %s (components: %s)",
-                student.id,
+                redact_id(student.id),
                 result.fallback_components,
             )
             return None
