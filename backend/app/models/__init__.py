@@ -36,6 +36,7 @@ from app.models.academic import Course, CourseOffering, Subject
 from app.models.audit_cache import StudentAuditCache
 from app.models.provenance import DataSource
 from app.models.rules_version import RULES_TABLES, RulesVersion
+from app.models.search_version import SEARCH_TABLES, SearchVersion
 from app.models.requirements import (
     CatalogCourseEntry,
     CurationStatus,
@@ -79,11 +80,13 @@ __all__ = [
     "ProgramRuleType",
     "ProgramVersion",
     "RULES_TABLES",
+    "SEARCH_TABLES",
     "Requirement",
     "RequirementCourseOption",
     "RequirementSystem",
     "RequirementType",
     "RulesVersion",
+    "SearchVersion",
     "SharingPolicy",
     "School",
     "SectionCrossListing",
