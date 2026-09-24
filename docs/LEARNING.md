@@ -6710,3 +6710,203 @@ the suite and read which contracts you broke.
 - Failure-mode-and-effects analysis (FMEA) as a design table
 - Fault injection and chaos testing versus mocking
 - Error taxonomies and RFC 7807 problem details
+
+
+---
+
+# Lesson 25: Immutable Derived Indexes and Invalidation
+
+## What We Built
+
+A BM25 index that is built once per corpus version instead of once per
+request - and the proof that it is not rebuilt, which is a different claim
+from "the endpoint got faster".
+
+---
+
+## Concepts
+
+### Check the premise before you optimise it
+
+The brief said the endpoint took 4-5 seconds. It takes 336 ms.
+
+The earlier figure was measured on a loaded machine; the *unchanged* control
+endpoint in that same session read 137 ms against 16-22 ms everywhere else.
+The diagnosis was right and the magnitude was an artifact.
+
+Inheriting it would have been easy and harmless-seeming - the fix is the
+same either way. But "we made it 12x faster" and "we made it 5x faster" are
+different claims, and only one of them is true. **A number you did not
+measure is a number you are quoting, not reporting.**
+
+### The cheapest thing to fix is a ratio, not a duration
+
+```
+build the index   264 ms
+query the index     0.09 ms
+```
+
+3,000:1. That ratio, not the absolute number, is what says "build this once".
+A 264 ms build would be perfectly fine if each build served a million
+queries; it is indefensible when it serves one.
+
+Before optimising, get the ratio of *setup to use*. It tells you whether the
+answer is "make it faster" or "do it less often" - which are different
+projects.
+
+### Four designs, three rejected for specific reasons
+
+"Make it a singleton" is the obvious move and it is wrong, but the useful
+part is *why each alternative fails*:
+
+```
+build at startup    breaks a documented invariant (boots with Postgres down)
+lazy singleton      silently serves a stale catalog
+invalidate() calls  IMPOSSIBLE - ingestion is a different process
+version-keyed       chosen
+```
+
+The third is the interesting one. Phase 5.8 taught that
+invalidation-by-discipline fails when someone forgets the call. Here it
+fails harder: the process that changes the data cannot reach the process
+holding the cache. **Before designing an invalidation callback, check that
+the caller and the cache are in the same address space.**
+
+### The expensive part and the mutable part are not the same part
+
+The naive singleton shares the whole searcher. That would have introduced a
+real race:
+
+```python
+ExpandingSearcher.search()   ->  self.last_expansions = applied
+context.py                   ->  reads searcher.last_expansions
+```
+
+Two concurrent requests would read each other's expansions.
+
+But the expensive object - the BM25 index, 264 ms - is genuinely immutable
+after construction. The mutable object is a two-field wrapper costing ~0 ms.
+
+So: share the expensive immutable part, construct the cheap mutable part per
+request. **When you decide to share something, audit it for mutable state
+first, and check whether the mutable part is the part you needed to share.**
+Usually it is not.
+
+### Publication is a swap, not an edit
+
+```python
+self._published = new_index        # atomic reference swap
+```
+
+versus clearing and refilling in place, which gives concurrent readers a
+window onto a half-built index.
+
+The frozen dataclass is what makes this safe to reason about: a reader that
+grabbed the old index keeps a complete, consistent view for the rest of its
+request, and cannot be surprised mid-flight. **Immutable + swap is how you
+get atomicity without a reader lock.**
+
+### Failure has two different answers, and you must pick per case
+
+"Keep the old index on rebuild failure" sounds obviously right. It is only
+right when the old index is still *correct*:
+
+```
+rebuild fails, corpus unchanged  ->  old index is current. Serve it.
+rebuild fails, corpus MOVED      ->  old index is known-old.
+```
+
+The second case has no good answer, only a least-bad one. Failing the
+request is defensible; so is serving stale descriptive text. The decision
+turns on what the data *does*: retrieval supplies course descriptions, and
+no academic decision comes from it.
+
+What is not acceptable is making that choice invisibly. A counter and a log
+line turn "silently stale" into "stale, recorded, and alertable" - and that
+distinction is the whole difference between a judgement call and a bug.
+
+### Prove the negative with a counter, not a stopwatch
+
+The claim is "the endpoint no longer rebuilds the index". Timing cannot
+establish it: a faster endpoint is equally consistent with a rebuild on a
+faster machine.
+
+```python
+assert metrics.counter(SEARCH_INDEX_BUILDS) == 1   # across 6 requests
+assert metrics.counter(SEARCH_INDEX_REUSE) == 5
+```
+
+Plus a static check that `build_course_documents` no longer appears in the
+route, because a counter test only covers the path it exercised.
+
+**When the claim is that something does not happen, measure the thing, not
+its side effects.**
+
+### A staleness suite that has never seen staleness
+
+Nine tests assert that a mutation shows up in the next search. All nine
+would also pass if the index were rebuilt on every request, if the search
+matched everything, or if the assertion had a typo.
+
+So one test deliberately breaks invalidation - freezing the version signal
+*before* the index is built - and asserts the stale result **appears**.
+
+Getting that test right took two attempts. The first froze the signal after
+building, so the published token no longer matched the frozen one and the
+registry rebuilt anyway - the test failed by being *correct*, which is a
+confusing way to learn that the setup was wrong.
+
+**A test that proves your other tests can fail is worth more than another
+test that passes.**
+
+---
+
+## Self-Check
+
+1. The brief said 4-5 seconds; measurement said 336 ms. What made the
+   original figure wrong, and how was that established?
+2. Why does the 264 ms : 0.09 ms ratio matter more than the 264 ms?
+3. Why is "call `search.invalidate()` from ingestion" not merely fragile but
+   impossible here?
+4. Why is `BM25Searcher` shared but `ExpandingSearcher` not?
+5. Why is publication a reference swap onto a frozen object rather than an
+   in-place refill?
+6. A rebuild fails. When is serving the old index correct, and when is it a
+   judgement call?
+7. Why can timing not prove the endpoint stopped rebuilding the index?
+8. What would the staleness tests fail to catch without the frozen-signal
+   test?
+9. Why is the search version a separate counter from the rules version?
+10. What happens to worker B's index when worker A serves the request that
+    triggers a rebuild?
+
+## Try It Yourself
+
+**A.** Share one `ExpandingSearcher` across the registry instead of building
+one per request. Run the concurrency test and read `last_expansions`.
+
+**B.** Make publication clear the index first, then refill it. Run the 50-
+thread test and look for a request that sees an empty corpus.
+
+**C.** Remove the `search_version` trigger from `course` only. Work out
+which of the nine staleness tests still passes, and why that subset is the
+dangerous one.
+
+**D.** Freeze the version signal *after* the first build instead of before,
+and explain why the stale result does not appear.
+
+**E.** Point `rules_version` at the search tables as well. Measure how often
+the BM25 index rebuilds during a requirement recuration.
+
+**F.** Run two application processes against one database, ingest, and
+observe each worker's `search_index_builds_total`.
+
+## Further Learning
+
+- Copy-on-write and RCU (read-copy-update) as concurrency patterns
+- Immutable data structures and structural sharing
+- Single-flight / request coalescing; the thundering herd problem
+- Cache stampede mitigation: locks, probabilistic early expiry
+- Index lifecycle in Lucene/Elasticsearch: segments, refresh, commit
+- Blue/green and atomic pointer swaps in deployment and in memory
+- Measuring setup-to-use ratios before optimising

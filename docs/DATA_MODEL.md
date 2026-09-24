@@ -5444,3 +5444,283 @@ PostgreSQL  619 passed,   1 skipped   (unchanged)
 Backend     334 passed,   2 skipped   (was 284; +50)
 alembic check                          clean, no migration added
 ```
+
+
+---
+
+## 33. The BM25 index lifecycle (Phase 5.11)
+
+> The BM25 index is **derived data**. It is never authoritative, and
+> deleting all of it costs latency and nothing else.
+
+### 33.1 A correction to the premise
+
+Phase 5.10 reported the explanation endpoint at 4-5 seconds. **That does not
+reproduce.** Measured today on a copy of the real development database:
+
+```
+POST /explanations/recommendation   mean 336.53 ms   p50 324.15 ms
+```
+
+The Phase 5.10 figure was taken on a loaded machine, where the *unchanged*
+`/student/context` control also read 137 ms against 16-22 ms in every other
+session. The **diagnosis** was correct - the BM25 build dominates - but the
+magnitude was an artifact, and repeating it as fact would have been wrong.
+
+### 33.2 Where the time went
+
+```
+build_course_documents   130.36 ms
+build_bm25               133.21 ms
+                         --------
+per request               ~264 ms   of a ~336 ms endpoint  (78%)
+
+one search on a built index   0.09 ms
+ExpandingSearcher wrapper     ~0 ms
+```
+
+The index cost 3,000x more to build than to query, once per request.
+
+### 33.3 The index's actual inputs
+
+Traced from `build_course_documents`, not assumed:
+
+| table | columns read | why it matters |
+|---|---|---|
+| `course` | `course_string`, `supplement_code`, `subject_code`, `course_number`, `title`, `credits`, `level`, `offering_unit_code`, `id` | document identity and the title field |
+| `subject` | `offering_unit_code`, `code`, `description` | becomes `subject_name`, a searched field |
+| `catalog_course_entry` | `course_id`, `description`, `catalog_year` | the description field and its provenance |
+
+**Not inputs:** every requirement/program table (they change the audit,
+never a search result), student tables (not in the corpus), and
+`data_source` - `course_provenance` is a hardcoded literal, and the only
+provenance that varies, `catalog_year`, is read from
+`catalog_course_entry`.
+
+**`CURATED_EXPANSIONS` is a code constant**, not a table. No database
+trigger can see a change to it, which is why the index identity has a code
+half.
+
+### 33.4 The invariant
+
+```
+same search inputs    -> same index, reused
+changed search inputs -> the old index cannot be served
+```
+
+### 33.5 Designs considered
+
+| design | verdict |
+|---|---|
+| A. build at startup | **rejected** - the app is documented to boot with Postgres down (`/ready` reports the dependency); building at startup breaks that invariant |
+| B. lazy singleton, no invalidation | **rejected** - silently serves a stale catalog after ingestion |
+| C. explicit `invalidate()` from ingestion | **rejected** - ingestion is a *separate process* and cannot reach this one's memory. Not merely invalidation-by-discipline; the discipline is not even possible |
+| **D. version-keyed reuse** | **chosen** |
+
+C is the interesting rejection. `coursepilot_ingestion/cli.py` builds its own
+engine and runs as its own command, so no in-process hook exists that could
+observe a catalog write.
+
+### 33.6 The chosen lifecycle
+
+```
+request
+  -> read search_version          0.73 ms
+  -> token matches published?     reuse, 0 further cost
+  -> otherwise: build fully, then SWAP the reference
+  -> per-request ExpandingSearcher around the shared immutable index
+```
+
+Identity is `v:<search_version>|c:<code version>/<expansion count>`. The
+database half is invalidation by construction; the code half is discipline,
+and is labelled as such - `CORPUS_CODE_VERSION` must be bumped when document
+construction, tokenization, field weights or the curated expansions change.
+The expansion *count* is a tripwire for additions and removals; it cannot
+see an edit to an existing expansion.
+
+**Measured signal costs:**
+
+```
+single-row counter read (chosen)           0.73 ms
+count(*) + max(updated_at) over 3 tables   2.13 ms   and has the raw-SQL hole
+full content read of course                8.65 ms
+```
+
+The trigger counter was both the cheapest *and* the only one without a
+correctness gap - an unusual case with no trade-off to make.
+
+### 33.7 Why the ExpandingSearcher is not shared
+
+This is the specific reason "just make it a global singleton" would have
+been wrong.
+
+`ExpandingSearcher.search()` writes `self.last_expansions`, and
+`context.py` reads that field *after* the call to record which expansions
+were applied. Two concurrent requests sharing one wrapper would read each
+other's expansions.
+
+`BM25Searcher` has no such problem - every assignment lives inside
+`BM25Index.build`, and `score()`/`search()` are read-only. So the expensive,
+immutable part is shared and the free, mutable part is per request.
+
+### 33.8 Publication and atomicity
+
+`PublishedIndex` is a frozen dataclass. A rebuild constructs a complete new
+one and swaps the reference; the live index is never cleared first and never
+mutated in place. A reader sees the whole old index or the whole new one,
+and a reader holding the old one keeps a consistent view for the rest of its
+request.
+
+### 33.9 Failure behaviour
+
+| situation | behaviour |
+|---|---|
+| rebuild fails, good index published, corpus unchanged | keep serving it |
+| rebuild fails, good index published, **corpus moved** | serve the old index, increment `search_index_stale_served_total`, log a warning |
+| rebuild fails, nothing published | raise `IndexUnavailable`; the route degrades to an empty corpus |
+| empty corpus | a legitimate publishable state - a fresh database has it |
+| version table missing | build per request, publish nothing; the pre-5.11 behaviour |
+| version read fails | roll back first, then fall back (the Phase 5.7 lesson) |
+
+The second row is a judgement call, made explicitly. Serving a known-old
+index is not silent - a counter and a log record it - and the staleness is
+bounded to *descriptive text*: no academic decision comes from search, and
+the deterministic explanation rests on Degree Engine facts.
+
+The third row matters for the same reason: a search failure must not become
+an explanation failure, so the route catches `IndexUnavailable` and
+continues with no retrieval context.
+
+### 33.10 Multi-worker semantics
+
+**One index per process. There is no shared memory and no cross-process
+invalidation, and this is not pretended otherwise.**
+
+```
+worker A          worker B
+  reads search_version   reads search_version     (the same counter)
+  builds its own index   builds its own index
+```
+
+Each worker independently reads the same database counter and reaches the
+same conclusion, so they converge without talking to each other. The costs
+are N builds after an ingestion (one per worker, ~250 ms each, on the first
+request each worker serves) and N x 1.95 MB of memory.
+
+**A restart is not required after ingestion.** That was the outcome this
+design existed to avoid.
+
+No Redis, no pub/sub, no message queue - and none is needed, because the
+database counter already is the shared signal. Revisit if worker count grows
+enough that N simultaneous post-ingestion rebuilds become a visible latency
+spike; the trigger is `search_index_builds_total` rising in proportion to
+worker count rather than to ingestion count.
+
+### 33.11 Observability
+
+```
+search_index_builds_total                  should be ~1 per process per ingestion
+search_index_build_failures_total
+search_index_build_duration_ms             histogram with percentiles
+search_index_reuse_total                   should dominate
+search_index_concurrent_suppressed_total   thundering-herd suppression
+search_index_stale_served_total            a known-old index was served
+search_index_version_unavailable_total     freshness could not be proven
+```
+
+These answer "how often are we rebuilding the BM25 index?" without reading
+application internals - which was impossible before, because the rebuild
+happened silently inside every request. No label carries a student, account,
+course or query.
+
+### 33.12 Results
+
+```
+                              before        after
+explanation endpoint p50      324.15 ms     64.52 ms      (5.0x)
+explanation endpoint mean     336.53 ms     67.62 ms
+cold first request            -             352.88 ms     (builds once)
+index construction            per request   218.21 ms mean, once per version
+warm reuse (version check)    -             0.64 ms p50
+warm search                   0.09 ms       0.08 ms       (unchanged)
+```
+
+**Concurrency** (development environment only):
+
+```
+  1 concurrent   235.9 ms total    builds 1   suppressed 0   {200: 1}
+ 10 concurrent   689.6 ms total    builds 1   suppressed 9   {200: 10}
+ 50 concurrent  2683.8 ms total    builds 1   suppressed 14  {200: 50}
+```
+
+Exactly one build at every level, zero exceptions. (Suppression counts are
+below N because most requests arrived after publication and took the
+lock-free reuse path.)
+
+**Ingestion and rebuild:**
+
+```
+request before a catalog write      reuse
+request after  a catalog write    328.90 ms   (rebuilds)
+next request                       65.53 ms   (reuses)
+```
+
+**Memory:**
+
+```
+one index (pickled proxy)   2,044,960 bytes   1.95 MB
+documents                   4,415
+distinct terms              12,406
+copies per process          1 published; 2 during a rebuild
+measured peak               ~3.90 MB
+```
+
+Double-buffering during a rebuild is accepted: 3.9 MB peak is not worth the
+complexity of an in-place rebuild, and an in-place rebuild would break
+atomic publication.
+
+### 33.13 Does the endpoint still rebuild the index?
+
+**No, and this is proven by instrumentation rather than timing.** Six
+explanation requests produce `search_index_builds_total == 1` and
+`search_index_reuse_total == 5`. A static test additionally asserts
+`build_course_documents` no longer appears in the route.
+
+Timing alone would have been insufficient: "the endpoint got faster" is
+equally consistent with the index still being rebuilt on a faster machine.
+
+### 33.14 Retrieval regression
+
+The Phase 5.0 evaluation suite runs unchanged: **46 passed**. Ranking, BM25F
+field weights, curated expansion and provenance are untouched - this phase
+changed *when* the index is built, never *what* it contains or how it
+scores.
+
+### 33.15 Limitations
+
+1. **One index per process** (33.10). N workers means N builds and N copies.
+2. **`CORPUS_CODE_VERSION` is discipline**, not construction. The expansion
+   count catches additions and removals; an edit to an existing expansion,
+   or a change to tokenization or field weights, needs a human to bump it.
+3. **A post-ingestion rebuild is paid by a user request** - the first one
+   after the write waits ~250 ms. No background warming.
+4. **Triggers are PostgreSQL-only.** SQLite falls back to per-request
+   builds; SQLite results prove nothing about trigger behaviour.
+5. **Serving a known-old index on rebuild failure** is a deliberate choice
+   (33.9), counted and logged but still a window of stale descriptive text.
+6. **Concurrency figures are development-environment only** - one laptop,
+   one process.
+7. **Memory is a pickled-size proxy**, not a true heap measurement.
+
+### 33.16 Unchanged
+
+BM25F ranking and field weights, curated expansion, `CourseDocument`,
+provenance, the Degree Engine, the audit cache and its triggers, the Phase
+5.6 API contracts, Phase 5.7 pooling, Phase 5.10 observability.
+
+```
+SQLite      554 passed,  66 skipped   (unchanged)
+PostgreSQL  619 passed,   1 skipped   (unchanged)
+Backend     365 passed,   2 skipped   (was 334; +31)
+alembic check                          clean
+```
