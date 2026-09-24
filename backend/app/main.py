@@ -25,6 +25,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         settings.coursepilot_env.value,
         settings.llm_provider,
     )
+
+    # Phase 5.12: say out loud what a production deployment is missing.
+    # Findings name settings, never values - a log line that quoted a
+    # database URL would put a password in the log stream.
+    from app.core.config import audit_production_settings
+
+    for finding in audit_production_settings(settings):
+        logger.warning("production_configuration_finding", extra={"finding": finding})
     # Note: no database connection is opened at startup. The app must boot
     # even when Postgres is down — /ready reports the dependency instead.
     # Engines are built lazily on first use, so this stays true with pooling.
