@@ -32,6 +32,7 @@ warm path get faster", not enough for percentiles, and honest about it.
 from __future__ import annotations
 
 import threading
+from collections import deque
 from dataclasses import dataclass, field
 
 # --- counters -------------------------------------------------------------
@@ -74,11 +75,60 @@ AUDIT_CACHE_STALE_RULES_ONLY = "audit_cache_stale_rules_only_total"
 #: failure rate invisible.
 AUDIT_FAILURES = "audit_failures_total"
 
+# --- request (Phase 5.10) -------------------------------------------------
+#: Status CLASS, not status code, and certainly not path-with-parameters.
+#: "2xx/4xx/5xx" is what an operator acts on; a per-path or per-status
+#: counter would grow with the URL space, and a path containing a student id
+#: would put an identifier in a metric name.
+REQUESTS_TOTAL = "http_requests_total"
+REQUESTS_2XX = "http_requests_2xx_total"
+REQUESTS_4XX = "http_requests_4xx_total"
+REQUESTS_5XX = "http_requests_5xx_total"
+REQUEST_DURATION = "http_request_duration_ms"
+
+# --- authentication / authorization (Phase 5.10) --------------------------
+AUTHENTICATION_FAILURES = "authentication_failures_total"
+AUTHORIZATION_FAILURES = "authorization_failures_total"
+UNLINKED_ACCOUNT_TOTAL = "unlinked_account_total"
+RATE_LIMITED_TOTAL = "rate_limited_total"
+
+# --- explanation (Phase 5.10) ---------------------------------------------
+#: The deterministic path is the authority, so it is counted as an OUTCOME
+#: rather than as a failure. A high fallback rate is a signal about the
+#: provider, not about academic correctness.
+EXPLANATION_DETERMINISTIC = "explanation_deterministic_total"
+EXPLANATION_MODEL_ATTEMPTED = "explanation_model_attempted_total"
+EXPLANATION_MODEL_SUCCEEDED = "explanation_model_succeeded_total"
+EXPLANATION_MODEL_FAILED = "explanation_model_failed_total"
+EXPLANATION_MODEL_REJECTED = "explanation_model_rejected_total"
+EXPLANATION_PROVIDER_UNAVAILABLE = "explanation_provider_unavailable_total"
+EXPLANATION_NOT_GROUNDED = "explanation_not_grounded_total"
+
+# --- stage timings (Phase 5.10, Part 4) -----------------------------------
+STAGE_AUTHENTICATION = "stage_authentication_ms"
+STAGE_SESSION_ACQUIRE = "stage_session_acquire_ms"
+STAGE_OWNERSHIP = "stage_ownership_ms"
+STAGE_ACADEMIC_FINGERPRINT = "stage_academic_fingerprint_ms"
+STAGE_RULES_STATE = "stage_rules_state_ms"
+STAGE_CONTEXT_BUILD = "stage_context_build_ms"
+STAGE_SERIALIZATION = "stage_serialization_ms"
+STAGE_EVIDENCE = "stage_evidence_ms"
+STAGE_RETRIEVAL = "stage_retrieval_ms"
+STAGE_MODEL_CALL = "stage_model_call_ms"
+STAGE_MODEL_VALIDATION = "stage_model_validation_ms"
+
 # --- histograms (milliseconds) -------------------------------------------
 AUDIT_DURATION = "audit_duration_ms"
 AUDIT_CACHE_LOOKUP_DURATION = "audit_cache_lookup_duration_ms"
 AUDIT_CACHE_WRITE_DURATION = "audit_cache_write_duration_ms"
 ENGINE_DURATION = "audit_engine_duration_ms"
+
+
+#: How many recent observations each histogram keeps for percentiles.
+#: Bounded on purpose: an unbounded sample list is a slow memory leak, and
+#: percentiles over the last N requests are what an operator actually wants
+#: ("is it slow NOW?") rather than an average since process start.
+_RESERVOIR = 512
 
 
 @dataclass
@@ -87,21 +137,41 @@ class _Histogram:
     total: float = 0.0
     minimum: float = float("inf")
     maximum: float = 0.0
+    #: A ring of the most recent observations. Phase 5.9 reported only
+    #: count/sum/min/max and named the absence of percentiles as a
+    #: limitation; a mean hides exactly the tail an operator is paged about.
+    recent: deque[float] = field(default_factory=lambda: deque(maxlen=_RESERVOIR))
 
     def observe(self, value: float) -> None:
         self.count += 1
         self.total += value
         self.minimum = min(self.minimum, value)
         self.maximum = max(self.maximum, value)
+        self.recent.append(value)
+
+    def _percentile(self, fraction: float) -> float:
+        if not self.recent:
+            return 0.0
+        ordered = sorted(self.recent)
+        index = min(int(round(fraction * (len(ordered) - 1))), len(ordered) - 1)
+        return round(ordered[index], 3)
 
     def snapshot(self) -> dict[str, float]:
         if not self.count:
-            return {"count": 0, "mean": 0.0, "min": 0.0, "max": 0.0}
+            return {"count": 0, "mean": 0.0, "min": 0.0, "max": 0.0,
+                    "p50": 0.0, "p95": 0.0, "p99": 0.0}
         return {
             "count": self.count,
             "mean": round(self.total / self.count, 3),
             "min": round(self.minimum, 3),
             "max": round(self.maximum, 3),
+            # Computed over the reservoir, not all history, so the window is
+            # recent. `sample` says how many observations they rest on, so
+            # nobody reads a p99 built from four data points as meaningful.
+            "p50": self._percentile(0.50),
+            "p95": self._percentile(0.95),
+            "p99": self._percentile(0.99),
+            "sample": len(self.recent),
         }
 
 
@@ -133,7 +203,7 @@ class MetricsRegistry:
     def histogram(self, name: str) -> dict[str, float]:
         with self._lock:
             hist = self._histograms.get(name)
-            return hist.snapshot() if hist else {"count": 0, "mean": 0.0, "min": 0.0, "max": 0.0}
+            return hist.snapshot() if hist else _Histogram().snapshot()
 
     def snapshot(self) -> dict[str, object]:
         """Everything, for an operator. Contains no identifiers by design."""
@@ -171,6 +241,33 @@ def get_metrics() -> MetricsRegistry:
 
 __all__ = [
     "AUDIT_CACHE_HITS",
+    "AUTHENTICATION_FAILURES",
+    "AUTHORIZATION_FAILURES",
+    "EXPLANATION_DETERMINISTIC",
+    "EXPLANATION_MODEL_ATTEMPTED",
+    "EXPLANATION_MODEL_FAILED",
+    "EXPLANATION_MODEL_REJECTED",
+    "EXPLANATION_MODEL_SUCCEEDED",
+    "EXPLANATION_NOT_GROUNDED",
+    "EXPLANATION_PROVIDER_UNAVAILABLE",
+    "RATE_LIMITED_TOTAL",
+    "REQUESTS_2XX",
+    "REQUESTS_4XX",
+    "REQUESTS_5XX",
+    "REQUESTS_TOTAL",
+    "REQUEST_DURATION",
+    "STAGE_ACADEMIC_FINGERPRINT",
+    "STAGE_AUTHENTICATION",
+    "STAGE_CONTEXT_BUILD",
+    "STAGE_EVIDENCE",
+    "STAGE_MODEL_CALL",
+    "STAGE_MODEL_VALIDATION",
+    "STAGE_OWNERSHIP",
+    "STAGE_RETRIEVAL",
+    "STAGE_RULES_STATE",
+    "STAGE_SERIALIZATION",
+    "STAGE_SESSION_ACQUIRE",
+    "UNLINKED_ACCOUNT_TOTAL",
     "AUDIT_CACHE_INVALIDATIONS",
     "AUDIT_CACHE_LOOKUP_DURATION",
     "AUDIT_CACHE_MISSES",
