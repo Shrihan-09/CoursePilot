@@ -67,9 +67,7 @@ from app.services.explanations import (
     RecommendationExplanationService,
 )
 from app.services.explanations.providers import build_explanation_model
-from app.services.search.bm25 import build_bm25
-from app.services.search.documents import build_course_documents
-from app.services.search.synonyms import ExpandingSearcher
+from app.services.search.index_registry import IndexUnavailable, get_searcher
 
 logger = logging.getLogger(__name__)
 
@@ -152,9 +150,23 @@ def _build_explanation(
         audit = DegreeAuditEngine(session).audit(student)
         baseline = compute_baseline(session, student).satisfied
 
-        documents = build_course_documents(session)
-        by_key = {d.course_key: d for d in documents}
-        searcher = ExpandingSearcher(build_bm25(documents))
+        # Phase 5.11: the index is built once per corpus version and reused,
+        # not rebuilt per request. Measured at ~264 ms of a ~336 ms endpoint
+        # before this change.
+        #
+        # A search-index failure must not become an explanation failure: the
+        # deterministic explanation rests on Degree Engine facts, and
+        # retrieval only supplies descriptive course text. So an unavailable
+        # index degrades to an empty corpus rather than raising.
+        try:
+            searcher, index = get_searcher(session)
+            by_key = index.documents_by_key
+        except IndexUnavailable:
+            logger.warning("search_index_unavailable_degrading")
+            from app.services.search.bm25 import build_bm25
+            from app.services.search.synonyms import ExpandingSearcher
+
+            searcher, by_key = ExpandingSearcher(build_bm25([])), {}
 
         service = RecommendationExplanationService(
             documents_by_key=by_key,

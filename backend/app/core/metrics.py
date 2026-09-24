@@ -104,6 +104,24 @@ EXPLANATION_MODEL_REJECTED = "explanation_model_rejected_total"
 EXPLANATION_PROVIDER_UNAVAILABLE = "explanation_provider_unavailable_total"
 EXPLANATION_NOT_GROUNDED = "explanation_not_grounded_total"
 
+# --- search index lifecycle (Phase 5.11) ----------------------------------
+#: Answers "how often are we rebuilding the BM25 index?" without reading
+#: application internals - which was impossible before, because the rebuild
+#: happened silently inside every request.
+SEARCH_INDEX_BUILDS = "search_index_builds_total"
+SEARCH_INDEX_BUILD_FAILURES = "search_index_build_failures_total"
+SEARCH_INDEX_BUILD_DURATION = "search_index_build_duration_ms"
+#: The number that should dominate in a healthy process.
+SEARCH_INDEX_REUSE = "search_index_reuse_total"
+#: A concurrent cold start where a second thread found the index already
+#: published while it waited for the lock - one build, not N.
+SEARCH_INDEX_CONCURRENT_SUPPRESSED = "search_index_concurrent_suppressed_total"
+#: A rebuild failed and a KNOWN-OLD index was served. Never silent.
+SEARCH_INDEX_STALE_SERVED = "search_index_stale_served_total"
+#: Freshness could not be proven (no version table), so the index was built
+#: per request - the pre-5.11 behaviour.
+SEARCH_INDEX_VERSION_UNAVAILABLE = "search_index_version_unavailable_total"
+
 # --- stage timings (Phase 5.10, Part 4) -----------------------------------
 STAGE_AUTHENTICATION = "stage_authentication_ms"
 STAGE_SESSION_ACQUIRE = "stage_session_acquire_ms"
@@ -256,6 +274,13 @@ __all__ = [
     "REQUESTS_5XX",
     "REQUESTS_TOTAL",
     "REQUEST_DURATION",
+    "SEARCH_INDEX_BUILDS",
+    "SEARCH_INDEX_BUILD_DURATION",
+    "SEARCH_INDEX_BUILD_FAILURES",
+    "SEARCH_INDEX_CONCURRENT_SUPPRESSED",
+    "SEARCH_INDEX_REUSE",
+    "SEARCH_INDEX_STALE_SERVED",
+    "SEARCH_INDEX_VERSION_UNAVAILABLE",
     "STAGE_ACADEMIC_FINGERPRINT",
     "STAGE_AUTHENTICATION",
     "STAGE_CONTEXT_BUILD",
