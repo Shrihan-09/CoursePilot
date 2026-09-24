@@ -5724,3 +5724,295 @@ PostgreSQL  619 passed,   1 skipped   (unchanged)
 Backend     365 passed,   2 skipped   (was 334; +31)
 alembic check                          clean
 ```
+
+
+---
+
+## 34. Deployment verification: the boundary of what is proven (Phase 5.12)
+
+> The purpose of this section is to separate **"the code is tested"** from
+> **"the external system has actually been exercised."**
+
+### 34.1 External dependency inventory
+
+| dependency | configuration | secret | failure behaviour | testable here |
+|---|---|---|---|---|
+| PostgreSQL | `DATABASE_URL`, `DATABASE_URL_SYNC` | password in DSN | `/ready` reports 503; `/health` never touches it | **yes - real** |
+| OIDC issuer / JWKS | `OIDC_ISSUER`, `OIDC_AUDIENCE`, `OIDC_JWKS_URI` | none (public keys) | fails closed; every credential refused | **yes - real local HTTP issuer** |
+| Rutgers SSO | as above, once a registration exists | client credential | n/a | **no - see 34.3** |
+| Anthropic | `EXPLANATION_PROVIDER`, `ANTHROPIC_API_KEY` | API key | deterministic explanation | **no - see 34.2** |
+| Rutgers SOC / catalog | ingestion CLI, separate process | none | ingestion fails; corpus unchanged | partially |
+
+### 34.2 Anthropic: not verified, and why
+
+```
+ANTHROPIC_API_KEY        empty in .env, absent from the environment
+EXPLANATION_PROVIDER     none
+build_explanation_model  NoModel, is_available() == False
+```
+
+**Live Anthropic verification could not occur because no API credential
+exists in this environment.** No credential was fabricated, no call was
+made, and no live test is marked passed.
+
+The `CLAUDE_*` variables present in the shell belong to the development tool
+running this session. They are not a CoursePilot credential, and using them
+would have been manufacturing one.
+
+What *is* verified is CoursePilot's behaviour around a provider: the Phase
+5.10 scripted matrix covers success, timeout, connection error, 408, 409,
+429, 500, 502, 503, empty response, malformed output and an unsupported
+claim - all falling back to the deterministic explanation, with the service
+attempting the model exactly once. **What remains unverified is the vendor's
+behaviour**, not CoursePilot's handling of it.
+
+A live smoke test exists and skips with an explicit reason rather than
+silently passing.
+
+### 34.3 Rutgers authentication: not verified, and why
+
+Rutgers IT publicly documents **CAS, Shibboleth (SAML) and LDAP/RAD**, with
+an SSO decision flow, and directs integrators to its identity-management
+support. **No public OIDC discovery endpoint or self-service client
+registration is documented**, and integration requires approval and
+credentials this project does not have.
+
+**Live Rutgers verification is unavailable because no client registration
+and no credential exist, and Rutgers does not publish an OIDC endpoint to
+register against.** That is an access fact, not an implementation failure.
+
+### 34.4 What WAS verified about OIDC: a real HTTP issuer
+
+Phase 5.4 verified token validation with `StaticKeyVerifier`, which is
+handed a key object directly - so it never exercised `PyJWKClient`, the HTTP
+fetch, the JWKS document format, `kid` selection, or refresh-on-unknown-kid.
+Those are the parts that break in a real deployment.
+
+Phase 5.12 adds `tests/support/oidc_issuer.py`: a **real HTTP server** with
+real RSA keys serving a real `/.well-known/jwks.json`. `OIDCTokenVerifier`
+talks to it through `PyJWKClient` exactly as it would talk to Rutgers.
+
+Verified against it: the happy path with a genuine JWKS fetch, minimal claim
+subset, and rejection of an unpublished signing key, wrong issuer, wrong
+audience, expired token, not-yet-valid token, missing subject, `alg: none`,
+malformed tokens and a token with no `kid`. Clock skew works in both
+directions.
+
+This proves **the OIDC code path is correct against a real issuer**. It does
+not prove anything about Rutgers.
+
+### 34.5 Key rotation: a real finding
+
+```
+new key published -> immediately        REFUSED
+new key published -> cooldown elapsed   ACCEPTED, with a JWKS refetch
+retired key                             REFUSED by a process that never cached it
+steady state                            no refetch at all
+```
+
+PyJWKClient refreshes on an unknown `kid`, but only outside a
+`cooldown_duration` window - **30 seconds** by default, measured from the
+last successful fetch. Inside that window the refresh is suppressed and the
+token is refused.
+
+**That cooldown is a DoS protection**, not a bug: without it anyone could
+force unbounded JWKS fetches by sending tokens with random `kid` values.
+Removing it to make rotation instant would weaken validation infrastructure
+for convenience, so it is documented rather than changed.
+
+Operationally this is fine - identity providers publish a new key before
+they sign with it - but it means **a rotation is not instant, and a deploy
+that rotates and signs in the same instant will see up to 30 s of
+failures**.
+
+Also measured: `PyJWKClient` defaults to **`timeout=30`** for the JWKS
+fetch, and CoursePilot does not override it. The fetch is therefore bounded,
+but by an inherited default rather than a decision, and 30 s is a long time
+to hold a request thread.
+
+### 34.6 JWKS failure matrix (real HTTP faults)
+
+| fault | behaviour | leaks detail? |
+|---|---|---|
+| endpoint returns 500 | fails closed, `AuthenticationError` | no |
+| malformed JWKS body | fails closed | no |
+| empty key set | fails closed | no |
+| nothing listening (connection refused) | fails closed | no |
+| **outage with a cached key** | **keeps verifying** - signature, issuer, audience and expiry all still checked | no |
+| slow endpoint | bounded by the 30 s default | no |
+
+The cached-key row is the important one: availability during an outage costs
+nothing in validation strength. An invalid token is still refused while the
+endpoint is down.
+
+### 34.7 Production configuration findings
+
+**A real security finding, fixed in this phase.**
+
+`debug` defaulted to `True` and nothing lowered it for production. Two
+consequences a deployment would have inherited silently:
+
+* `/docs` served publicly (`app/main.py` gates it on `debug`);
+* **`create_async_engine(echo=debug)`** - SQLAlchemy logs every statement
+  *with its parameters*. Verified during this phase: a query bound to a
+  catalog year emitted `{'y': '2026-2027'}` into the log stream. In a
+  deployment that stream would carry `external_ref`, account ids and
+  academic values.
+
+That directly contradicts Phase 5.10's work, whose entire premise was that
+observability must not become a second source of sensitive data - and it
+would have arrived through a *default*, not through anyone's decision.
+
+Fixed by forcing `debug = False` whenever the environment is production,
+rather than refusing to start: a deployment that boots with debug quietly
+off is better than one that will not boot, and nothing legitimate wants SQL
+echo in production.
+
+`audit_production_settings()` additionally reports, at startup, findings it
+does not enforce: no auth provider configured, dev auth enabled, incomplete
+OIDC settings, a local or wildcard CORS origin, rate limiting disabled, an
+Anthropic provider with no key, and a SQLite `database_url_sync` (the audit
+cache and search triggers are PostgreSQL-only). Findings name **settings,
+never values** - a finding that quoted a DSN would put a password in a log.
+
+Also confirmed unchanged: development auth is refused in production, and an
+unconfigured provider refuses every credential rather than admitting anyone.
+
+### 34.8 Cross-process behaviour, verified with real processes
+
+Phase 5.11 *documented* "one index per process" and "workers converge via
+the database counter". Phase 5.12 verifies it with **real subprocesses** -
+an in-process thread shares the registry and proves nothing.
+
+```
+two workers, same corpus      each builds once, reuses after;
+                              identical token, version and document count
+
+worker builds -> parent       the worker detects the new version on its next
+mutates the catalog           request, rebuilds, and serves fresh results
+                              with no shared memory and no restart
+
+three workers building        same version, same document count, same
+simultaneously                ranking - no coordination needed because
+                              nothing is shared
+
+a worker started after        has no cache, so builds from current data
+a change
+```
+
+**Metrics are per process**, and that was verified rather than asserted:
+three workers each report `builds == 1`. Aggregation would have made the
+later ones report more.
+
+### 34.9 The metrics decision (Part 8)
+
+Metrics remain **in-process, in-memory, bounded, not persistent, not
+distributed**, and that is accepted for the current stage.
+
+Measured basis: a restarted registry reports zero and a `None` hit rate
+(pinned by a test); three separate worker processes keep independent
+counters; and no metric carries a student, account, course or query.
+
+**Not built:** a metrics backend. Building one would turn a verification
+phase into an infrastructure project, and the questions the counters answer
+today - "is the cache working?", "how often do we rebuild the index?" - are
+answerable from a single process.
+
+**Revisit when** more than one worker runs in a deployment *and* someone
+needs a fleet-wide number rather than a per-process one. The trigger is
+operational, not architectural: the first time an operator has to SSH to
+several workers to add up a hit rate.
+
+### 34.10 End-to-end run, with the ledger stated
+
+One test drives the full authenticated path and records exactly what was
+real:
+
+```
+REAL       PostgreSQL, Degree Engine, audit cache + triggers, BM25 index +
+           version triggers, ownership resolution, explanation validation,
+           correlation ids, metrics
+SIMULATED  the AI provider (no credential - the deterministic path runs and
+           is the authority)
+SIMULATED  the authenticated principal, injected via dependency override
+           (no Rutgers registration). The OIDC verifier itself is exercised
+           for real against a live HTTP issuer in test_oidc_live_path.py
+```
+
+Asserted: every hop returns 200, five distinct correlation ids, the audit
+cache misses then hits with identical bodies, **the BM25 index is built once
+across two explanation requests**, the explanation is deterministic and
+grounded, and no `external_ref` or provider subject appears in any response.
+
+### 34.11 Performance (real dev-database copy, 4,415 courses)
+
+```
+401 unauthenticated                mean   3.20   p50   3.05   p95   4.22
+GET /student/context               mean  24.19   p50  23.95   p95  28.13
+GET /student/audit  cache HIT      mean  18.07   p50  17.69   p95  21.31
+GET /student/audit  cache MISS     mean  53.41   p50  52.16   p95  67.22
+POST /explanations (deterministic) mean  77.78   p50  78.01   p95  87.71
+
+search_index_builds_total  1
+search_index_reuse_total   22
+audit cache hits/misses    27 / 14      hit rate 0.6585
+```
+
+The Phase 5.11 result holds under a full end-to-end workload: **one index
+build across the entire run.**
+
+### 34.12 Production readiness matrix
+
+| component | tested locally | real external verification | evidence | remaining limitation |
+|---|---|---|---|---|
+| Degree Engine | verified | n/a - no external dependency | 619 PostgreSQL + 554 SQLite tests | none identified |
+| audit cache | verified | verified against real PostgreSQL | trigger tests incl. raw SQL, bulk, TRUNCATE | PostgreSQL-only |
+| BM25 index lifecycle | verified | verified across real processes | 5 subprocess tests; 1 build under load | one index per process |
+| authentication (OIDC code path) | verified | **verified with a real local HTTP issuer** | 27 tests incl. rotation and JWKS faults | rotation delayed up to 30 s |
+| authentication (Rutgers) | verified with test issuer | **not externally verified** | no registration, no credential, no OIDC endpoint published | unknown claim shape |
+| ownership | verified | verified against real PostgreSQL | FK + UNIQUE constraint tests | none identified |
+| administrator linking | verified | verified against real PostgreSQL | audit-trail and RESTRICT tests | human verification step |
+| explanation validation | verified | n/a - local logic | unsupported-claim rejection tests | none identified |
+| Anthropic provider | verified with scripted provider | **not externally verified** | no API credential in this environment | vendor behaviour unknown |
+| PostgreSQL | verified | verified - it is the real database | all `db`-marked suites | single instance, no failover |
+| observability | verified | n/a - in-process | correlation, leak and mutation tests | per-process, no export |
+| rate limiting | verified | n/a - in-process | budget and isolation tests | per-process, in-memory |
+| ingestion | verified | not externally verified this phase | SQLite + PostgreSQL ingestion suites | live SOC/catalog not re-fetched |
+
+### 34.13 Deployment state
+
+The development database was one migration behind head - Phase 5.11 applied
+its migration only to copies. Applied during this phase and verified:
+
+```
+before  2b11bfbd8874
+after   ce2b9afd3fa7 (head), alembic check clean
+counts  course 4415, subject 318, catalog_course_entry 88,
+        student 1, student_course 11, user_account 2   - all unchanged
+        search_version = 1, triggers on all three tables
+```
+
+**No production deployment exists.** Nothing in this phase should be read as
+describing one.
+
+### 34.14 Limitations
+
+1. **Anthropic is not externally verified** - no credential (34.2).
+2. **Rutgers SSO is not externally verified** - no registration (34.3).
+3. **Key rotation is not instant** - up to 30 s (34.5).
+4. **The JWKS fetch timeout is an inherited 30 s default**, not a decision.
+5. **Metrics do not survive a restart or aggregate across workers** (34.9).
+6. **Rate limiting is per process** - N workers means N times the budget.
+7. **Cross-process tests ran on one machine**; they verify semantics, not
+   deployment topology.
+8. **No load testing, no failover testing, no TLS/proxy/deployment
+   configuration** - none exists to test.
+9. **Live SOC/catalog ingestion was not re-run** in this phase.
+
+```
+SQLite      554 passed,  66 skipped   (unchanged)
+PostgreSQL  619 passed,   1 skipped   (unchanged)
+Backend     418 passed,   3 skipped   (was 365; +53)
+retrieval    46 passed                (unchanged)
+alembic check                          clean
+```

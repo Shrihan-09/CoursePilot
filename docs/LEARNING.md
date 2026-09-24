@@ -6910,3 +6910,204 @@ observe each worker's `search_index_builds_total`.
 - Index lifecycle in Lucene/Elasticsearch: segments, refresh, commit
 - Blue/green and atomic pointer swaps in deployment and in memory
 - Measuring setup-to-use ratios before optimising
+
+
+---
+
+# Lesson 26: Verification Boundaries - What Local Tests Cannot Prove
+
+## What We Built
+
+Mostly evidence. A real HTTP OIDC issuer, real cross-process tests, a
+production configuration audit - and two honest "not verified" entries that
+no amount of local testing could turn green.
+
+---
+
+## Concepts
+
+### "Tested" and "verified" are different words
+
+A passing suite proves *your code behaves as you expect given your
+assumptions about the outside world*. It cannot prove the assumptions.
+
+```
+tested     CoursePilot falls back correctly when a provider times out
+verified   Anthropic actually times out the way we modelled
+```
+
+Both matter; only one of them was achievable here. The failure mode is not
+writing bad tests - it is letting a green suite quietly stand in for a claim
+it never made.
+
+The output of this phase is mostly a *table* rather than code, and the
+valuable column is the one that says "not externally verified".
+
+### The honest answer is sometimes "no"
+
+`ANTHROPIC_API_KEY` is empty. There is no Rutgers client registration.
+
+There were tempting routes around both. The environment has `CLAUDE_*`
+variables belonging to the tool running the session - not a CoursePilot
+credential, and using one would have been manufacturing a credential while
+telling myself I had found one. Rutgers has no published OIDC endpoint to
+register against; guessing a URL would have been inventing an integration.
+
+So both are recorded as unavailable, with the specific reason. **A
+verification phase that cannot say "no" is not verifying anything** - it is
+producing reassurance, which is worse than nothing because it is durable.
+
+### Find the real boundary, then push it as far as it goes
+
+"We can't test Rutgers" is true and lazy. The interesting question is what
+*can* be tested, and it turned out to be almost everything:
+
+```
+StaticKeyVerifier (Phase 5.4)   a key object handed in directly
+                                never exercises PyJWKClient, the HTTP fetch,
+                                the JWKS format, kid selection, or refresh
+
+a real local HTTP issuer        exercises all of it
+```
+
+Rutgers-specific is the only part that stayed unverified. Everything between
+"our code" and "their server" became testable by standing up a real issuer
+on a real socket.
+
+**When a dependency is unavailable, separate the protocol from the vendor.**
+The protocol is usually reachable.
+
+### A stub hides exactly the parts that break
+
+The Phase 5.4 tests were good and passed consistently. They also could not
+have found the key-rotation behaviour, because a stub that hands over a key
+has no concept of key *rotation*.
+
+Standing up a real issuer found it in the first run: a newly published key
+is refused for up to 30 s, because PyJWKClient suppresses refetch inside a
+`cooldown_duration`.
+
+And the finding turned out to be a *feature* - without that cooldown anyone
+could force unbounded JWKS fetches with random `kid` values. So the right
+move was to document it and correct the test, not to disable the protection
+to make rotation instant.
+
+**When a real dependency contradicts your test, find out which one is
+wrong.** Here it was the test - it asserted "immediately" where the actual
+requirement was "eventually".
+
+### The dangerous default arrives without a decision
+
+The worst finding this phase was one line:
+
+```python
+debug: bool = True
+```
+
+Nothing lowered it for production. `/docs` would be public, and - far worse -
+`create_async_engine(echo=debug)` makes SQLAlchemy log every statement *with
+its parameters*. Verified: a bound catalog year appeared in the log as
+`{'y': '2026-2027'}`. In a deployment that stream would carry `external_ref`,
+account ids and academic values.
+
+Phase 5.10 spent an entire phase ensuring observability did not become a
+second source of sensitive data. This would have undone it - not through a
+mistake anyone made, but through a *default nobody revisited*.
+
+Two habits:
+
+1. **Audit defaults as configuration.** A default is a decision made once,
+   for the convenience of the person writing the line, and then inherited by
+   every environment that never overrides it.
+2. **Follow a setting to everything that consumes it.** `debug` looked like
+   a docs toggle. Its second consumer was the database engine.
+
+The fix forces it off in production rather than refusing to start: a
+deployment that boots with debug quietly off is better than one that will
+not boot, and nothing legitimate wants SQL echo in production.
+
+### In-process tests cannot verify cross-process claims
+
+Phase 5.11 said "one index per process" and "workers converge via the
+database counter". Both were reasoned carefully and tested in one process -
+which is to say, not tested at all, because a thread shares the registry.
+
+Real subprocesses turned the design statement into a verified property: two
+workers each build once; a catalog write by one process is detected by
+another with no shared memory and no restart; three simultaneous builders
+agree on version, document count and ranking.
+
+It also verified a *limitation*: three workers each report `builds == 1`,
+which is what per-process metrics look like from the outside. Aggregation
+would have made the later ones report more.
+
+**A claim about processes needs processes.** The test harness has to cross
+the same boundary the claim does.
+
+### Say which half was real
+
+The end-to-end test could not be fully real, so it states its ledger:
+
+```
+REAL       PostgreSQL, Degree Engine, audit cache, BM25 lifecycle,
+           ownership, validation, correlation, metrics
+SIMULATED  the AI provider (no credential)
+SIMULATED  the authenticated principal (no registration) - though the OIDC
+           verifier itself is exercised for real elsewhere
+```
+
+"End-to-end test passes" without that ledger is a sentence that sounds
+stronger than it is. With it, a reader knows exactly which link is still a
+belief.
+
+**Replace only the dependency you must, and write down which one.**
+
+---
+
+## Self-Check
+
+1. What is the difference between "tested" and "verified", and which one
+   does a green suite establish?
+2. Why were the `CLAUDE_*` environment variables not usable as an Anthropic
+   credential?
+3. `StaticKeyVerifier` passed every Phase 5.4 test. What class of bug could
+   it never have found?
+4. A newly published signing key is refused for 30 s. Why is that not fixed?
+5. Which test was wrong - the one asserting instant rotation, or the
+   library? How was that decided?
+6. `debug: bool = True` looked like a docs toggle. What was its other
+   consumer, and what did it log?
+7. Why force `debug` off in production rather than refuse to start?
+8. Why can an in-process thread not verify "one index per process"?
+9. What did three workers each reporting `builds == 1` prove?
+10. What does the end-to-end ledger add that "the test passes" does not?
+
+## Try It Yourself
+
+**A.** Point the OIDC tests at `StaticKeyVerifier` instead of the live
+issuer. Note which tests become impossible to express.
+
+**B.** Set `cooldown_duration=0` on the JWKS client and rerun the rotation
+tests. Then work out how an attacker would use that.
+
+**C.** Start the app with `COURSEPILOT_ENV=production` before the fix and
+issue one authenticated request. Read the SQL echo in the log.
+
+**D.** Run the cross-process tests with threads instead of subprocesses.
+Observe which assertions still pass, and why that is misleading.
+
+**E.** Write a "live Anthropic" test that silently passes when no key is
+present. Then explain what a future reader would conclude from a green run.
+
+**F.** Add a dependency to the inventory table without filling in the
+"remaining limitation" column, and see whether the table still helps anyone.
+
+## Further Learning
+
+- Test doubles: stub vs fake vs mock, and what each one hides
+- Contract testing and consumer-driven contracts for external APIs
+- JWKS, key rotation, and `kid`-based key selection (RFC 7517)
+- JWKS refresh throttling as a DoS control
+- Secure defaults; "secure by default" vs "configurable to be secure"
+- Twelve-factor configuration and environment parity
+- Staging environments, and what they are actually for
