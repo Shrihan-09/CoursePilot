@@ -187,7 +187,12 @@ async def explain_recommendation(
     principal: Principal = Depends(enforce_request_rate_limit),
     settings: Settings = Depends(get_settings),
 ) -> ExplanationResponse:
-    request_id = uuid.uuid4().hex[:12]
+    # Phase 5.10: one correlation id per request, minted by the middleware
+    # and shared by every log record, the response header and this body
+    # field - which Phase 5.2 already published as part of the contract.
+    from app.core.observability import current_request_id
+
+    request_id = current_request_id()
     started = time.perf_counter()
 
     # Structured logging carries identifiers and timings, never student data,
@@ -199,7 +204,10 @@ async def explain_recommendation(
             # A hashed handle, never the NetID: logs correlate requests, they
             # do not identify people.
             "principal": principal.redacted(),
-            "course_key": payload.course_key,
+            # The course key is deliberately NOT logged. It is academic
+            # content about an identified person's request, and combined
+            # with the principal handle a log aggregator would accumulate a
+            # course history nobody decided to store there.
             "explanation_type": payload.explanation_type,
             "provider": settings.explanation_provider,
         },

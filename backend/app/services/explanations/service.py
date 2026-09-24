@@ -249,35 +249,89 @@ class RecommendationExplanationService:
         )
 
     def _finish(self, evidence: ExplanationEvidence) -> ExplanationOutcome:
+        """Attempt the model; fall back to the deterministic explanation.
+
+        Instrumented in Phase 5.10 so an operator can tell WHY explanations
+        are deterministic - an unconfigured provider, a failing provider and
+        a provider whose output keeps failing validation look identical from
+        the outside and need completely different responses.
+
+        Every path here returns a correct explanation. The counters describe
+        how it was produced, never whether it is trustworthy: the
+        deterministic output is always the authority.
+        """
+        from app.core.metrics import (
+            EXPLANATION_DETERMINISTIC,
+            EXPLANATION_MODEL_ATTEMPTED,
+            EXPLANATION_MODEL_FAILED,
+            EXPLANATION_MODEL_REJECTED,
+            EXPLANATION_MODEL_SUCCEEDED,
+            EXPLANATION_NOT_GROUNDED,
+            EXPLANATION_PROVIDER_UNAVAILABLE,
+            STAGE_MODEL_CALL,
+            STAGE_MODEL_VALIDATION,
+            get_metrics,
+        )
+        from app.core.observability import stage
+
+        metrics = get_metrics()
         baseline = deterministic_explanation(evidence)
 
-        if not evidence.is_grounded or not self.model.is_available():
+        if not evidence.is_grounded:
+            # No decision facts to explain. Counted apart from a provider
+            # problem because the fix is data, not infrastructure.
+            metrics.increment(EXPLANATION_NOT_GROUNDED)
+            metrics.increment(EXPLANATION_DETERMINISTIC)
             return ExplanationOutcome(baseline, evidence, used_model=False)
 
+        if not self.model.is_available():
+            metrics.increment(EXPLANATION_PROVIDER_UNAVAILABLE)
+            metrics.increment(EXPLANATION_DETERMINISTIC)
+            return ExplanationOutcome(baseline, evidence, used_model=False)
+
+        metrics.increment(EXPLANATION_MODEL_ATTEMPTED)
         try:
-            raw = self.model.generate(
-                ModelRequest(
-                    system_prompt=SYSTEM_PROMPT,
-                    context=render_context(evidence),
-                    explanation_type=evidence.explanation_type,
+            with stage(STAGE_MODEL_CALL):
+                raw = self.model.generate(
+                    ModelRequest(
+                        system_prompt=SYSTEM_PROMPT,
+                        context=render_context(evidence),
+                        explanation_type=evidence.explanation_type,
+                    )
                 )
-            )
-        except Exception:
+        except Exception as exc:
             # A provider failure must never surface as a failed explanation.
-            logger.exception("explanation model failed; using deterministic output")
+            #
+            # Only the exception CLASS is logged. `logger.exception` here
+            # would ship a traceback whose frames and message can quote the
+            # rendered context - which is the student's academic evidence.
+            # The provider already translates vendor errors to a class-only
+            # message; this makes the guarantee local rather than inherited.
+            metrics.increment(EXPLANATION_MODEL_FAILED)
+            metrics.increment(EXPLANATION_DETERMINISTIC)
+            logger.warning(
+                "explanation_model_failed",
+                extra={"error_type": type(exc).__name__},
+            )
             return ExplanationOutcome(baseline, evidence, used_model=False)
 
-        result = validate_response(raw, evidence)
+        with stage(STAGE_MODEL_VALIDATION):
+            result = validate_response(raw, evidence)
         if not result.ok or result.explanation is None:
+            # The rejection REASONS are a fixed vocabulary produced by the
+            # validator, so they are safe to log; the course key and the
+            # model text are not, and are not logged.
+            metrics.increment(EXPLANATION_MODEL_REJECTED)
+            metrics.increment(EXPLANATION_DETERMINISTIC)
             logger.warning(
-                "model explanation rejected for %s: %s",
-                evidence.course_key,
-                result.problems,
+                "explanation_model_rejected",
+                extra={"problems": list(result.problems)},
             )
             return ExplanationOutcome(
                 baseline, evidence, used_model=False, rejection_problems=result.problems
             )
 
+        metrics.increment(EXPLANATION_MODEL_SUCCEEDED)
         return ExplanationOutcome(result.explanation, evidence, used_model=True)
 
 
