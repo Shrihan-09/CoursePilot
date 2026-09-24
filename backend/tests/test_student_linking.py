@@ -214,7 +214,24 @@ async def test_non_admin_cannot_tell_whether_a_student_exists(admin_app) -> None
         )
 
     assert existing.status_code == fictional.status_code == 403
-    assert existing.json() == fictional.json()
+
+    # Phase 5.10 gives every response a distinct correlation id, so the
+    # bodies are no longer byte-identical. The property under test is
+    # unchanged and asserted more strictly than before: the request id must
+    # be the ONLY difference, so nothing about the response distinguishes a
+    # real student id from a fabricated one.
+    def without_request_id(body: dict) -> dict:
+        stripped = {k: v for k, v in body.items() if k != "error"}
+        stripped["error"] = {
+            k: v for k, v in body["error"].items() if k != "request_id"
+        }
+        return stripped
+
+    assert without_request_id(existing.json()) == without_request_id(fictional.json())
+    assert (
+        existing.json()["error"]["request_id"]
+        != fictional.json()["error"]["request_id"]
+    )
 
 
 @requires_db
