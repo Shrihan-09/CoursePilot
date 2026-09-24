@@ -61,6 +61,12 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # Phase 5.10: correlation id, request metrics and the error contract.
+    # Installed after CORS so the id header survives the CORS response.
+    from app.api import middleware
+
+    middleware.install(app)
+
     app.include_router(api_router, prefix=settings.api_v1_prefix)
     return app
 
