@@ -12,6 +12,7 @@ from app.core.config import Settings, get_settings
 from app.llm.base import LLMProvider, ProviderNotConfiguredError, Role
 from app.llm.providers.anthropic import AnthropicProvider
 from app.llm.providers.echo import EchoProvider
+from app.llm.providers.openai import OpenAIProvider
 
 
 def _model_for(settings: Settings, role: Role) -> str:
@@ -31,6 +32,11 @@ def build_provider(settings: Settings, role: Role = Role.PLANNER) -> LLMProvider
                 api_key=settings.anthropic_api_key,
                 model=_model_for(settings, role),
                 effort=settings.llm_effort,
+            )
+        case "openai":
+            return OpenAIProvider(
+                api_key=settings.openai_api_key,
+                model=settings.openai_model,
             )
         case unknown:
             raise ProviderNotConfiguredError(f"Unknown LLM_PROVIDER: {unknown!r}")

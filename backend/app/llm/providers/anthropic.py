@@ -42,6 +42,7 @@ from typing import Any
 from app.llm.base import (
     Completion,
     Message,
+    ProviderError,
     ProviderNotConfiguredError,
     Role,
     Usage,
@@ -49,11 +50,10 @@ from app.llm.base import (
 
 logger = logging.getLogger(__name__)
 
-#: Raised for every provider-side failure. Vendor exception types must not
-#: cross the `LLMProvider` boundary - a caller that has to catch
-#: `anthropic.APIError` is coupled to the vendor after all.
-class ProviderError(RuntimeError):
-    """A provider call failed. Carries no vendor type and no credentials."""
+#: Re-exported from `app.llm.base`, where it moved in Phase 5.13 so a second
+#: vendor adapter could raise it without importing from this module. Vendor
+#: exception types must not cross the `LLMProvider` boundary - a caller that
+#: has to catch `anthropic.APIError` is coupled to the vendor after all.
 
 
 class AnthropicProvider:

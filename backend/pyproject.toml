@@ -30,6 +30,7 @@ postgres = [
 # deterministic path is the default, not a fallback nobody exercises.
 ai = [
     "anthropic>=0.40",
+    "openai>=1.60",
 ]
 dev = [
     "pytest>=8.3",

@@ -54,6 +54,7 @@ logger = logging.getLogger(__name__)
 PROVIDER_NONE = "none"
 PROVIDER_ECHO = "echo"
 PROVIDER_ANTHROPIC = "anthropic"
+PROVIDER_OPENAI = "openai"
 
 
 @dataclass(slots=True)
@@ -165,6 +166,28 @@ def build_explanation_model(settings: Settings):
         return LLMProviderExplanationModel(
             provider,
             name="anthropic",
+            max_output_tokens=settings.explanation_max_output_tokens,
+            max_context_chars=settings.explanation_max_context_chars,
+        )
+
+    if choice == PROVIDER_OPENAI:
+        try:
+            from app.llm.providers.openai import OpenAIProvider
+
+            provider = OpenAIProvider(
+                api_key=settings.openai_api_key,
+                model=settings.openai_model,
+                timeout_seconds=settings.explanation_timeout_seconds,
+                max_retries=settings.explanation_provider_retries,
+            )
+        except ProviderNotConfiguredError as exc:
+            # Expected wherever no key is set. Logged without the key, and
+            # without the exception text, which names the variable.
+            logger.info("explanation provider unavailable: %s", exc)
+            return NoModel()
+        return LLMProviderExplanationModel(
+            provider,
+            name="openai",
             max_output_tokens=settings.explanation_max_output_tokens,
             max_context_chars=settings.explanation_max_context_chars,
         )

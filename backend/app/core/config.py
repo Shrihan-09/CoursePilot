@@ -92,6 +92,16 @@ class Settings(BaseSettings):
     llm_effort: str = "high"
     anthropic_api_key: str | None = None
 
+    # --- OpenAI (Phase 5.13) ---
+    # Server-side only. No request field reaches either of these: a client
+    # that could choose the model could choose a cheaper, weaker or
+    # differently-aligned one, and the bill is the operator's.
+    openai_api_key: str | None = None
+    #: The adopted explanation model. A configuration value rather than a
+    #: constant so switching models - or correcting an id - is a deploy
+    #: setting, not a code change.
+    openai_model: str = "gpt-5.6-luna"
+
     # --- Grounded explanations (Phase 5.2) ---
     # Deliberately SEPARATE from llm_provider: the explanation layer and the
     # (future) agent layer are different consumers with different risk
@@ -244,6 +254,10 @@ def audit_production_settings(settings: "Settings") -> list[str]:
     if settings.explanation_provider == "anthropic" and not settings.anthropic_api_key:
         findings.append(
             "explanation_provider is 'anthropic' but no API key is configured"
+        )
+    if settings.explanation_provider == "openai" and not settings.openai_api_key:
+        findings.append(
+            "explanation_provider is 'openai' but no API key is configured"
         )
 
     if settings.database_url_sync.startswith("sqlite"):

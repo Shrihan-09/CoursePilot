@@ -78,3 +78,15 @@ class LLMProvider(Protocol):
 
 class ProviderNotConfiguredError(RuntimeError):
     """Raised when the configured provider cannot be constructed."""
+
+
+class ProviderError(RuntimeError):
+    """A provider call failed. Carries no vendor type and no credentials.
+
+    Moved here in Phase 5.13 when a second vendor adapter arrived. It was
+    defined inside the Anthropic module, which meant an OpenAI adapter would
+    have had to import from `providers.anthropic` to raise the shared error -
+    coupling one vendor to another through the very boundary that exists to
+    keep them apart. `providers.anthropic` re-exports it, so every existing
+    import keeps working.
+    """
