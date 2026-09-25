@@ -7111,3 +7111,160 @@ present. Then explain what a future reader would conclude from a green run.
 - Secure defaults; "secure by default" vs "configurable to be secure"
 - Twelve-factor configuration and environment parity
 - Staging environments, and what they are actually for
+
+---
+
+# Lesson 27: Swapping the Model Without Moving the Authority
+
+## What We Built
+
+An OpenAI adapter for GPT-5.6 Luna, added behind the provider boundary built
+in earlier phases. It is one new file plus some configuration. The explanation
+service, the retrieval, the validator and the Degree Engine did not change.
+Most of the phase went into proving that the RAG path hands the model only
+grounded evidence, and into being exact about which parts of that proof are
+real.
+
+---
+
+## Concepts
+
+### A boundary proves its worth when the second vendor arrives
+
+The `LLMProvider` protocol was written when there was one vendor. Adding a
+second is the first real test of whether it was a boundary or just a folder.
+
+It mostly held. It also found one leak: `ProviderError`, the shared error
+every adapter raises, was defined *inside the Anthropic module*. With one
+vendor, that was invisible. With two, the OpenAI adapter would have had to
+import from `providers.anthropic` just to raise a vendor-neutral error.
+
+```
+before   openai.py  --imports-->  anthropic.py   (to get ProviderError)
+after    openai.py  --imports-->  base.py  <--imports--  anthropic.py
+```
+
+**An abstraction you have used with one implementation is a hypothesis.**
+The second implementation is the experiment.
+
+### The model explains; it does not decide
+
+Swapping vendors is safe here because of a decision made much earlier: the
+model never produces an academic fact. The Degree Engine decides, retrieval
+adds Rutgers catalog text, and the model turns both into prose. The validator
+then checks that prose against the evidence, and any claim the evidence does
+not support gets the whole response discarded.
+
+So "is GPT-5.6 Luna accurate about degree requirements?" is the wrong
+question. The right one is "can anything GPT-5.6 Luna says become a degree
+requirement?", and the answer to that is testable without calling it.
+
+### Refusing before the model is part of the design
+
+The first draft of the evaluation table expected a model call when a student
+asked "why not this course?" about a course the engine never considered. The
+pipeline made no call. It refused, because there was no decision to explain.
+
+That was the system being right and the test being wrong. A model handed
+*no* decision will happily invent one. The table now asserts **exact** call
+counts, and zero is a value it checks for.
+
+### Injection is contained by what the output can do, not by the prompt
+
+A catalog description containing `IGNORE ALL PREVIOUS INSTRUCTIONS` goes
+straight into the model's context, because retrieval returns text and does
+not judge it. The test does not rely on the model resisting. The scripted
+model gives in completely and claims every graduation requirement is met.
+
+The validator rejects that, the response is thrown away, the deterministic
+explanation is served, and the model is **not** asked again. Asking again
+with a "firmer" prompt would just give the attacker a second attempt.
+
+**Design so that a fully compromised model output is harmless.** Then prompt
+hardening is a bonus, not the defence.
+
+### A live test that passes on failure is worse than no test
+
+The live smoke test looked careful. It skipped without a key, and when it
+ran it accepted either outcome: model text, or a deterministic fallback.
+
+Now trace a bad key. The SDK raises, the adapter turns that into
+`ProviderError`, the service falls back, and the test **passes**. The same
+goes for a wrong model ID or no network. A green run with no request behind
+it is exactly the false claim the phase was told never to make.
+
+The fix records every completion the real provider returns and requires
+exactly one. It was checked without reaching OpenAI, by pointing the SDK at a
+closed local port: the test now fails with "no live completion was returned".
+
+**When a system is built to degrade gracefully, the test that checks the
+real dependency has to check that the dependency was actually used.**
+Otherwise the graceful degradation hides the very thing being tested.
+
+### Check a claim before you write it down
+
+The security section of the documentation originally said the outbound
+request carries no identity. It was probably true, since the evidence types
+have no field for it. But nothing asserted it at the point where the data
+leaves.
+
+So a test now goes through the authenticated route, captures the exact
+kwargs handed to the SDK, and searches them for every identity value in play.
+It checks field names rather than raw numbers, because a student id of `4`
+also appears in "4.0 credits".
+
+### A flaky test can be a deterministic system with a random fixture
+
+`already_satisfied` failed about half the time. It was tempting to suspect
+nondeterminism in the engine. The engine is deterministic: two completed
+courses competing for one slot are ordered by course string. The fixture was
+the random part, because it assigned random course keys, so which course won
+changed from run to run.
+
+**Before calling a system flaky, check whether its inputs were the same.**
+
+---
+
+## Self-Check
+
+1. What did the second vendor adapter reveal about `ProviderError`, and why
+   was it invisible with one vendor?
+2. Why is "is the model accurate about degree requirements?" the wrong
+   question for CoursePilot?
+3. Why does the pipeline make zero model calls for a course the engine never
+   allocated?
+4. In the injection test, the model gives in completely. Why does the test
+   still pass, and why is the model not called again?
+5. Trace a bad API key through the original live test. Why did it pass?
+6. How was the tightened live test checked without contacting OpenAI?
+7. Why does the identity-leak test check field names instead of raw ids?
+8. `already_satisfied` failed about half the time. Where was the randomness?
+9. Which rows of the RAG verdict table are LIVE VERIFIED, and why?
+
+## Try It Yourself
+
+**A.** Move `ProviderError` back into `anthropic.py` and make the OpenAI
+adapter import it from there. Which test catches that coupling, if any? What
+would one look like?
+
+**B.** Change the evaluation table to assert `calls <= 1` instead of an exact
+count. Then make `explain_not_recommended` call the model anyway. Does
+anything fail?
+
+**C.** Remove the `completions` recorder from the live test and run it with
+`OPENAI_BASE_URL=http://127.0.0.1:9/v1`. Watch it pass.
+
+**D.** Add `student.external_ref` to the rendered context and run
+`test_rag_6_...`.
+
+**E.** Set `OPENAI_MODEL` to a made-up ID and trace, on paper, what a student
+would see on the first live request.
+
+## Further Learning
+
+- Ports and adapters (hexagonal architecture), and "rule of three" for abstractions
+- OWASP Top 10 for LLM Applications: prompt injection and insecure output handling
+- Indirect prompt injection through retrieved documents
+- Test oracles: how a test decides it passed, and how that can be vacuous
+- Flaky test taxonomy: order dependence, randomness, time, shared state
+- OpenAI Chat Completions: `response_format`, `max_completion_tokens`, usage fields

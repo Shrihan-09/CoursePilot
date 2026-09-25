@@ -6016,3 +6016,295 @@ Backend     418 passed,   3 skipped   (was 365; +53)
 retrieval    46 passed                (unchanged)
 alembic check                          clean
 ```
+
+---
+
+## 35. OpenAI GPT-5.6 Luna as the explanation model (Phase 5.13)
+
+The decision was made before the phase started: CoursePilot's live
+explanation model is **OpenAI GPT-5.6 Luna** rather than Anthropic. This phase
+adds the adapter behind the existing boundary and checks the RAG path that
+feeds it. **It does not redesign anything**, and the Degree Engine is still
+the only authority on academic correctness. The model explains a decision
+that has already been made. It never makes one.
+
+### 35.1 What changed, and what did not
+
+```
+added     app/llm/providers/openai.py       OpenAIProvider (LLMProvider)
+moved     ProviderError -> app/llm/base.py  re-exported from providers.anthropic
+config    openai_api_key (server-only), openai_model = "gpt-5.6-luna"
+wired     app/llm/registry.py               LLM_PROVIDER=openai
+          services/explanations/providers   EXPLANATION_PROVIDER=openai
+deps      ai extra: anthropic>=0.40, openai>=1.60   (both optional)
+audit     production audit flags "openai" with no key
+
+unchanged ExplanationModel port, evidence assembly, retrieval, validator,
+          system prompt, fallback, request schema, routes, Degree Engine,
+          Anthropic adapter (kept, still tested)
+```
+
+**Why move `ProviderError`?** It lived in the Anthropic module. Without the
+move, the OpenAI adapter would have had to import from `providers.anthropic`
+just to raise the shared error. That couples one vendor to another through
+the very boundary meant to keep them apart. `providers.anthropic` re-exports
+it, so every existing import still works.
+
+### 35.2 The adapter
+
+| concern | how it is handled |
+|---|---|
+| instructions | `system` is sent as a `system` role message, separate from the evidence |
+| evidence | sent as the single `user` message. No user turn means a `ProviderError`, not a request |
+| structured output | `response_format={"type": "json_object"}` only when a schema is given. The JSON is parsed. Malformed JSON gives `structured=None`, never an exception |
+| text extraction | `choices[0].message.content`. An empty response is handled |
+| token usage | `prompt_tokens`, `completion_tokens`, `prompt_tokens_details.cached_tokens` map to `Usage` |
+| output bound | `max_completion_tokens` comes from `explanation_max_output_tokens` (server setting) |
+| timeout / retries | SDK `timeout` and `max_retries` come from `explanation_timeout_seconds` / `explanation_provider_retries`. The adapter never retries on its own |
+| errors | any SDK exception becomes `ProviderError("provider call failed (<ClassName>)")`, raised `from None`. No vendor type, message, or request body crosses the boundary |
+| logging | `openai_call_failed` with `error_type` only. No prompt, response, or key |
+
+The client cannot choose the provider, model, temperature, token limit, or
+key. `RecommendationExplanationRequest` has exactly two fields,
+`{course_key, explanation_type}`, and a test pins that set.
+
+**The model ID `gpt-5.6-luna` is a configuration value that has not been
+checked against the vendor.** No request has been made, so nothing confirms
+that this identifier is served. That is why it is a setting (`OPENAI_MODEL`)
+and not a constant: correcting it is a deploy change, not a code change.
+
+### 35.3 RAG path, traced
+
+```
+student request (course_key, explanation_type)
+  -> ownership: account -> linked student (server side; no client student id)
+  -> Degree Engine audit (cached, verified-rules versioned)
+  -> decision facts: what the ENGINE allocated, source_kind = coursepilot_degree_audit
+  -> refuse here if nothing was decided  (ungrounded -> deterministic, no model call)
+  -> BM25 retrieval over the published index (reused, not rebuilt)
+  -> exact-course filter: result.course_key != evidence.course_key -> dropped
+  -> course facts with Rutgers provenance (rutgers_*)
+  -> render_context -> server-bounded context
+  -> ExplanationModel.generate  (exactly one call)
+  -> validate_response against the evidence
+  -> pass: model text | fail/raise: deterministic explanation
+```
+
+Verified by `tests/test_openai_provider.py`:
+
+| check | test | result |
+|---|---|---|
+| only the intended course reaches the model | `test_rag_1_...` | siblings that share vocabulary are retrieved by BM25 and then filtered out |
+| provenance survives | `test_rag_2_...` | `evidence.citations()` is non-empty and attributed |
+| decision facts are separate from catalog facts | `test_rag_3_...` | every decision fact is `coursepilot_degree_audit`, every course fact is `rutgers_*`, no overlap |
+| no index rebuild per request | `test_rag_4_...` | 4 explanation requests give `builds == 1`, `reuse == 3` |
+| a course with no description | `test_rag_5_...` | still explains from the decision facts alone |
+| nothing about the student's identity leaves | `test_rag_6_...` | the captured outbound payload names the course and nothing about who asked (35.7) |
+
+### 35.4 Evaluation (17 cases, scripted model)
+
+`tests/test_explanation_evaluation.py` runs each case through the real
+pipeline on PostgreSQL. It records the decision, evidence, provenance,
+output, validation result, fallback, latency, and the **exact** number of
+model calls. The engine result is compared before and after, and it never
+changes.
+
+```
+case                     calls  outcome
+recommended_course         1    model text accepted
+not_recommended_course     0    refused before the model (nothing decided)
+already_satisfied          1    model text accepted
+shared_course              1    model text accepted
+category_sensitive         1    model text accepted
+excluded_course            0    refused before the model (rule excludes it)
+partial_progress           1    model text accepted
+with_description           1    model text accepted
+without_description        1    model text accepted
+similar_vocabulary         1    model text accepted; no sibling in evidence
+prompt_injection_claim     1    rejected -> deterministic
+malformed_output           1    rejected -> deterministic
+unsupported_claim          1    rejected -> deterministic
+invented_course_key        1    rejected -> deterministic
+provider_failure           1    ProviderError -> deterministic
+provider_unavailable       0    NoModel -> deterministic
+missing_prerequisite       -    cannot be grounded; validator rejects the claim
+```
+
+Two findings from building the table:
+
+1. **The first draft was wrong about two cases.** It expected a model call for
+   `not_recommended` and `excluded`. The pipeline correctly refuses both
+   before the model, because the engine made no decision to explain. The
+   table now asserts *exact* call counts, so a regression that starts sending
+   ungrounded requests to a model fails.
+2. **`already_satisfied` was flaky, and the engine was not the cause.** Two
+   completed courses compete for one `choose_n(1)` slot, and the engine
+   breaks ties by course string. The fixture gave out random keys, so the
+   sibling won about half the time. The target then went unallocated and the
+   pipeline correctly refused it. The fixture now makes the target the
+   course that sorts first. The engine was deterministic all along.
+
+**Prerequisites are not modeled by the Degree Engine.** A "missing
+prerequisite" explanation therefore cannot be grounded, and the validator's
+`prerequisite` claim rule rejects any model output that asserts one. It is
+recorded as an unsupported case, not faked.
+
+### 35.5 Prompt injection
+
+A catalog description containing `IGNORE ALL PREVIOUS INSTRUCTIONS ...`
+really does reach the model context, because retrieval is not a filter for
+hostile text. The scripted model then returns *"Every graduation requirement
+is already satisfied"*. The result:
+
+```
+validator         rejects (blanket graduation claim, not in evidence)
+response          discarded; deterministic explanation returned
+model calls       1  - no retry with a "firmer" prompt
+metric            explanation_model_rejected_total == 1
+degree audit      unchanged
+```
+
+The defence does not depend on the model resisting the injection. It depends
+on nothing the model says being able to become an academic fact.
+
+### 35.6 Provider failure matrix
+
+Each of `APITimeoutError`, `APIConnectionError`, `RateLimitError`,
+`InternalServerError`, `AuthenticationError` and `BadRequestError` becomes one
+`ProviderError`. Its message names the class only, with no vendor text,
+request id, or key. The service then serves the deterministic explanation.
+Retries happen in the SDK only, bounded by `explanation_provider_retries`
+(default 1). The adapter and the service each call once.
+
+| condition | behaviour |
+|---|---|
+| no key configured | `NoModel` is built, the deterministic path runs, and the production audit flags it |
+| SDK not installed | `ProviderNotConfiguredError`, then deterministic |
+| timeout / connection / 5xx / 429 | `ProviderError`, then deterministic |
+| auth / bad request (e.g. unknown model ID) | `ProviderError`, then deterministic |
+| malformed or empty output | validator rejects, then deterministic |
+| unsupported claim | validator rejects, then deterministic |
+
+### 35.7 Security
+
+Asserted by tests:
+
+- the API key never appears in an error, a `Completion`, a `repr`, or any log record
+- the key is not a request field, and neither are model, provider, temperature, or token limit
+- no route or service imports a vendor SDK. The import guard now allows each
+  adapter **only its own** vendor, so the OpenAI adapter importing
+  `anthropic` still fails
+- **the outbound request carries no identity** (`test_rag_6_...`). The test
+  goes through the authenticated HTTP route and captures the exact kwargs
+  handed to `chat.completions.create`. They name the course. They contain
+  none of: `external_ref`, provider subject, principal subject, issuer, the
+  bearer token, the API key, or any `account_id` / `student_id` / `user_id`
+  field. The payload keys are exactly `{model, messages,
+  max_completion_tokens, response_format}`. This test was added during this
+  phase because the claim was being written into the documentation before
+  anything asserted it
+- failure logs carry the exception class name only. Full prompts and
+  responses are never logged
+
+### 35.8 Performance (real dev-database copy, 4,415 courses)
+
+Measured per stage with no network. Nothing was tuned, only measured.
+
+```
+stage                                   mean     p50     p95   (ms)
+BM25 index (reuse path, version check)  0.617   0.491   1.151
+BM25 retrieval (one query)              1.330   0.791   2.620
+audit (cache hit)                       4.102   3.655   8.634
+baseline                               24.997  23.168  31.304
+evidence assembly                       0.008   0.008   0.009
+prompt construction (render_context)    0.003   0.003   0.003
+validation                              0.017   0.016   0.017
+OpenAI adapter overhead (no network)    1.056   0.494   1.439
+
+rendered context   926 chars   (server cap 12,000)
+system prompt    2,204 chars
+```
+
+**Not measured, because no request was made:** OpenAI network latency, model
+latency, and real token usage. When the live call happens, it will almost
+certainly be the largest single stage. Everything CoursePilot adds around it
+is about 30 ms, most of it the baseline computation.
+
+### 35.9 Live verification
+
+`test_live_gpt_5_6_luna_explains_a_real_academic_decision` is opt-in
+(`OPENAI_API_KEY` plus `RUN_LIVE_AI_TESTS=1`) and uses a synthetic student
+fixture, never real student data. **It has not run.** There is no
+`OPENAI_API_KEY` in this environment. The tool's own credentials were not
+used, and none was invented.
+
+This phase tightened the test. The first version would have **passed on a
+failed request**: a bad key or unknown model ID raises `ProviderError`, the
+service falls back to deterministic output, and the old assertions accepted
+either path. It now records every completion the real provider returns and
+requires exactly one, with `provider == "openai"` and `output_tokens > 0`.
+This was checked by pointing the SDK at a closed local port
+(`OPENAI_BASE_URL=http://127.0.0.1:9/v1`, so no external request). The test
+now fails with *"no live completion was returned"*.
+
+`test_the_live_smoke_test_is_opt_in_and_currently_skips` fails once a key
+appears. That forces someone to run the live test, so the skip cannot become
+permanent without anyone noticing.
+
+### 35.10 RAG verdict
+
+| claim | verdict |
+|---|---|
+| OpenAI adapter maps the shared `LLMProvider` contract | LOCALLY VERIFIED |
+| SDK exceptions become vendor-neutral `ProviderError` | LOCALLY VERIFIED |
+| exact-course filtering (no sibling reaches the model) | LOCALLY VERIFIED |
+| provenance carried to the model and citations | LOCALLY VERIFIED |
+| decision facts distinct from catalog facts | LOCALLY VERIFIED |
+| BM25 index reused, not rebuilt, per explanation | LOCALLY VERIFIED |
+| ungrounded requests never reach the model | LOCALLY VERIFIED |
+| injected or unsupported output rejected, no re-call | LOCALLY VERIFIED |
+| deterministic fallback on every failure | LOCALLY VERIFIED |
+| no credentials / identifiers in requests or logs | LOCALLY VERIFIED |
+| provider independence (none / echo / openai / anthropic) | LOCALLY VERIFIED |
+| client cannot select model / provider / limits | IMPLEMENTED (pinned by a schema test) |
+| `gpt-5.6-luna` is a served model ID | UNVERIFIED |
+| a real GPT-5.6 Luna request succeeds | UNVERIFIED |
+| real model output passes the validator | UNVERIFIED |
+| real latency and token usage | UNVERIFIED |
+| end-to-end RAG + LLM | LOCALLY VERIFIED - not LIVE VERIFIED |
+
+Nothing in this table is LIVE VERIFIED.
+
+### 35.11 Limitations
+
+1. **No live request has been made.** There is no key, so the model
+   behaviour, latency, tokens, and refusal style are all unknown.
+2. **The model ID has not been checked.** If it is wrong, the first live
+   request gets `BadRequestError`, which becomes `ProviderError` and then the
+   deterministic path. The student is never harmed, but they get no model
+   text.
+3. **Chat Completions with `json_object`** asks for JSON, not a strict schema.
+   Shape is checked by the parser and meaning by the validator. A strict
+   `json_schema` response format would be a later tightening, and only after
+   the live model's support for it has been verified.
+4. **Prerequisites are not modeled** (35.4), so no prerequisite explanation
+   can be grounded.
+5. **Anthropic is kept** as an unverified alternative (§34). Neither vendor is
+   externally verified.
+6. Everything in §34.14 still applies.
+
+**A Phase 5.11 test failed during regression, and the product was not the
+cause.** `test_the_index_is_derived_and_can_always_be_thrown_away` searched
+for a fixed marker, `derivedprobe`, with `limit=10`. The persistent test
+database had built up 17 identically titled probe courses from earlier runs.
+They all scored the same, so the course created by the current run could fall
+outside the top 10. The marker is now unique per run, matching every other
+marker in that file.
+
+```
+SQLite      554 passed,  66 skipped   (unchanged)
+PostgreSQL  619 passed,   1 skipped   (unchanged)
+Backend     470 passed,   4 skipped   (was 418/3; +52, 3 consecutive runs)
+retrieval    46 passed                (unchanged)
+alembic check                          clean, head ce2b9afd3fa7
+```
