@@ -376,17 +376,27 @@ def test_injection_cannot_survive_validation() -> None:
 
 
 def test_application_does_not_import_a_vendor_sdk() -> None:
-    """The SDK may be imported in the provider adapter and NOWHERE else."""
+    """Each SDK may be imported in ITS OWN adapter and NOWHERE else.
+
+    Phase 5.13 added the OpenAI adapter. Rather than exempting the file
+    wholesale, each adapter is allowed exactly one vendor, so the OpenAI
+    adapter importing `anthropic` (or the reverse) still fails.
+    """
     import ast
     import pathlib
 
     root = pathlib.Path(__file__).resolve().parents[1] / "app"
-    allowed = {root / "llm" / "providers" / "anthropic.py"}
+    providers = root / "llm" / "providers"
+    allowed_vendor = {
+        providers / "anthropic.py": "anthropic",
+        providers / "openai.py": "openai",
+    }
     offenders: list[str] = []
 
     for path in root.rglob("*.py"):
-        if path in allowed or "migrations" in path.parts:
+        if "migrations" in path.parts:
             continue
+        own_vendor = allowed_vendor.get(path)
         tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             names: list[str] = []
@@ -395,7 +405,8 @@ def test_application_does_not_import_a_vendor_sdk() -> None:
             elif isinstance(node, ast.ImportFrom) and node.module:
                 names = [node.module]
             for name in names:
-                if name.split(".")[0] in {"anthropic", "openai", "google", "cohere"}:
+                vendor = name.split(".")[0]
+                if vendor in {"anthropic", "openai", "google", "cohere"} and vendor != own_vendor:
                     offenders.append(f"{path.name}: {name}")
     assert not offenders, offenders
 
