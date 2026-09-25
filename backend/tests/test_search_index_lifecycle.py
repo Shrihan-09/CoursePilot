@@ -714,7 +714,11 @@ def test_a_failed_version_read_leaves_the_session_usable() -> None:
 @requires_db
 def test_the_index_is_derived_and_can_always_be_thrown_away() -> None:
     registry = SearchIndexRegistry()
-    marker = "derivedprobe"
+    # Unique per run, like every other marker in this file. A fixed marker
+    # failed once the shared test database had accumulated more identically
+    # titled probe courses than the result limit: they tie, and the one this
+    # run created could fall outside the top 10.
+    marker = f"derivedprobe{uuid.uuid4().hex[:6]}"
     with _session() as session:
         course, _ = _make_course(session, title=f"{marker} Course")
         before = _keys(_search(registry, session, marker))
