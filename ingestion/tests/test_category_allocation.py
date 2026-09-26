@@ -51,7 +51,7 @@ from app.services.audit.categories import (
 from coursepilot_ingestion.loaders.requirements import RequirementLoader
 from sqlalchemy import select
 
-from tests.test_degree_audit import _audit, _enroll, _find
+from .test_degree_audit import _audit, _enroll, _find
 
 # Real courses; the letters are the labels used in the brief's matrix.
 A = "01:013:120"

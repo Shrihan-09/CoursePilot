@@ -312,7 +312,7 @@ def test_one_request_makes_at_most_one_provider_call() -> None:
     from app.services.explanations import RecommendationExplanationService, ScriptedModel
 
     model = ScriptedModel(["not json", '{"summary": "second chance"}'])
-    from tests.test_explanation_api import _evidence
+    from .test_explanation_api import _evidence
 
     _evidence_obj, audit = _evidence()
     service = RecommendationExplanationService(documents_by_key={}, model=model)
@@ -330,7 +330,7 @@ def test_one_request_makes_at_most_one_provider_call() -> None:
 
 def test_provider_timeout_never_produces_an_invented_explanation() -> None:
     from app.services.explanations import RecommendationExplanationService
-    from tests.test_explanation_api import _evidence
+    from .test_explanation_api import _evidence
 
     class Hanging:
         name = "hanging"

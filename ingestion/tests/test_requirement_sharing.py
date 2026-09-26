@@ -41,7 +41,7 @@ from app.services.audit.allocation import Candidate, Slot, allocate
 from coursepilot_ingestion.loaders.requirements import RequirementLoader
 from sqlalchemy import select
 
-from tests.test_degree_audit import _audit, _course, _enroll, _find
+from .test_degree_audit import _audit, _course, _enroll, _find
 
 # --------------------------------------------------------------------------
 # SYNTHETIC program definitions
@@ -311,7 +311,7 @@ def test_case_e_required_slot_still_beats_the_elective_pool(cs_session) -> None:
     01:198:344 is eligible for the required CS_344 node AND the 53-option
     elective pool. It must go to the required node.
     """
-    from tests.test_degree_audit import _student
+    from .test_degree_audit import _student
 
     student = _student(cs_session)
     _enroll(cs_session, student, "01:198:344")
@@ -326,7 +326,7 @@ def test_case_e_required_slot_still_beats_the_elective_pool(cs_session) -> None:
 
 
 def test_case_e_elective_pool_still_fills_normally(cs_session) -> None:
-    from tests.test_degree_audit import _student
+    from .test_degree_audit import _student
 
     student = _student(cs_session)
     for code in ("01:198:314", "01:198:323", "01:198:334"):
@@ -338,7 +338,7 @@ def test_case_e_elective_pool_still_fills_normally(cs_session) -> None:
 
 def test_case_e_no_course_allocated_twice_under_exclusive(cs_session) -> None:
     """The real CS program is EXCLUSIVE, so the old invariant still holds."""
-    from tests.test_degree_audit import CORE, MATH, _student
+    from .test_degree_audit import CORE, MATH, _student
 
     student = _student(cs_session)
     for code in CORE + MATH:
@@ -464,7 +464,7 @@ def test_unknown_system_is_simply_its_own_partition() -> None:
 def test_sharing_does_not_disturb_nested_all_of(cs_session) -> None:
     """The real CS tree (all_of -> course leaves, choose_n with constraints)
     must evaluate identically under the new allocator."""
-    from tests.test_degree_audit import MATH, _student
+    from .test_degree_audit import MATH, _student
 
     student = _student(cs_session)
     for code in MATH:
@@ -478,7 +478,7 @@ def test_sharing_does_not_disturb_nested_all_of(cs_session) -> None:
 
 
 def test_sharing_does_not_disturb_choose_n_constraints(cs_session) -> None:
-    from tests.test_degree_audit import _student
+    from .test_degree_audit import _student
 
     student = _student(cs_session)
     for code in ("01:198:314", "01:198:323"):
@@ -495,7 +495,7 @@ def test_sharing_does_not_disturb_choose_n_constraints(cs_session) -> None:
 def test_credit_totals_unaffected_by_sharing_in_exclusive_program(
     cs_session,
 ) -> None:
-    from tests.test_degree_audit import _student
+    from .test_degree_audit import _student
 
     student = _student(cs_session)
     _enroll(cs_session, student, "01:198:111")

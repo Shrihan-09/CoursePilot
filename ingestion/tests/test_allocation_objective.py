@@ -34,7 +34,7 @@ from app.models import ProgramVersion, Student
 from coursepilot_ingestion.loaders.requirements import RequirementLoader
 from sqlalchemy import select
 
-from tests.test_degree_audit import _audit, _enroll, _find
+from .test_degree_audit import _audit, _enroll, _find
 
 _SOURCE = {
     "url": "synthetic://coursepilot/test/phase-4.2",

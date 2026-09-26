@@ -45,7 +45,7 @@ from app.services.audit.allocation import allocate_credits, max_distinct_categor
 from coursepilot_ingestion.loaders.requirements import RequirementLoader
 from sqlalchemy import select
 
-from tests.test_degree_audit import _audit, _course, _enroll, _find
+from .test_degree_audit import _audit, _course, _enroll, _find
 
 _SOURCE = {
     "url": "synthetic://coursepilot/test/phase-4.1",

@@ -28,7 +28,7 @@ from app.services.audit.engine import DegreeAuditEngine
 from coursepilot_ingestion.loaders.requirements import RequirementLoader
 from sqlalchemy import select
 
-from tests.test_degree_audit import _course, _find
+from .test_degree_audit import _course, _find
 
 C1 = "01:013:120"
 C2 = "01:070:102"

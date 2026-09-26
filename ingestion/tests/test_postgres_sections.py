@@ -34,7 +34,7 @@ from coursepilot_ingestion.section_schemas import SectionIngestionStats
 from sqlalchemy import create_engine, func, inspect, select, text
 from sqlalchemy.exc import IntegrityError
 
-from tests.test_postgres_integration import DB_URL, pg_session, requires_postgres  # noqa: F401
+from .test_postgres_integration import DB_URL, pg_session, requires_postgres  # noqa: F401
 
 pytestmark = pytest.mark.db
 

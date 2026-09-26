@@ -37,7 +37,7 @@ from app.services.audit.oracle import (
 from coursepilot_ingestion.loaders.requirements import RequirementLoader
 from sqlalchemy import select
 
-from tests.test_degree_audit import _audit, _enroll, _find
+from .test_degree_audit import _audit, _enroll, _find
 
 # Real courses.
 C1 = "01:013:120"

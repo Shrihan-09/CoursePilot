@@ -139,7 +139,7 @@ def test_requirement_codes_repeat_across_versions_without_colliding(cs_session) 
 
 def test_each_version_audits_against_its_own_rules(cs_session) -> None:
     """Same student record, two catalog years, different verdicts."""
-    from tests.test_degree_audit import _enroll, _find
+    from .test_degree_audit import _enroll, _find
 
     synthetic = _load_synthetic(cs_session)
     real = cs_session.scalar(

@@ -18,7 +18,7 @@ from app.services.audit import DegreeAuditEngine
 from app.services.audit.rules import StudentCourseView, evaluate_rule, excluded_course_strings
 from sqlalchemy import select
 
-from tests.test_degree_audit import CORE, MATH, TERM, _audit, _course, _enroll, _find, _student
+from .test_degree_audit import CORE, MATH, TERM, _audit, _course, _enroll, _find, _student
 
 
 def _rule(session, code: str) -> ProgramRule:

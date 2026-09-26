@@ -32,7 +32,7 @@ from coursepilot_ingestion.pipelines.core import CoreIngestionPipeline
 from coursepilot_ingestion.validators.core import CoreValidator
 from sqlalchemy import func, select
 
-from tests.test_degree_audit import _audit, _course, _enroll, _find, _student
+from .test_degree_audit import _audit, _course, _enroll, _find, _student
 
 FIXTURES = pathlib.Path(__file__).parent / "fixtures"
 CORE_DEFINITION = FIXTURES / "sas_core_26_27.json"
@@ -664,7 +664,7 @@ def test_major_only_student_is_unaffected_by_core(core_session) -> None:
 
 def test_core_root_must_also_be_satisfied_for_a_complete_degree(core_session) -> None:
     """Two roots now: the major and the core. Finishing one is not a degree."""
-    from tests.test_degree_audit import CORE, MATH
+    from .test_degree_audit import CORE, MATH
 
     student = _student(core_session)
     for code in CORE + MATH:
