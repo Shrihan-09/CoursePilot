@@ -179,6 +179,40 @@ class DegreeAuditEngine:
             return [(sc, c) for sc, c in rows if sc.status in statuses]
         return [(sc, c) for sc, c in rows]
 
+    @staticmethod
+    def _representative_attempts(
+        records: list[tuple[StudentCourse, Course]],
+    ) -> dict:
+        """The one attempt per course that allocation and credit may use.
+
+        Policy (Phase 6.2), derived from the engine's existing semantics
+        rather than from a grade ranking:
+
+          * only a USABLE attempt can represent a course - countable status
+            (completed or in progress) and not a failing grade;
+          * earned beats provisional: a completed attempt is preferred over an
+            in-progress one, exactly as SATISFIED outranks
+            PROVISIONALLY_SATISFIED elsewhere in the engine;
+          * among attempts of the same kind, the most recent term.
+
+        Deliberately NOT "highest grade wins": which grade Rutgers counts on a
+        repeat (grade replacement, GPA) is not modeled, and choosing by grade
+        would pretend it is. For allocation the only thing that matters is
+        that one course yields one allocation identity.
+
+        A course with no usable attempt has no representative, so its rows
+        behave exactly as before (a failed-only course is still reported).
+        """
+        best: dict = {}
+        for sc, course in records:
+            if sc.status not in COUNTABLE or sc.grade in FAILING_GRADES:
+                continue
+            rank = (sc.status == EnrollmentStatus.COMPLETED.value, sc.term_code)
+            current = best.get(course.id)
+            if current is None or rank > current[0]:
+                best[course.id] = (rank, sc)
+        return {course_id: sc for course_id, (_, sc) in best.items()}
+
     # ------------------------------------------------------------------ #
     # slots
     # ------------------------------------------------------------------ #
@@ -805,7 +839,11 @@ class DegreeAuditEngine:
         credits_excluded = Decimal(0)
         credits_in_progress = Decimal(0)
 
-        for sc, course in self._load_student_courses(student, statuses):
+        records = self._load_student_courses(student, statuses)
+        representative = self._representative_attempts(records)
+        reported_repeats: set = set()
+
+        for sc, course in records:
             ref = CourseRef(
                 course_id=str(course.id),
                 course_string=course.course_string,
@@ -830,6 +868,40 @@ class DegreeAuditEngine:
                     credits=credits,
                 )
             )
+
+            # One course identity, one allocation identity (Phase 6.2). When a
+            # course has a representative attempt, every OTHER attempt is kept
+            # on the record - the rules above still see it - but it is neither
+            # credited nor allocated. Without this, two passing attempts of
+            # 01:198:314 filled two CS elective slots and counted 8 credits.
+            chosen = representative.get(course.id)
+            if chosen is not None and chosen is not sc:
+                if course.id not in reported_repeats:
+                    reported_repeats.add(course.id)
+                    findings.append(
+                        AuditFinding(
+                            severity=Severity.INFO,
+                            code="repeated_course",
+                            message=(
+                                f"{course.course_string} appears more than once on the "
+                                f"record; the {chosen.status.replace('_', ' ')} attempt "
+                                f"from term {chosen.term_code} is the one counted. Other "
+                                "attempts remain on the record but earn no additional credit."
+                            ),
+                        )
+                    )
+                if sc.grade in FAILING_GRADES and sc.status in COUNTABLE:
+                    findings.append(
+                        AuditFinding(
+                            severity=Severity.WARNING,
+                            code="non_passing_grade",
+                            message=(
+                                f"{course.course_string} has grade {sc.grade}; it does not "
+                                "count toward requirements."
+                            ),
+                        )
+                    )
+                continue
 
             if sc.status == EnrollmentStatus.COMPLETED.value:
                 credits_completed += credits or Decimal(0)
