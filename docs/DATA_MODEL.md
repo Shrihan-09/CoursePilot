@@ -6308,3 +6308,416 @@ Backend     470 passed,   4 skipped   (was 418/3; +52, 3 consecutive runs)
 retrieval    46 passed                (unchanged)
 alembic check                          clean, head ce2b9afd3fa7
 ```
+
+---
+
+## 36. Multiple programs, program discovery and scenarios (Phase 6.0)
+
+The question behind this phase:
+
+> Is the Degree Engine program-generic, or does it only look generic because
+> it has only been exercised against Computer Science?
+
+**Verdict: the evaluation logic was already generic, but the engine's entry
+point was not.** No code path branches on a program, and every program-shaped
+constraint is read from requirement data. But `DegreeAuditEngine.audit(student)`
+could only evaluate `student.program_version_id`. Answering "what if I were a
+Mathematics major?" would have meant writing a different program onto the
+student. That coupling was the one production blocker. It was removed with an
+optional argument, and a second, structurally different, real Rutgers program
+now runs through the same engine.
+
+### 36.1 What each concept is
+
+```
+Course                     a SOC identity (01:640:351). Knows nothing about programs.
+  ≠ Requirement            a node in ONE version's tree ("eight 300-400 level courses")
+  ≠ Program                a degree (Mathematics, B.A.), keyed (school, code, degree_type)
+  ≠ ProgramVersion         one catalog year's rules for that program
+  ≠ the student's program  Student.program_version_id: the binding, an academic fact
+  ≠ a scenario             a function argument: other rules over the same record
+```
+
+A major without a catalog year is not a ruleset. `ProgramVersion` is keyed
+`(program_id, catalog_year)`, and the student is bound to a version, not to a
+program.
+
+### 36.2 Inventory of CS-specific assumptions
+
+Every occurrence found by searching production code (`backend/app`,
+`ingestion/coursepilot_ingestion`) for `198`, `01:198`, `Computer Science`,
+`CS_`, `CORE_`, `SAS` and `640`:
+
+| where | what | classification |
+|---|---|---|
+| `DegreeAuditEngine.audit` | could only evaluate `student.program_version_id`; the internal baseline audit re-read it too | **production coupling. Fixed** (36.3) |
+| `sas_core_26_27.json` `target_program` | SAS Core could attach only to `SAS/198/BA` | **data assumption. Fixed** with a load-time override (36.5) |
+| `sources/catalog.py` `PROGRAM_PATHS` | registry held only `computer-science-198`, and CS was the default key | configuration. Mathematics added as data |
+| engine, allocator, rules, optimizer | docstrings citing CS prose ("at most two outside the department") | documentation. The behaviour reads `constraint_subject_code`, `min_at_level` and friends from data |
+| `explanations/validation.py` | `_CODE_ALLOWLIST` includes `CS`, `SAS` | generic stop-list for acronym detection. `MATH` is not a requirement-code-shaped token that needs listing |
+| `search/synonyms.py` | curated expansions `cs`, `os`, `stats`, … | configuration. A reviewed abbreviation list, not program logic |
+| `cli.py` | `--subject 198` example | documentation |
+| tests | CS fixtures everywhere | test-only. Kept; Mathematics was added beside them |
+
+A test now scans every string constant in `app/services/audit/*.py`, excluding
+docstrings. It fails if a subject code, a course key or a curated requirement
+code (`CS_…`, `MATH_…`, `CORE_…`) appears. There are none.
+
+### 36.3 The engine change
+
+```python
+DegreeAuditEngine(session).audit(student)                            # the binding, as before
+DegreeAuditEngine(session).audit(student, program_version=version)   # other rules, same record
+```
+
+- **Omitted:** behaviour is byte-identical. A test asserts that the default audit
+  and an explicit audit of the student's own version serialize identically.
+- **Baseline:** the optimizer's internal "already earned" baseline audit now uses the
+  same version. This was found by mutation: making the baseline use the
+  enrolled version left every other test green. So a test now spies on the
+  nested call and asserts it receives the target version.
+- **Catalog-year check:** the check guards the binding. It still reports a student
+  whose stored catalog year disagrees with their own version. It is not
+  applied to an explicitly chosen hypothetical version, because it would only
+  restate the hypothesis as an error. The scenario layer states that
+  assumption instead (36.6).
+- **Writes:** the engine writes nothing either way.
+
+There is no `ScenarioDegreeEngine`.
+
+### 36.4 Can the schema represent multiple programs?
+
+No migration was needed. Checked against the constraints, not assumed:
+
+| question | answer | why |
+|---|---|---|
+| Two programs with similar requirement names? | yes | `uq_requirement_code` is `(program_version_id, code)`. The real CS and Mathematics definitions both contain `MATH_151` |
+| Same course, different roles in different programs? | yes | eligibility is `(requirement_id, course_id, category)`. `01:198:111` is `CS_111` in one and a computing option in the other |
+| Different catalog years with different requirements? | yes | `uq_program_version (program_id, catalog_year)`; requirements belong to a version |
+| Audit a student against another version without mutating them? | **not before this phase**: the schema allowed it, the engine did not | 36.3 |
+
+`alembic check`: no new operations. Head is unchanged at `ce2b9afd3fa7`.
+
+### 36.5 The second program: SAS Mathematics, Option A
+
+**Why Mathematics.** Four candidates (Mathematics, Economics, Psychology, Data
+Science) were confirmed from the catalog's own program index (archived
+`root_26-27.html`, 97 program pages). Mathematics was chosen because it has
+the most SOC course rows (49), a parseable page, and a structure that
+exercises what the CS B.A. never does:
+
+| Mathematics clause | engine feature | used by CS B.A.? |
+|---|---|---|
+| "01:640:244 **or** 01:640:252" | choose one of N | no |
+| "01:198:107 (01:198:111 **or** 14:332:252 may be substituted)" | a CS core course in a different role | no |
+| "eight 300- to 400-level … **excluding** 01:640:491,492" | ranged query with exclusions | range only |
+| "**including one of** 311, 312, 411-412, **and one of** 350, 351, 451-452" | `min_distinct_categories` on a major requirement | no (only SAS Core) |
+| "at least four … at Rutgers-New Brunswick" | non-evaluable residency rule | yes |
+
+**Source path**, the same as CS:
+
+```
+catalog index (archived) -> program path -> CatalogFetcher -> archived HTML
+  -> __NUXT_DATA__ prose -> encoded JSON (each node quotes its sentence) -> RequirementLoader
+```
+
+- **Archives:** both catalog years were fetched once, HTTP 200, and archived
+  (`catalog_mathematics-640_2026_2027.html` has sha256 prefix
+  `7416344bf63c8526`).
+- **Verbatim quotes:** a test re-extracts the page text and asserts every
+  quoted sentence appears in it verbatim (`...` marks an elision). That test
+  caught one non-contiguous quote while the definition was being written.
+
+**Curation status: `unverified`.** The definition was encoded by an AI
+assistant. Under CoursePilot's source-authority rule, a model's reading of
+prose does not become authoritative on its own. It stays `unverified` until a
+person re-checks it against the archive, so it reports as `pending_review`
+everywhere.
+
+**Option A only.** Honors (by application), actuarial and the
+interdisciplinary majors are separate curricula.
+
+**Deliberately not modeled.** These are listed in the definition's
+`rules_not_yet_modeled`:
+
+- per-course minimum grades (250, 251, 252 and 107 need C or better);
+- "all but one of these courses … C or better". The existing
+  `max_grade_count` counts across the whole record, so reusing it would change
+  the rule's meaning;
+- graduate-course substitution with departmental approval;
+- the written-notification step for non-standard options.
+
+**Ambiguity flagged for the reviewer.** "411-412" and "451-452" may denote
+two-semester sequences. The encoding accepts either course of the pair.
+
+**Loaded into the development database:**
+
+```
+Mathematics BA 2026-2027   requirements +9, eligibility +41, rules +1 (not evaluable)
+  unresolved, reported and never created:
+    MATH_COMPUTING:14:332:252  MATH_UPPER:01:640:312  :01:640:412  :01:640:452
+SAS Core -> Mathematics    requirements +13, eligibility +714
+Mathematics catalog        2026-2027: 62 entries (61 descriptions), 29 catalog-only
+                           2025-2026: 62 entries (61 descriptions), 29 catalog-only
+                           parser unchanged, 0 failures
+```
+
+Every pre-existing student, student-course, account, CS-requirement and
+CS-eligibility row hashed identically before and after.
+
+**Loader change.** `eligible_course_query` gained `max_course_number` and
+`exclude_course_numbers`. An unknown key now raises instead of being
+ignored, because an ignored exclusion makes an excluded course count.
+
+**Core change.** `CoreIngestionPipeline.run(..., target_program=…)`: SAS Core
+binds every SAS major, so which major it joins is a load-time decision rather
+than a fact of the Core source.
+
+### 36.6 Scenario semantics
+
+```
+Student academic record
+   │
+   ├── actual ProgramVersion  ──> DegreeAuditEngine ──> actual audit   (cached)
+   │
+   └── target ProgramVersion  ──> DegreeAuditEngine ──> scenario audit (never cached)
+```
+
+**Read-only.** A scenario never touches `Student.program_version_id`, and never
+writes `StudentCourse`, ownership, link events or requirements. A test hashes
+fifteen tables before and after three scenarios and a comparison, and they are
+identical. The only write a comparison may cause is the student's own
+actual-audit cache row, and a scenario alone does not even do that. The
+service also refuses to return if its session has pending changes after
+evaluation. That cannot happen today; it exists so that a future edit which
+makes evaluation write something fails loudly.
+
+**Catalog year.** Omitted, the target must exist for the student's own catalog
+year. If it does not, the request fails and names the years that do exist. It
+never falls back to the latest. An explicit different year is evaluated, and
+the result carries `catalog_year_differs`: Rutgers' rule for which catalog
+year applies after a change of program is not modeled.
+
+**Assumptions** are attached to every non-current scenario:
+
+- `hypothetical`: this does not change your declared program;
+- `admission_not_modeled`: whether you could declare it is not evaluated;
+- `different_school`: school transfer rules are not modeled;
+- `catalog_year_differs`;
+- `requirements_pending_review`.
+
+"CoursePilot can evaluate this requirement set" is never presented as "Rutgers
+would admit you".
+
+**Support status** is derived from provenance by `app.services.programs`, so a
+client never decides for itself whether a program is trustworthy:
+
+| status | meaning |
+|---|---|
+| `supported` | every requirement and rule curated from official prose by a person |
+| `pending_review` | requirements exist, but some are `unverified`. Evaluable, and says so |
+| `unavailable` | no requirements, or test-only `synthetic` data. Never evaluated (422) |
+
+### 36.7 Scenarios bypass the audit cache
+
+This was checked, not assumed. `student_audit_cache` holds one row per student.
+Its key is:
+
+- the academic fingerprint, which includes the enrolled `program_version_id`;
+- `rules_token`, which is a single database-wide counter (`v:<n>`) rather than
+  a per-version value;
+- the engine version.
+
+A scenario routed through `audit_with_cache` would therefore get exactly the
+actual audit's key and be served later as the student's real audit. Scenarios
+call the engine directly. Tests:
+
+- **the key has no target dimension.** Pinned, so nobody routes scenarios
+  through it without reading why;
+- **no contamination:** warm the actual cache, run scenarios for two other
+  programs, then read the cache. The result is still the actual audit,
+  byte-identical to a fresh one;
+- **mutation check:** writing a scenario result under the actual key fails four
+  tests, including the contamination test.
+
+### 36.8 Deterministic comparison
+
+`compare_audits(actual, scenario)` is pure: no session and no model. It
+reports:
+
+- **courses** applied in both, only under the current program, only under the
+  target, or in neither, with each course's requirement roles and whether a
+  program rule excludes it;
+- **requirements** shared by both, current-only and target-only, with statuses;
+- **per-program outcome:** status, applicable and excluded credits, and leaf
+  counts.
+
+**"Shared requirement" means identical code and identical source prose.**
+Code alone is not enough. Codes are unique only within a version, and the real
+CS and Mathematics definitions both contain a `MATH_151` curated from
+different pages.
+
+There is no ranking, no recommendation and no time-to-degree estimate. A test
+fails if the comparison model grows a field named like `score`, `rank`,
+`recommend`, `semesters`, `better` or `best`.
+
+**The real development record**, CS actual vs Mathematics scenario:
+
+```
+CURRENT  Computer Science BA 2026-2027: incomplete, 39.0 applicable, leaves 9+1 provisional / 18
+TARGET   Mathematics BA 2026-2027:      incomplete, 39.0 applicable, leaves 5 / 15
+applied in both:   01:198:111  CS_111 + CORE_QFR      ->  MATH_COMPUTING + CORE_QFR
+                   01:640:151  MATH_151 + CORE_QFR    ->  MATH_151 + CORE_QFR   (different requirements)
+                   01:640:152, 01:640:250             ->  same pattern
+only current:      01:198:112, 205, 206, 211, 314, 336, 344  (CS core and electives)
+requirements in both (same source): 13 SAS Core nodes
+```
+
+Before the Core refresh in 36.12, this example showed 12 shared Core nodes,
+not 13. The comparison correctly refused to call the two `CORE_AH` rows "the
+same" because their stored prose differed. That is how the loader defect was
+found.
+
+### 36.9 API
+
+```
+GET  /api/v1/programs                  natural keys, versions, support status
+GET  /api/v1/programs/{program_key}    e.g. sas-640-ba; 404 unknown, 422 malformed
+POST /api/v1/student/scenarios/audit   {"program_key": "sas-640-ba", "catalog_year": "2026-2027"?}
+POST /api/v1/student/scenarios/compare same body -> target, assumptions, comparison
+```
+
+- **Keys.** Program keys are natural (`<school>-<program>-<degree>`), and
+  no UUID appears in any response, which a test checks. Surrogate keys change
+  on re-ingest, and a mobile client that stored one would silently point at
+  nothing.
+- **Authentication.** All four routes require authentication, like every
+  non-health route.
+- **Ownership.** The student is resolved exactly as `/student/audit` resolves
+  it: principal to account to owned student. The request model forbids extra
+  fields. A body naming `student_id`, `student_ref`, `external_ref`,
+  `account_id`, `subject`, `user_id` or `principal` is a 422, never silently
+  ignored.
+- **Tested.** Students A and B asking the same question each get their own
+  records. An unlinked account gets 409, as on `/student/audit`.
+- **Status codes.** The closed error taxonomy is unchanged: 404 for an unknown
+  program or a missing catalog year (with the available years listed), and 422
+  for an unavailable program.
+- **POST, although nothing is written.** A structured body is the only place
+  unknown fields can be rejected.
+
+Both the web and mobile clients consume these contracts. Neither holds any
+comparison logic.
+
+### 36.10 Degree, Scenario, Planning and Scheduling
+
+| engine | question | status |
+|---|---|---|
+| Degree Engine | what has this record satisfied under these rules? what remains? | exists |
+| Scenario service | what would the Degree Engine say under other rules? | this phase: `DegreeAuditEngine` + `program_version` |
+| Planning Engine | which valid courses would advance what remains, in which combinations? | next. It consumes `eligible_not_allocated` and remaining requirements; it must not re-derive satisfaction |
+| Scheduling | which sections, times and instructors fit? | after planning. It depends on sections and preferences, not on requirements |
+
+A scenario is not a plan. It says nothing about what to take next. A plan is
+not a schedule. It says nothing about when.
+
+**The AI boundary is unchanged.** A future "what changes if I switch to
+Mathematics?" explanation receives a `ProgramComparison` as structured
+evidence. The model never computes the difference.
+
+### 36.11 Search and RAG
+
+- **Corpus:** every `Course` row (4,413 documents), with no program or subject
+  coupling. Mathematics courses were already searchable by title.
+- **Descriptions:** adding Mathematics was a data operation. The existing
+  catalog pipeline ingested its page unchanged, and the index rebuilt once
+  through the Phase 5.11 `search_version` lifecycle ("abstract algebra",
+  "real analysis" and "differential equations" now return Mathematics courses
+  with descriptions).
+- **Finding, pre-existing and not fixed here:** `BM25Searcher` tokenizes a
+  code-shaped query as plain text (`01:640:351` becomes
+  `['01','640','351']`), while documents carry compound code tokens. A
+  description quoting other codes that contain those parts outranks the exact
+  course. `01:198:336`'s prerequisite text mentions `14:332:351` and
+  `01:640:152`, and ranks first for `01:640:351`.
+- **Why explanations are unaffected:** the target's own facts come from
+  `documents_by_key[course_key]`, an exact lookup, and ranked retrieval only
+  adds deduplicated context.
+- **Recommended fix:** route code-shaped queries through `tokenize_course_key`.
+  Not done here: the phase brief excludes RAG redesign. This is a lexical
+  tokenization defect, not evidence that embeddings are needed.
+
+### 36.12 Defects found and fixed along the way
+
+1. **Loaders did not refresh on reload.** `RequirementLoader` updated four
+   fields and the Core loader five. A recuration that changed a count, a
+   constraint or the quoted prose "loaded successfully" and changed nothing.
+   Found because the dev DB's CS copy of `CORE_AH` still carried older prose
+   than its source. Both update paths now refresh every field the insert sets.
+   The dev DB's CS Core was reloaded: 13 nodes updated in place, 0 inserted,
+   and only `CORE_AH.notes` and `.source_prose` changed. Two tests fail
+   without the fix.
+2. **`satisfied_credits` was the int `0`** for an empty credit requirement
+   (`sum()` of nothing). On the real record, SAS Core's `CORE_NS` did this in
+   **every** audit. Pydantic warned on every serialization, and clients got
+   the number `0` where every other value is a decimal string. Fixed with a
+   `Decimal(0)` start value. `AUDIT_ENGINE_VERSION` went from 5.7.0 to 6.0.0,
+   because the serialized audit changes for unchanged inputs.
+
+### 36.13 Performance (development database, service level, n=40)
+
+```
+                                             mean     p50     p95   (ms)
+actual audit, cold (engine only)             28.49   26.63   39.15
+actual audit, warm (cache hit)                4.96    4.67    7.85
+scenario: Mathematics BA 2026-2027           25.44   25.04   30.62
+scenario: Computer Science BA (own program)  26.09   25.45   31.31
+comparison CS vs Mathematics                 35.01   34.28   45.07
+program discovery: list_programs              7.54    6.70   14.71
+program discovery: get_program                5.37    4.86    9.11
+first actual audit after the version bump    66.2 (one sample, includes the cache write)
+```
+
+An uncached scenario costs the same as a cold actual audit, because it is the
+same engine. No scenario cache was built: nothing measured needs one.
+
+Adding a program bumps the database-wide `rules_version` (1 to 802 here), so
+every student's cached actual audit recomputes once. That is the known,
+accepted Phase 5.8 trade-off.
+
+### 36.14 Supported programs
+
+| program | catalog year | status | evidence |
+|---|---|---|---|
+| SAS Computer Science B.A. (`sas-198-ba`) | 2026-2027 | `supported` | curated from prose; phases 3 to 5 |
+| SAS Mathematics B.A., Option A (`sas-640-ba`) | 2026-2027 | `pending_review` | encoded from archived prose by an AI assistant; awaiting human verification |
+
+That is the whole list. Two programs prove the engine is not CS-shaped. They
+do not prove Rutgers-wide coverage.
+
+### 36.15 Limitations
+
+1. **Mathematics is `pending_review`** until a person verifies the definition.
+2. **Two programs, one school.** No SOE, RBS or SEBS program is loaded. The
+   different-school path is tested with synthetic data only.
+3. **No minors or double majors.** The engine evaluates one version per call.
+4. **Admission and transfer are not modeled**, and scenarios say so.
+5. **Which catalog year applies after a change of program** is not modeled;
+   the ambiguity is exposed, not resolved.
+6. **Per-course minimum grades** are not evaluated. This affects Mathematics
+   more than CS.
+7. **Eligibility is additive on reload.** A course removed from a curated list
+   is not removed from `requirement_course_option`.
+8. **Search ranking for code-shaped queries** (36.11).
+9. **Curated definitions live under `ingestion/tests/fixtures/`**, where CS's
+   already was. A `data/curated/` home would be clearer.
+10. **Comparison is course-level:** a retaken course appears once.
+
+```
+root        1,142 collected: 1,137 passed, 5 skipped   (was 1,094: 1,089 / 5)
+Backend     502 passed,   4 skipped   (was 470 / 4; +32)
+PostgreSQL  635 passed,   1 skipped   (was 619 / 1; +16)
+SQLite      570 passed,  66 skipped   (was 554 / 66)
+retrieval    46 passed                (unchanged)
+alembic check                          clean, head ce2b9afd3fa7
+```

@@ -7268,3 +7268,208 @@ would see on the first live request.
 - Test oracles: how a test decides it passed, and how that can be vacuous
 - Flaky test taxonomy: order dependence, randomness, time, shared state
 - OpenAI Chat Completions: `response_format`, `max_completion_tokens`, usage fields
+
+---
+
+# Lesson 28: One Engine, Many Programs, and Questions That Change Nothing
+
+## What We Built
+
+We added a second real Rutgers major, SAS Mathematics, beside Computer
+Science. We also added a way to ask "what would my record look like under
+another program?" without changing anything. That took one optional engine
+argument, a program catalog, a read-only scenario service, a deterministic
+comparison and four API routes. No migration was needed. Along the way two
+older bugs surfaced, because a second program exercised code paths the first
+never had.
+
+---
+
+## Concepts
+
+### Multi-tenant is not multi-program
+
+A multi-tenant system isolates *customers*: one database, many
+organizations, and nothing crosses between them. CoursePilot's problem is
+different. It has **one** student whose single academic record must be
+readable under **many** rulesets. The record is shared on purpose, and the
+rules are what vary.
+
+That is why the schema already worked. A course belongs to no program. An
+eligibility row says "course X can satisfy requirement Y". A requirement
+belongs to one `ProgramVersion`. Nothing about a student is stored inside a
+program, so a second program needs no new tables.
+
+### Generic code can still have a CS-shaped front door
+
+The engine contained no `if program == "CS"`. Every constraint, such as "at
+most two outside the department" or "at least two at the 300 level", was
+read from requirement rows. By every internal measure it was generic.
+
+But its only entry point was `audit(student)`, and it read the rules from
+`student.program_version_id`. The one way to evaluate another program was to
+change the student's major. **Generic internals behind a coupled interface
+are not generic.** The fix was the smallest one that removes the coupling:
+
+```python
+engine.audit(student)                            # the binding, byte-identical to before
+engine.audit(student, program_version=version)   # other rules, same record
+```
+
+When auditing a codebase for "is this generic?", check more than the logic.
+Check what the entry points force a caller to change.
+
+### Configuration, not branching
+
+Mathematics exercises four features the CS B.A. never used. All of them were
+expressed as **data**:
+
+| Mathematics clause | how it is expressed |
+|---|---|
+| "244 or 252" | `choose_n` with `min_count: 1` |
+| "eight 300-400 level, excluding 491, 492" | a query with `exclude_course_numbers` |
+| "including one analysis and one algebra course" | categories on eligibility rows, `min_distinct_categories: 2` |
+| "four at Rutgers-New Brunswick" | a residency rule marked not evaluable |
+
+The engine gained zero program-specific lines. A test scans every string
+constant in the audit package and fails if a subject code, a course key or a
+curated requirement code appears. When a new program needs a new *kind* of
+rule, the right move is a new generic primitive in the schema, never a
+branch on the program's name.
+
+### A scenario is a function argument, not a fact
+
+"What if I switched to Mathematics?" must not be answered by setting
+`program_version_id` and setting it back. That is a write disguised as a read.
+It races with real requests, it can be left half-done, and it puts a
+hypothesis into the one column that holds an academic decision.
+
+So the hypothetical program is passed as an argument, and a test proves
+nothing moved. It hashes fifteen tables before and after three scenarios and a
+comparison. The service also refuses to return if its database session has
+pending changes afterwards. That cannot happen today; it is there so a future
+edit that makes evaluation write something fails loudly instead of quietly
+changing someone's major.
+
+### A cache key must cover every input, including hypothetical ones
+
+The audit cache is keyed on the student's facts, a rules token and the
+engine version. For an actual audit that is complete. For a scenario it is
+missing the one input that differs: the target program. `rules_token`
+turned out to be a single database-wide counter, not a per-version value. A
+scenario routed through the cache would therefore get *exactly* the actual
+audit's key, and its result would be served later as the student's real
+audit.
+
+The fix was to leave scenarios out of the cache entirely. That was affordable
+because it was measured first: a scenario costs about 25 ms, the same as a
+cold actual audit. The lesson generalizes. **A cache key is a claim that it
+lists every input.** Whenever a new kind of question reuses the same
+computation, re-check that claim.
+
+### Catalog years matter
+
+"Mathematics" is not a ruleset. "Mathematics, 2026-2027 catalog" is. When a
+student asks about a program, the scenario uses *their* catalog year. If that
+version does not exist, it says which years do. It never picks the latest,
+because choosing a catalog year is an academic decision and CoursePilot has
+no rule to make it with. It is always tempting to paper over a missing rule
+with a plausible default. The honest behaviour is to expose the gap.
+
+### Deterministic comparison, and what "the same requirement" means
+
+The comparison reads two audits and reports which courses apply where and
+which requirements are shared. Only one thing in it needed real thought:
+**when are two requirements "the same"?**
+
+Matching by code seemed obvious and was wrong. Both the CS and Mathematics
+definitions contain a `MATH_151`, curated from different catalog pages.
+Matching by code *and source prose* is exact: SAS Core loaded into both
+majors matches, and coincidental codes do not.
+
+That rule then caught a real bug. On the development database only 12 of 13
+Core nodes matched, because the CS copy of `CORE_AH` held older prose than its
+source. The loaders had never refreshed prose, or counts, on reload. A
+comparison that is strict about identity found a data-freshness bug that
+nothing else could see.
+
+### Source authority, including for the author
+
+The Mathematics definition was written by an AI assistant from the archived
+official page. Every node quotes its sentence, and a test checks that each
+quote is verbatim in the archive. That same check caught the assistant
+joining two non-adjacent sentences.
+
+It is still marked `unverified`, and the program reports as `pending_review`
+everywhere. A model's reading of requirement prose is analysis, not authority.
+It becomes authoritative when a person checks it against the source.
+
+### Scenario is not planning, and planning is not scheduling
+
+```
+Degree Engine     what has this record satisfied under these rules?
+Scenario          what would the Degree Engine say under other rules?
+Planning Engine   which courses would advance what remains?        (next)
+Scheduling        which sections, at which times, fit?             (later)
+```
+
+Each consumes the one above and must not re-derive it. A scenario says
+nothing about what to take next, and a plan says nothing about when. Nothing
+here estimates "semesters to graduate": that depends on future choices, so it
+belongs to planning. A test fails if the comparison grows a field named like a
+score, a rank or a recommendation.
+
+### AI explains the comparison; it does not compute it
+
+A future "what changes if I switch?" answer will hand the model a
+`ProgramComparison` as structured evidence, and the validator from Phase 5
+will check its prose against those facts. The model never works out which
+courses transfer. That is the same boundary as every audit explanation, now
+applied to two audits instead of one.
+
+### One API for web and mobile
+
+`GET /programs`, `POST /student/scenarios/compare`. The contract uses natural
+keys (`sas-640-ba`), never database UUIDs, so a mobile client that caches a
+key still resolves after a re-ingest. Support status is computed on the
+server, so neither client can decide for itself that a half-curated program is
+trustworthy. Both clients render the same comparison and neither computes
+one.
+
+---
+
+## Self-Check
+
+1. The engine had no program branches. Why was it still not program-generic?
+2. Why must a hypothetical program never be written to `Student.program_version_id`, even temporarily?
+3. Which input was missing from the audit cache key for scenarios, and why did `rules_token` not supply it?
+4. Why did scenarios bypass the cache rather than get their own cached entries?
+5. Why does a scenario with no catalog year refuse instead of choosing the latest version?
+6. Why is "same requirement code" not enough to call two requirements the same?
+7. How did the comparison find a loader bug?
+8. Why is the Mathematics definition `unverified`, when every quote in it is verbatim?
+9. Name one question the Scenario service must not answer, and which engine should answer it.
+10. Why do program keys avoid UUIDs?
+
+## Try It Yourself
+
+**A.** Route `run_scenario_audit` through `audit_with_cache` and run `test_multi_program.py`. Which tests catch it, and what would a student have seen?
+
+**B.** Make the baseline audit ignore `program_version` again. Run the suite and note how few tests notice. Then read the test that does.
+
+**C.** Change the comparison to match requirements by code alone and run the real CS and Mathematics comparison test.
+
+**D.** Change one quoted sentence in `math_ba_requirements_26_27.json` by a single word and run the verbatim-prose test.
+
+**E.** Remove the `Decimal(0)` start value from `_eval_credits`, audit the development record, and serialize it with warnings as errors.
+
+**F.** Search `01:640:351` and explain, from the tokens, why it does not come first. Then check why explanations are unaffected.
+
+## Further Learning
+
+- Hexagonal architecture: ports that accept their inputs instead of reading global state
+- Cache key design and "every input in the key"
+- Pure functions and read-only query models (CQRS)
+- Natural vs surrogate keys in public APIs
+- Data provenance and human-in-the-loop verification
+- Mutation testing as a way to find the tests you are missing

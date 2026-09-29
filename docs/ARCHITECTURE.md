@@ -225,6 +225,31 @@ friction.
 
 ---
 
+### 5.9 Programs are data; a scenario is an argument (Phase 6.0)
+
+```
+Student record ──┬── actual ProgramVersion ──> Degree Engine ──> actual audit (cached)
+                 └── target ProgramVersion ──> Degree Engine ──> scenario audit (never cached)
+                                                    │
+                                    compare_audits(actual, scenario)   pure, no model
+```
+
+- **One engine for every program.** A major is `School → Program →
+  ProgramVersion (per catalog year) → Requirement tree`. The engine contains
+  no program-specific branch, and a test scans it for program-shaped
+  literals. A new kind of rule becomes a schema primitive, never a branch.
+- **A hypothetical program is passed in, never stored.**
+  `DegreeAuditEngine.audit(student, program_version=…)` evaluates the same
+  record under other rules. `Student.program_version_id` is the academic
+  binding and is not written to answer a "what if".
+- **Scenarios bypass the audit cache,** whose key has no target dimension.
+- **Program discovery uses natural keys** (`sas-640-ba`) and a support status
+  derived from curation provenance. Web and mobile clients consume the same
+  contracts and hold no comparison logic.
+- **Scenario ≠ planning ≠ scheduling:** each consumes the one before it.
+
+Full design, evidence and limitations: `DATA_MODEL.md` §36.
+
 ## 6. Local development topology
 
 ```
