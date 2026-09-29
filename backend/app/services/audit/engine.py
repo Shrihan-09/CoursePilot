@@ -680,7 +680,12 @@ class DegreeAuditEngine:
         result: RequirementResult, req: Requirement, allocated: list[dict], provisional: bool
     ) -> None:
         need = req.min_credits or Decimal(0)
-        got = sum((e["credits"] or Decimal(0)) for e in allocated)
+        # Decimal start value: `sum()` of nothing is the INT 0, which reached
+        # clients as the number 0 where every other value of this field is a
+        # decimal string, and made Pydantic warn on every serialization of any
+        # audit whose credit requirement had no eligible course (SAS Core's
+        # CORE_NS, on the real development record). Found in Phase 6.0.
+        got = sum(((e["credits"] or Decimal(0)) for e in allocated), Decimal(0))
         result.needed_credits = need
         result.satisfied_credits = got
         if got >= need and not provisional:

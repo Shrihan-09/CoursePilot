@@ -140,7 +140,10 @@ logger = logging.getLogger(__name__)
 #: It does NOT mean refactors that provably cannot change output. When in
 #: doubt, bump - the cost is one recomputation per student, and the cost of
 #: not bumping is telling a student the wrong thing about their degree.
-AUDIT_ENGINE_VERSION = "5.7.0"
+#:
+#: 6.0.0: an empty credit requirement now reports `satisfied_credits` as
+#: Decimal 0 rather than int 0, which changes the serialized audit.
+AUDIT_ENGINE_VERSION = "6.0.0"
 
 #: Columns whose value changes without the meaning changing.
 _IGNORED_COLUMNS = frozenset({"created_at", "updated_at"})
