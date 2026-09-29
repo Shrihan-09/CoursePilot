@@ -10,7 +10,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Index, Integer, String, Text, Uuid
+from sqlalchemy import CheckConstraint, DateTime, Index, Integer, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, TimestampMixin
@@ -55,8 +55,21 @@ class DataSource(Base, TimestampMixin):
     version: Mapped[int] = mapped_column(Integer, default=1)
     record_count: Mapped[int | None] = mapped_column(Integer)
 
+    # Phase 6.2: is this payload the whole term, or a snapshot of a term that
+    # was still being published? Stated by whoever loads it, with the
+    # evidence in `coverage_note`, and NULL when nobody has said. A payload
+    # is never promoted to "complete" just because the file exists: Winter
+    # 2027 was fetched 3.5 months before the term, when Spring 2027 returned
+    # zero courses - Rutgers publishes schedules progressively.
+    coverage: Mapped[str | None] = mapped_column(String(16))
+    coverage_note: Mapped[str | None] = mapped_column(Text)
+
     __table_args__ = (
         Index("ix_data_source_kind_term", "kind", "term_code"),
+        CheckConstraint(
+            "coverage IS NULL OR coverage IN ('complete','partial','unknown')",
+            name="coverage_known",
+        ),
     )
 
     def __repr__(self) -> str:
