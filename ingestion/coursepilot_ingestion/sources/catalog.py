@@ -32,10 +32,13 @@ CATALOG_HOSTS: dict[str, str] = {
     "2025-2026": "https://newbrunswick-25-26-undergrad-archive.catalogs.rutgers.edu",
 }
 
-# Program pages, by the catalog's own path. Only CS is used in this phase;
-# the structure generalises but scaling is deliberately out of scope.
+# Program pages, by the catalog's own path. Each path is copied from the
+# catalog's own program index (archived root_<year>.html), never composed from
+# a program name. Phase 6.0 added Mathematics as the second, structurally
+# different program; adding a program is a data change here, not a code change.
 PROGRAM_PATHS: dict[str, str] = {
     "computer-science-198": "/schools/sas/program-listing/computer-science-198",
+    "mathematics-640": "/schools/sas/program-listing/mathematics-640",
 }
 
 

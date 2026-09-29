@@ -97,7 +97,21 @@ class RequirementLoader:
         )
 
     def _query_courses(self, spec: dict) -> list[Course]:
-        """Resolve an `eligible_course_query` (e.g. all CS courses at 300+)."""
+        """Resolve an `eligible_course_query` (e.g. all CS courses at 300+).
+
+        Keys, all optional: `subject_code`, `min_course_number`,
+        `max_course_number`, `exclude_course_numbers`. The last two arrived
+        with Mathematics (Phase 6.0): "eight 300- to 400-level mathematics
+        courses, excluding 01:640:491,492" is a range with named exceptions,
+        and an unknown key must fail rather than be silently ignored - an
+        ignored exclusion would make an excluded course count.
+        """
+        known = {"subject_code", "min_course_number", "max_course_number",
+                 "exclude_course_numbers"}
+        unknown = set(spec) - known
+        if unknown:
+            raise ValueError(f"unknown eligible_course_query keys: {sorted(unknown)}")
+
         stmt = select(Course).where(Course.supplement_code == "")
         if "subject_code" in spec:
             stmt = stmt.where(Course.subject_code == spec["subject_code"])
@@ -107,6 +121,15 @@ class RequirementLoader:
             courses = [
                 c for c in courses if c.course_number.isdigit() and int(c.course_number) >= floor
             ]
+        if "max_course_number" in spec:
+            ceiling = int(spec["max_course_number"])
+            courses = [
+                c for c in courses
+                if c.course_number.isdigit() and int(c.course_number) <= ceiling
+            ]
+        excluded = set(spec.get("exclude_course_numbers", ()))
+        if excluded:
+            courses = [c for c in courses if c.course_number not in excluded]
         return sorted(courses, key=lambda c: c.course_string)
 
     # ------------------------------------------------------------------ #
