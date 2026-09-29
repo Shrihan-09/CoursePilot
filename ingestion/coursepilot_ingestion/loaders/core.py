@@ -173,11 +173,23 @@ class CoreLoader:
                 )
             )
             if existing is not None:
+                # Every field the insert sets is refreshed. Before Phase 6.0
+                # only five were, so a revised source left stale prose - and a
+                # stale count - on the row while reporting a successful load.
                 existing.name = rdef["name"]
                 existing.requirement_type = rdef["requirement_type"]
                 existing.requirement_system = system
                 existing.sort_order = rdef.get("sort_order", 0)
+                existing.min_count = rdef.get("min_count")
                 existing.min_distinct_categories = rdef.get("min_distinct_categories")
+                existing.min_credits = (
+                    Decimal(str(rdef["min_credits"]))
+                    if rdef.get("min_credits") is not None
+                    else None
+                )
+                existing.notes = rdef.get("notes")
+                existing.source_prose = rdef.get("source_prose")
+                existing.curation_status = curation
                 stats.requirements_updated += 1
                 by_code[rdef["code"]] = existing
             else:

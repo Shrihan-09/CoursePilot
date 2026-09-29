@@ -97,7 +97,21 @@ class RequirementLoader:
         )
 
     def _query_courses(self, spec: dict) -> list[Course]:
-        """Resolve an `eligible_course_query` (e.g. all CS courses at 300+)."""
+        """Resolve an `eligible_course_query` (e.g. all CS courses at 300+).
+
+        Keys, all optional: `subject_code`, `min_course_number`,
+        `max_course_number`, `exclude_course_numbers`. The last two arrived
+        with Mathematics (Phase 6.0): "eight 300- to 400-level mathematics
+        courses, excluding 01:640:491,492" is a range with named exceptions,
+        and an unknown key must fail rather than be silently ignored - an
+        ignored exclusion would make an excluded course count.
+        """
+        known = {"subject_code", "min_course_number", "max_course_number",
+                 "exclude_course_numbers"}
+        unknown = set(spec) - known
+        if unknown:
+            raise ValueError(f"unknown eligible_course_query keys: {sorted(unknown)}")
+
         stmt = select(Course).where(Course.supplement_code == "")
         if "subject_code" in spec:
             stmt = stmt.where(Course.subject_code == spec["subject_code"])
@@ -107,6 +121,15 @@ class RequirementLoader:
             courses = [
                 c for c in courses if c.course_number.isdigit() and int(c.course_number) >= floor
             ]
+        if "max_course_number" in spec:
+            ceiling = int(spec["max_course_number"])
+            courses = [
+                c for c in courses
+                if c.course_number.isdigit() and int(c.course_number) <= ceiling
+            ]
+        excluded = set(spec.get("exclude_course_numbers", ()))
+        if excluded:
+            courses = [c for c in courses if c.course_number not in excluded]
         return sorted(courses, key=lambda c: c.course_string)
 
     # ------------------------------------------------------------------ #
@@ -221,10 +244,25 @@ class RequirementLoader:
                 )
             )
             if existing is not None:
+                # Every field the insert sets is refreshed. Before Phase 6.0
+                # only four were: a recuration that changed a count, a
+                # constraint or the quoted prose loaded "successfully" and
+                # changed nothing, leaving a row that no longer matched its
+                # own cited source.
                 existing.name = rdef["name"]
                 existing.requirement_type = rdef["requirement_type"]
                 existing.requirement_system = rdef.get("requirement_system", "major")
                 existing.sort_order = rdef.get("sort_order", 0)
+                existing.min_count = rdef.get("min_count")
+                existing.min_distinct_categories = rdef.get("min_distinct_categories")
+                existing.min_credits = _dec(rdef.get("min_credits"))
+                existing.max_outside_subject = rdef.get("max_outside_subject")
+                existing.constraint_subject_code = rdef.get("constraint_subject_code")
+                existing.min_at_level = rdef.get("min_at_level")
+                existing.min_at_level_count = rdef.get("min_at_level_count")
+                existing.notes = rdef.get("notes")
+                existing.source_prose = rdef.get("source_prose")
+                existing.curation_status = curation
                 stats.requirements_updated += 1
                 by_code[rdef["code"]] = existing
                 continue

@@ -1,0 +1,139 @@
+{
+  "_README": [
+    "Rutgers SAS Mathematics (640), Option A - Standard Mathematics, catalog 2026-2027.",
+    "",
+    "ENCODED FROM official Rutgers catalog prose, archived verbatim at",
+    "data/raw/catalog/catalog_mathematics-640_2026_2027.html (sha256 prefix 7416344bf63c8526).",
+    "Every node carries the sentence it came from so the derivation can be re-checked.",
+    "",
+    "CURATION STATUS: 'unverified'. This definition was encoded by an AI assistant",
+    "during Phase 6.0. CoursePilot's source-authority rule is that a model's reading of",
+    "requirement prose is never authoritative on its own, so this stays UNVERIFIED until",
+    "a human re-checks it against the archived prose and changes the status to",
+    "'curated_from_prose'. The program catalog service reports it as pending review.",
+    "",
+    "SCOPE: Option A only. Options B (honors, admission by application), C (actuarial)",
+    "and the interdisciplinary majors are separate curricula and are not encoded.",
+    "",
+    "KNOWN GAPS, deliberately not invented - see rules_not_yet_modeled."
+  ],
+  "source": {
+    "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/mathematics-640",
+    "catalog_year": "2026-2027",
+    "retrieved_at": "2026-09-28",
+    "kind": "rutgers_official_catalog",
+    "curation_status": "unverified"
+  },
+  "school": {"code": "SAS", "name": "School of Arts and Sciences", "campus_code": "NB"},
+  "program": {"code": "640", "name": "Mathematics", "degree_type": "BA"},
+  "program_version": {
+    "catalog_year": "2026-2027",
+    "source_prose": "The completion of all the requirements in one of the mathematics major options listed below. ... Option A, Standard Mathematics (Curriculum Code 640). In addition to the requirements above, to complete the standard mathematics major a student must pass eight 300- to 400-level mathematics courses, excluding 01:640:491,492."
+  },
+  "requirements": [
+    {
+      "code": "MATH_BA",
+      "name": "Mathematics Major (Option A, Standard Mathematics)",
+      "requirement_type": "all_of",
+      "sort_order": 0,
+      "source_prose": "The requirements for a math major are as follows:"
+    },
+    {
+      "code": "MATH_FOUNDATION",
+      "name": "Calculus, Linear Algebra and Differential Equations",
+      "requirement_type": "all_of",
+      "parent": "MATH_BA",
+      "sort_order": 0,
+      "source_prose": "Three semesters of calculus (01:640:151-152, and 251 or equivalent), Introductory Linear Algebra (01:640:250), and Elementary Differential Equations (01:640:244 or 01:640:252)."
+    },
+    {
+      "code": "MATH_151", "name": "Calculus I", "requirement_type": "course",
+      "parent": "MATH_FOUNDATION", "sort_order": 0, "courses": ["01:640:151"],
+      "source_prose": "Three semesters of calculus (01:640:151-152, and 251 or equivalent)"
+    },
+    {
+      "code": "MATH_152", "name": "Calculus II", "requirement_type": "course",
+      "parent": "MATH_FOUNDATION", "sort_order": 1, "courses": ["01:640:152"],
+      "source_prose": "Three semesters of calculus (01:640:151-152, and 251 or equivalent)"
+    },
+    {
+      "code": "MATH_251", "name": "Multivariable Calculus", "requirement_type": "course",
+      "parent": "MATH_FOUNDATION", "sort_order": 2, "courses": ["01:640:251"],
+      "notes": "'or equivalent' is not modeled: the catalog does not say which courses are equivalent.",
+      "source_prose": "Three semesters of calculus (01:640:151-152, and 251 or equivalent)"
+    },
+    {
+      "code": "MATH_250", "name": "Introductory Linear Algebra", "requirement_type": "course",
+      "parent": "MATH_FOUNDATION", "sort_order": 3, "courses": ["01:640:250"],
+      "source_prose": "Introductory Linear Algebra (01:640:250)"
+    },
+    {
+      "code": "MATH_DIFFEQ", "name": "Elementary Differential Equations",
+      "requirement_type": "choose_n", "min_count": 1,
+      "parent": "MATH_FOUNDATION", "sort_order": 4,
+      "courses": ["01:640:244", "01:640:252"],
+      "source_prose": "Elementary Differential Equations (01:640:244 or 01:640:252)."
+    },
+    {
+      "code": "MATH_COMPUTING", "name": "Computing for Mathematics",
+      "requirement_type": "choose_n", "min_count": 1,
+      "parent": "MATH_BA", "sort_order": 1,
+      "courses": ["01:198:107", "01:198:111", "14:332:252"],
+      "notes": "The prose names 01:198:107 and permits 01:198:111 or 14:332:252 as substitutes, so all three are eligible. Wherever a course is absent from the loaded SOC terms (14:332:252 is absent from the development database) it is reported unresolved rather than created.",
+      "source_prose": "01:198:107 Computing for Mathematics and the Sciences with a grade of C or better. (01:198:111 Introduction to Computer Science or 14:332:252 Programming Methodology I may be substituted for 01:198:107.)"
+    },
+    {
+      "code": "MATH_UPPER", "name": "Upper-Level Mathematics (eight courses)",
+      "requirement_type": "choose_n", "min_count": 8,
+      "min_distinct_categories": 2,
+      "parent": "MATH_BA", "sort_order": 2,
+      "eligible_course_query": {
+        "subject_code": "640",
+        "min_course_number": 300,
+        "max_course_number": 499,
+        "exclude_course_numbers": ["491", "492"]
+      },
+      "course_categories": {
+        "ANALYSIS": ["01:640:311", "01:640:312", "01:640:411", "01:640:412"],
+        "ALGEBRA": ["01:640:350", "01:640:351", "01:640:451", "01:640:452"]
+      },
+      "notes": "'including one of 01:640:311,312, 411-412, and one of 01:640:350, 351, 451-452' is encoded as two categories that the eight courses must jointly cover (min_distinct_categories=2). AMBIGUITY for a human reviewer: '411-412' and '451-452' may denote two-semester SEQUENCES that count only as a pair; this encoding accepts either course of the pair on its own. The prose attaches the analysis/algebra clause to the courses taken at Rutgers-New Brunswick; the location part is not evaluable (see MATH_RESIDENCY).",
+      "source_prose": "to complete the standard mathematics major a student must pass eight 300- to 400-level mathematics courses, excluding 01:640:491,492. ... At least four of the upper-level courses used to complete the major must be taken at Rutgers University-New Brunswick, including one of 01:640:311,312, 411-412, and one of 01:640:350, 351, 451-452."
+    }
+  ],
+  "program_rules": [
+    {
+      "code": "MATH_RESIDENCY",
+      "name": "Minimum four upper-level mathematics courses at Rutgers-New Brunswick",
+      "rule_type": "residency",
+      "min_count": 4,
+      "subject_code": "640",
+      "offering_unit_code": "01",
+      "is_evaluable": false,
+      "not_evaluable_reason": "The rule requires knowing which courses were taken AT Rutgers-New Brunswick. StudentCourse records no transfer provenance, so this cannot be checked.",
+      "source_prose": "At least four of the upper-level courses used to complete the major must be taken at Rutgers University-New Brunswick"
+    }
+  ],
+  "rules_not_yet_modeled": [
+    {
+      "rule": "Courses 01:640:250, 251, and 244/252 must be passed with grades of C or better.",
+      "why_not": "Per-course minimum grades are not evaluated by the engine today. Encoding them as a whole-record max_grade_count rule would change their meaning."
+    },
+    {
+      "rule": "All but one of these courses (curriculum code 640) must be passed with a grade of C or better.",
+      "why_not": "Scoped to the eight upper-level courses, not the whole record; the existing max_grade_count rule counts across the whole record, so it would not mean the same thing."
+    },
+    {
+      "rule": "01:198:107 ... with a grade of C or better; C or better in the courses in other departments used to fulfill the requirements.",
+      "why_not": "Per-course minimum grades are not evaluated by the engine today."
+    },
+    {
+      "rule": "An appropriate Rutgers graduate mathematics course may be substituted for the required analysis and/or algebra course, with departmental approval.",
+      "why_not": "Requires departmental approval, which no CoursePilot data records."
+    },
+    {
+      "rule": "Students must notify the mathematics department in writing if they are not following the standard mathematics major option.",
+      "why_not": "An administrative step, not an academic requirement a record can satisfy."
+    }
+  ]
+}

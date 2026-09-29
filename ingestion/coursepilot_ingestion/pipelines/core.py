@@ -49,10 +49,26 @@ class CoreIngestionPipeline:
         soc_archive_path: pathlib.Path,
         *,
         observed_term_code: str | None = None,
+        target_program: dict | None = None,
         commit: bool = True,
     ) -> CoreIngestionStats:
+        """Load SAS Core into one existing program version.
+
+        `target_program` ({school_code, program_code, degree_type}) overrides
+        the definition's own target. SAS Core binds every SAS major, so WHICH
+        major's version it joins is a decision made at load time - not a fact
+        of the Core source. Before Phase 6.0 the only way to say that was the
+        target baked into the JSON, which named Computer Science; loading Core
+        for a second major needs the same source pointed somewhere else, not a
+        second copy of the definition.
+        """
         raw_definition = definition_path.read_bytes()
         definition = self.definition_parser.parse(raw_definition)
+        if target_program is not None:
+            missing = {"school_code", "program_code", "degree_type"} - set(target_program)
+            if missing:
+                raise ValueError(f"target_program is missing {sorted(missing)}")
+            definition.target_program = dict(target_program)
         catalog_year = definition.source["catalog_year"]
 
         stats = CoreIngestionStats(catalog_year=catalog_year)

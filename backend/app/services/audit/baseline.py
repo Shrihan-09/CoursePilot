@@ -125,15 +125,20 @@ def baseline_from_result(result) -> Baseline:
     return Baseline(frozenset(satisfied), frozenset(provisional))
 
 
-def compute_baseline(session, student) -> Baseline:
+def compute_baseline(session, student, program_version=None) -> Baseline:
     """The student's earned baseline, via the real evaluator.
 
     Deterministic and reproducible: it depends only on stored StudentCourse
     rows with status `completed`, never on any previous audit run.
+
+    `program_version` evaluates the baseline under explicit rules (Phase 6.0);
+    omitted, the student's own binding is used, as before.
     """
     from app.services.audit.engine import DegreeAuditEngine
 
-    result = DegreeAuditEngine(session).audit(student, statuses=EARNED_STATUSES)
+    result = DegreeAuditEngine(session).audit(
+        student, statuses=EARNED_STATUSES, program_version=program_version
+    )
     return baseline_from_result(result)
 
 

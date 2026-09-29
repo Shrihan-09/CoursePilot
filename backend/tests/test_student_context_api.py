@@ -410,9 +410,16 @@ async def test_no_path_parameterised_student_route_exists(app) -> None:
     student_self_service = [
         p for p in paths if p.startswith("/api/v1/student")
     ]
-    assert student_self_service == ["/api/v1/student/audit", "/api/v1/student/context"] or sorted(
-        student_self_service
-    ) == ["/api/v1/student/audit", "/api/v1/student/context"]
+    # Enumerated on purpose: adding a student route must be a reviewed change.
+    # Phase 6.0 added the two scenario routes after checking they resolve the
+    # student by ownership and reject any identity field in the body (422) -
+    # see tests/test_multi_program.py.
+    assert sorted(student_self_service) == [
+        "/api/v1/student/audit",
+        "/api/v1/student/context",
+        "/api/v1/student/scenarios/audit",
+        "/api/v1/student/scenarios/compare",
+    ]
     assert not any("{" in p for p in student_self_service)
     # The only parameterised student path in the API is the ADMIN linking one,
     # which Phase 5.5 gates on is_admin.
