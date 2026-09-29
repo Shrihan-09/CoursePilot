@@ -221,10 +221,25 @@ class RequirementLoader:
                 )
             )
             if existing is not None:
+                # Every field the insert sets is refreshed. Before Phase 6.0
+                # only four were: a recuration that changed a count, a
+                # constraint or the quoted prose loaded "successfully" and
+                # changed nothing, leaving a row that no longer matched its
+                # own cited source.
                 existing.name = rdef["name"]
                 existing.requirement_type = rdef["requirement_type"]
                 existing.requirement_system = rdef.get("requirement_system", "major")
                 existing.sort_order = rdef.get("sort_order", 0)
+                existing.min_count = rdef.get("min_count")
+                existing.min_distinct_categories = rdef.get("min_distinct_categories")
+                existing.min_credits = _dec(rdef.get("min_credits"))
+                existing.max_outside_subject = rdef.get("max_outside_subject")
+                existing.constraint_subject_code = rdef.get("constraint_subject_code")
+                existing.min_at_level = rdef.get("min_at_level")
+                existing.min_at_level_count = rdef.get("min_at_level_count")
+                existing.notes = rdef.get("notes")
+                existing.source_prose = rdef.get("source_prose")
+                existing.curation_status = curation
                 stats.requirements_updated += 1
                 by_code[rdef["code"]] = existing
                 continue
