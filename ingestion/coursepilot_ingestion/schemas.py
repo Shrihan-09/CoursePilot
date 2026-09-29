@@ -169,10 +169,16 @@ class IngestionStats(BaseModel):
     validation_failed: int = 0
     courses_inserted: int = 0
     courses_updated: int = 0
+    #: Existing courses whose current fields were left alone because a NEWER
+    #: term had already written them (Phase 6.2).
+    courses_kept_newer: int = 0
     offerings_inserted: int = 0
     offerings_updated: int = 0
     subjects_inserted: int = 0
     errors: list[str] = Field(default_factory=list)
+    #: Phase 6.2 prerequisite counters: inserted / updated / unchanged /
+    #: deleted, per-classification, references and unresolved references.
+    prerequisites: dict[str, int] = Field(default_factory=dict)
     source_content_hash: str | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None

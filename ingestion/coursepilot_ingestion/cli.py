@@ -62,6 +62,14 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="bypass the local archive and re-download from Rutgers",
     )
+    p.add_argument(
+        "--coverage",
+        choices=("complete", "partial", "unknown"),
+        default=None,
+        help="the loader's statement about whether this payload is the whole term "
+        "(recorded on the data_source row; never inferred)",
+    )
+    p.add_argument("--coverage-note", default=None, help="the evidence for --coverage")
     p.add_argument("--database-url", default=None, help="defaults to $DATABASE_URL_SYNC")
     p.add_argument("--cache-dir", default=str(DEFAULT_CACHE))
     p.add_argument("--show-only", action="store_true", help="query the database and exit")
@@ -228,8 +236,14 @@ def main(argv: list[str] | None = None) -> int:
                 limit=limit,
                 subject_filter=args.subject,
                 use_cache=not args.refetch,
+                coverage=args.coverage,
+                coverage_note=args.coverage_note,
             )
             _print_course_stats(stats)
+            if stats.prerequisites:
+                print(f"prerequisites: {dict(sorted(stats.prerequisites.items()))}")
+            if stats.courses_kept_newer:
+                print(f"courses kept at a newer term's values: {stats.courses_kept_newer}")
 
         if args.stage in ("sections", "both"):
             section_stats = SectionIngestionPipeline(session, cache_dir).run(
