@@ -42,7 +42,7 @@ from app.domain.prerequisites import (
     to_json,
 )
 from app.models import Course, CourseOffering, CoursePrerequisite, DataSource, PrerequisiteReference
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from coursepilot_ingestion.schemas import IngestionStats, NormalizedCourse, RawSocCourse
@@ -151,7 +151,40 @@ class PrerequisiteLoader:
                 counts["with_condition_note"] = counts.get("with_condition_note", 0) + 1
 
         self.session.flush()
+        counts["references_resolved_late"] = self._resolve_outstanding()
         return stats
+
+    def _resolve_outstanding(self) -> int:
+        """Resolve EVERY still-unresolved reference whose course now exists.
+
+        Found loading the archives in Phase 6.2: resolution at load time made
+        the result depend on load ORDER. Fall 2025 loaded first and left
+        1,184 references unresolved - including courses Spring 2026 then
+        loaded minutes later. One set-based UPDATE after each load makes the
+        final state independent of order; it only ever fills a NULL, never
+        rewrites a resolved reference.
+        """
+        match = (
+            select(Course.id)
+            .where(Course.course_string == PrerequisiteReference.course_string,
+                   Course.supplement_code == "")
+            .limit(1)
+            .scalar_subquery()
+        )
+        resolvable = (
+            select(Course.id)
+            .where(Course.course_string == PrerequisiteReference.course_string,
+                   Course.supplement_code == "")
+            .exists()
+        )
+        result = self.session.execute(
+            update(PrerequisiteReference)
+            .where(PrerequisiteReference.course_id.is_(None), resolvable)
+            .values(course_id=match)
+            .execution_options(synchronize_session=False)
+        )
+        self.session.expire_all()
+        return result.rowcount or 0
 
     @staticmethod
     def _sync_references(prereq, references, course_ids, counts) -> None:

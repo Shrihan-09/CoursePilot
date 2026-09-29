@@ -229,3 +229,25 @@ def test_partial_coverage_is_recorded_with_its_evidence(session, tmp_path, recor
     _load(session, tmp_path, FALL_26, coverage="partial", coverage_note="pre-publication snapshot")
     source = session.scalar(select(DataSource).where(DataSource.term_code == "20269"))
     assert (source.coverage, source.coverage_note) == ("partial", "pre-publication snapshot")
+
+
+def test_reference_resolution_does_not_depend_on_load_order(session, tmp_path, records) -> None:
+    """Load a term whose prerequisite names a course nobody has loaded yet,
+    THEN a term that introduces that course: the earlier edge must resolve.
+
+    Reproduces what loading the real archives oldest-first exposed."""
+    newcomer = next(r for r in records if r["courseString"] == "01:198:111")
+    older = [r for r in records if r["courseString"] != "01:198:111"]
+    _write(tmp_path, FALL_25, older)
+    _write(tmp_path, FALL_26, [newcomer])
+
+    _load(session, tmp_path, FALL_25)
+    ref = session.scalar(select(PrerequisiteReference).join(CoursePrerequisite)
+                         .where(PrerequisiteReference.course_string == "01:198:111",
+                                CoursePrerequisite.term_code == "20259"))
+    assert ref.course_id is None                        # unknown when first seen
+
+    stats = _load(session, tmp_path, FALL_26)
+    session.refresh(ref)
+    assert ref.course_id is not None                    # resolved once it exists
+    assert stats.prerequisites["references_resolved_late"] >= 1
