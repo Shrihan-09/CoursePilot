@@ -225,6 +225,7 @@ class DegreeAuditEngine:
         option_categories: dict[tuple[str, str], set[str]],
         share: bool,
         student: Student,
+        version: ProgramVersion,
     ):
         """Re-allocate under the adopted global objective.
 
@@ -278,7 +279,7 @@ class DegreeAuditEngine:
             course_order={c.course_key: c.sort_key for c in candidates},
         )
         context = ObjectiveContext(
-            baseline_satisfied=self._baseline_satisfied(student)
+            baseline_satisfied=self._baseline_satisfied(student, version)
         )
 
         from app.services.audit.optimizer import optimize
@@ -311,11 +312,17 @@ class DegreeAuditEngine:
             )
         return plan
 
-    def _baseline_satisfied(self, student: Student) -> frozenset[str]:
+    def _baseline_satisfied(
+        self, student: Student, version: ProgramVersion
+    ) -> frozenset[str]:
         """What the student had already EARNED - completed courses only.
 
         See DATA_MODEL.md section 21. Derived from stored StudentCourse rows
         through the real evaluator, never from a previous optimizer run.
+
+        Evaluated against the SAME version as the audit that asked for it.
+        Before Phase 6.0 this re-read `student.program_version_id`, which was
+        harmless only because no audit could target any other version.
         """
         from app.services.audit.baseline import EARNED_STATUSES, baseline_from_result
 
@@ -324,7 +331,7 @@ class DegreeAuditEngine:
         )
         engine._computing_baseline = True
         return baseline_from_result(
-            engine.audit(student, statuses=EARNED_STATUSES)
+            engine.audit(student, statuses=EARNED_STATUSES, program_version=version)
         ).satisfied
 
     # ------------------------------------------------------------------ #
@@ -693,7 +700,11 @@ class DegreeAuditEngine:
     # ------------------------------------------------------------------ #
 
     def audit(
-        self, student: Student, *, statuses: frozenset[str] | None = None
+        self,
+        student: Student,
+        *,
+        statuses: frozenset[str] | None = None,
+        program_version: ProgramVersion | None = None,
     ) -> DegreeAuditResult:
         """Evaluate a student's degree progress.
 
@@ -701,17 +712,35 @@ class DegreeAuditEngine:
         changes the INPUT, never the rules: passing
         `frozenset({"completed"})` yields the baseline audit defined in
         DATA_MODEL.md section 21. Omitted, behaviour is unchanged.
+
+        `program_version` selects the RULES explicitly (Phase 6.0). Omitted,
+        the student's own binding is used, exactly as before. Supplied, the
+        same academic record is evaluated against that version - which is how
+        a hypothetical "what if I were a Mathematics major?" audit is answered
+        WITHOUT writing a different program onto the Student. The engine
+        reads the student's record and never modifies it either way.
         """
-        version = self.session.get(ProgramVersion, student.program_version_id)
-        if version is None:
-            raise ValueError(f"student {student.id} has no program version")
+        if program_version is None:
+            version = self.session.get(ProgramVersion, student.program_version_id)
+            if version is None:
+                raise ValueError(f"student {student.id} has no program version")
+        else:
+            version = program_version
         program = version.program
+
+        # The catalog-year check guards the student's BINDING: a stored
+        # program_version_id that disagrees with the stored catalog_year is a
+        # data error. A version chosen explicitly for a hypothesis is not a
+        # binding, so the check would only restate the hypothesis as an error.
+        # Callers that choose a version (the scenario service) state their own
+        # catalog-year assumption instead.
+        is_binding = version.id == student.program_version_id
 
         findings: list[AuditFinding] = []
 
         # Catalog-year isolation: the student's declared catalog year must be
         # the version being evaluated. A mismatch is reported, never patched.
-        if student.catalog_year != version.catalog_year:
+        if is_binding and student.catalog_year != version.catalog_year:
             findings.append(
                 AuditFinding(
                     severity=Severity.BLOCKING,
@@ -903,7 +932,8 @@ class DegreeAuditEngine:
         # presented as optimal.
         plan = allocate(slots, candidates, share_across_systems=share)
         optimized = self._optimize_globally(
-            requirements, candidates, eligibility, option_categories, share, student
+            requirements, candidates, eligibility, option_categories, share, student,
+            version,
         )
         if optimized is not None:
             plan = optimized
