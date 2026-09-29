@@ -1,0 +1,5589 @@
+{
+ "years": {
+  "2026-2027": {
+   "navigation_leaves": 516,
+   "by_class": {
+    "other_page": 207,
+    "program_area_page_uncoded": 137,
+    "subject_coded_program_page": 172
+   },
+   "by_school": {
+    "ejbsppp": {
+     "other_page": 19,
+     "program_area_page_uncoded": 12
+    },
+    "eng": {
+     "other_page": 24,
+     "program_area_page_uncoded": 13,
+     "subject_coded_program_page": 11
+    },
+    "honors-college": {
+     "other_page": 17
+    },
+    "mgsa": {
+     "other_page": 11,
+     "program_area_page_uncoded": 4,
+     "subject_coded_program_page": 14
+    },
+    "pharmacy": {
+     "other_page": 15,
+     "program_area_page_uncoded": 10,
+     "subject_coded_program_page": 6
+    },
+    "rbsnb": {
+     "other_page": 11,
+     "program_area_page_uncoded": 6,
+     "subject_coded_program_page": 28
+    },
+    "sas": {
+     "other_page": 6,
+     "program_area_page_uncoded": 16,
+     "subject_coded_program_page": 85
+    },
+    "sci": {
+     "other_page": 28,
+     "subject_coded_program_page": 6
+    },
+    "sebs": {
+     "other_page": 34,
+     "program_area_page_uncoded": 65,
+     "subject_coded_program_page": 22
+    },
+    "smlr": {
+     "other_page": 25,
+     "program_area_page_uncoded": 9
+    },
+    "ssw": {
+     "other_page": 17,
+     "program_area_page_uncoded": 2
+    }
+   },
+   "subject_coded_pages": 172,
+   "distinct_subject_codes": 151,
+   "duplicate_subject_codes": {
+    "119": 2,
+    "203": 2,
+    "377": 2,
+    "438": 2,
+    "366": 2,
+    "206": 2,
+    "211": 2,
+    "966": 2,
+    "081": 2,
+    "010": 2,
+    "136": 3,
+    "390": 3,
+    "630": 2,
+    "799": 2,
+    "382": 3,
+    "620": 2,
+    "851": 2,
+    "189": 2
+   },
+   "duplicate_urls": []
+  },
+  "2025-2026": {
+   "navigation_leaves": 459,
+   "by_class": {
+    "other_page": 189,
+    "subject_coded_program_page": 174,
+    "program_area_page_uncoded": 96
+   },
+   "by_school": {
+    "ejbsppp": {
+     "other_page": 20,
+     "program_area_page_uncoded": 12
+    },
+    "eng": {
+     "other_page": 24,
+     "program_area_page_uncoded": 13,
+     "subject_coded_program_page": 11
+    },
+    "honors-college": {
+     "other_page": 17
+    },
+    "mgsa": {
+     "other_page": 11,
+     "program_area_page_uncoded": 4,
+     "subject_coded_program_page": 14
+    },
+    "pharmacy": {
+     "other_page": 15,
+     "program_area_page_uncoded": 10,
+     "subject_coded_program_page": 6
+    },
+    "rbsnb": {
+     "other_page": 11,
+     "program_area_page_uncoded": 6,
+     "subject_coded_program_page": 28
+    },
+    "sas": {
+     "other_page": 6,
+     "subject_coded_program_page": 84,
+     "program_area_page_uncoded": 14
+    },
+    "sci": {
+     "other_page": 16,
+     "program_area_page_uncoded": 3,
+     "subject_coded_program_page": 9
+    },
+    "sebs": {
+     "other_page": 34,
+     "program_area_page_uncoded": 23,
+     "subject_coded_program_page": 22
+    },
+    "smlr": {
+     "other_page": 16,
+     "program_area_page_uncoded": 9
+    },
+    "ssw": {
+     "other_page": 19,
+     "program_area_page_uncoded": 2
+    }
+   },
+   "subject_coded_pages": 174,
+   "distinct_subject_codes": 149,
+   "duplicate_subject_codes": {
+    "010": 3,
+    "119": 2,
+    "203": 2,
+    "377": 2,
+    "438": 2,
+    "366": 2,
+    "206": 2,
+    "211": 2,
+    "966": 2,
+    "081": 2,
+    "136": 3,
+    "390": 3,
+    "630": 2,
+    "799": 2,
+    "382": 3,
+    "620": 2,
+    "851": 2,
+    "192": 2,
+    "547": 2,
+    "567": 2,
+    "189": 2
+   },
+   "duplicate_urls": []
+  }
+ },
+ "sample_parse": [
+  {
+   "school": "eng",
+   "label": "Aerospace Engineering 021",
+   "status": 200,
+   "prose_blocks": 3,
+   "requirement_words": [],
+   "course_codes_in_prose": 0,
+   "schema_mentions": [
+    "requirementType",
+    "courseCount"
+   ],
+   "platform_field_config_maps": 2,
+   "populated_structured_objects": 0
+  },
+  {
+   "school": "eng",
+   "label": "Applied Sciences in Engineering 073",
+   "status": 200,
+   "prose_blocks": 3,
+   "requirement_words": [],
+   "course_codes_in_prose": 20,
+   "schema_mentions": [
+    "requirementType",
+    "courseCount"
+   ],
+   "platform_field_config_maps": 2,
+   "populated_structured_objects": 0
+  },
+  {
+   "school": "mgsa",
+   "label": "Dance 206",
+   "status": 200,
+   "prose_blocks": 4,
+   "requirement_words": [
+    "credits",
+    "major requirements"
+   ],
+   "course_codes_in_prose": 61,
+   "schema_mentions": [
+    "requirementType",
+    "courseCount"
+   ],
+   "platform_field_config_maps": 2,
+   "populated_structured_objects": 0
+  },
+  {
+   "school": "mgsa",
+   "label": "Design 208",
+   "status": 200,
+   "prose_blocks": 4,
+   "requirement_words": [
+    "credits",
+    "degree requirements",
+    "major requirements"
+   ],
+   "course_codes_in_prose": 6,
+   "schema_mentions": [
+    "requirementType",
+    "courseCount"
+   ],
+   "platform_field_config_maps": 2,
+   "populated_structured_objects": 0
+  },
+  {
+   "school": "pharmacy",
+   "label": "Chemical Biology 158",
+   "status": 200,
+   "prose_blocks": 3,
+   "requirement_words": [
+    "degree requirements"
+   ],
+   "course_codes_in_prose": 9,
+   "schema_mentions": [
+    "requirementType",
+    "courseCount"
+   ],
+   "platform_field_config_maps": 2,
+   "populated_structured_objects": 0
+  },
+  {
+   "school": "pharmacy",
+   "label": "Medicinal Chemistry 715",
+   "status": 200,
+   "prose_blocks": 3,
+   "requirement_words": [
+    "degree requirements"
+   ],
+   "course_codes_in_prose": 12,
+   "schema_mentions": [
+    "requirementType",
+    "courseCount"
+   ],
+   "platform_field_config_maps": 2,
+   "populated_structured_objects": 0
+  },
+  {
+   "school": "rbsnb",
+   "label": "010 Accounting",
+   "status": 200,
+   "prose_blocks": 3,
+   "requirement_words": [],
+   "course_codes_in_prose": 29,
+   "schema_mentions": [
+    "requirementType",
+    "courseCount"
+   ],
+   "platform_field_config_maps": 2,
+   "populated_structured_objects": 0
+  },
+  {
+   "school": "rbsnb",
+   "label": "136 Business Analytics and Information Technology (BAIT)",
+   "status": 200,
+   "prose_blocks": 3,
+   "requirement_words": [
+    "credits",
+    "major requirements"
+   ],
+   "course_codes_in_prose": 23,
+   "schema_mentions": [
+    "requirementType",
+    "courseCount"
+   ],
+   "platform_field_config_maps": 2,
+   "populated_structured_objects": 0
+  },
+  {
+   "school": "sas",
+   "label": "African Area Studies 016",
+   "status": 200,
+   "prose_blocks": 8,
+   "requirement_words": [
+    "credits"
+   ],
+   "course_codes_in_prose": 90,
+   "schema_mentions": [
+    "requirementType",
+    "courseCount"
+   ],
+   "platform_field_config_maps": 2,
+   "populated_structured_objects": 0
+  },
+  {
+   "school": "sas",
+   "label": "African, Middle Eastern, and South Asian Languages and Literatures 013",
+   "status": 200,
+   "prose_blocks": 13,
+   "requirement_words": [
+    "credits",
+    "major requirements"
+   ],
+   "course_codes_in_prose": 206,
+   "schema_mentions": [
+    "requirementType",
+    "courseCount"
+   ],
+   "platform_field_config_maps": 2,
+   "populated_structured_objects": 0
+  },
+  {
+   "school": "sci",
+   "label": "Communication and Information 189",
+   "status": 200,
+   "prose_blocks": 3,
+   "requirement_words": [
+    "credits"
+   ],
+   "course_codes_in_prose": 21,
+   "schema_mentions": [
+    "requirementType",
+    "courseCount"
+   ],
+   "platform_field_config_maps": 2,
+   "populated_structured_objects": 0
+  },
+  {
+   "school": "sci",
+   "label": "Communication 192",
+   "status": 200,
+   "prose_blocks": 3,
+   "requirement_words": [],
+   "course_codes_in_prose": 74,
+   "schema_mentions": [
+    "requirementType",
+    "courseCount"
+   ],
+   "platform_field_config_maps": 2,
+   "populated_structured_objects": 0
+  },
+  {
+   "school": "sebs",
+   "label": "Agricultural Business and Food Systems 019",
+   "status": 200,
+   "prose_blocks": 3,
+   "requirement_words": [],
+   "course_codes_in_prose": 0,
+   "schema_mentions": [
+    "requirementType",
+    "courseCount"
+   ],
+   "platform_field_config_maps": 2,
+   "populated_structured_objects": 0
+  },
+  {
+   "school": "sebs",
+   "label": "Agriculture and Food Systems 020",
+   "status": 200,
+   "prose_blocks": 5,
+   "requirement_words": [
+    "credits",
+    "major requirements",
+    "requirements for the major"
+   ],
+   "course_codes_in_prose": 127,
+   "schema_mentions": [
+    "requirementType",
+    "courseCount"
+   ],
+   "platform_field_config_maps": 2,
+   "populated_structured_objects": 0
+  }
+ ],
+ "identifier_stability": {
+  "urls_both_years": 433,
+  "urls_only_2026_2027": 83,
+  "urls_only_2025_2026": 26,
+  "same_url_same_page_id": 430,
+  "same_url_different_page_id": 3,
+  "coded_programs_both_years": 169
+ },
+ "leaves_2026_2027": [
+  {
+   "school_slug": "sas",
+   "trail": [],
+   "label": "Programs, Faculty, and Courses",
+   "url": "/schools/sas/prgsfacultycourses",
+   "page_id": "OWooA9VYXZw9PBqIKu2G",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Availability of Majors",
+   "url": "/schools/sas/program-listing/availability-of-majors",
+   "page_id": "k523MS33P6JpExwem9IM",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Course Notation Information",
+   "url": "/schools/sas/program-listing/course-notation-information",
+   "page_id": "dGQj9xoBuIwXbHzB27hx",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "African Area Studies 016",
+   "url": "/schools/sas/program-listing/african-area-studies-016",
+   "page_id": "fSsKYwAPnNmwfBYPlutQ",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "African, Middle Eastern, and South Asian Languages and Literatures 013",
+   "url": "/schools/sas/program-listing/african-middleeastern-southasian-lan-lit-013",
+   "page_id": "jSYL0pX1KwQDBKcj2kVR",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Africana Studies 014",
+   "url": "/schools/sas/program-listing/africana-studies-014",
+   "page_id": "BRRY8fmTTNyqtIGckTGm",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "American Studies 050",
+   "url": "/schools/sas/program-listing/american-studies-050",
+   "page_id": "UN3LqQCyq5Fft4Om01DS",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Anthropology 070",
+   "url": "/schools/sas/program-listing/anthropology-070",
+   "page_id": "hSXgReHl7x11Uf19RA5Z",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Archaeology 075",
+   "url": "/schools/sas/program-listing/archaeology-075",
+   "page_id": "v1xmxUzzZbLvN9YtWVPK",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Architectural Studies 076",
+   "url": "/schools/sas/program-listing/architectural-studies-076",
+   "page_id": "miDUdgt4M7NDJK7vIcq7",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Art 080",
+   "url": "/schools/sas/program-listing/art-080",
+   "page_id": "fNj0U4FvQqQstHdyhnQM",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Art History 082",
+   "url": "/schools/sas/program-listing/art-history-082",
+   "page_id": "T7ijigktrMe39Ijg9rEL",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Arts and Sciences 090",
+   "url": "/schools/sas/program-listing/arts-and-sciences-090",
+   "page_id": "G4aLiTi3cH150wgGGRD4",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Asian Studies 098",
+   "url": "/schools/sas/program-listing/asian-studies-098",
+   "page_id": "wHzqO1JLCR4kWWEDtN5b",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Astrobiology 101",
+   "url": "/schools/sas/program-listing/astrobiology-101",
+   "page_id": "MbQJFTbpm8ildrUKGNaE",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Astrophysics 105",
+   "url": "/schools/sas/program-listing/astrophysics-105",
+   "page_id": "GOX4GbvDr5gJ4PZ74uE6",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Biological Sciences 119",
+   "url": "/schools/sas/program-listing/biological-sciences-119",
+   "page_id": "abluiYZ6SA3rioUu0YGe",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Cell Biology and Neuroscience 146",
+   "url": "/schools/sas/program-listing/cell-biology-neuroscience-146",
+   "page_id": "DN50BXDJ4XmaftRRBW5l",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Chemistry 160",
+   "url": "/schools/sas/program-listing/chemistry-160",
+   "page_id": "N4VQSC3FyJzvSWXPXhsm",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Chinese 165",
+   "url": "/schools/sas/program-listing/chinese-165",
+   "page_id": "ZWKHHlB03to6Ob6uvhFk",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Cinema Studies 175",
+   "url": "/schools/sas/program-listing/cinema-studies-175",
+   "page_id": "LqdIaNiA7vl0jgZ6Y4Nm",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Classics 190",
+   "url": "/schools/sas/program-listing/classics-190",
+   "page_id": "KTND3uzBARykISJtOJM6",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Cognitive Science 185",
+   "url": "/schools/sas/program-listing/cognitive-science-185",
+   "page_id": "SoW79dnazrwUFcGzgRHS",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Comparative Literature 195",
+   "url": "/schools/sas/program-listing/comparative-literature-195",
+   "page_id": "BCYRzqbd68FkK2tAJ4UM",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Computer Science 198",
+   "url": "/schools/sas/program-listing/computer-science-198",
+   "page_id": "VSbgggHtgjolUCQloHSE",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Criminal Justice 202",
+   "url": "/schools/sas/program-listing/criminal-justice-202",
+   "page_id": "nMkUrsSM8UfoAU6mGNjh",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Criminology 204",
+   "url": "/schools/sas/program-listing/criminology-204",
+   "page_id": "CEmevCbAtGwaVQds77VO",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Dance 203",
+   "url": "/schools/sas/program-listing/dance-203",
+   "page_id": "s6ORSihnyz0ALIQ9KRot",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Data Science 219",
+   "url": "/schools/sas/program-listing/data-science-219",
+   "page_id": "J98YyWWDzCCKop1LzCGx",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Economics 220",
+   "url": "/schools/sas/program-listing/economics-220",
+   "page_id": "KJhYP0xnNSfUIuQVE1Hd",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Education 300",
+   "url": "/schools/sas/program-listing/education-300",
+   "page_id": "ocurl69exXEAkoJIPagN",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "English",
+   "url": "/schools/sas/program-listing/english",
+   "page_id": "AKoSLAZlVXBd7CbaalJa",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Environmental Studies 381",
+   "url": "/schools/sas/program-listing/environmental-studies-381",
+   "page_id": "YJip5oL4fbGoFfqnZ37q",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "European Studies 360",
+   "url": "/schools/sas/program-listing/european-studies-360",
+   "page_id": "SDIvygZrZ6ztGzrSfmJG",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Exercise Science 377",
+   "url": "/schools/sas/program-listing/exercise-science-377",
+   "page_id": "e2AHx3Qj1T1oyeWfWEO4",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "French 420",
+   "url": "/schools/sas/program-listing/french-420",
+   "page_id": "jdxnL5u4UxnR5d0lNQXe",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Gender and Media 438",
+   "url": "/schools/sas/program-listing/gender-media-438",
+   "page_id": "rt7XmjCEDfu2eofmSqPu",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Genetics 447",
+   "url": "/schools/sas/program-listing/genetics-447",
+   "page_id": "VaURUTWI25aLUfqNT982",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Genetics and Genomics 449 ",
+   "url": "/schools/sas/program-listing/genetics-genomics",
+   "page_id": "OfWjiVpQl1hB00Ua4ytX",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Geography 450",
+   "url": "/schools/sas/program-listing/geography-450",
+   "page_id": "gGCuBEpkmiVW4Hce7Nwn",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Earth and Planetary Sciences 460",
+   "url": "/schools/sas/program-listing/earth-planetary-sciences-460",
+   "page_id": "P8mHJE9sz9iXy6ngKcNZ",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "German 470",
+   "url": "/schools/sas/program-listing/german-470",
+   "page_id": "MiPhCn1guPTpHpn5zSur",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Greek, Modern Greek Studies 489",
+   "url": "/schools/sas/program-listing/greek-modern-greek-studies-489",
+   "page_id": "uCrLW1v2HB2jNJMvYO5r",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Health and Society 502",
+   "url": "/schools/sas/program-listing/health-society-502",
+   "page_id": "lt3q2qWCGL3fhDHV8YJG",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "History",
+   "url": "/schools/sas/program-listing/history",
+   "page_id": "fblRBbwiHrIUyJdYJthI",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "History/French Joint Major 513",
+   "url": "/schools/sas/program-listing/history-french-joint-major-513",
+   "page_id": "nYEu8BkcNKWrfjE9D2TZ",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "History/ Political Science Joint Major 514",
+   "url": "/schools/sas/program-listing/history-political-science-514",
+   "page_id": "orwXiSvBEJKpoP4Vy4ed",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Holocaust Studies 564",
+   "url": "/schools/sas/program-listing/holocaust-studies-564",
+   "page_id": "RzEfw5tkog5MeQ65Fk1Z",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Human Resource Management 533",
+   "url": "/schools/sas/program-listing/human-resource-management-533",
+   "page_id": "vL6spobaXwxMJyJXK6SR",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Hungarian 535",
+   "url": "/schools/sas/program-listing/hungarian-535",
+   "page_id": "RMDBG1Xj8hI2tugjHoCO",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Individualized Major 555",
+   "url": "/schools/sas/program-listing/individualized-major-555",
+   "page_id": "N9WBu6jx6ylSWTCAmUD9",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Interdisciplinary Studies, SAS 556",
+   "url": "/schools/sas/program-listing/interdisciplinary-studies-556",
+   "page_id": "RMBdzqhjHRN6DEoCTfba",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "International and Global Studies 558",
+   "url": "/schools/sas/program-listing/international-global-studies-558",
+   "page_id": "cI1KWMBsTGKh9gREM3ft",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Italian 560",
+   "url": "/schools/sas/program-listing/italian-560",
+   "page_id": "ujD6UNWwc2DdFKKrSbok",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Japanese 565",
+   "url": "/schools/sas/program-listing/japanese-565",
+   "page_id": "yrRDNRljKqSPAVaGgeZE",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Jewish Studies 563",
+   "url": "/schools/sas/program-listing/jewish-studies-563",
+   "page_id": "e7F2RnC5zUzb5NCmJ0WH",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Korean 574",
+   "url": "/schools/sas/program-listing/korean-574",
+   "page_id": "dbZcVk2yJhuBQOTZNMeN",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Labor Studies and Employment Relations 575",
+   "url": "/schools/sas/program-listing/labor-studies-employment-relations-575",
+   "page_id": "TlMm6V9cbO8IzQco5ocZ",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Latin American Studies 590",
+   "url": "/schools/sas/program-listing/latin-american-studies-590",
+   "page_id": "NJPEUEM4Fp2JHQ0NbFkN",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Latino and Caribbean Studies 595",
+   "url": "/schools/sas/program-listing/latino-caribbean-studies-595",
+   "page_id": "GOE04yG6d1FE39z9KQYE",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Law",
+   "url": "/schools/sas/program-listing/law",
+   "page_id": "PuniHuRty2K1lwiVnGaN",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing",
+    "Life Sciences"
+   ],
+   "label": "Life Sciences",
+   "url": "/schools/sas/program-listing/life-sciences/life-sciences",
+   "page_id": "BNylNRWsjrDpb72rB5bT",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing",
+    "Life Sciences"
+   ],
+   "label": "Life Sciences Core Curriculum",
+   "url": "/schools/sas/program-listing/life-sciences/life-sciences-core-curriculum",
+   "page_id": "MC9qin4cc4cZ6WhQ1syE",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Linguistics 615",
+   "url": "/schools/sas/program-listing/linguistics-615",
+   "page_id": "vuRfCurPX9Xk4rJ8tGfA",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Mathematics 640",
+   "url": "/schools/sas/program-listing/mathematics-640",
+   "page_id": "hz9pQbGn7LRosDRdDoDR",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Medicine and Dentistry",
+   "url": "/schools/sas/program-listing/medicine-dentistry",
+   "page_id": "KYHG6IS2DLXP9Jygh2bm",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Medieval Studies 667",
+   "url": "/schools/sas/program-listing/medieval-studies-667",
+   "page_id": "tUsotIaB6LE9Znd1U8cZ",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Middle Eastern Studies 685",
+   "url": "/schools/sas/program-listing/middle-eastern-studies-685",
+   "page_id": "WukKP1999XvKyFcyGn2U",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Military Education, Air Force 690",
+   "url": "/schools/sas/program-listing/military-education-air-force-690",
+   "page_id": "rAP4wTbc1m1ieASUK6B7",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Military Education, Army 691",
+   "url": "/schools/sas/program-listing/military-education-army-691",
+   "page_id": "f0QC2B1O2iMEDU1IQ2kn",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Military Education, Naval 692",
+   "url": "/schools/sas/program-listing/military-education-naval-692",
+   "page_id": "faUZaQEthqIyg6RiRupw",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Military Science Minor",
+   "url": "/schools/sas/program-listing/military-science-minor",
+   "page_id": "KPLdg315UACEvgJ9mtP0",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Molecular Biology and Biochemistry 694",
+   "url": "/schools/sas/program-listing/molecular-biology-biochemistry-694",
+   "page_id": "vfzsgvI01M6XF4s7A5bi",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Music",
+   "url": "/schools/sas/program-listing/music",
+   "page_id": "l1e4PpLzWs1Zr3aLgcRl",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Nursing",
+   "url": "/schools/sas/program-listing/nursing",
+   "page_id": "nMIxv0XdYnk9MzB1RwNT",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Organizational Leadership 713",
+   "url": "/schools/sas/program-listing/organizational-leadership-713",
+   "page_id": "VmxuKB8cAqUJPo3pKjUe",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Pharmacy",
+   "url": "/schools/sas/program-listing/pharmacy",
+   "page_id": "G5GqtkUbHaRz8u2pxzio",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Philosophy 730",
+   "url": "/schools/sas/program-listing/philosophy-730",
+   "page_id": "hmoeDXhZf5UAHl3e1dDZ",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Physics 750",
+   "url": "/schools/sas/program-listing/physics-750",
+   "page_id": "ym4CP3c7PK4eKIjVSa4J",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Polish 787",
+   "url": "/schools/sas/program-listing/polish-787",
+   "page_id": "of4LGeakvlYK5ywvLKDI",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Political Science 790",
+   "url": "/schools/sas/program-listing/political-science-790",
+   "page_id": "ynUq3QFcA7oYr9vlEryG",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Portuguese 810",
+   "url": "/schools/sas/program-listing/portuguese-810",
+   "page_id": "Tk4pBIfd3WtYfKaXxX5H",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Psychology 830",
+   "url": "/schools/sas/program-listing/psychology-830",
+   "page_id": "f1mcjttpZ6Uie8vJzkZY",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Religion 840",
+   "url": "/schools/sas/program-listing/religion-840",
+   "page_id": "euYStBI32QFvaarXmSK1",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Russian 860",
+   "url": "/schools/sas/program-listing/russian-860",
+   "page_id": "uzYvAe4O3r5kcuACM8T6",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Sexualities Studies 888",
+   "url": "/schools/sas/program-listing/sexualities-studies-888",
+   "page_id": "JIDJlJUaGhkWuXKnHbiK",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Slavic and East European Studies Minor 861",
+   "url": "/schools/sas/program-listing/slavic-east-european-studies-minor-861",
+   "page_id": "JbhIxMmqxADdi7uDTS3G",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Social Justice 904",
+   "url": "/schools/sas/program-listing/social-justice-904",
+   "page_id": "L3rOaCNvGHDskCIltuy9",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Social Work 910",
+   "url": "/schools/sas/program-listing/social-work-910",
+   "page_id": "cNFocxpqUabPbU5Le4eE",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Sociology 920",
+   "url": "/schools/sas/program-listing/sociology-920",
+   "page_id": "P6txGmZ2HBYyj9NIW92j",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "South Asian Studies 925",
+   "url": "/schools/sas/program-listing/south-asian-studies-925",
+   "page_id": "SOtACfEkpM6R7mPmnJPi",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Spanish 940",
+   "url": "/schools/sas/program-listing/spanish-940",
+   "page_id": "o8KybmQaiSxZXiacDtqw",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Sport Management 955",
+   "url": "/schools/sas/program-listing/sport-management-955",
+   "page_id": "aurqENTrFoZJodeoLVlG",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Statistics 960",
+   "url": "/schools/sas/program-listing/statistics-960",
+   "page_id": "xWtAPvU4XHlZN7R87OOr",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Study Abroad 959",
+   "url": "/schools/sas/program-listing/study-abroad-959",
+   "page_id": "EPVpw4FNsNjZ6ztWjBaw",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Theater 965",
+   "url": "/schools/sas/program-listing/theater-965",
+   "page_id": "ar3wxIQfRyh7azoBQCCs",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Ukrainian 967",
+   "url": "/schools/sas/program-listing/ukrainian-967",
+   "page_id": "ZCL5w6xGdmAWASKDPjFV",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "Women's, Gender, and Sexuality Studies 988",
+   "url": "/schools/sas/program-listing/womens-gender-and-sexuality-studies-988",
+   "page_id": "hgdoZ8OYCvmwZLAxLlJr",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "Program Listing"
+   ],
+   "label": "World Language Proficiency Certificates ",
+   "url": "/schools/sas/program-listing/world-language-proficiency-certificates",
+   "page_id": "Q4qdlZnpPikLNSRnLodF",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "About the School of Arts and Sciences"
+   ],
+   "label": "About the School of Arts and Sciences",
+   "url": "/schools/sas/about/about-the-school-of-arts-and-sciences",
+   "page_id": "W6nAi7fRgwv5GWVJYxFp",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "About the School of Arts and Sciences"
+   ],
+   "label": "History and Aims of the School",
+   "url": "/schools/sas/about/history-aims",
+   "page_id": "liyVuwr63OGQC152SjhI",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "About the School of Arts and Sciences",
+    "Degree Requirements"
+   ],
+   "label": "Degree Requirements",
+   "url": "/schools/sas/about/degree-requirements/degree-requirements",
+   "page_id": "oYdmQdeWZyYyvaxEx4h5",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "About the School of Arts and Sciences",
+    "Degree Requirements"
+   ],
+   "label": "Requirements",
+   "url": "/schools/sas/about/degree-requirements/reqs",
+   "page_id": "xv72Yj9vsrh3FCdUV1kI",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "About the School of Arts and Sciences",
+    "Degree Requirements"
+   ],
+   "label": "Graduation",
+   "url": "/schools/sas/about/degree-requirements/graduation",
+   "page_id": "Y5QEXhv2FyAVDPnoAuvw",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "About the School of Arts and Sciences"
+   ],
+   "label": "Programs of Study for Arts and Sciences Students",
+   "url": "/schools/sas/about/programs-of-study-for-arts-and-sciences-students",
+   "page_id": "MHM7p8V2LFM8w9BD75Hv",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [
+    "About the School of Arts and Sciences"
+   ],
+   "label": "Administration",
+   "url": "/schools/sas/about/administration",
+   "page_id": "zVV9hWqdRW5bGQOAJ0ld",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sas",
+   "trail": [],
+   "label": "Academic Policies and Procedures",
+   "url": "/schools/sas/academic-policies-and-procedures",
+   "page_id": "PFIBwFdoDtdv5O13Kr2T",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [],
+   "label": "History and Aims",
+   "url": "/schools/sebs/history-aims",
+   "page_id": "Eu0La6PwqvxRwVER6LAB",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Degree Requirements"
+   ],
+   "label": "Degree Requirements",
+   "url": "/schools/sebs/degree-requirements/degree-requirements",
+   "page_id": "PXskpFgYdGk1PIT20RMe",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Degree Requirements"
+   ],
+   "label": "Credits and Residency",
+   "url": "/schools/sebs/degree-requirements/credits-residency",
+   "page_id": "nHUFyWuki77PuVlCdA3d",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Degree Requirements"
+   ],
+   "label": "Double Majors",
+   "url": "/schools/sebs/degree-requirements/double-majors",
+   "page_id": "CAKLShkGQvi7dLQv8NCO",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Degree Requirements"
+   ],
+   "label": "Second Bachelor's Degree",
+   "url": "/schools/sebs/degree-requirements/second-ba",
+   "page_id": "aMPgZR3vxahjadvA1dkv",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Degree Requirements"
+   ],
+   "label": "Mission, Goals, and Core Curriculum of the Undergraduate Program",
+   "url": "/schools/sebs/degree-requirements/mission-goals-core-curriculum-undergrad",
+   "page_id": "sMBd0GdcjuYtMmCCkztK",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Degree Requirements"
+   ],
+   "label": "Graduation",
+   "url": "/schools/sebs/degree-requirements/graduation",
+   "page_id": "VdfBdugWAIRCYoGXwnjG",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Programs of Study",
+   "url": "/schools/sebs/programs/programs-of-study",
+   "page_id": "vHis6tw1eGchNA9Ndc12",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Summary",
+   "url": "/schools/sebs/programs/summary",
+   "page_id": "EtTPZhDaHnBAHE3s1o3J",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Agricultural Business and Food Systems 019",
+   "url": "/schools/sebs/programs/agriculture-business-and-food-systems",
+   "page_id": "F6QgzzX7Vshe6HTJcuHw",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Agriculture and Food Systems 020",
+   "url": "/schools/sebs/programs/agriculture-food-systems",
+   "page_id": "X5qZZOl3oBLahGul9tir",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Animal Science 067",
+   "url": "/schools/sebs/programs/animal-science",
+   "page_id": "C5J8Tj8k5vCdnFjHRfNR",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Biochemistry 115",
+   "url": "/schools/sebs/programs/biochemistry",
+   "page_id": "jTMXMAwajDYXOoXNAprj",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Biological Sciences 119",
+   "url": "/schools/sebs/programs/biological-sciences",
+   "page_id": "icqWsp1TxStzFhe7RKaI",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Biotechnology 126",
+   "url": "/schools/sebs/programs/biotechnology",
+   "page_id": "V2vc7lusb9UEemF5EFqw",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Ecology, Evolution, and Natural Resources 216",
+   "url": "/schools/sebs/programs/ecology-evolution-natural-resources",
+   "page_id": "AMylaTm1hpTHbGGpmV6l",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Entomology 370",
+   "url": "/schools/sebs/programs/entomology",
+   "page_id": "TEoYzyfxHqpMIWhReslW",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Environmental and Business Economics 373",
+   "url": "/schools/sebs/programs/environmental-business-economics",
+   "page_id": "Npvjk1GpkSb9D61bwOuF",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Environmental Engineering 366",
+   "url": "/schools/sebs/programs/environmental-engineering",
+   "page_id": "vYR3Fl5dh6JWq8ZjmW9C",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Environmental Planning 573",
+   "url": "/schools/sebs/programs/environmental-planning",
+   "page_id": "QKZUdLjxbRBildNsVRsA",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Environmental Policy, Institutions, and Behavior 374",
+   "url": "/schools/sebs/programs/environmental-policy-institutions-behavior",
+   "page_id": "n16fSFPq90ZK15c2cjZI",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Environmental Sciences 375",
+   "url": "/schools/sebs/programs/environmental-sciences",
+   "page_id": "cFtNCXpXSVTgscJUqdqK",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Exercise Science 377",
+   "url": "/schools/sebs/programs/exercise-science",
+   "page_id": "diEM6b8KYmUTHKm9aBPz",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Food Science 400",
+   "url": "/schools/sebs/programs/food-science",
+   "page_id": "enseYeTqnzQbS28ovJ1Q",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Landscape Architecture 550",
+   "url": "/schools/sebs/programs/landscape-architecture",
+   "page_id": "r2uD9Ke6iTV89TUueBz7",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Marine Sciences 628",
+   "url": "/schools/sebs/programs/marine-sciences",
+   "page_id": "ZBGQkVmfXWqZMoEdw6Br",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Meteorology 670",
+   "url": "/schools/sebs/programs/meteorology",
+   "page_id": "dOHiN8PNmGkZqRbA6Ck9",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Microbiology 680",
+   "url": "/schools/sebs/programs/microbiology",
+   "page_id": "hYFFyWrndHhfBPTjFhSH",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Nutritional Sciences 709",
+   "url": "/schools/sebs/programs/nutritional-sciences",
+   "page_id": "CM9vTHlmhlRqOji3Lx7Z",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Plant Science 776",
+   "url": "/schools/sebs/programs/plant-science",
+   "page_id": "wzvVNwKWQq5H2cCk5v8z",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Public Health 832",
+   "url": "/schools/sebs/programs/public-health",
+   "page_id": "QUrHOWw86eHuJANhxh8M",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minors and Certificate Programs",
+   "url": "/schools/sebs/programs/minors-cert-prgs/minors-and-certificate-programs",
+   "page_id": "YiE9zQOm0DX4Aus15cSY",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Agroecology (21-24 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/agroecology",
+   "page_id": "ua0oVOtZFFnUfHkDwcAW",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Animal Science (22-24 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/animal-science",
+   "page_id": "sezkSkiabyzOTNK4ELMx",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Biochemistry (23-25 credits) ",
+   "url": "/schools/sebs/programs/minors-cert-prgs/biochemistry",
+   "page_id": "dXKguTHF78t7fiwDPKhK",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Community Health Outreach (22 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/community-health-outreaach",
+   "page_id": "iQDoVZzL4fs8hg3BfIqO",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Creative Expression and the Environment (18 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/creative-expression-and-the-environment",
+   "page_id": "cyH5EOV8lklhz1Orev8z",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Culinary Nutrition",
+   "url": "/schools/sebs/programs/minors-cert-prgs/minor-in-culinary-nutrition",
+   "page_id": "egsDORcxgzl6do1Iqa3q",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Ecology, Evolution, and Natural Resources (20-23 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/ecology-evolution-natural-resources",
+   "page_id": "Cc7lFIrCkb81UYX18Q4h",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Entomology (19-26 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/entomology",
+   "page_id": "GkF4l32Tvuuy9rYGL0A3",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Environmental and Business Economics (21-23 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/environmental-and-business-economics",
+   "page_id": "NZp4Ui3sarLNEzOF0iew",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Environmental Geomatics (19 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/environmental-geomatics",
+   "page_id": "o1Yhw2IncC0dQZ5WYmjG",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Environmental Planning (18 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/environmental-planning",
+   "page_id": "G0ceHwelJiKklNfi5ZYm",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Environmental Policy, Institutions, and Behavior (21 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/environmental-policy-institutions-behavior",
+   "page_id": "vPoJK8cJ2z4PjFm1tciy",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Environmental Science (21 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/environmental-sciences",
+   "page_id": "pmVVnMTvtEcu7HdY8skw",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Fisheries Science (21-22 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/fisheries-science",
+   "page_id": "ldq45GrARvos6z6huNal",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Food Science (18-21 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/food-science",
+   "page_id": "h62n6hGDWNPkpyhWsATS",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Green Technology (20 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/green-technology",
+   "page_id": "wfctijKpostZzuHUY5Fz",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Health Equity",
+   "url": "/schools/sebs/programs/minors-cert-prgs/health-equity",
+   "page_id": "yZtieWQHSainCj6X9GoU",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Holistic Wellness",
+   "url": "/schools/sebs/programs/minors-cert-prgs/holistic-wellness",
+   "page_id": "CnALdUirUXrzrCinXU9k",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Horticultural Therapy (18 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/horticultural-therapy",
+   "page_id": "zkWeYO0LPU6wc93qeTcA",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Landscape Design",
+   "url": "/schools/sebs/programs/minors-cert-prgs/minor-in-landscape-design",
+   "page_id": "CrLrnJftdAizHBCYpjDG",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Leadership Skills (21-22 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/leadership-skills",
+   "page_id": "Yjnof8O5FUyYgqGyvfAy",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Marine Sciences (18 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/marine-sciences",
+   "page_id": "xQjeCzAsGjQwTDN2CTzG",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Medicinal and Economic Botany (18-19 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/medicinal-and-economic-botany",
+   "page_id": "lRYCy43TsL9tDpMOLHZE",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Meteorology (18 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/meteorology",
+   "page_id": "HYqbkHZ6s36fplajsj8r",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Microbiology (19-21 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/microbiology",
+   "page_id": "fS4SvSfaHlXKtSXpYlli",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Nonprofit Leadership (23 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/nonprofit-leadership",
+   "page_id": "voDKWmOrLKL1VYGd8wBT",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Nutrition (20-24 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/nutrition",
+   "page_id": "I4tLocTdj6u6SXJDk6rL",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Plant Science (18-20 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/plant-science",
+   "page_id": "B9l9X5nHcljkTG8jwpiD",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Public Garden Management",
+   "url": "/schools/sebs/programs/minors-cert-prgs/public-garden-management",
+   "page_id": "PYNbCQvyIH5ISdB2XrrK",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Science Communication (18 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/science-communication",
+   "page_id": "g08YpKDWdxEdN9xhiNP4",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Sports Nutrition (18 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/sports-nutrition",
+   "page_id": "Xzj0zx4ontxuCla9fPy4",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Sustainable Global Food Systems (18 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/sustainable-global-food-systems",
+   "page_id": "IN1axBLFK8EiqhZm4LoM",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Sustainability",
+   "url": "/schools/sebs/programs/minors-cert-prgs/sustainability",
+   "page_id": "hzuS0o4qjxAYpBgTNUnT",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Minor in Urban Forestry (21 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/urban-forestry",
+   "page_id": "FJglrSQXchWWtb8YUSD7",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Certificate in Environmental Geomatics (19 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/env-geomatics",
+   "page_id": "dougO9Y4pVj1EYnEn89N",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Certificate in Environmental Planning (21 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/env-planning",
+   "page_id": "WMLyUSvjViqU8yR1BVjE",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Certificate in Evolutionary Medicine",
+   "url": "/schools/sebs/programs/minors-cert-prgs/evo-medicine",
+   "page_id": "vs30KAjTCtIiGqV0t4v6",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Certificate in Food Systems Education and Administration (21-22 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/food-sys-edu-admin",
+   "page_id": "GmlU9ERPhUsVZCvDKq5P",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Certificate in Horticultural Therapy (34-37 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/hort-therapy",
+   "page_id": "kCsYmIguiPK48coNE2FN",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Certificate in Medicinal and Economic Botany (25 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/med-economic-botany",
+   "page_id": "YU9jzO9H5jfCf15It322",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Certificate in Plant Biosecurity (25 credits)",
+   "url": "/schools/sebs/programs/minors-cert-prgs/plant-biosecurity",
+   "page_id": "CxBtEmYfqFD8kDYjHWtF",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Minors and Certificate Programs"
+   ],
+   "label": "Certificate in Turfgrass Science",
+   "url": "/schools/sebs/programs/minors-cert-prgs/turfgrass-science",
+   "page_id": "YvR1TZmXfOMXH2bxW5SO",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Student to Professional Internship Network (SPIN)",
+   "url": "/schools/sebs/programs/spin",
+   "page_id": "MiZYJ0pjypU7CS5yJsVX",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Military Education",
+   "url": "/schools/sebs/programs/military-education",
+   "page_id": "oMV3XLrfGaOFibR5cP24",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Honors Programs",
+   "url": "/schools/sebs/programs/honors-programs",
+   "page_id": "GE8361kqAdD65NPI6P1K",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Study Abroad Programs",
+   "url": "/schools/sebs/programs/study-abroad",
+   "page_id": "PT6fLZYuQmtUsLcBecLg",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Educational Opportunity Fund (EOF)",
+   "url": "/schools/sebs/programs/eof",
+   "page_id": "IUbAApjQkmlDwRCdrWUs",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Preprofessional Programs ",
+   "url": "/schools/sebs/programs/preprofessional-programs",
+   "page_id": "AJel68AmlVdB7PWmhx5K",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Combined Degree Programs"
+   ],
+   "label": "Combined Degree Programs",
+   "url": "/schools/sebs/programs/combined-degree/programs",
+   "page_id": "nCpq7giqmeE8B25Wvc8q",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Combined Degree Programs"
+   ],
+   "label": "Joint Bachelor/Medical Degree Programs",
+   "url": "/schools/sebs/programs/combined-degree/joint-ba-md",
+   "page_id": "NWRs1hUucjL4rRhMjJ0k",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Combined Degree Programs"
+   ],
+   "label": "Five-Year B.A. or B.S./M.B.A. Program",
+   "url": "/schools/sebs/programs/combined-degree/five-year-ba-bs-mba",
+   "page_id": "jtWBGTZrIME3XjteOuSN",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Combined Degree Programs"
+   ],
+   "label": "Five-Year B.A. or B.S./M.P.P. Program",
+   "url": "/schools/sebs/programs/combined-degree/five-year-ba-bs-mpp",
+   "page_id": "vLZ07CrJmbIvzcK4AwuD",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Combined Degree Programs"
+   ],
+   "label": "Articulated 3-1-1 Program B.S./M.P.H. or B.A./M.P.H.",
+   "url": "/schools/sebs/programs/combined-degree/articulated-311-bs-mph-ba-mph",
+   "page_id": "hkMK4350itxCxzBtAxnI",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Combined Degree Programs"
+   ],
+   "label": "5-Year B.S./Ed.M. Teacher Education Programs",
+   "url": "/schools/sebs/programs/combined-degree/5-year-bs-edm-teacher-education",
+   "page_id": "nuHc1INjQFzosbphTURG",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Combined Degree Programs"
+   ],
+   "label": "4+1 B.S./M.B.S. (Master of Business and Science) Programs",
+   "url": "/schools/sebs/programs/combined-degree/4-1-bs-mbs",
+   "page_id": "kcuXaFw6PplRz9fc4oWJ",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Programs of Study",
+    "Combined Degree Programs"
+   ],
+   "label": "Accelerated Programs",
+   "url": "/schools/sebs/programs/combined-degree/accelerated-programs",
+   "page_id": "Mci1iSPnkEKE32MzWoJ8",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Course Listing",
+   "url": "/schools/sebs/course-listing/course-listing",
+   "page_id": "M7mzfwIgXFJATIkrlBSa",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Explanatory Note",
+   "url": "/schools/sebs/course-listing/explanatory-note",
+   "page_id": "kcovkbTpo6sjaoTeTnCN",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Agricultural Business and Food Systems 019 Courses",
+   "url": "/schools/sebs/course-listing/agricultural-business-and-food-systems-019-courses",
+   "page_id": "Qv6gTiQgNK4FGhIbaecT",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Agriculture and Food Systems 020 Courses",
+   "url": "/schools/sebs/course-listing/agriculture-food-systems",
+   "page_id": "KPSbQ9HvcAzmugxQCLqi",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Agriculture and Natural Resource Management 035 Courses",
+   "url": "/schools/sebs/course-listing/agriculture-natural-resource-management",
+   "page_id": "g2VMvGHwxDYILIxpnYfH",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Animal Science 067 Courses",
+   "url": "/schools/sebs/course-listing/animal-science",
+   "page_id": "UnO549xE68cNfPUuDNmt",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Arts and Sciences 090 Courses",
+   "url": "/schools/sebs/course-listing/arts-sciences",
+   "page_id": "Rh9p4RGYFJVyQ5DgpQqz",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Biochemistry 115 Courses",
+   "url": "/schools/sebs/course-listing/biochemistry",
+   "page_id": "wUMlCRKCIK8T9wGT92n2",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Biotechnology 126 Courses",
+   "url": "/schools/sebs/course-listing/biotechnology",
+   "page_id": "cwJjGhidUBbSmul7qpwX",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Community Health Outreach 193 Courses",
+   "url": "/schools/sebs/course-listing/community-health-outreach",
+   "page_id": "VF511RCshnD8DUj8RPvr",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Ecology, Evolution, and Natural Resources 216 Courses",
+   "url": "/schools/sebs/course-listing/ecology-evolution-natural-resources",
+   "page_id": "e4gU9Gz45uC52MfLarv1",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Educational Opportunity Fund 364 Courses",
+   "url": "/schools/sebs/course-listing/eof",
+   "page_id": "dIHII6Ao8rMRHz2gT4WC",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Entomology 370 Courses",
+   "url": "/schools/sebs/course-listing/entomology",
+   "page_id": "M6cdLh0iMtO3fD1AX9CA",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Environmental and Biological Sciences 015 Courses",
+   "url": "/schools/sebs/course-listing/environmental-biological-sciences",
+   "page_id": "DZaRh1vJR2gSIG5dsm1L",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Environmental and Business Economics 373 Courses",
+   "url": "/schools/sebs/course-listing/environmental-business-economics",
+   "page_id": "ZrIVjjhmRpmQaoRhqg87",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Environmental Planning 573 Courses",
+   "url": "/schools/sebs/course-listing/environmental-planning",
+   "page_id": "pnbGDVLixjFiUdgFr7cS",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Environmental Policy, Institutions, and Behavior 374 Courses",
+   "url": "/schools/sebs/course-listing/environmental-policy-institutions-behavior",
+   "page_id": "Uq0xkqoKCAcXKVwwBfgo",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Environmental Sciences 375 Courses",
+   "url": "/schools/sebs/course-listing/environmental-sciences",
+   "page_id": "o6eQOxnyYkMRWTc4WL3B",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Food Science 400 Courses",
+   "url": "/schools/sebs/course-listing/food-science",
+   "page_id": "WeZvqbGacOGuM9kVn3WY",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Interdisciplinary Studies 554 Courses",
+   "url": "/schools/sebs/course-listing/interdisciplinary-studies",
+   "page_id": "FTItsYz8qgNDLj3sNwob",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Landscape Architecture 550 Courses",
+   "url": "/schools/sebs/course-listing/landscape-architecture",
+   "page_id": "fVYMcBAjGsxqkDDLnsro",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Leadership Skills 607 Courses",
+   "url": "/schools/sebs/course-listing/leadership-skills",
+   "page_id": "nASy44eOhDzBdPBKEWU3",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Marine Sciences 628 Courses",
+   "url": "/schools/sebs/course-listing/marine-sciences",
+   "page_id": "yP3qj1MMFbKHLbzWCcq0",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Meteorology 670 Courses",
+   "url": "/schools/sebs/course-listing/meteorology",
+   "page_id": "sZtu3IXniU1JpMLNdHdt",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Microbiology 680 Courses",
+   "url": "/schools/sebs/course-listing/microbiology",
+   "page_id": "gUvJlR6PsrwbSj0tX14d",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Nutritional Sciences 709 Courses",
+   "url": "/schools/sebs/course-listing/nutritional-sciences",
+   "page_id": "OcRtGo0Xq23HnelBzM8h",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Plant Science 776 Courses",
+   "url": "/schools/sebs/course-listing/plant-science",
+   "page_id": "WTfoB5bRTkaS3CTA5lF1",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Student to Professional Internship Network (SPIN) 902 Courses",
+   "url": "/schools/sebs/course-listing/spin",
+   "page_id": "FX58mZ3FGeLlbvV3pOs2",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Administration, Centers, and Faculty"
+   ],
+   "label": "Administration, Centers, and Faculty",
+   "url": "/schools/sebs/administration-centers-faculty/administration-centers-and-faculty",
+   "page_id": "wbupxFM6uqFVKT30LdRB",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Administration, Centers, and Faculty"
+   ],
+   "label": "Administration",
+   "url": "/schools/sebs/administration-centers-faculty/admin",
+   "page_id": "rPXdnNS1imfXDABw6AFM",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Administration, Centers, and Faculty"
+   ],
+   "label": "Campus Centers",
+   "url": "/schools/sebs/administration-centers-faculty/centers",
+   "page_id": "HqM83IHtW4oAxNbyd1RX",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [
+    "Administration, Centers, and Faculty"
+   ],
+   "label": "Faculty",
+   "url": "/schools/sebs/administration-centers-faculty/faculty",
+   "page_id": "XqmeBx6YfTiCCtGucvWt",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sebs",
+   "trail": [],
+   "label": "Academic Policies and Procedures",
+   "url": "/schools/sebs/academic-policies-and-procedures",
+   "page_id": "Ku2leBGEZbjssQDCbmWo",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "General Information"
+   ],
+   "label": "General Information",
+   "url": "/schools/mgsa/gen-info/general-information",
+   "page_id": "F5m5ReA6qjMwi8zAH7wN",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "General Information"
+   ],
+   "label": "History and Aims of the School",
+   "url": "/schools/mgsa/gen-info/history-aims",
+   "page_id": "FJe049KlBi6wwA67i14e",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "General Information"
+   ],
+   "label": "Admission",
+   "url": "/schools/mgsa/gen-info/admission",
+   "page_id": "l7sgxXeVj9lrumtStGTZ",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "General Information"
+   ],
+   "label": "Scholarships",
+   "url": "/schools/mgsa/gen-info/scholarships",
+   "page_id": "BXslXjoT5tmdbFKAXTAQ",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "General Information"
+   ],
+   "label": "Facilities",
+   "url": "/schools/mgsa/gen-info/facilities",
+   "page_id": "e7SN1ARiTkYOizU6YZ8N",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "Degree Requirements"
+   ],
+   "label": "Degree Requirements",
+   "url": "/schools/mgsa/degree-requirements/degree-requirements",
+   "page_id": "QiAfBZkrmJSVIse9mRh1",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "Degree Requirements"
+   ],
+   "label": "Requirements",
+   "url": "/schools/mgsa/degree-requirements/requirements",
+   "page_id": "cVPdlwLwlcE9w2JDvkO7",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "Degree Requirements"
+   ],
+   "label": "Graduation",
+   "url": "/schools/mgsa/degree-requirements/graduation",
+   "page_id": "VXoff3XGigZMxgGMF9ik",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Programs of Study",
+   "url": "/schools/mgsa/programs/programs-study",
+   "page_id": "Xke6OQ29bBvVaCMQ5L0C",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Dance 206",
+   "url": "/schools/mgsa/programs/dance",
+   "page_id": "gUdOCaIt0Sk5DrRu6jSG",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Design 208",
+   "url": "/schools/mgsa/programs/design",
+   "page_id": "iit5bkLqR9YDnZh9nFER",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Filmmaking 211",
+   "url": "/schools/mgsa/programs/filmmaking",
+   "page_id": "mTb72koOp6txJvriUCUa",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Music 702",
+   "url": "/schools/mgsa/programs/music",
+   "page_id": "sB1lk2rs22Rkx3NxDmwr",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Theater 966",
+   "url": "/schools/mgsa/programs/theater",
+   "page_id": "WC1jqgD5jk0XBqRS163d",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Visual Arts 081",
+   "url": "/schools/mgsa/programs/visual-arts",
+   "page_id": "gvaOT14UbKQqgMtNhy2s",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Course Listing",
+   "url": "/schools/mgsa/course-listing/course-listing",
+   "page_id": "cOxwU8K3OWIsNlUIdoY0",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Explanation of Three-Part Course Numbers ",
+   "url": "/schools/mgsa/course-listing/explanation-three-part-course-numbers",
+   "page_id": "gZdl0Z9Cu94dLv1apVNG",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Art 081",
+   "url": "/schools/mgsa/course-listing/art",
+   "page_id": "DSD1y5QDTMuCLGC4RMcX",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Dance 203",
+   "url": "/schools/mgsa/course-listing/dance-203",
+   "page_id": "ahLCqHIYrQuuswYavdoT",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Dance 206",
+   "url": "/schools/mgsa/course-listing/dance206",
+   "page_id": "OJZAi1khXvz60n9jBCSV",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Filmmaking 211",
+   "url": "/schools/mgsa/course-listing/filmmaking",
+   "page_id": "xtkjBtldcGHhy8t4YF0k",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Interdisciplinary 557",
+   "url": "/schools/mgsa/course-listing/interdisciplinary",
+   "page_id": "fgRmqChQdW3kpEyroHvJ",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Music 700",
+   "url": "/schools/mgsa/course-listing/music",
+   "page_id": "JefHq4Gd26zCCf11uAYS",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Applied Music 701",
+   "url": "/schools/mgsa/course-listing/applied-music",
+   "page_id": "MxREv7rJR4sSgzMdadTw",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Theater Arts 966",
+   "url": "/schools/mgsa/course-listing/theater-arts",
+   "page_id": "iTOM5ZQWRBkjnIQE1bMg",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "Administration and Faculty"
+   ],
+   "label": "Administration and Faculty",
+   "url": "/schools/mgsa/administration-faculty/administration-and-faculty",
+   "page_id": "SlpBqRUY2ncMEF8QXop3",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "Administration and Faculty"
+   ],
+   "label": "Administration",
+   "url": "/schools/mgsa/administration-faculty/admin",
+   "page_id": "Kx9O3WRWjOlTvCxWEgOv",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [
+    "Administration and Faculty"
+   ],
+   "label": "Faculty",
+   "url": "/schools/mgsa/administration-faculty/fac",
+   "page_id": "hdQRGczEp8bSJiV8ZcIR",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "mgsa",
+   "trail": [],
+   "label": "Academic Policies and Procedures",
+   "url": "/schools/mgsa/academic-policies-and-procedures",
+   "page_id": "rxszMBM2I4RokyXCx26H",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "General Information"
+   ],
+   "label": "General Information",
+   "url": "/schools/pharmacy/gen-info/general-information",
+   "page_id": "Fm57KT0RDA2obc5Kpo9G",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "General Information"
+   ],
+   "label": "History and Aims of the School",
+   "url": "/schools/pharmacy/gen-info/history-aims",
+   "page_id": "GObCyh41hrSymGmkps0X",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "General Information"
+   ],
+   "label": "The Pharmacy Profession",
+   "url": "/schools/pharmacy/gen-info/pharmacy-profession",
+   "page_id": "HWy3MkviXfS32cMvfy9Q",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "General Information"
+   ],
+   "label": "Advantages at Rutgers",
+   "url": "/schools/pharmacy/gen-info/advantages",
+   "page_id": "S0EdK0urqjWibMqxuyGE",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "General Information"
+   ],
+   "label": "Facilities",
+   "url": "/schools/pharmacy/gen-info/facilities",
+   "page_id": "j7fiJaDCM3pjy3HLNsXd",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "General Information"
+   ],
+   "label": "New Jersey Legal Requirements for the Pharmacy Profession",
+   "url": "/schools/pharmacy/gen-info/nj-legal-reqs-pharmacy-profession",
+   "page_id": "q7BhJcQH3iQoHVN3WI6G",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "General Information"
+   ],
+   "label": "Office of Continuing Education",
+   "url": "/schools/pharmacy/gen-info/office-continuing-education",
+   "page_id": "fWQmPwTviAkNyCpIgVsZ",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "General Information"
+   ],
+   "label": "Accreditation",
+   "url": "/schools/pharmacy/gen-info/accreditation",
+   "page_id": "InSoSj45cbO9vc6Y44x5",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "General Information"
+   ],
+   "label": "Technical Standards for the Pharm.D. Program",
+   "url": "/schools/pharmacy/gen-info/technical-standards-pharm-d-program",
+   "page_id": "tSY3pRJwB2ScDuSMjidP",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "Degree Requirements"
+   ],
+   "label": "Degree Requirements",
+   "url": "/schools/pharmacy/degree-requirements/degree-requirements",
+   "page_id": "WfFwls1qNNylVO5M9FWK",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "Degree Requirements"
+   ],
+   "label": "Requirements",
+   "url": "/schools/pharmacy/degree-requirements/requirements",
+   "page_id": "hdlRyKxbAie9Fdbs6aDz",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "Degree Requirements"
+   ],
+   "label": "Graduation",
+   "url": "/schools/pharmacy/degree-requirements/graduation",
+   "page_id": "gbmAvGb8AHE0fOUztFii",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Programs of Study ",
+   "url": "/schools/pharmacy/programs/programs-of-study",
+   "page_id": "J2NPomtocJGHfxwxEME0",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Six-Year Pharmacy Curriculum",
+   "url": "/schools/pharmacy/programs/six-year-pharm-curriculum",
+   "page_id": "JMeJG2a2NMVzrl0SvFPD",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Prepharmacy Curriculum",
+   "url": "/schools/pharmacy/programs/prepharm-curriculum",
+   "page_id": "clMviJDWA3xqB4ezrcyU",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Dual-Degree Options",
+   "url": "/schools/pharmacy/programs/dual-degree-options",
+   "page_id": "KwzLIcnIPIbbeJLGIWJf",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Honors and Awards",
+   "url": "/schools/pharmacy/programs/honors-awards",
+   "page_id": "aaP9XoNzLEYqZ2vwsxFw",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Scholarships",
+   "url": "/schools/pharmacy/programs/scholarships",
+   "page_id": "PHcMdqLRxvgAfy7j3Y9D",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Educational Opportunity Fund",
+   "url": "/schools/pharmacy/programs/eof",
+   "page_id": "HLNwxdWytM4sxkO3ApWC",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Course Listing",
+   "url": "/schools/pharmacy/course-listing/course-listing",
+   "page_id": "kZSLVVBI231rCXjPZ0Z3",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Explanation of Three-Part Course Numbers",
+   "url": "/schools/pharmacy/course-listing/explanation-three-part-course-numbers",
+   "page_id": "RDV4xZhd9N6Mv1ixobg5",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Chemical Biology 158",
+   "url": "/schools/pharmacy/course-listing/chemical-biology",
+   "page_id": "pO9Ht7q9SzeDe2wyH6Gd",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Medicinal Chemistry 715",
+   "url": "/schools/pharmacy/course-listing/medicinal-chemistry",
+   "page_id": "ntvO2OSw3H5XGiVUsW2C",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Pharmacology and Toxicology 718",
+   "url": "/schools/pharmacy/course-listing/pharmacology-toxicology",
+   "page_id": "itBCIJlCZRxcr31Woc6p",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Pharmacy 720",
+   "url": "/schools/pharmacy/course-listing/pharmacy",
+   "page_id": "cG4wzLcRAB2C4HHvENDk",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Pharmaceutics 721",
+   "url": "/schools/pharmacy/course-listing/pharmaceutics",
+   "page_id": "T4NMxcm2sywjEO9uPVOD",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Pharmacy Practice and Administration 725",
+   "url": "/schools/pharmacy/course-listing/pharm-practice-administration",
+   "page_id": "ghVSqcfOhGBkKG5vvmGa",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "Administration and Faculty"
+   ],
+   "label": "Administration and Faculty",
+   "url": "/schools/pharmacy/administration-faculty/administration-and-faculty",
+   "page_id": "NVZX9OR0iIvqrPHHT6Ss",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "Administration and Faculty"
+   ],
+   "label": "Administration",
+   "url": "/schools/pharmacy/administration-faculty/admin",
+   "page_id": "HeIXLJSQfDub5maGfNAm",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [
+    "Administration and Faculty"
+   ],
+   "label": "Faculty",
+   "url": "/schools/pharmacy/administration-faculty/fac",
+   "page_id": "KME5edFbQf96eMhAeK7n",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "pharmacy",
+   "trail": [],
+   "label": "Academic Policies and Procedures ",
+   "url": "/schools/pharmacy/academic-policies-and-procedures",
+   "page_id": "NpvsqBHgs9zzqGMnDsmH",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "General Information"
+   ],
+   "label": "General Information",
+   "url": "/schools/rbsnb/gen-info/general-information",
+   "page_id": "FubNyWsSMmdkmZLYSu4M",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "General Information"
+   ],
+   "label": "History and Aims of the School",
+   "url": "/schools/rbsnb/gen-info/history-aims",
+   "page_id": "yGHrcm55eaySHD0eFo8m",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "General Information"
+   ],
+   "label": "The Program",
+   "url": "/schools/rbsnb/gen-info/the-program",
+   "page_id": "IQ65vbFzvNdOe1DkGRSJ",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "General Information"
+   ],
+   "label": "Scholarships",
+   "url": "/schools/rbsnb/gen-info/scholarships",
+   "page_id": "JHXq6tjikMUNHjtF4mlO",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "General Information"
+   ],
+   "label": "Admissions",
+   "url": "/schools/rbsnb/gen-info/admissions",
+   "page_id": "pw8vx6iTKPq6nErPeHLD",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Degree Requirements"
+   ],
+   "label": "Degree Requirements",
+   "url": "/schools/rbsnb/degree-requirements/degree-requirements",
+   "page_id": "TS9Tl0WVWVQHgbV3QZCH",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Degree Requirements"
+   ],
+   "label": "Credits and Residency",
+   "url": "/schools/rbsnb/degree-requirements/credits-residency",
+   "page_id": "HJ8Lb4w9gvSzOaFX5po0",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Degree Requirements"
+   ],
+   "label": "Graduation",
+   "url": "/schools/rbsnb/degree-requirements/graduation",
+   "page_id": "xDdT1GEzwZSKJxTKi3uX",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Degree Requirements",
+    "Programs of Study: Majors and Minors"
+   ],
+   "label": "Programs of Study: Majors and Minors",
+   "url": "/schools/rbsnb/degree-requirements/programs-majors-minors/programs",
+   "page_id": "k7UMe5VjZryidQzLHNrr",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Degree Requirements",
+    "Programs of Study: Majors and Minors"
+   ],
+   "label": "010 Accounting",
+   "url": "/schools/rbsnb/degree-requirements/programs-majors-minors/accounting",
+   "page_id": "rScjGBtLoJ7knpYZsvw6",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Degree Requirements",
+    "Programs of Study: Majors and Minors"
+   ],
+   "label": "136 Business Analytics and Information Technology (BAIT)",
+   "url": "/schools/rbsnb/degree-requirements/programs-majors-minors/bait",
+   "page_id": "GUN7vrGJ6ly6RI4tPSlc",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Degree Requirements",
+    "Programs of Study: Majors and Minors"
+   ],
+   "label": "390 Finance",
+   "url": "/schools/rbsnb/degree-requirements/programs-majors-minors/finance",
+   "page_id": "dCtRzCclas6ol8v8yfJ8",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Degree Requirements",
+    "Programs of Study: Majors and Minors"
+   ],
+   "label": "605 Leadership and Management",
+   "url": "/schools/rbsnb/degree-requirements/programs-majors-minors/leadership-management",
+   "page_id": "PyJ05F5L0Mu8SHJePFK7",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Degree Requirements",
+    "Programs of Study: Majors and Minors"
+   ],
+   "label": "630 Marketing",
+   "url": "/schools/rbsnb/degree-requirements/programs-majors-minors/marketing",
+   "page_id": "yUesyO7mo5kil8oXC5yM",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Degree Requirements",
+    "Programs of Study: Majors and Minors"
+   ],
+   "label": "799 Supply Chain Management",
+   "url": "/schools/rbsnb/degree-requirements/programs-majors-minors/supply-chain-management",
+   "page_id": "K9R3UfSvRy0jUSX9hiiA",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Degree Requirements",
+    "Programs of Study: Majors and Minors"
+   ],
+   "label": "135 Business Administration Minor",
+   "url": "/schools/rbsnb/degree-requirements/programs-majors-minors/business-admin-minor",
+   "page_id": "LT1gcfaGOmkuuJl2ujl0",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Degree Requirements",
+    "Programs of Study: Majors and Minors"
+   ],
+   "label": "382 Entrepreneurship Minor",
+   "url": "/schools/rbsnb/degree-requirements/programs-majors-minors/entrepreneurship-minor",
+   "page_id": "iPD5xb48CbUN9O7WTAAm",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Degree Requirements",
+    "RBS Concentrations"
+   ],
+   "label": "RBS Concentrations",
+   "url": "/schools/rbsnb/degree-requirements/concentrations/concentrations",
+   "page_id": "TJgPOVMGGJCOk8Q1axb4",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Degree Requirements",
+    "RBS Concentrations"
+   ],
+   "label": "136 Business Analytics Concentration",
+   "url": "/schools/rbsnb/degree-requirements/concentrations/business-analytics",
+   "page_id": "daicXQRSFabhe2F8q2vb",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Degree Requirements",
+    "RBS Concentrations"
+   ],
+   "label": "382 Entrepreneurship Concentration",
+   "url": "/schools/rbsnb/degree-requirements/concentrations/entrepreneurship",
+   "page_id": "FM6APeqhb6MO7fVapha9",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Degree Requirements",
+    "RBS Concentrations"
+   ],
+   "label": "390 Finance Concentration",
+   "url": "/schools/rbsnb/degree-requirements/concentrations/finance",
+   "page_id": "QEZaMDA9cstS4zLY6y7W",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Degree Requirements",
+    "RBS Concentrations"
+   ],
+   "label": "390F Fixed Income and Credit Analysis Concentration",
+   "url": "/schools/rbsnb/degree-requirements/concentrations/fixed-income-credit-analysis",
+   "page_id": "BIVdoONLYLwcYSF571b0",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Degree Requirements",
+    "RBS Concentrations"
+   ],
+   "label": "620 Global Business Concentration",
+   "url": "/schools/rbsnb/degree-requirements/concentrations/global-business",
+   "page_id": "tZghCvs9mjVhRGvNWqgC",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Degree Requirements",
+    "RBS Concentrations"
+   ],
+   "label": "623 Management Information Systems Concentration",
+   "url": "/schools/rbsnb/degree-requirements/concentrations/management-info-systems",
+   "page_id": "O9kzfvGq9zwL2j08r5Qn",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Degree Requirements",
+    "RBS Concentrations"
+   ],
+   "label": "625 Leadership Skills Concentration",
+   "url": "/schools/rbsnb/degree-requirements/concentrations/leadership-skills",
+   "page_id": "AYjmTkNWAwJHjm6E6RQz",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Degree Requirements",
+    "RBS Concentrations"
+   ],
+   "label": "631 Sales Concentration",
+   "url": "/schools/rbsnb/degree-requirements/concentrations/sales-concentration",
+   "page_id": "OEXDWyOECsrJ4PrnGiwD",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Degree Requirements",
+    "RBS Concentrations"
+   ],
+   "label": "634 Professional Selling",
+   "url": "/schools/rbsnb/degree-requirements/concentrations/professional-selling",
+   "page_id": "xCxv7911FeYjTcoZJR3X",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Degree Requirements",
+    "RBS Concentrations"
+   ],
+   "label": "851 Real Estate Concentration",
+   "url": "/schools/rbsnb/degree-requirements/concentrations/real-estate",
+   "page_id": "UJZs3d8utgfwF9wxIaoR",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Course Listing",
+   "url": "/schools/rbsnb/course-listing/course-listing",
+   "page_id": "e1ag10f55NtyfhZor6G0",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Explanation of Three-Part Course Numbers",
+   "url": "/schools/rbsnb/course-listing/explanation-three-part-course-numbers",
+   "page_id": "BsHoK7xUVR6MYXpavmXD",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Accounting 010",
+   "url": "/schools/rbsnb/course-listing/accounting",
+   "page_id": "yGIS1Ovm8VeLBsCc84NQ",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Administrative Studies 011",
+   "url": "/schools/rbsnb/course-listing/administrative-studies",
+   "page_id": "uOUMdWXH6PxDHerQlPLW",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Business Analytics and Information Technology 136",
+   "url": "/schools/rbsnb/course-listing/bait",
+   "page_id": "QcvQxu49qefLKE8gtEiz",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Business Law 140",
+   "url": "/schools/rbsnb/course-listing/business-law",
+   "page_id": "ynETJp7rNlFI61JpRNvi",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Entrepreneurship 382",
+   "url": "/schools/rbsnb/course-listing/entrepreneurship",
+   "page_id": "m2qtPZn5Z3pC6ZV53NHg",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Finance 390",
+   "url": "/schools/rbsnb/course-listing/finance",
+   "page_id": "Umc2mBurb9QKbBA8vVAa",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Business Ethics 522",
+   "url": "/schools/rbsnb/course-listing/business-ethics",
+   "page_id": "aQSaP4M48khfCcBOma8a",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Management and Global Business 620",
+   "url": "/schools/rbsnb/course-listing/management-global-business",
+   "page_id": "nDSNk4LJKtbk610zcHXE",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Marketing 630",
+   "url": "/schools/rbsnb/course-listing/marketing",
+   "page_id": "A3U8DhwHZOxNLwcejiZv",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Supply Chain Management 799",
+   "url": "/schools/rbsnb/course-listing/supply-chain-management",
+   "page_id": "zPjE0et2NMpfEs2Sv9nn",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Real Estate 851",
+   "url": "/schools/rbsnb/course-listing/real-estate",
+   "page_id": "oiMKKngvimsQN9xxUcz2",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Administration and Faculty"
+   ],
+   "label": "Administration and Faculty",
+   "url": "/schools/rbsnb/administration-faculty/administration-and-faculty",
+   "page_id": "yfalifszkggVQZ0BVySc",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Administration and Faculty"
+   ],
+   "label": "Administration",
+   "url": "/schools/rbsnb/administration-faculty/admin",
+   "page_id": "fKg1DEdGmv8jCraDwtMH",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [
+    "Administration and Faculty"
+   ],
+   "label": "Faculty",
+   "url": "/schools/rbsnb/administration-faculty/fac",
+   "page_id": "absvFnFf57VxwiIdzbva",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "rbsnb",
+   "trail": [],
+   "label": "Academic Policies and Procedures",
+   "url": "/schools/rbsnb/academic-policies-and-procedures",
+   "page_id": "z5Q7YMwqlYVVKU1ZYmfB",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [
+    "General Information"
+   ],
+   "label": "About the School",
+   "url": "/schools/sci/gen-info/about-the-school",
+   "page_id": "uJtDoCmGR4rpRbvfcXQY",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [
+    "General Information"
+   ],
+   "label": "About the Dean",
+   "url": "/schools/sci/gen-info/about-the-dean",
+   "page_id": "D9a3Wu2vBSmhEK5Fyx7x",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [
+    "General Information"
+   ],
+   "label": "General Information",
+   "url": "/schools/sci/gen-info/general-information",
+   "page_id": "PiuVC8FMmRdoLRatM4Pu",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [
+    "General Information"
+   ],
+   "label": "History and Aims of the School",
+   "url": "/schools/sci/gen-info/history-aims",
+   "page_id": "yS7WgzPiHIvlLNiQlE5D",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [
+    "General Information"
+   ],
+   "label": "Student Life",
+   "url": "/schools/sci/gen-info/student-life",
+   "page_id": "ErwQeS3UBYFzGiJq8BNM",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [
+    "General Information"
+   ],
+   "label": "Admission",
+   "url": "/schools/sci/gen-info/admission",
+   "page_id": "dyW9514vfmwyEc5BKFDS",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [
+    "General Information"
+   ],
+   "label": "Scholarships and Financial Aid",
+   "url": "/schools/sci/gen-info/scholarships-financial-aid",
+   "page_id": "pnGSkwUxqzFXiKRzI8o6",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [
+    "General Information"
+   ],
+   "label": "Honors",
+   "url": "/schools/sci/gen-info/honors",
+   "page_id": "JynYKohf3EMTyfRPysj1",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [
+    "General Information"
+   ],
+   "label": "Advising and Career Services",
+   "url": "/schools/sci/gen-info/advising-and-career-services",
+   "page_id": "GF0V4FlDtOHcsR5JI5RI",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [
+    "General Information"
+   ],
+   "label": "Academic and Research Units ",
+   "url": "/schools/sci/gen-info/academic-and-research-units",
+   "page_id": "aaP5iXjVKF9XGIOs50dU",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [
+    "General Information"
+   ],
+   "label": "Facilities",
+   "url": "/schools/sci/gen-info/facilities",
+   "page_id": "SHymFFVO03RJP5kfBP03",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [],
+   "label": "Academic Policies and Procedures",
+   "url": "/schools/sci/academic-policies-and-procedures",
+   "page_id": "FAG1tnNcQNAUSLb6Utr3",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [],
+   "label": "Programs of Study",
+   "url": "/schools/sci/programs-of-study",
+   "page_id": "SczlzTqbck6RYI6JsHoT",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [],
+   "label": "Undergraduate Programs of Study ",
+   "url": "/schools/sci/undergraduate-programs-of-study",
+   "page_id": "TfihgtKdyKSxGjKDocjk",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [],
+   "label": "Current Certificate Program Information",
+   "url": "/schools/sci/current-certificate-program-information",
+   "page_id": "molMcWrCjGOaKSZEeWmo",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [],
+   "label": "Curriculum Overview",
+   "url": "/schools/sci/curriculum-overview",
+   "page_id": "s079DYCep3xyl8gxa4gH",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [
+    "Undergraduate Courses"
+   ],
+   "label": "Undergraduate Courses",
+   "url": "/schools/sci/undergraduate-courses/undergraduate-courses",
+   "page_id": "i27YYP91xEl7Rc2uf9g7",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [
+    "Undergraduate Courses"
+   ],
+   "label": "Explanation of Three-Part Course Numbers",
+   "url": "/schools/sci/undergraduate-courses/explanation-three-part-course-numbers",
+   "page_id": "SzMYiKwaEUayhHuU34MZ",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [
+    "Undergraduate Courses"
+   ],
+   "label": "Communication and Information 189",
+   "url": "/schools/sci/undergraduate-courses/communication-information",
+   "page_id": "ebWpSIpywYFuWcZOsHzW",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [
+    "Undergraduate Courses"
+   ],
+   "label": "Communication 192",
+   "url": "/schools/sci/undergraduate-courses/communication",
+   "page_id": "AmRXHBsl8HIzPKzIsdnc",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [
+    "Undergraduate Courses"
+   ],
+   "label": "Digital Communication, Information, and Media 189",
+   "url": "/schools/sci/undergraduate-courses/digital-communication-information-media",
+   "page_id": "GTlkvGgqINOnuuDOc6Hq",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [
+    "Undergraduate Courses"
+   ],
+   "label": "Gender and Media 438",
+   "url": "/schools/sci/undergraduate-courses/gender-media",
+   "page_id": "KA4xgZqnfzdpy2Z7gch0",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [
+    "Undergraduate Courses"
+   ],
+   "label": "Information Technology and Informatics 547",
+   "url": "/schools/sci/undergraduate-courses/information-technology-informatics",
+   "page_id": "ZcCRLoU2tiNmEkfiE8g0",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [
+    "Undergraduate Courses"
+   ],
+   "label": "Journalism and Media Studies 567",
+   "url": "/schools/sci/undergraduate-courses/journalism-media-studies",
+   "page_id": "tzaI8rsUAkDsEaIbkerP",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [],
+   "label": "Undergraduate Enrollment in Master's Courses ",
+   "url": "/schools/sci/undergraduate-enrollment-in-masters-courses",
+   "page_id": "J14UUrtYkl7Lcf6JRAWD",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [
+    "Administration and Faculty"
+   ],
+   "label": "Faculty and Administration",
+   "url": "/schools/sci/administration-faculty/faculty-and-administration",
+   "page_id": "gnZMDTAb071FjF1cRwhq",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [
+    "Administration and Faculty"
+   ],
+   "label": "Administration",
+   "url": "/schools/sci/administration-faculty/administration",
+   "page_id": "aLSkH9PIgHt447BeLS7D",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [
+    "Administration and Faculty"
+   ],
+   "label": "Dean's Office Faculty",
+   "url": "/schools/sci/administration-faculty/deans-office",
+   "page_id": "g0yRE6QnhGJE0j1DAdjB",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [
+    "Administration and Faculty"
+   ],
+   "label": "Department of Communication",
+   "url": "/schools/sci/administration-faculty/dept-communication",
+   "page_id": "VFdWLO5C3TLCUf0pAv2Q",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [
+    "Administration and Faculty"
+   ],
+   "label": "Department of Journalism and Media Studies",
+   "url": "/schools/sci/administration-faculty/dept-journalism-media-studies",
+   "page_id": "wUDWJKL3GF4u2rUOSbTd",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [
+    "Administration and Faculty"
+   ],
+   "label": "Department of Library and Information Science",
+   "url": "/schools/sci/administration-faculty/dept-library-info-science",
+   "page_id": "pPpXNVp8uRaZasUmrJQt",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [],
+   "label": "Research Policies",
+   "url": "/schools/sci/research-policies",
+   "page_id": "B5BziHrNGunZ77EvOVkp",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [],
+   "label": "Graduation",
+   "url": "/schools/sci/graduation",
+   "page_id": "hQOVQ1FGAKDeKjVnP6em",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "sci",
+   "trail": [],
+   "label": "Financial Aid",
+   "url": "/schools/sci/financial-aid",
+   "page_id": "WvSt3q2IPRexMcXxfUe2",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ssw",
+   "trail": [],
+   "label": "About the School of Social Work",
+   "url": "/schools/ssw/the-school",
+   "page_id": "XrqAAHEUSnGJA92zO5XQ",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ssw",
+   "trail": [
+    "Centers"
+   ],
+   "label": "Centers",
+   "url": "/schools/ssw/centers/centers",
+   "page_id": "JnjxOrFAb6OGyGNgqmbf",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ssw",
+   "trail": [
+    "Centers"
+   ],
+   "label": "Institute for Families",
+   "url": "/schools/ssw/centers/institute-families",
+   "page_id": "F1bqdMbEoVPAMNfl2k6I",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ssw",
+   "trail": [
+    "Centers"
+   ],
+   "label": "Center for Gambling Studies",
+   "url": "/schools/ssw/centers/gambling-studies",
+   "page_id": "2PepkHt6rjnk46wWoGAy",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ssw",
+   "trail": [
+    "Centers"
+   ],
+   "label": "Office of Global Social Work Programs",
+   "url": "/schools/ssw/centers/global-social-work-programs",
+   "page_id": "DD90QQZoaRCqxpLTxxwp",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ssw",
+   "trail": [
+    "Centers"
+   ],
+   "label": "Center for Leadership and Management",
+   "url": "/schools/ssw/centers/leadership-management",
+   "page_id": "yf7ReJdD5l1GLQLm8BxS",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ssw",
+   "trail": [
+    "Centers"
+   ],
+   "label": "Center for Prevention Science",
+   "url": "/schools/ssw/centers/prevention-science",
+   "page_id": "5khxsDeXkLjdzPrPqZ5c",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ssw",
+   "trail": [
+    "Centers"
+   ],
+   "label": "Center for Research on Ending Violence",
+   "url": "/schools/ssw/centers/research-ending-violence",
+   "page_id": "WnIXi1U9sUpm4bqCap2p",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ssw",
+   "trail": [
+    "Centers"
+   ],
+   "label": "Huamin Research Center",
+   "url": "/schools/ssw/centers/huamin",
+   "page_id": "I2NqMh0m9vE5fONtLbgA",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ssw",
+   "trail": [
+    "Degree Programs"
+   ],
+   "label": "Degree Programs",
+   "url": "/schools/ssw/degree-programs/degprg",
+   "page_id": "aly3dSkgcqjfaZrFGd2m",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "ssw",
+   "trail": [
+    "Degree Programs"
+   ],
+   "label": "Bachelor of Arts (B.A.) Degree with Social Work Major",
+   "url": "/schools/ssw/degree-programs/ba-sw-major",
+   "page_id": "tvvhoLGhwKRAtdZURM1B",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "ssw",
+   "trail": [],
+   "label": "Continuing Education and Professional Development",
+   "url": "/schools/ssw/continuing-education-professional-development",
+   "page_id": "EYGeigeKkxba1tUamHLg",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ssw",
+   "trail": [],
+   "label": "Professional Credit Courses (Nonmatriculated)",
+   "url": "/schools/ssw/professional-credit-courses-nonmatriculated",
+   "page_id": "bX9rm7i5KIwKrxLqzJ6F",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ssw",
+   "trail": [],
+   "label": "Financial Aid",
+   "url": "/schools/ssw/financial-aid",
+   "page_id": "sz0I9GPZ6gZxp4KvAqkF",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ssw",
+   "trail": [],
+   "label": "Course Listings",
+   "url": "/schools/ssw/course-listings",
+   "page_id": "4WLH0T34Sd5EJ2WSQJIm",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ssw",
+   "trail": [
+    "Administration and Faculty"
+   ],
+   "label": "Administration and Faculty",
+   "url": "/schools/ssw/administration-faculty/administration-and-faculty",
+   "page_id": "toN7Q8Ab2L33zbm8wEsN",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ssw",
+   "trail": [
+    "Administration and Faculty"
+   ],
+   "label": "Administration",
+   "url": "/schools/ssw/administration-faculty/admin",
+   "page_id": "tf4yYOG6KNdxjjWTx7gg",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ssw",
+   "trail": [
+    "Administration and Faculty"
+   ],
+   "label": "Faculty",
+   "url": "/schools/ssw/administration-faculty/fac",
+   "page_id": "v4N5CdPrnyCj9rRQObjK",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ssw",
+   "trail": [],
+   "label": "Academic Policies and Procedures",
+   "url": "/schools/ssw/academic-policies-and-procedures",
+   "page_id": "sVrRdo9K0Kepi6fOazwS",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "General Information"
+   ],
+   "label": "General Information",
+   "url": "/schools/eng/gen-info/general-information",
+   "page_id": "UO7HoSGzoXkOwQp298oA",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "General Information"
+   ],
+   "label": "History of the School",
+   "url": "/schools/eng/gen-info/history",
+   "page_id": "RllAEHhyeERovRqJvPSv",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "General Information"
+   ],
+   "label": "Mission Statement of the School",
+   "url": "/schools/eng/gen-info/mission-statement",
+   "page_id": "e0cWHC0c29KJmB2lYVAx",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "General Information"
+   ],
+   "label": "Accreditation",
+   "url": "/schools/eng/gen-info/accreditation",
+   "page_id": "n3ckzFLLokCjBtZU9Wfg",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "General Information"
+   ],
+   "label": "Learning Goals of the School",
+   "url": "/schools/eng/gen-info/learning-goals",
+   "page_id": "DrrBgdFOh7PXqP8XySIe",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "General Information"
+   ],
+   "label": "The Engineering Profession",
+   "url": "/schools/eng/gen-info/the-engineering-profession",
+   "page_id": "WxvJCRXXz7EA2p4RfhDh",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Administration and Faculty"
+   ],
+   "label": "Administration and Faculty",
+   "url": "/schools/eng/administration-faculty/administration-and-faculty",
+   "page_id": "epNNtHigMgUEuDM3nQ8T",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Administration and Faculty"
+   ],
+   "label": "Administration",
+   "url": "/schools/eng/administration-faculty/administration",
+   "page_id": "x3vBhLjmVea5Pqa8wCal",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Administration and Faculty"
+   ],
+   "label": "Faculty",
+   "url": "/schools/eng/administration-faculty/faculty",
+   "page_id": "laYoXys3Wnsw9lADWtnJ",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Labs and Facilities"
+   ],
+   "label": "Labs and Facilities",
+   "url": "/schools/eng/labs-facilities/labs-facilities",
+   "page_id": "tEtnfLCOcqjnO4CgAQXe",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Labs and Facilities"
+   ],
+   "label": "Biomedical Engineering ",
+   "url": "/schools/eng/labs-facilities/biomedical",
+   "page_id": "A40fP2gjRhIENJ1FCeR5",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Labs and Facilities"
+   ],
+   "label": "Chemical and Biochemical Engineering ",
+   "url": "/schools/eng/labs-facilities/chemical-biochemical",
+   "page_id": "J6F2KO5bXdExD7QWJmhW",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Labs and Facilities"
+   ],
+   "label": "Civil and Environmental Engineering ",
+   "url": "/schools/eng/labs-facilities/civil-environmental",
+   "page_id": "yNhZEf56LuUQNZn9ZrDN",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Labs and Facilities"
+   ],
+   "label": "Electrical and Computer Engineering ",
+   "url": "/schools/eng/labs-facilities/electrical-computer",
+   "page_id": "jabAdgUWouoHf4p1Eera",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Labs and Facilities"
+   ],
+   "label": "Environmental Engineering ",
+   "url": "/schools/eng/labs-facilities/environmental",
+   "page_id": "xYH7pLjc8eCjS3thHiE5",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Labs and Facilities"
+   ],
+   "label": "Industrial and Systems Engineering ",
+   "url": "/schools/eng/labs-facilities/industrial-systems",
+   "page_id": "fEUQPkjfbo0ozfJtYKtz",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Labs and Facilities"
+   ],
+   "label": "Materials Science and Engineering",
+   "url": "/schools/eng/labs-facilities/materials-science",
+   "page_id": "SLDrFbzChQgrwtgbHwJu",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Labs and Facilities"
+   ],
+   "label": "Mechanical and Aerospace Engineering",
+   "url": "/schools/eng/labs-facilities/mechanical-aerospace",
+   "page_id": "t2PBcJB1zKXacE58H1ih",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Labs and Facilities"
+   ],
+   "label": "Computers",
+   "url": "/schools/eng/labs-facilities/computers",
+   "page_id": "lrgVKjvIuKwe2xPRKiSz",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Labs and Facilities"
+   ],
+   "label": "Libraries",
+   "url": "/schools/eng/labs-facilities/libraries",
+   "page_id": "pNVHez2TpJc1rSG7Zz3y",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [],
+   "label": "Degree Requirements",
+   "url": "/schools/eng/degree-requirements",
+   "page_id": "dcZK73c3Vb5m8jKF2oWP",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Programs of Study",
+   "url": "/schools/eng/programs-study/programs",
+   "page_id": "NjZ4O52ubzYB6tAkyKFw",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "First-Year Program",
+   "url": "/schools/eng/programs-study/first-year",
+   "page_id": "TyPX1l42h95PrkBdwmJU",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Aerospace Engineering",
+   "url": "/schools/eng/programs-study/aerospace",
+   "page_id": "munxISNBbmtsnUr9XKTN",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Applied Sciences in Engineering",
+   "url": "/schools/eng/programs-study/applied-sciences",
+   "page_id": "ccKjnI4098dZwY3R4jG2",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Biomedical Engineering",
+   "url": "/schools/eng/programs-study/biomedical",
+   "page_id": "bqrmKSXWF0pJo8C0E1Cb",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Chemical Engineering",
+   "url": "/schools/eng/programs-study/chemical",
+   "page_id": "Sazc4A4GYICJWlAYkYws",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Civil Engineering",
+   "url": "/schools/eng/programs-study/civil",
+   "page_id": "CniR4u8tHCYwywQFj0dG",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Electrical and Computer Engineering",
+   "url": "/schools/eng/programs-study/electrical-computer",
+   "page_id": "ON1YUA4qbNT61RILhLnw",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Environmental Engineering",
+   "url": "/schools/eng/programs-study/environmental",
+   "page_id": "vYR3Fl5dh6JWq8ZjmW9C",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Industrial Engineering",
+   "url": "/schools/eng/programs-study/industrial",
+   "page_id": "gpWLLL37Lv6ss6ttN4z9",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Materials Science and Engineering",
+   "url": "/schools/eng/programs-study/materials-science",
+   "page_id": "gEtz9Q5Z3tksGQ0OwLFC",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Mechanical Engineering",
+   "url": "/schools/eng/programs-study/mechanical",
+   "page_id": "FXMGpUzNN7OR6VNCQbMX",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Other Programs of Study",
+   "url": "/schools/eng/programs-study/other-programs",
+   "page_id": "iYokj3WQun6yPIl6j6nK",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Course Listing",
+   "url": "/schools/eng/course-listing/course-listing",
+   "page_id": "HwvR8lmKmfAGZgqBs26R",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Explanation of Three-Part Course Numbers",
+   "url": "/schools/eng/course-listing/explanation-three-part-course-numbers",
+   "page_id": "h1csssmkrrpMJnvHbOHo",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Aerospace Engineering 021",
+   "url": "/schools/eng/course-listing/aerospace",
+   "page_id": "HcRYqRwFHTMVImQZ7YMQ",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Applied Sciences in Engineering 073",
+   "url": "/schools/eng/course-listing/applied-sciences",
+   "page_id": "rO0OqyaPxU3Q6AxrXZpW",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Biomedical Engineering 125",
+   "url": "/schools/eng/course-listing/biomedical",
+   "page_id": "yZmnOoclKCsuErgiVzOJ",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Chemical Engineering 155",
+   "url": "/schools/eng/course-listing/chemical",
+   "page_id": "cdJbXYZbidr1umJnCRW8",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Civil Engineering 180",
+   "url": "/schools/eng/course-listing/civil",
+   "page_id": "nYXiBeDGMKy366o61Rc5",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Electrical and Computer Engineering 332",
+   "url": "/schools/eng/course-listing/electrical-computer",
+   "page_id": "vTSnn7DBUCFWarf7ivFA",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Environmental Engineering 366",
+   "url": "/schools/eng/course-listing/environmental",
+   "page_id": "gQ3tjFBVHj344gihpHB2",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "General Engineering 440",
+   "url": "/schools/eng/course-listing/general",
+   "page_id": "qIkdZS5TUfAAfmhEn9lQ",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Industrial Engineering 540",
+   "url": "/schools/eng/course-listing/industrial",
+   "page_id": "Bwt7Lq3V3HFuMLYpBPj9",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Materials Science and Engineering 635",
+   "url": "/schools/eng/course-listing/materials-science",
+   "page_id": "h9DqjM2cFYAv9SJ2xU6G",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [
+    "Course Listing"
+   ],
+   "label": "Mechanical and Aerospace Engineering 650",
+   "url": "/schools/eng/course-listing/mechanical-aerospace",
+   "page_id": "CZsCN90TksBDPBNLJrj0",
+   "class": "subject_coded_program_page"
+  },
+  {
+   "school_slug": "eng",
+   "trail": [],
+   "label": "Academic Policies and Procedures",
+   "url": "/schools/eng/academic-policies-and-procedures",
+   "page_id": "bMF7mYUXbxfzSzuhkOqz",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [],
+   "label": "General Information",
+   "url": "/schools/ejbsppp/gen",
+   "page_id": "WzMYLJMpXzJK9CWlk64G",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Programs of Study",
+   "url": "/schools/ejbsppp/programs-study/programs",
+   "page_id": "nYM3xZucoXPnDVIaJAEV",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "City and Regional Planning (170, 170D) Major and Minor",
+   "url": "/schools/ejbsppp/programs-study/city-and-regional-planning",
+   "page_id": "xSEZjUfnsN7p6jabS2Na",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Health Administration Major (501, 501D) and Minor",
+   "url": "/schools/ejbsppp/programs-study/health-admin-major-minor",
+   "page_id": "S2c9Ck3YEM85mxXj5o2D",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Planning and Public Policy Major (762, 762D) and Minor",
+   "url": "/schools/ejbsppp/programs-study/planning-public-policy-major-minor",
+   "page_id": "YbYUHngQDMEiG58Q0egh",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Public Health Major (832, 832D) and Minor",
+   "url": "/schools/ejbsppp/programs-study/public-health-major-minor",
+   "page_id": "DQcSAJnrfKdtnTTDGH56",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Public Policy Major (833, 833D) and Minor",
+   "url": "/schools/ejbsppp/programs-study/public-policy-major-minor",
+   "page_id": "Zdxdq64AiGI3CfuXRFDn",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Urban Planning and Design Major (971, 971D) and Minor",
+   "url": "/schools/ejbsppp/programs-study/urban-planning-design-major-minor",
+   "page_id": "nwjMzf8mdSbwRepT6d2O",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Disability Studies (304) Minor",
+   "url": "/schools/ejbsppp/programs-study/disability-studies-minor",
+   "page_id": "ggsNg3IshEnp0jxZZf0l",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Health Equity (386) Minor ",
+   "url": "/schools/ejbsppp/programs-study/health-equity-minor",
+   "page_id": "yZtieWQHSainCj6X9GoU",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Medical Ethics and Health Policy Minor",
+   "url": "/schools/ejbsppp/programs-study/medical-ethics-health-policy-minor",
+   "page_id": "RJzghFKWSGEpzLb5ROvp",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Public Administration and Management (843) Minor",
+   "url": "/schools/ejbsppp/programs-study/public-admin-management-minor",
+   "page_id": "woFNuR0aiKapBp3HZUSe",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Programs of Study"
+   ],
+   "label": "Urban Studies Minor",
+   "url": "/schools/ejbsppp/programs-study/urban-studies-minor",
+   "page_id": "BsWzP16nJFB72FYvJxDD",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [],
+   "label": "Fellowships and Scholarships",
+   "url": "/schools/ejbsppp/fellowships-and-scholarships",
+   "page_id": "dHNinB2nfZ1JN2NeexuL",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Course Listing and Explanation of Codes"
+   ],
+   "label": "Explanation of Codes",
+   "url": "/schools/ejbsppp/course-listing/explanation-of-codes",
+   "page_id": "I1VzNpbZMb289qSC3F4K",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Course Listing and Explanation of Codes"
+   ],
+   "label": "Course Listing",
+   "url": "/schools/ejbsppp/course-listing/courses",
+   "page_id": "z5Jcv5RKHecguxFJAecp",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Administration, Centers, and Faculty"
+   ],
+   "label": "Administration, Centers, and Faculty",
+   "url": "/schools/ejbsppp/administration-centers-faculty/admin-cen-fac",
+   "page_id": "lHHdluiYHIBKOL2WxUwY",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Administration, Centers, and Faculty"
+   ],
+   "label": "Office of the Dean",
+   "url": "/schools/ejbsppp/administration-centers-faculty/office-dean",
+   "page_id": "XRXxzZ1ECfVo2uV93TJX",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Administration, Centers, and Faculty"
+   ],
+   "label": "Academic Programs and Center Directors",
+   "url": "/schools/ejbsppp/administration-centers-faculty/program-center-directors",
+   "page_id": "AxiosError: Request failed with status code 502",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Administration, Centers, and Faculty"
+   ],
+   "label": "Faculty",
+   "url": "/schools/ejbsppp/administration-centers-faculty/fac",
+   "page_id": "eHedNvL6pU5XsriHU7QT",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Administration, Centers, and Faculty"
+   ],
+   "label": "Associated Faculty",
+   "url": "/schools/ejbsppp/administration-centers-faculty/associated-fac",
+   "page_id": "yubdfJ4Ctne7HNI6mk9I",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Administration, Centers, and Faculty"
+   ],
+   "label": "Fellows",
+   "url": "/schools/ejbsppp/administration-centers-faculty/fellows",
+   "page_id": "EJF9P1IN01DCTJoPbuWE",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Student Organizations"
+   ],
+   "label": "Student Organizations",
+   "url": "/schools/ejbsppp/student-organizations/orgs",
+   "page_id": "HXZjsZqO9cnugNXId4U3",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Student Organizations"
+   ],
+   "label": "Bloustein Public Service Association (BPSA)",
+   "url": "/schools/ejbsppp/student-organizations/bpsa",
+   "page_id": "u0P5TqnlOoc4fZjYzuYT",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Student Organizations"
+   ],
+   "label": "Bloustein Social Justice Committee",
+   "url": "/schools/ejbsppp/student-organizations/social-justice-committee",
+   "page_id": "HJpHf8d3Ovatl0ILETxw",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Student Organizations"
+   ],
+   "label": "EJB|D E S I G N S",
+   "url": "/schools/ejbsppp/student-organizations/designs",
+   "page_id": "VCfIg3kOOEsxSG1yJ4m1",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Student Organizations"
+   ],
+   "label": "Epsilon Beta Chapter of Eta Sigma Gamma (National Health Education Honorary)",
+   "url": "/schools/ejbsppp/student-organizations/eta-sigma-gamma",
+   "page_id": "iCSjm7zbFlH9BK6k74dg",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Student Organizations"
+   ],
+   "label": "New Jersey Public Health Association-Rutgers Student Chapter",
+   "url": "/schools/ejbsppp/student-organizations/nj-public-health-association",
+   "page_id": "fG716ectajUcASHnybKi",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Student Organizations"
+   ],
+   "label": "Public Informatics Student Group",
+   "url": "/schools/ejbsppp/student-organizations/public-informatics",
+   "page_id": "F93XGeUSF58L4DCMMbfc",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [
+    "Student Organizations"
+   ],
+   "label": "Rutgers Future Healthcare Administrators",
+   "url": "/schools/ejbsppp/student-organizations/ru-future-healthcare-admin",
+   "page_id": "Fxx0OfBFNuKcoIiS1BtP",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "ejbsppp",
+   "trail": [],
+   "label": "Academic Policies and Procedures",
+   "url": "/schools/ejbsppp/academic-policies-and-procedures",
+   "page_id": "zdR3Clmnz2ZOeyriy0fR",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "General Information"
+   ],
+   "label": "General Information",
+   "url": "/schools/smlr/gen-info/gen",
+   "page_id": "knhSHzclSA0gIKVf4YLG",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "General Information"
+   ],
+   "label": "About the School of Management and Labor Relations",
+   "url": "/schools/smlr/gen-info/about-the-school",
+   "page_id": "VCfakh7R6sXveI8SBANI",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "General Information"
+   ],
+   "label": "Academic Policies and Procedures",
+   "url": "/schools/smlr/gen-info/academic-policies-procedures-smlr",
+   "page_id": "rMqEITIMbIFV0xIggs6n",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "General Information"
+   ],
+   "label": "Mission of the School",
+   "url": "/schools/smlr/gen-info/mission",
+   "page_id": "V3OYIqLyFr1sABnVu8Bu",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "General Information"
+   ],
+   "label": "Faculty",
+   "url": "/schools/smlr/gen-info/faculty",
+   "page_id": "OGoVp4gdSNOP099Ez3r6",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Labor Studies and Employment Relations"
+   ],
+   "label": "Labor Studies and Employment Relations",
+   "url": "/schools/smlr/labor-studies-employment-relations/ls-er",
+   "page_id": "h0lhrDJ6s76tGlPqKNol",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Labor Studies and Employment Relations",
+    "Program Information"
+   ],
+   "label": "Program Information",
+   "url": "/schools/smlr/labor-studies-employment-relations/program-information/program-information",
+   "page_id": "aPVVzdATRXA04wWzaygv",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Labor Studies and Employment Relations",
+    "Program Information"
+   ],
+   "label": "Internships and Scholarships",
+   "url": "/schools/smlr/labor-studies-employment-relations/program-information/interships-scholarships",
+   "page_id": "uJBCPl50Pu9PHLmVsZMz",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Labor Studies and Employment Relations",
+    "Program Information"
+   ],
+   "label": "Independent Study",
+   "url": "/schools/smlr/labor-studies-employment-relations/program-information/independent-study",
+   "page_id": "lruVt0vYekgiOiTWcEcD",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Labor Studies and Employment Relations",
+    "Program Information"
+   ],
+   "label": "Scholastic Honors",
+   "url": "/schools/smlr/labor-studies-employment-relations/program-information/scholastic-honors",
+   "page_id": "mZR7m5FdEGo6s7U3It1Q",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Labor Studies and Employment Relations",
+    "Program Information"
+   ],
+   "label": "Undergraduate Students in Graduate Courses",
+   "url": "/schools/smlr/labor-studies-employment-relations/program-information/undergrad-students-grad-courses",
+   "page_id": "XlHmglpmiG7HdlA8PiyR",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Labor Studies and Employment Relations",
+    "Program Information"
+   ],
+   "label": "Labor Studies Courses",
+   "url": "/schools/smlr/labor-studies-employment-relations/program-information/courses",
+   "page_id": "uW6KLuQorgOU2P1fbaWm",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Labor Studies and Employment Relations"
+   ],
+   "label": "Bachelor of Arts in Labor Studies and Employment Relations",
+   "url": "/schools/smlr/labor-studies-employment-relations/ba-ls-er",
+   "page_id": "REIzDR2qnTiC6LfUpVmP",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Labor Studies and Employment Relations"
+   ],
+   "label": "Bachelor of Science in Labor and Employment Relations",
+   "url": "/schools/smlr/labor-studies-employment-relations/bs-labor-employment-relations",
+   "page_id": "qX5AoCJgoFiZt8XPsJOh",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Labor Studies and Employment Relations"
+   ],
+   "label": "Off-Campus Labor Studies and Employment Relations Programs",
+   "url": "/schools/smlr/labor-studies-employment-relations/off-campus-ls-er-programs",
+   "page_id": "nM5eV66jbFchBn1oWFcQ",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Labor Studies and Employment Relations"
+   ],
+   "label": "Bachelor of Science in Management and Work",
+   "url": "/schools/smlr/labor-studies-employment-relations/bachelor-of-science-in-management-and-work",
+   "page_id": "PU7Sh1ATOJozxLqallSd",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Labor Studies and Employment Relations"
+   ],
+   "label": "SMLR Honors Program",
+   "url": "/schools/smlr/labor-studies-employment-relations/departmental-honors-programs",
+   "page_id": "HfJzxp8eJmjdOWCj5VpX",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Labor Studies and Employment Relations"
+   ],
+   "label": "Labor Studies Courses",
+   "url": "/schools/smlr/labor-studies-employment-relations/labor-studies-courses",
+   "page_id": "uW6KLuQorgOU2P1fbaWm",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Human Resource Management"
+   ],
+   "label": "Human Resource Management",
+   "url": "/schools/smlr/hr-management/human-resource-management",
+   "page_id": "rmI4N5JyhbG2oLrbxR4N",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Human Resource Management"
+   ],
+   "label": "About Our Programs",
+   "url": "/schools/smlr/hr-management/about-programs",
+   "page_id": "ydlSfZE7gxoaTTllZx9C",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Human Resource Management"
+   ],
+   "label": "Bachelor of Arts in Human Resource Management",
+   "url": "/schools/smlr/hr-management/ba-hrm",
+   "page_id": "aqxsH3XwCo0T6svvJXx5",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Human Resource Management"
+   ],
+   "label": "Internships and Independent Study",
+   "url": "/schools/smlr/hr-management/internships-and-independent-study",
+   "page_id": "fn1MWYkCtKanI98JteGU",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Human Resource Management"
+   ],
+   "label": "Undergraduate Students in Graduate Courses and Transfer Credits (SMLR-U)",
+   "url": "/schools/smlr/hr-management/undergraduate-students-in-graduate-courses-and-transfer-credits",
+   "page_id": "dMAzvpm7bN2GJtOnFWpu",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Human Resource Management"
+   ],
+   "label": "Minor in Human Resource Management",
+   "url": "/schools/smlr/hr-management/minor-hrm",
+   "page_id": "X7Lc67PjgIn8icX5Xsdb",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Human Resource Management"
+   ],
+   "label": "Minor in HR Analytics",
+   "url": "/schools/smlr/hr-management/minor-in-hr-analytics",
+   "page_id": "b57b0XnUnT31jONYWKYQ",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Human Resource Management"
+   ],
+   "label": "SMLR Honors Program",
+   "url": "/schools/smlr/hr-management/smlr-honors-program",
+   "page_id": "HfJzxp8eJmjdOWCj5VpX",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Human Resource Management"
+   ],
+   "label": "Human Resource Management Courses",
+   "url": "/schools/smlr/hr-management/courses",
+   "page_id": "nYgJD6gGv438t4EQlYOi",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Management and Work"
+   ],
+   "label": "Bachelor of Science in Management and Work ",
+   "url": "/schools/smlr/management-and-work/bachelor-of-science-in-management-and-work",
+   "page_id": "PU7Sh1ATOJozxLqallSd",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Management and Work"
+   ],
+   "label": "SMLR Honors Program",
+   "url": "/schools/smlr/management-and-work/smlr-honors-program",
+   "page_id": "HfJzxp8eJmjdOWCj5VpX",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Management and Work"
+   ],
+   "label": "Management and Work Courses",
+   "url": "/schools/smlr/management-and-work/management-and-work-courses",
+   "page_id": "pLK6QIdnbhXei4n6YvQw",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Five-Year Programs"
+   ],
+   "label": "Five Year Programs",
+   "url": "/schools/smlr/five-year-programs/five-year-programs",
+   "page_id": "dOm4G8w9zxJKG9gvqndL",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Five-Year Programs"
+   ],
+   "label": "Bachelor/Master of Labor and Employment Relations",
+   "url": "/schools/smlr/five-year-programs/ba-ma-labor-employment-relations",
+   "page_id": "hmcnb0lHG96wK5g2v07s",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [
+    "Five-Year Programs"
+   ],
+   "label": "Master's Advantage Plan (M.A.P.)",
+   "url": "/schools/smlr/five-year-programs/map",
+   "page_id": "xMxGQC3kO48pmMHJ4Jcm",
+   "class": "program_area_page_uncoded"
+  },
+  {
+   "school_slug": "smlr",
+   "trail": [],
+   "label": "Academic Policies and Procedures",
+   "url": "/schools/smlr/academic-policies-and-procedures",
+   "page_id": "rMqEITIMbIFV0xIggs6n",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "honors-college",
+   "trail": [
+    "About the Honors College"
+   ],
+   "label": "About the Honors College",
+   "url": "/schools/honors-college/about/about",
+   "page_id": "SWxlfZZ5WvbIxCuhxkK9",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "honors-college",
+   "trail": [
+    "About the Honors College"
+   ],
+   "label": "History and Mission",
+   "url": "/schools/honors-college/about/history-mission",
+   "page_id": "TJFHMEBUlhSOwnoDLAew",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "honors-college",
+   "trail": [
+    "About the Honors College"
+   ],
+   "label": "Participating Schools",
+   "url": "/schools/honors-college/about/participating-schools",
+   "page_id": "zwDeDwa5SilUiuD9Oqte",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "honors-college",
+   "trail": [
+    "Academic Requirements"
+   ],
+   "label": "Academic Requirements",
+   "url": "/schools/honors-college/aca-req/academic-reqs",
+   "page_id": "IWqSWueIO1iyfYyM7rDq",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "honors-college",
+   "trail": [
+    "Academic Requirements"
+   ],
+   "label": "School and Major Requirements",
+   "url": "/schools/honors-college/aca-req/school-major-req",
+   "page_id": "rx8djlUy7XILjVsmryaX",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "honors-college",
+   "trail": [
+    "Academic Requirements"
+   ],
+   "label": "Honors College Coursework",
+   "url": "/schools/honors-college/aca-req/coursework",
+   "page_id": "OcfXQPw9HXIYh7AYwM80",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "honors-college",
+   "trail": [
+    "Academic Requirements"
+   ],
+   "label": "Service",
+   "url": "/schools/honors-college/aca-req/service",
+   "page_id": "Ma3dXybSVfeqFi6C1h7v",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "honors-college",
+   "trail": [
+    "Academic Requirements"
+   ],
+   "label": "Honors Sections and Honors Contract Courses",
+   "url": "/schools/honors-college/aca-req/sections-contract-courses",
+   "page_id": "WaxyVZaKfCxQGd1YsQkm",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "honors-college",
+   "trail": [
+    "Academic Requirements"
+   ],
+   "label": "Academic Standing",
+   "url": "/schools/honors-college/aca-req/academic-standing",
+   "page_id": "z6dtVt6pj57JXo4W1Vuo",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "honors-college",
+   "trail": [
+    "Academic Requirements"
+   ],
+   "label": "Graduation Requirements",
+   "url": "/schools/honors-college/aca-req/graduation",
+   "page_id": "nWPucuxMyBV13strQKDM",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "honors-college",
+   "trail": [
+    "Student Life and Extracurricular Opportunities"
+   ],
+   "label": "Student Life and Extracurricular Opportunities",
+   "url": "/schools/honors-college/student-life-extracurricular-opportunities/landing",
+   "page_id": "H7R4HtFISkqGS8V9Gf6f",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "honors-college",
+   "trail": [
+    "Student Life and Extracurricular Opportunities"
+   ],
+   "label": "Housing and Residential Programming",
+   "url": "/schools/honors-college/student-life-extracurricular-opportunities/housing",
+   "page_id": "XfQFvTiL4sMx4iHi4CCE",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "honors-college",
+   "trail": [
+    "Student Life and Extracurricular Opportunities"
+   ],
+   "label": "Academic Advising",
+   "url": "/schools/honors-college/student-life-extracurricular-opportunities/academic-advising",
+   "page_id": "I0V11kLdwhnKYJLfPhzY",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "honors-college",
+   "trail": [
+    "Student Life and Extracurricular Opportunities"
+   ],
+   "label": "Professional Development",
+   "url": "/schools/honors-college/student-life-extracurricular-opportunities/professional-development",
+   "page_id": "di9X5p6WWwp76WAfNRc5",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "honors-college",
+   "trail": [
+    "Student Life and Extracurricular Opportunities"
+   ],
+   "label": "Mentoring Programs",
+   "url": "/schools/honors-college/student-life-extracurricular-opportunities/mentoring-program",
+   "page_id": "BFn4BO35qxKStjuzxNdu",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "honors-college",
+   "trail": [
+    "Student Life and Extracurricular Opportunities"
+   ],
+   "label": "Student Life",
+   "url": "/schools/honors-college/student-life-extracurricular-opportunities/student-life",
+   "page_id": "SVALBAD73oHYu7Ubge9v",
+   "class": "other_page"
+  },
+  {
+   "school_slug": "honors-college",
+   "trail": [],
+   "label": "Administration",
+   "url": "/schools/honors-college/administration",
+   "page_id": "qE6T7vAoSAzuNDCHzDGh",
+   "class": "other_page"
+  }
+ ]
+}

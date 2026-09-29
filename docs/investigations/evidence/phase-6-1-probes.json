@@ -1,0 +1,911 @@
+{
+ "generated_at": "2026-09-29T05:46:59.342780+00:00",
+ "user_agent": "CoursePilot/0.1 (Rutgers student academic planning project; investigation)",
+ "systems": {
+  "degree_navigator": {
+   "entry": "http://nbdn.rutgers.edu",
+   "redirect_chain": [
+    {
+     "status": 301,
+     "url": "http://nbdn.rutgers.edu"
+    },
+    {
+     "status": 200,
+     "url": "https://nbdn.rutgers.edu/"
+    }
+   ],
+   "hosts_visited": [
+    "nbdn.rutgers.edu"
+   ],
+   "final_status": 200,
+   "content_type": "text/html; charset=utf-8",
+   "bytes": 38208,
+   "title": "Home",
+   "login_markers": [
+    "login"
+   ],
+   "password_field": false,
+   "form_actions": [
+    "/"
+   ],
+   "script_srcs": [
+    "/media/vendor/metismenujs/js/metismenujs.min.js?1.4.0",
+    "/media/vendor/skipto/js/skipto.min.js?4.1.7",
+    "/media/regularlabs/js/script.min.js?12682f",
+    "/media/system/js/core.min.js?a3d8f8",
+    "/media/vendor/webcomponentsjs/js/webcomponents-bundle.min.js?2.8.0",
+    "/media/vendor/bootstrap/js/popover.min.js?5.3.8",
+    "/media/vendor/bootstrap/js/modal.min.js?5.3.8",
+    "/media/vendor/jquery/js/jquery.min.js?3.7.1",
+    "/media/legacy/js/jquery-noconflict.min.js?504da4",
+    "/media/vendor/bootstrap/js/collapse.min.js?5.3.8",
+    "/media/templates/site/cassiopeia/js/template.min.js?12682f",
+    "/media/vendor/bootstrap/js/offcanvas.min.js?5.3.8",
+    "/media/templates/site/cassiopeia/js/mod_menu/menu-metismenu.min.js?12682f",
+    "/media/mod_menu/js/menu.min.js?12682f",
+    "/media/system/js/joomla-hidden-mail.min.js?80d9c7",
+    "/media/system/js/messages.min.js?9a4811",
+    "/media/plg_system_jcemediabox/js/jcemediabox.min.js?eb6775d1512159161e78f11c8b83a3a1"
+   ],
+   "server_rendered_text_chars": 8242
+  },
+  "csp": {
+   "entry": "https://sims.rutgers.edu/csp/",
+   "redirect_chain": [
+    {
+     "status": 200,
+     "url": "https://sims.rutgers.edu/csp/"
+    }
+   ],
+   "hosts_visited": [
+    "sims.rutgers.edu"
+   ],
+   "final_status": 200,
+   "content_type": "text/html;charset=UTF-8",
+   "bytes": 7651,
+   "title": "Login - Course Schedule Planner - Rutgers University",
+   "login_markers": [
+    "login",
+    "netid"
+   ],
+   "password_field": false,
+   "form_actions": [],
+   "script_srcs": [
+    "//sis.rutgers.edu/content/dojo/dojo-release-1.10.4/dojo/dojo.js"
+   ],
+   "server_rendered_text_chars": 4044
+  },
+  "webreg": {
+   "entry": "http://webreg.rutgers.edu",
+   "redirect_chain": [
+    {
+     "status": 302,
+     "url": "http://webreg.rutgers.edu"
+    },
+    {
+     "status": 200,
+     "url": "https://sims.rutgers.edu/webreg/"
+    }
+   ],
+   "hosts_visited": [
+    "sims.rutgers.edu",
+    "webreg.rutgers.edu"
+   ],
+   "final_status": 200,
+   "content_type": "text/html;charset=ISO-8859-1",
+   "bytes": 7869,
+   "title": "WebReg | Home Page",
+   "login_markers": [
+    "login",
+    "netid",
+    "password"
+   ],
+   "password_field": false,
+   "form_actions": [],
+   "script_srcs": [
+    "//sis.rutgers.edu/content/dojo/dojo-release-1.10.4/dojo/dojo.js",
+    "/webreg/js/index.js"
+   ],
+   "server_rendered_text_chars": 2942
+  },
+  "soc_app": {
+   "entry": "https://classes.rutgers.edu/soc/",
+   "redirect_chain": [
+    {
+     "status": 200,
+     "url": "https://classes.rutgers.edu/soc/"
+    }
+   ],
+   "hosts_visited": [
+    "classes.rutgers.edu"
+   ],
+   "final_status": 200,
+   "content_type": "text/html;charset=ISO-8859-1",
+   "bytes": 95001,
+   "title": "Schedule of Classes - Rutgers University",
+   "login_markers": [],
+   "password_field": false,
+   "form_actions": [
+    "https://search.rutgers.edu/web.html"
+   ],
+   "script_srcs": [
+    "//sis.rutgers.edu/content/jquery/jquery-1.11.3.min.js",
+    "//sis.rutgers.edu/content/jquery/jquery-ui-1.11.4/jquery-ui.js",
+    "//sis.rutgers.edu/content/dojo/dojo-release-1.10.4/dojo/dojo.js",
+    "/soc/js/soc_utils.js?v=2026-07-13",
+    "/soc/js/soc_app.CourseDownloadService.js?v=2026-07-13",
+    "/soc/js/soc_app.DropdownService.js?v=2026-07-13",
+    "/soc/js/soc_app.FilterService.js?v=2026-07-13",
+    "/soc/js/soc_app.FormService.js?v=2026-07-13",
+    "/soc/js/soc_app.SearchService.js?v=2026-07-13",
+    "/soc/js/soc_app.js?v=2026-07-13"
+   ],
+   "server_rendered_text_chars": 68584
+  }
+ },
+ "catalog": {
+  "2026-2027": {
+   "ejbsppp": {
+    "status": 404,
+    "bytes": 273421,
+    "has_nuxt_payload": true,
+    "program_listing_paths": [],
+    "foreign_program_paths": [
+     "/schools/sas/program-listing/african-area-studies-016",
+     "/schools/sas/program-listing/african-middleeastern-southasian-lan-lit-013",
+     "/schools/sas/program-listing/africana-studies-014",
+     "/schools/sas/program-listing/american-studies-050",
+     "/schools/sas/program-listing/anthropology-070",
+     "/schools/sas/program-listing/archaeology-075",
+     "/schools/sas/program-listing/architectural-studies-076",
+     "/schools/sas/program-listing/art-080",
+     "/schools/sas/program-listing/art-history-082",
+     "/schools/sas/program-listing/arts-and-sciences-090"
+    ]
+   },
+   "eng": {
+    "status": 404,
+    "bytes": 273421,
+    "has_nuxt_payload": true,
+    "program_listing_paths": [],
+    "foreign_program_paths": [
+     "/schools/sas/program-listing/african-area-studies-016",
+     "/schools/sas/program-listing/african-middleeastern-southasian-lan-lit-013",
+     "/schools/sas/program-listing/africana-studies-014",
+     "/schools/sas/program-listing/american-studies-050",
+     "/schools/sas/program-listing/anthropology-070",
+     "/schools/sas/program-listing/archaeology-075",
+     "/schools/sas/program-listing/architectural-studies-076",
+     "/schools/sas/program-listing/art-080",
+     "/schools/sas/program-listing/art-history-082",
+     "/schools/sas/program-listing/arts-and-sciences-090"
+    ]
+   },
+   "honors-college": {
+    "status": 404,
+    "bytes": 273421,
+    "has_nuxt_payload": true,
+    "program_listing_paths": [],
+    "foreign_program_paths": [
+     "/schools/sas/program-listing/african-area-studies-016",
+     "/schools/sas/program-listing/african-middleeastern-southasian-lan-lit-013",
+     "/schools/sas/program-listing/africana-studies-014",
+     "/schools/sas/program-listing/american-studies-050",
+     "/schools/sas/program-listing/anthropology-070",
+     "/schools/sas/program-listing/archaeology-075",
+     "/schools/sas/program-listing/architectural-studies-076",
+     "/schools/sas/program-listing/art-080",
+     "/schools/sas/program-listing/art-history-082",
+     "/schools/sas/program-listing/arts-and-sciences-090"
+    ]
+   },
+   "mgsa": {
+    "status": 404,
+    "bytes": 273421,
+    "has_nuxt_payload": true,
+    "program_listing_paths": [],
+    "foreign_program_paths": [
+     "/schools/sas/program-listing/african-area-studies-016",
+     "/schools/sas/program-listing/african-middleeastern-southasian-lan-lit-013",
+     "/schools/sas/program-listing/africana-studies-014",
+     "/schools/sas/program-listing/american-studies-050",
+     "/schools/sas/program-listing/anthropology-070",
+     "/schools/sas/program-listing/archaeology-075",
+     "/schools/sas/program-listing/architectural-studies-076",
+     "/schools/sas/program-listing/art-080",
+     "/schools/sas/program-listing/art-history-082",
+     "/schools/sas/program-listing/arts-and-sciences-090"
+    ]
+   },
+   "pharmacy": {
+    "status": 404,
+    "bytes": 273421,
+    "has_nuxt_payload": true,
+    "program_listing_paths": [],
+    "foreign_program_paths": [
+     "/schools/sas/program-listing/african-area-studies-016",
+     "/schools/sas/program-listing/african-middleeastern-southasian-lan-lit-013",
+     "/schools/sas/program-listing/africana-studies-014",
+     "/schools/sas/program-listing/american-studies-050",
+     "/schools/sas/program-listing/anthropology-070",
+     "/schools/sas/program-listing/archaeology-075",
+     "/schools/sas/program-listing/architectural-studies-076",
+     "/schools/sas/program-listing/art-080",
+     "/schools/sas/program-listing/art-history-082",
+     "/schools/sas/program-listing/arts-and-sciences-090"
+    ]
+   },
+   "rbsnb": {
+    "status": 404,
+    "bytes": 273421,
+    "has_nuxt_payload": true,
+    "program_listing_paths": [],
+    "foreign_program_paths": [
+     "/schools/sas/program-listing/african-area-studies-016",
+     "/schools/sas/program-listing/african-middleeastern-southasian-lan-lit-013",
+     "/schools/sas/program-listing/africana-studies-014",
+     "/schools/sas/program-listing/american-studies-050",
+     "/schools/sas/program-listing/anthropology-070",
+     "/schools/sas/program-listing/archaeology-075",
+     "/schools/sas/program-listing/architectural-studies-076",
+     "/schools/sas/program-listing/art-080",
+     "/schools/sas/program-listing/art-history-082",
+     "/schools/sas/program-listing/arts-and-sciences-090"
+    ]
+   },
+   "sas": {
+    "status": 404,
+    "bytes": 273421,
+    "has_nuxt_payload": true,
+    "program_listing_paths": [
+     "/schools/sas/program-listing/african-area-studies-016",
+     "/schools/sas/program-listing/african-middleeastern-southasian-lan-lit-013",
+     "/schools/sas/program-listing/africana-studies-014",
+     "/schools/sas/program-listing/american-studies-050",
+     "/schools/sas/program-listing/anthropology-070",
+     "/schools/sas/program-listing/archaeology-075",
+     "/schools/sas/program-listing/architectural-studies-076",
+     "/schools/sas/program-listing/art-080",
+     "/schools/sas/program-listing/art-history-082",
+     "/schools/sas/program-listing/arts-and-sciences-090",
+     "/schools/sas/program-listing/asian-studies-098",
+     "/schools/sas/program-listing/astrobiology-101",
+     "/schools/sas/program-listing/astrophysics-105",
+     "/schools/sas/program-listing/availability-of-majors",
+     "/schools/sas/program-listing/biological-sciences-119",
+     "/schools/sas/program-listing/cell-biology-neuroscience-146",
+     "/schools/sas/program-listing/chemistry-160",
+     "/schools/sas/program-listing/chinese-165",
+     "/schools/sas/program-listing/cinema-studies-175",
+     "/schools/sas/program-listing/classics-190",
+     "/schools/sas/program-listing/cognitive-science-185",
+     "/schools/sas/program-listing/comparative-literature-195",
+     "/schools/sas/program-listing/computer-science-198",
+     "/schools/sas/program-listing/course-notation-information",
+     "/schools/sas/program-listing/criminal-justice-202",
+     "/schools/sas/program-listing/criminology-204",
+     "/schools/sas/program-listing/dance-203",
+     "/schools/sas/program-listing/data-science-219",
+     "/schools/sas/program-listing/earth-planetary-sciences-460",
+     "/schools/sas/program-listing/economics-220",
+     "/schools/sas/program-listing/education-300",
+     "/schools/sas/program-listing/english",
+     "/schools/sas/program-listing/environmental-studies-381",
+     "/schools/sas/program-listing/european-studies-360",
+     "/schools/sas/program-listing/exercise-science-377",
+     "/schools/sas/program-listing/french-420",
+     "/schools/sas/program-listing/gender-media-438",
+     "/schools/sas/program-listing/genetics-447",
+     "/schools/sas/program-listing/genetics-genomics",
+     "/schools/sas/program-listing/geography-450",
+     "/schools/sas/program-listing/german-470",
+     "/schools/sas/program-listing/greek-modern-greek-studies-489",
+     "/schools/sas/program-listing/health-society-502",
+     "/schools/sas/program-listing/history",
+     "/schools/sas/program-listing/history-french-joint-major-513",
+     "/schools/sas/program-listing/history-political-science-514",
+     "/schools/sas/program-listing/holocaust-studies-564",
+     "/schools/sas/program-listing/human-resource-management-533",
+     "/schools/sas/program-listing/hungarian-535",
+     "/schools/sas/program-listing/individualized-major-555",
+     "/schools/sas/program-listing/interdisciplinary-studies-556",
+     "/schools/sas/program-listing/international-global-studies-558",
+     "/schools/sas/program-listing/italian-560",
+     "/schools/sas/program-listing/japanese-565",
+     "/schools/sas/program-listing/jewish-studies-563",
+     "/schools/sas/program-listing/korean-574",
+     "/schools/sas/program-listing/labor-studies-employment-relations-575",
+     "/schools/sas/program-listing/latin-american-studies-590",
+     "/schools/sas/program-listing/latino-caribbean-studies-595",
+     "/schools/sas/program-listing/law",
+     "/schools/sas/program-listing/life-sciences",
+     "/schools/sas/program-listing/linguistics-615",
+     "/schools/sas/program-listing/mathematics-640",
+     "/schools/sas/program-listing/medicine-dentistry",
+     "/schools/sas/program-listing/medieval-studies-667",
+     "/schools/sas/program-listing/middle-eastern-studies-685",
+     "/schools/sas/program-listing/military-education-air-force-690",
+     "/schools/sas/program-listing/military-education-army-691",
+     "/schools/sas/program-listing/military-education-naval-692",
+     "/schools/sas/program-listing/military-science-minor",
+     "/schools/sas/program-listing/molecular-biology-biochemistry-694",
+     "/schools/sas/program-listing/music",
+     "/schools/sas/program-listing/nursing",
+     "/schools/sas/program-listing/organizational-leadership-713",
+     "/schools/sas/program-listing/pharmacy",
+     "/schools/sas/program-listing/philosophy-730",
+     "/schools/sas/program-listing/physics-750",
+     "/schools/sas/program-listing/polish-787",
+     "/schools/sas/program-listing/political-science-790",
+     "/schools/sas/program-listing/portuguese-810",
+     "/schools/sas/program-listing/psychology-830",
+     "/schools/sas/program-listing/religion-840",
+     "/schools/sas/program-listing/russian-860",
+     "/schools/sas/program-listing/sexualities-studies-888",
+     "/schools/sas/program-listing/slavic-east-european-studies-minor-861",
+     "/schools/sas/program-listing/social-justice-904",
+     "/schools/sas/program-listing/social-work-910",
+     "/schools/sas/program-listing/sociology-920",
+     "/schools/sas/program-listing/south-asian-studies-925",
+     "/schools/sas/program-listing/spanish-940",
+     "/schools/sas/program-listing/sport-management-955",
+     "/schools/sas/program-listing/statistics-960",
+     "/schools/sas/program-listing/study-abroad-959",
+     "/schools/sas/program-listing/theater-965",
+     "/schools/sas/program-listing/ukrainian-967",
+     "/schools/sas/program-listing/womens-gender-and-sexuality-studies-988",
+     "/schools/sas/program-listing/world-language-proficiency-certificates"
+    ],
+    "foreign_program_paths": []
+   },
+   "sci": {
+    "status": 404,
+    "bytes": 273421,
+    "has_nuxt_payload": true,
+    "program_listing_paths": [],
+    "foreign_program_paths": [
+     "/schools/sas/program-listing/african-area-studies-016",
+     "/schools/sas/program-listing/african-middleeastern-southasian-lan-lit-013",
+     "/schools/sas/program-listing/africana-studies-014",
+     "/schools/sas/program-listing/american-studies-050",
+     "/schools/sas/program-listing/anthropology-070",
+     "/schools/sas/program-listing/archaeology-075",
+     "/schools/sas/program-listing/architectural-studies-076",
+     "/schools/sas/program-listing/art-080",
+     "/schools/sas/program-listing/art-history-082",
+     "/schools/sas/program-listing/arts-and-sciences-090"
+    ]
+   },
+   "sebs": {
+    "status": 404,
+    "bytes": 273421,
+    "has_nuxt_payload": true,
+    "program_listing_paths": [],
+    "foreign_program_paths": [
+     "/schools/sas/program-listing/african-area-studies-016",
+     "/schools/sas/program-listing/african-middleeastern-southasian-lan-lit-013",
+     "/schools/sas/program-listing/africana-studies-014",
+     "/schools/sas/program-listing/american-studies-050",
+     "/schools/sas/program-listing/anthropology-070",
+     "/schools/sas/program-listing/archaeology-075",
+     "/schools/sas/program-listing/architectural-studies-076",
+     "/schools/sas/program-listing/art-080",
+     "/schools/sas/program-listing/art-history-082",
+     "/schools/sas/program-listing/arts-and-sciences-090"
+    ]
+   },
+   "smlr": {
+    "status": 404,
+    "bytes": 273421,
+    "has_nuxt_payload": true,
+    "program_listing_paths": [],
+    "foreign_program_paths": [
+     "/schools/sas/program-listing/african-area-studies-016",
+     "/schools/sas/program-listing/african-middleeastern-southasian-lan-lit-013",
+     "/schools/sas/program-listing/africana-studies-014",
+     "/schools/sas/program-listing/american-studies-050",
+     "/schools/sas/program-listing/anthropology-070",
+     "/schools/sas/program-listing/archaeology-075",
+     "/schools/sas/program-listing/architectural-studies-076",
+     "/schools/sas/program-listing/art-080",
+     "/schools/sas/program-listing/art-history-082",
+     "/schools/sas/program-listing/arts-and-sciences-090"
+    ]
+   },
+   "ssw": {
+    "status": 404,
+    "bytes": 273421,
+    "has_nuxt_payload": true,
+    "program_listing_paths": [],
+    "foreign_program_paths": [
+     "/schools/sas/program-listing/african-area-studies-016",
+     "/schools/sas/program-listing/african-middleeastern-southasian-lan-lit-013",
+     "/schools/sas/program-listing/africana-studies-014",
+     "/schools/sas/program-listing/american-studies-050",
+     "/schools/sas/program-listing/anthropology-070",
+     "/schools/sas/program-listing/archaeology-075",
+     "/schools/sas/program-listing/architectural-studies-076",
+     "/schools/sas/program-listing/art-080",
+     "/schools/sas/program-listing/art-history-082",
+     "/schools/sas/program-listing/arts-and-sciences-090"
+    ]
+   }
+  },
+  "2025-2026": {
+   "ejbsppp": {
+    "status": 404,
+    "bytes": 259375,
+    "has_nuxt_payload": true,
+    "program_listing_paths": [],
+    "foreign_program_paths": [
+     "/schools/sas/program-listing/accounting-major-010",
+     "/schools/sas/program-listing/african-area-studies-016",
+     "/schools/sas/program-listing/african-middleeastern-southasian-lan-lit-013",
+     "/schools/sas/program-listing/africana-studies-014",
+     "/schools/sas/program-listing/american-studies-050",
+     "/schools/sas/program-listing/anthropology-070",
+     "/schools/sas/program-listing/archaeology-075",
+     "/schools/sas/program-listing/architectural-studies-076",
+     "/schools/sas/program-listing/art-080",
+     "/schools/sas/program-listing/art-history-082"
+    ]
+   },
+   "eng": {
+    "status": 404,
+    "bytes": 259375,
+    "has_nuxt_payload": true,
+    "program_listing_paths": [],
+    "foreign_program_paths": [
+     "/schools/sas/program-listing/accounting-major-010",
+     "/schools/sas/program-listing/african-area-studies-016",
+     "/schools/sas/program-listing/african-middleeastern-southasian-lan-lit-013",
+     "/schools/sas/program-listing/africana-studies-014",
+     "/schools/sas/program-listing/american-studies-050",
+     "/schools/sas/program-listing/anthropology-070",
+     "/schools/sas/program-listing/archaeology-075",
+     "/schools/sas/program-listing/architectural-studies-076",
+     "/schools/sas/program-listing/art-080",
+     "/schools/sas/program-listing/art-history-082"
+    ]
+   },
+   "honors-college": {
+    "status": 404,
+    "bytes": 259375,
+    "has_nuxt_payload": true,
+    "program_listing_paths": [],
+    "foreign_program_paths": [
+     "/schools/sas/program-listing/accounting-major-010",
+     "/schools/sas/program-listing/african-area-studies-016",
+     "/schools/sas/program-listing/african-middleeastern-southasian-lan-lit-013",
+     "/schools/sas/program-listing/africana-studies-014",
+     "/schools/sas/program-listing/american-studies-050",
+     "/schools/sas/program-listing/anthropology-070",
+     "/schools/sas/program-listing/archaeology-075",
+     "/schools/sas/program-listing/architectural-studies-076",
+     "/schools/sas/program-listing/art-080",
+     "/schools/sas/program-listing/art-history-082"
+    ]
+   },
+   "mgsa": {
+    "status": 404,
+    "bytes": 259375,
+    "has_nuxt_payload": true,
+    "program_listing_paths": [],
+    "foreign_program_paths": [
+     "/schools/sas/program-listing/accounting-major-010",
+     "/schools/sas/program-listing/african-area-studies-016",
+     "/schools/sas/program-listing/african-middleeastern-southasian-lan-lit-013",
+     "/schools/sas/program-listing/africana-studies-014",
+     "/schools/sas/program-listing/american-studies-050",
+     "/schools/sas/program-listing/anthropology-070",
+     "/schools/sas/program-listing/archaeology-075",
+     "/schools/sas/program-listing/architectural-studies-076",
+     "/schools/sas/program-listing/art-080",
+     "/schools/sas/program-listing/art-history-082"
+    ]
+   },
+   "pharmacy": {
+    "status": 404,
+    "bytes": 259375,
+    "has_nuxt_payload": true,
+    "program_listing_paths": [],
+    "foreign_program_paths": [
+     "/schools/sas/program-listing/accounting-major-010",
+     "/schools/sas/program-listing/african-area-studies-016",
+     "/schools/sas/program-listing/african-middleeastern-southasian-lan-lit-013",
+     "/schools/sas/program-listing/africana-studies-014",
+     "/schools/sas/program-listing/american-studies-050",
+     "/schools/sas/program-listing/anthropology-070",
+     "/schools/sas/program-listing/archaeology-075",
+     "/schools/sas/program-listing/architectural-studies-076",
+     "/schools/sas/program-listing/art-080",
+     "/schools/sas/program-listing/art-history-082"
+    ]
+   },
+   "rbsnb": {
+    "status": 404,
+    "bytes": 259375,
+    "has_nuxt_payload": true,
+    "program_listing_paths": [],
+    "foreign_program_paths": [
+     "/schools/sas/program-listing/accounting-major-010",
+     "/schools/sas/program-listing/african-area-studies-016",
+     "/schools/sas/program-listing/african-middleeastern-southasian-lan-lit-013",
+     "/schools/sas/program-listing/africana-studies-014",
+     "/schools/sas/program-listing/american-studies-050",
+     "/schools/sas/program-listing/anthropology-070",
+     "/schools/sas/program-listing/archaeology-075",
+     "/schools/sas/program-listing/architectural-studies-076",
+     "/schools/sas/program-listing/art-080",
+     "/schools/sas/program-listing/art-history-082"
+    ]
+   },
+   "sas": {
+    "status": 404,
+    "bytes": 259375,
+    "has_nuxt_payload": true,
+    "program_listing_paths": [
+     "/schools/sas/program-listing/accounting-major-010",
+     "/schools/sas/program-listing/african-area-studies-016",
+     "/schools/sas/program-listing/african-middleeastern-southasian-lan-lit-013",
+     "/schools/sas/program-listing/africana-studies-014",
+     "/schools/sas/program-listing/american-studies-050",
+     "/schools/sas/program-listing/anthropology-070",
+     "/schools/sas/program-listing/archaeology-075",
+     "/schools/sas/program-listing/architectural-studies-076",
+     "/schools/sas/program-listing/art-080",
+     "/schools/sas/program-listing/art-history-082",
+     "/schools/sas/program-listing/arts-and-sciences-090",
+     "/schools/sas/program-listing/asian-studies-098",
+     "/schools/sas/program-listing/astrobiology-101",
+     "/schools/sas/program-listing/astrophysics-105",
+     "/schools/sas/program-listing/biological-sciences-119",
+     "/schools/sas/program-listing/cell-biology-neuroscience-146",
+     "/schools/sas/program-listing/chemistry-160",
+     "/schools/sas/program-listing/chinese-165",
+     "/schools/sas/program-listing/cinema-studies-175",
+     "/schools/sas/program-listing/classics-190",
+     "/schools/sas/program-listing/cognitive-science-185",
+     "/schools/sas/program-listing/comparative-literature-195",
+     "/schools/sas/program-listing/computer-science-198",
+     "/schools/sas/program-listing/criminal-justice-202",
+     "/schools/sas/program-listing/criminology-204",
+     "/schools/sas/program-listing/dance-203",
+     "/schools/sas/program-listing/data-science-219",
+     "/schools/sas/program-listing/earth-planetary-sciences-460",
+     "/schools/sas/program-listing/economics-220",
+     "/schools/sas/program-listing/education-300",
+     "/schools/sas/program-listing/english",
+     "/schools/sas/program-listing/environmental-studies-381",
+     "/schools/sas/program-listing/european-studies-360",
+     "/schools/sas/program-listing/exercise-science-377",
+     "/schools/sas/program-listing/french-420",
+     "/schools/sas/program-listing/gender-media-438",
+     "/schools/sas/program-listing/genetics-447",
+     "/schools/sas/program-listing/geography-450",
+     "/schools/sas/program-listing/german-470",
+     "/schools/sas/program-listing/greek-modern-greek-studies-489",
+     "/schools/sas/program-listing/health-society-502",
+     "/schools/sas/program-listing/history",
+     "/schools/sas/program-listing/history-french-joint-major-513",
+     "/schools/sas/program-listing/history-political-science-514",
+     "/schools/sas/program-listing/holocaust-studies-564",
+     "/schools/sas/program-listing/human-resource-management-533",
+     "/schools/sas/program-listing/hungarian-535",
+     "/schools/sas/program-listing/individualized-major-555",
+     "/schools/sas/program-listing/interdisciplinary-studies-556",
+     "/schools/sas/program-listing/international-global-studies-558",
+     "/schools/sas/program-listing/italian-560",
+     "/schools/sas/program-listing/japanese-565",
+     "/schools/sas/program-listing/jewish-studies-563",
+     "/schools/sas/program-listing/korean-574",
+     "/schools/sas/program-listing/labor-studies-employment-relations-575",
+     "/schools/sas/program-listing/latin-american-studies-590",
+     "/schools/sas/program-listing/latino-caribbean-studies-595",
+     "/schools/sas/program-listing/law",
+     "/schools/sas/program-listing/life-sciences",
+     "/schools/sas/program-listing/linguistics-615",
+     "/schools/sas/program-listing/mathematics-640",
+     "/schools/sas/program-listing/medicine-dentistry",
+     "/schools/sas/program-listing/medieval-studies-667",
+     "/schools/sas/program-listing/middle-eastern-studies-685",
+     "/schools/sas/program-listing/military-education-air-force-690",
+     "/schools/sas/program-listing/military-education-army-691",
+     "/schools/sas/program-listing/military-education-naval-692",
+     "/schools/sas/program-listing/military-science-minor",
+     "/schools/sas/program-listing/molecular-biology-biochemistry-694",
+     "/schools/sas/program-listing/music",
+     "/schools/sas/program-listing/nursing",
+     "/schools/sas/program-listing/organizational-leadership-713",
+     "/schools/sas/program-listing/pharmacy",
+     "/schools/sas/program-listing/philosophy-730",
+     "/schools/sas/program-listing/physics-750",
+     "/schools/sas/program-listing/polish-787",
+     "/schools/sas/program-listing/political-science-790",
+     "/schools/sas/program-listing/portuguese-810",
+     "/schools/sas/program-listing/psychology-830",
+     "/schools/sas/program-listing/religion-840",
+     "/schools/sas/program-listing/russian-860",
+     "/schools/sas/program-listing/sexualities-studies-888",
+     "/schools/sas/program-listing/slavic-east-european-studies-minor-861",
+     "/schools/sas/program-listing/social-justice-904",
+     "/schools/sas/program-listing/social-work-910",
+     "/schools/sas/program-listing/sociology-920",
+     "/schools/sas/program-listing/south-asian-studies-925",
+     "/schools/sas/program-listing/spanish-940",
+     "/schools/sas/program-listing/sport-management-955",
+     "/schools/sas/program-listing/statistics-960",
+     "/schools/sas/program-listing/study-abroad-959",
+     "/schools/sas/program-listing/theater-965",
+     "/schools/sas/program-listing/ukrainian-967",
+     "/schools/sas/program-listing/womens-gender-and-sexuality-studies-988",
+     "/schools/sas/program-listing/world-language-proficiency-certificates"
+    ],
+    "foreign_program_paths": []
+   },
+   "sci": {
+    "status": 404,
+    "bytes": 259375,
+    "has_nuxt_payload": true,
+    "program_listing_paths": [],
+    "foreign_program_paths": [
+     "/schools/sas/program-listing/accounting-major-010",
+     "/schools/sas/program-listing/african-area-studies-016",
+     "/schools/sas/program-listing/african-middleeastern-southasian-lan-lit-013",
+     "/schools/sas/program-listing/africana-studies-014",
+     "/schools/sas/program-listing/american-studies-050",
+     "/schools/sas/program-listing/anthropology-070",
+     "/schools/sas/program-listing/archaeology-075",
+     "/schools/sas/program-listing/architectural-studies-076",
+     "/schools/sas/program-listing/art-080",
+     "/schools/sas/program-listing/art-history-082"
+    ]
+   },
+   "sebs": {
+    "status": 404,
+    "bytes": 259375,
+    "has_nuxt_payload": true,
+    "program_listing_paths": [],
+    "foreign_program_paths": [
+     "/schools/sas/program-listing/accounting-major-010",
+     "/schools/sas/program-listing/african-area-studies-016",
+     "/schools/sas/program-listing/african-middleeastern-southasian-lan-lit-013",
+     "/schools/sas/program-listing/africana-studies-014",
+     "/schools/sas/program-listing/american-studies-050",
+     "/schools/sas/program-listing/anthropology-070",
+     "/schools/sas/program-listing/archaeology-075",
+     "/schools/sas/program-listing/architectural-studies-076",
+     "/schools/sas/program-listing/art-080",
+     "/schools/sas/program-listing/art-history-082"
+    ]
+   },
+   "smlr": {
+    "status": 404,
+    "bytes": 259375,
+    "has_nuxt_payload": true,
+    "program_listing_paths": [],
+    "foreign_program_paths": [
+     "/schools/sas/program-listing/accounting-major-010",
+     "/schools/sas/program-listing/african-area-studies-016",
+     "/schools/sas/program-listing/african-middleeastern-southasian-lan-lit-013",
+     "/schools/sas/program-listing/africana-studies-014",
+     "/schools/sas/program-listing/american-studies-050",
+     "/schools/sas/program-listing/anthropology-070",
+     "/schools/sas/program-listing/archaeology-075",
+     "/schools/sas/program-listing/architectural-studies-076",
+     "/schools/sas/program-listing/art-080",
+     "/schools/sas/program-listing/art-history-082"
+    ]
+   },
+   "ssw": {
+    "status": 404,
+    "bytes": 259375,
+    "has_nuxt_payload": true,
+    "program_listing_paths": [],
+    "foreign_program_paths": [
+     "/schools/sas/program-listing/accounting-major-010",
+     "/schools/sas/program-listing/african-area-studies-016",
+     "/schools/sas/program-listing/african-middleeastern-southasian-lan-lit-013",
+     "/schools/sas/program-listing/africana-studies-014",
+     "/schools/sas/program-listing/american-studies-050",
+     "/schools/sas/program-listing/anthropology-070",
+     "/schools/sas/program-listing/archaeology-075",
+     "/schools/sas/program-listing/architectural-studies-076",
+     "/schools/sas/program-listing/art-080",
+     "/schools/sas/program-listing/art-history-082"
+    ]
+   }
+  }
+ },
+ "soc": {
+  "endpoints_referenced_by_soc_app": {
+   "/soc/api/openSections.json": [
+    "https://classes.rutgers.edu/soc/js/soc_utils.js?v=2026-07-13"
+   ],
+   "/soc/api/courses.json": [
+    "https://classes.rutgers.edu/soc/js/soc_utils.js?v=2026-07-13"
+   ]
+  },
+  "probes": {
+   "/soc/api/openSections.json": {
+    "url": "https://classes.rutgers.edu/soc/api/openSections.json?year=2026&term=9&campus=NB",
+    "status": 200,
+    "content_type": "application/json",
+    "bytes": 95865,
+    "json_type": "list",
+    "length": 11983,
+    "sample": [
+     "00007",
+     "00010",
+     "00018"
+    ]
+   }
+  }
+ },
+ "degree_navigator_followup": {
+  "dn_app": {
+   "chain": [
+    [
+     302,
+     "https://dn.rutgers.edu"
+    ],
+    [
+     302,
+     "https://dn.rutgers.edu/Home.aspx?pageid=default"
+    ],
+    [
+     200,
+     "https://cas.rutgers.edu/login?renew=true&service=https://dn.rutgers.edu/Default.aspx/"
+    ]
+   ],
+   "title": "CAS - Central Authentication Service NetID Login",
+   "password_field": true,
+   "text_excerpt": " CAS - Central Authentication Service NetID Login CAS Central Authentication Service Actuator Endpoints Documentation Pull Requests Contributor Guidelines Support Mailing Lists Blog Browser cookies disabled Your browser does not accept cookies. Single Sign On WILL NOT WORK. OK NetID Login service ui fragment --> --> --> Enter your Username and Password: --> N etID: P assword: Show password CAPSLOCK key is turned on! Ensure proper security \u2014 keep your password a secret I am at a public workstation, disable single sign-on. I am at a public workstation, disable single sign-on. * Indicates required fields You agree to the terms of use by logging in. --> Log In --> --> Forgot your NetID or password ? First-time users, activate your NetID . Need more help ? For security reasons, please log out and exit your web browser when you are done accessing services that require authentication! Powered by Rutgers Central Authentication Service (CAS) "
+  },
+  "dn_about": {
+   "chain": [
+    [
+     200,
+     "https://nbdn.rutgers.edu/about"
+    ]
+   ],
+   "title": "Degree Navigator Can Help You:",
+   "password_field": false,
+   "text_excerpt": " Degree Navigator Can Help You: SAS Events SAS News rutgers.edu Search People Search Website Degree Navigator Degree Navigator About Getting Started Advising and Registration FAQs Students Advisors Software Issues News & Updates Contact Us Related Schedule of Classes WebReg About Degree Navigator Can Help You: Degree Navigator is a flexible, easy-to-use degree audit and academic advising system for undergraduate programs. The system is designed to assist you and your advisor with the process of managing your general education, major, and minor requirements. Explore \u201cWhat if\u2026?\u201d scenarios such as: \u201cWhat if I take this course?\u201d Select courses you may want to take and see the effect on your audit. \"What if I change majors?\u201d Browse the database and run an audit on any undergraduate program. View your academic profile and progress course listings program and degree requirements Review notes your academic advisor has posted to your audit Generate real-time audits for your program(s) and major(s) with the push of a button Find courses and majors View course descriptions and the prerequisites, co-requisites, and equivalencies View all programs and requirements in any major Search courses, departments, and programs by keyword SAS Events SAS News rutgers.edu Search People Search Website Connect with Rutgers Rutgers New Brunswick Rutgers Today myRutgers Academic Calendar Rutgers Schedule of Classes One Stop Student Service Center getINVOLVED Plan a Visit Explore SAS Majors and Minors Dep"
+  },
+  "dn_faq_students": {
+   "chain": [
+    [
+     200,
+     "https://nbdn.rutgers.edu/faqs/students"
+    ]
+   ],
+   "title": "FAQs for Students",
+   "password_field": false,
+   "text_excerpt": " FAQs for Students SAS Events SAS News rutgers.edu Search People Search Website Degree Navigator Degree Navigator About Getting Started Advising and Registration FAQs Students Advisors Software Issues News & Updates Contact Us Related Schedule of Classes WebReg FAQs Students Advisors FAQs for Students 1. What is Degree Navigator? Degree Navigator (DN) is a tool designed to allow students and advisors to view and plan academic progress. We encourage students, faculty, and staff to review degrees, options, and available features of the program. Please contact This email address is being protected from spambots. You need JavaScript enabled to view it. for assistance if you have any questions. 2. How can I explore other majors and minors? Go to the \"Search\" menu and select \"Search Programs of Study.\" You may search by department name or department number. Please do not use quotes when searching. 3. How do I officially change/add a major or minor? Please contact your college's or school's dean's office for information at http://nb.rutgers.edu/academics/schools-colleges . 4. What are the campus codes for the Degree Navigator program? Camden - (CA) Newark - (NK) New Brunswick/Piscataway - (NB) 5. How do I search for a program or course within a specific campus? You can do a New Brunswick/Piscataway-specific search by typing (NB) after the name. For example, to search history courses in New Brunswick/Piscataway, enter \"history (NB) .\" 6. I am enrolled only in one school. Why does it "
+  }
+ },
+ "webreg_notice": "Important Notices The use of automated software for registration is prohibited. If detected, the student's online registration privileges will be suspended. Paper term bills will no longer be mailed to students' home addresses. All students are required to have an official email address ( https://personalinfo.rutgers.edu/pi ) as well as a Net-ID and password ( https://netid.rutgers.edu ). You will be sent an email when your term bill is viewable on the Student Accounting website. Please check that your email is correct at the University's white pages at http://search.rutgers.edu/people.html . For help, please contact the Office of Information Technology Help Desk . Visit web sites for Camden",
+ "soc_open_sections_semantics": {
+  "fetched_at": "2026-09-29T05:49:17.543357+00:00",
+  "courses_json": {
+   "status": 200,
+   "bytes": 21221903,
+   "seconds": 0.57,
+   "courses": 4394,
+   "sections": 12010,
+   "headers": {
+    "cache-control": "max-age=900",
+    "last-modified": null,
+    "etag": "1243215697",
+    "expires": null,
+    "content-encoding": "gzip",
+    "age": null,
+    "date": "Tue, 29 Sep 2026 05:49:15 GMT"
+   }
+  },
+  "open_sections_json": {
+   "status": 200,
+   "bytes": 95865,
+   "seconds": 0.08,
+   "indexes": 11983,
+   "headers": {
+    "cache-control": "max-age=30",
+    "last-modified": null,
+    "etag": "1494607794",
+    "expires": null,
+    "content-encoding": "gzip",
+    "age": null,
+    "date": "Tue, 29 Sep 2026 05:49:17 GMT"
+   }
+  },
+  "openSections_equals_openStatus_true": false,
+  "only_in_openSections": 3437,
+  "only_openStatus_true": 0,
+  "openSections_not_in_courses_json": 3437,
+  "live_open_by_status": 8546,
+  "vs_archive_2026_09_11": {
+   "archived_sections": 11992,
+   "sections_added": 41,
+   "sections_removed": 23,
+   "status_flips": 1094,
+   "opened": 811,
+   "closed": 283
+  }
+ },
+ "prerequisite_parseability": {
+  "courses_with_prereq_text": 1234,
+  "pure_boolean_expressions": 929,
+  "pct_pure": 75.3,
+  "course_references": 5497,
+  "references_to_courses_not_in_db": 1834,
+  "top_non_grammar_words": [
+   [
+    "anycourseequalgreaterthan",
+    37
+   ],
+   [
+    "clinicalsocialworkcswspecialization",
+    28
+   ],
+   [
+    "management",
+    25
+   ],
+   [
+    "physicalsciences",
+    24
+   ],
+   [
+    "policymapspecialization",
+    22
+   ],
+   [
+    "socialsciencesphysicalsciences",
+    14
+   ],
+   [
+    "physics",
+    12
+   ],
+   [
+    "healthsciencesphysiology",
+    11
+   ],
+   [
+    "informatics",
+    9
+   ],
+   [
+    "physiology",
+    7
+   ],
+   [
+    "healthsciences",
+    7
+   ],
+   [
+    "persuasion",
+    7
+   ]
+  ],
+  "examples_not_pure": [
+   [
+    "01:750:115",
+    "Any Course EQUAL or GREATER Than: (01:640:026 INTERMEDIATE ALGEBRA )"
+   ],
+   [
+    "01:750:123",
+    "Any Course EQUAL or GREATER Than: (01:640:112 PRECALCULUS PART II )"
+   ],
+   [
+    "01:750:161",
+    "Any Course EQUAL or GREATER Than: (01:640:112 PRECALCULUS PART II )"
+   ],
+   [
+    "01:750:193",
+    "Any Course EQUAL or GREATER Than: (01:640:112 PRECALCULUS PART II )"
+   ]
+  ]
+ }
+}
