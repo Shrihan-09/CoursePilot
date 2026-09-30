@@ -6721,3 +6721,255 @@ SQLite      570 passed,  66 skipped   (was 554 / 66)
 retrieval    46 passed                (unchanged)
 alembic check                          clean, head ce2b9afd3fa7
 ```
+
+---
+
+## 37. Prerequisites, retakes and multi-term SOC history (Phase 6.2)
+
+Three questions, three systems:
+
+```
+DEGREE ENGINE        "What requirements remain for graduation?"        (exists)
+PREREQUISITE SYSTEM  "Could this student take this course in term T?"  (this phase)
+PLANNING ENGINE      "Given what remains, prerequisites and             (future)
+                      availability - what, and when?"
+```
+
+A degree requirement and a prerequisite are different facts. One says
+"counts toward graduating", the other says "may be taken". They share no
+code path, and neither is computed by a language model.
+
+### 37.1 Pipeline
+
+```
+SOC courses.json (archived, per term)
+   │  preReqNotes (RAW, markup included)          courseNotes
+   ▼                                                  │
+CourseIngestionPipeline ── CourseLoader (courses, offerings)
+   │                                                  │
+   └── PrerequisiteLoader ◄──────────────────────────┘
+          │ parse()  app/domain/prerequisites.py   (pure, deterministic)
+          ▼
+   course_prerequisite  (one per course_offering = course x term x campus)
+     raw_text, sha256        <- what Rutgers published
+     classification, expression (JSON IR), canonical_text, parser_version
+                             <- how CoursePilot understood it
+     condition_note          <- courseNotes prerequisite condition, never interpreted
+     source_id -> data_source (SOC, term, archive path, content hash, coverage)
+   prerequisite_reference   (course_string always; course_id when known)
+          │
+          ▼
+   app/services/prerequisites.py  check / check_many  (three-valued, with evidence)
+          │
+          ▼
+   future Planning Engine
+```
+
+### 37.2 The grammar, measured
+
+The grammar comes from all **1,354 distinct `preReqNotes` strings** (4,133
+occurrences) in the five archived terms:
+
+- **Between groups:** the operators are `<em> OR </em>` (1,556 occurrences)
+  and `<em> AND </em>` (278).
+- **Inside a group:** the operators are lower-case `or` and `and`.
+- **Titles:** every operand is a course code plus an UPPER-CASE title. No
+  title contains a lower-case letter, and titles do contain the words AND/OR
+  ("...LIFE AND SOCIAL SCIENCES") and their own parentheses ("(PT)",
+  "(K-12)", "(CSW)").
+
+So operator recognition is **case-sensitive by design**. It also has to use
+the raw text. `SocNormalizer` strips the `<em>` tags when it fills
+`course.prereq_notes_raw`, which leaves operators and titles
+indistinguishable. That column is therefore not parsed.
+
+| classification | distinct strings | stored rows (5 terms) |
+|---|---|---|
+| `parsed` (AND / OR / nested / "Any Two Course from the following") | **1,342 (99.1%)** | 3,992 (96.4%) |
+| `unsupported_minimum_course_level` ("Any Course EQUAL or GREATER Than") | 11 | 129 |
+| `unknown` (prose without courses: "TWO Course Within the Subject Area:") | 1 | 12 |
+| `condition_note_only` (no expression; a `courseNotes` condition) | - | 9 |
+| `malformed` / `unsupported_ambiguous_precedence` | 0 | 0 |
+
+**Phase 6.1's 75.3% was an undercount.** It came from a regex over
+tag-stripped text, which mis-split titles containing AND/OR.
+
+Every parsed string passes the **round trip**: parse, then canonical text,
+then parse again gives the same tree. Canonical form flattens nested nodes of
+the same kind, drops duplicate children, sorts children, and collapses a
+single child.
+
+### 37.3 Conditions published outside the expression
+
+Minimum grades, placement, permission, co-requisites and major restrictions
+**never appear in `preReqNotes`**. They appear in `courseNotes`, e.g. "Student
+needs C or better in all prerequisites" or "A grade below a 'C' in a
+prerequisite course will not satisfy prereq".
+
+Any note that mentions prerequisites is stored verbatim as `condition_note`,
+tagged with detected kinds (`minimum_grade`, `placement`, `permission`,
+`corequisite`, `program_restriction`, `other`), and **never interpreted**.
+In evaluation it can only lower confidence: SATISFIED becomes UNKNOWN, and
+UNSATISFIED stays UNSATISFIED. 94 stored rows carry one. In the curated CS
+fixture that's **13 of 17** prerequisite-bearing courses, so most CS
+prerequisites evaluate to UNKNOWN until Phase 6.4 models grades.
+
+### 37.4 Three-valued evaluation
+
+The evaluator uses Kleene logic:
+
+- **AND:** any UNSATISFIED makes the result UNSATISFIED; otherwise any
+  UNKNOWN makes it UNKNOWN.
+- **OR:** any SATISFIED makes the result SATISFIED; otherwise any UNKNOWN
+  makes it UNKNOWN.
+- **AT_LEAST(n):** decided by counts.
+- **A leaf** is PASSED (completed, non-failing grade), IN_PROGRESS (UNKNOWN),
+  or anything else (UNSATISFIED).
+
+**Service outcomes** (`check`):
+
+| situation | result |
+|---|---|
+| no offering of the course in that term | UNKNOWN, `no_offering_in_term` |
+| offering, no prerequisite published | SATISFIED, `has_prerequisite=False` |
+| campuses publish different text | UNKNOWN |
+
+The evidence lists the required, satisfied, missing and pending courses and
+the reasons for UNKNOWN.
+
+**Real examples** (development record, Fall 2026):
+
+```
+01:640:152  (01:640:135 or 01:640:151 or ...)                    SATISFIED   via 01:640:151
+01:198:416  ((01:198:214 or 14:332:252) and 01:198:211) or ...   UNSATISFIED missing 01:198:214, ...
+01:198:211  (01:198:112 or 14:332:351) + minimum-grade note       UNKNOWN     unmodeled_condition:minimum_grade
+01:640:250  Any Course EQUAL or GREATER Than: (01:640:112 ...)    UNKNOWN     unsupported:minimum_course_level
+```
+
+### 37.5 Term scoping, with real evidence
+
+- **One row per offering.** A later term creates a new row and never
+  overwrites an earlier one.
+- **Changes are real.** Of 1,160 courses with prerequisites in more than one
+  term, **76 changed**. For example, 01:198:425 was
+  `((01:640:136 or 01:640:152) and 01:198:206)` in Fall 2025 and
+  `((01:198:206 or 01:640:477) and 01:640:152)` in Fall 2026.
+- **Reloading the same term:**
+  - an identical payload changes nothing, not even `updated_at`;
+  - a changed payload updates the row in place;
+  - a prerequisite withdrawn from the payload removes the row.
+- **Course fields follow the newest term.** Loading an older term no longer
+  overwrites the current fields a newer term wrote on `course` (title,
+  credits and so on). Term codes sort chronologically. This load kept 6,756
+  course rows at newer values.
+
+### 37.6 Referenced course identities
+
+Every course a prerequisite names is kept in `prerequisite_reference`, as a
+course string, with a nullable `course_id`. No title, credits or offering is
+ever invented.
+
+**Resolution is order-independent.** After each load, one set-based UPDATE
+resolves any NULL whose course now exists. Loading the archives oldest-first
+showed why this is needed: resolving at load time left 1,184 Fall 2025 edges
+unresolved even though Spring 2026 introduced those courses minutes later.
+The UPDATE resolved 335 references.
+
+| | references | unresolved | distinct unresolved identities |
+|---|---|---|---|
+| Phase 6.1 (Fall 2026 only, regex) | 5,497 | 1,834 (33.4%) | - |
+| Fall 2026 now | 3,835 | 1,008 (26.3%) | 209 |
+| all five terms | 12,201 | 3,179 | **284**, absent from every archived term |
+
+### 37.7 Terms and coverage
+
+`data_source.coverage` and `coverage_note` state whether a payload is the
+whole term. The loader supplies this with its evidence; it is never
+inferred. A limited or subject-filtered load cannot be marked complete.
+
+| term | coverage | evidence | courses | offerings | sections | prerequisites |
+|---|---|---|---|---|---|---|
+| Fall 2025 (20259) | complete | fetched after the term ended | 4,410 | 4,421 | 12,100 | 1,174 |
+| Spring 2026 (20261) | complete | fetched after the term ended | 4,562 | 4,572 | 11,777 | 1,328 |
+| Summer 2026 (20267) | complete | fetched after the term ended | 1,046 | 1,046 | 1,698 | 373 |
+| Fall 2026 (20269) | complete | fetched 2026-09-08, after publication; later changes not reflected | 4,391 | 4,400 | 11,992 | 1,236 |
+| Winter 2027 (20270) | **partial** | pre-publication snapshot: fetched 3.5 months early, when Spring 2027 returned 0 courses | 116 | 116 | 138 | 31 |
+
+Development database totals, before -> after:
+
+- **courses:** 4,415 -> 7,484
+- **offerings:** 4,516 -> 14,555
+- **sections:** 12,130 -> 37,705
+- **prerequisites:** 0 -> 4,142
+- **references:** 0 -> 12,201
+
+Students, student records, requirements, eligibility and the exact Fall 2026
+section ids hash identically before and after.
+
+### 37.8 Retakes
+
+- **The bug** (found in Phase 6.1, reproduced by a permanent test before the
+  fix, 5 of 11 failing): two passing attempts of 01:198:314 filled two of
+  five `CS_ELECTIVES` slots and counted 8.0 credits. The allocator treated
+  every (course, term) row as an independent course.
+- **The policy:** among a course's **usable** attempts (countable status,
+  non-failing grade), one is chosen as the representative. Completed beats
+  in-progress; among those, the most recent term wins. It is deliberately
+  **not** "highest grade wins", because Rutgers' grade replacement and GPA
+  rules are not modeled.
+- **What the representative means:** only it is allocated and credited.
+  Other attempts stay on the record, program rules still see them, and they
+  produce a `repeated_course` finding. A course with no usable attempt
+  behaves exactly as before.
+- **Specific cases:**
+  - fail then pass: the pass counts once;
+  - pass then retake: the latest pass is the one used;
+  - a pass plus an in-progress retake: the completed pass is used;
+  - a fail plus an in-progress retake: the in-progress attempt counts
+    provisionally.
+- **Cache:** `AUDIT_ENGINE_VERSION` went from 6.0.0 to 6.2.0. A test writes a
+  double-counted audit under 6.0.0 and proves it is never served.
+
+### 37.9 Performance (development database, 5 terms)
+
+```
+parser, all 4,133 archived strings            206 ms   (~20,000 strings/s)
+parse one real nested expression              p50 0.008 ms
+check one course                              p50 2.9 ms   p95 5.0 ms
+check_many, 200 candidates                    p50 16.4 ms  p95 22.1 ms
+check_many, all 4,400 Fall 2026 courses       p50 196 ms   p95 235 ms   - 3 queries
+term load (courses + sections + prereqs)      Fall 2025 146 s, Spring 2026 192 s, Summer 2026 29 s
+```
+
+Evaluation is not N+1: `check_many` issues three queries whatever the
+candidate count, and a test pins that. Term loading is dominated by the
+pre-existing per-course upsert in `CourseLoader`, not by prerequisites.
+
+### 37.10 Limitations
+
+1. **Minimum grades are not modeled.** Most prerequisites that carry a note
+   evaluate to UNKNOWN (Phase 6.4).
+2. **"Any Course EQUAL or GREATER Than"** is unsupported. It needs a course
+   ordering Rutgers does not publish.
+3. **Co-requisites exist only as notes.** SOC publishes no structured
+   co-requisite.
+4. **284 referenced identities appear in no archived term.** They are other
+   campuses and retired courses, and stay unresolved.
+5. **Eligibility is computed when requirements load.** Queries such as
+   "300-level CS" are resolved at that point, so courses that first appear in
+   a newly loaded term are not eligible until requirements are reloaded.
+6. **Retake policy is one allocation per course.** Repeat-for-credit courses
+   (topics, independent study) are not modeled and would be under-counted.
+7. **`course.prereq_notes_raw`** remains a tag-stripped, most-recent-term
+   column that nothing new reads.
+8. **Campus-divergent prerequisites** for one course and term return
+   UNKNOWN, not a choice.
+
+```
+root (PG)   1,208 passed,  5 skipped   (was 1,137 / 5; +71; two consecutive runs, 0 warnings)
+Backend     550 passed,   4 skipped   (was 502 / 4; +48)
+PostgreSQL  658 passed,   1 skipped   (was 635 / 1; +23)
+SQLite      593 passed,  66 skipped   (was 570 / 66; +23)
+retrieval    46 passed                (unchanged)
+alembic check                          clean, head d839d664f019
+```

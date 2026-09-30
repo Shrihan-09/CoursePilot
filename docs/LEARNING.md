@@ -7473,3 +7473,166 @@ one.
 - Natural vs surrogate keys in public APIs
 - Data provenance and human-in-the-loop verification
 - Mutation testing as a way to find the tests you are missing
+
+---
+
+# Lesson 29: Parsing What Rutgers Actually Publishes, and Saying "Unknown"
+
+## What We Built
+
+We built a prerequisite system that reads Rutgers' own prerequisite text,
+interprets the 99% it can interpret safely, stores what it could not, and
+answers "could this student take this course in this term?" with SATISFIED,
+UNSATISFIED or UNKNOWN. Along the way we fixed a Degree Engine bug where
+retaking a course counted it twice, and loaded four more terms of real SOC
+history.
+
+---
+
+## Concepts
+
+### Build the grammar from the data, not from the examples in your head
+
+The obvious grammar is "A and (B or C)", with case-insensitive operators.
+The real data proved that wrong in three ways:
+
+1. **Operators are marked up.** `<em> OR </em>` sits between groups, and a
+   lower-case `or` sits inside them.
+2. **Titles contain the words AND and OR**, as in "CALCULUS I FOR THE LIFE
+   AND SOCIAL SCIENCES". A case-insensitive parser would split that title
+   into two courses.
+3. **Titles contain their own parentheses**, as in "(PT)", "(K-12)" and
+   "(CSW) SPECIALIZATION". A naive parser treats those as groups.
+
+None of this shows up in a hypothetical example. It shows up after reading
+all 1,354 real strings and asking what they have in common. Measured
+properties became parser rules: no title in the corpus contains a lower-case
+letter, and the only `<em>` contents are OR and AND.
+
+### Preprocessing can destroy the information you need
+
+The existing normalizer "cleaned" prerequisite text by stripping the HTML
+tags. That was reasonable for display, and fatal for parsing: once
+`<em> OR </em>` becomes a bare `OR`, it looks exactly like the OR in a
+title. The column CoursePilot had stored for months could not be parsed at
+all.
+
+The lesson is general: **keep the raw source.** A normalized copy serves one
+purpose; the raw copy serves every purpose you haven't thought of yet.
+
+### Your earlier measurement can be wrong too
+
+Phase 6.1 reported that 75.3% of prerequisites were plain boolean
+expressions. The real parser handles 99.1%. The earlier figure came from a
+quick regex over the tag-stripped text, and it made the same mistake a naive
+parser would. A measurement is only as good as the method behind it. When a
+better method disagrees, say so rather than quietly adopting the new number.
+
+### Three values, and why UNKNOWN has to stay put
+
+A prerequisite checker that returns only True or False has to guess
+somewhere. Faced with a published minimum-grade note it cannot interpret,
+it either ignores the note (claiming a student is eligible who might not be)
+or rejects them (claiming they are not eligible when they might be). Both
+are false statements.
+
+Kleene three-valued logic says only what is known:
+
+```
+SATISFIED   OR  UNKNOWN  = SATISFIED     (one met branch is enough)
+UNSATISFIED AND UNKNOWN  = UNSATISFIED   (one unmet conjunct is enough)
+SATISFIED   AND UNKNOWN  = UNKNOWN
+UNSATISFIED OR  UNKNOWN  = UNKNOWN
+```
+
+The rule "any unknown makes everything unknown" is safe but wasteful: it
+discards answers we actually have. The rule "ignore what you can't parse" is
+wrong. Kleene logic sits correctly between them.
+
+### Uninterpreted conditions may lower confidence, never raise it
+
+Rutgers puts "Student needs C or better in all prerequisites" in a
+*different field* from the expression. CoursePilot stores the note and never
+interprets it. In evaluation, the note can turn SATISFIED into UNKNOWN,
+because the grade might not meet it. It can never turn UNSATISFIED into
+anything better: an extra restriction can't make an unmet expression pass.
+Any condition you don't model should only ever be able to make your answer
+more cautious.
+
+### Time is part of the key
+
+A prerequisite is not a property of a course. It is a property of a course
+**in a term**. The data proved it: 76 courses changed their prerequisites
+between the archived terms. So the prerequisite attaches to the offering
+(course × term × campus), an abstraction CoursePilot already had.
+
+The same idea exposed a second bug. `course` holds one "current" title and
+credit value, and loading an older term was overwriting values a newer term
+had written. Any table that stores a current value needs a rule for which
+source is allowed to set it.
+
+### Results that depend on load order are bugs
+
+References were resolved against the courses known at load time. Loading
+the oldest term first left 1,184 edges unresolved, even though the next term
+introduced most of those courses minutes later. The same data loaded in a
+different order gave a different database. The fix was one set-based UPDATE
+after every load, which makes the final state a function of the data alone.
+Whenever a pipeline can run in more than one order, check that the result
+doesn't depend on the order.
+
+### One course, one identity
+
+Two passing attempts of 01:198:314 filled two elective slots, because the
+allocator treated every (course, term) row as a separate course. The fix
+does not delete an attempt, and it does not assume "highest grade wins",
+because Rutgers' grade-replacement rules aren't modeled. It chooses one
+representative attempt by rules the engine already used (earned beats
+provisional, then the most recent term) and records a finding for the rest.
+The history stays intact; the double counting stops.
+
+### Tests that can fail, proven by making them fail
+
+Each invariant was attacked on purpose:
+
+- AND evaluated as OR: 7 tests failed.
+- Term scoping broken: 1 test failed.
+- Duplicate attempts allowed again: 6 tests failed.
+
+The retake test was written first, and it failed against the engine as it
+was. A regression test that has never failed has never proven anything.
+
+---
+
+## Self-Check
+
+1. Why is operator recognition case-sensitive, and what real data justifies it?
+2. Why can't `course.prereq_notes_raw` be parsed?
+3. Why did Phase 6.1 measure 75.3% when the parser handles 99.1%?
+4. Evaluate `SATISFIED AND UNKNOWN` and `UNSATISFIED AND UNKNOWN`, and explain each.
+5. Why can a minimum-grade note turn SATISFIED into UNKNOWN, but never turn UNSATISFIED into anything else?
+6. Why does a prerequisite attach to `course_offering` rather than `course`?
+7. What made reference resolution depend on load order, and how was that removed?
+8. Why is the retake policy not "highest grade wins"?
+9. What does `no_offering_in_term` mean, and why is it UNKNOWN rather than SATISFIED?
+10. Which invariant has the thinnest test coverage, according to the failure injection?
+
+## Try It Yourself
+
+**A.** Make the tokenizer treat operators case-insensitively, then parse the 01:640:152 prerequisite.
+
+**B.** Parse `course.prereq_notes_raw` (the stripped copy) for 01:119:115 and compare it with the raw parse.
+
+**C.** Change `_combine_all` to return UNKNOWN whenever any child is UNKNOWN, and see which tests fail.
+
+**D.** Load Spring 2026 before Fall 2025 on a scratch database with and without `_resolve_outstanding`, and compare the unresolved counts.
+
+**E.** Record 01:198:314 passed twice and audit it with the Phase 6.0 engine (`git show 5ccda00:backend/app/services/audit/engine.py`).
+
+## Further Learning
+
+- Kleene's strong three-valued logic; SQL NULL semantics compared
+- Parsing with real corpora: grammar induction and error classification
+- Bitemporal data and "valid time" versus "record time"
+- Idempotent, order-independent ETL
+- Mutation testing (e.g. mutmut) and what "the test can fail" buys
