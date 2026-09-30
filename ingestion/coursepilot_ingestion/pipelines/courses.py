@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from coursepilot_ingestion.fetchers.soc import SocFetcher
 from coursepilot_ingestion.loaders.postgres import CourseLoader
+from coursepilot_ingestion.loaders.prerequisites import PrerequisiteLoader
 from coursepilot_ingestion.normalizers.soc import SocNormalizer
 from coursepilot_ingestion.parsers.soc import SocParser
 from coursepilot_ingestion.schemas import IngestionStats, NormalizedCourse
@@ -36,6 +37,7 @@ class CourseIngestionPipeline:
         self.parser = SocParser()
         self.validator = CourseValidator()
         self.loader = CourseLoader(session)
+        self.prerequisites = PrerequisiteLoader(session)
 
     def run(
         self,
@@ -45,6 +47,8 @@ class CourseIngestionPipeline:
         subject_filter: str | None = None,
         use_cache: bool = True,
         commit: bool = True,
+        coverage: str | None = None,
+        coverage_note: str | None = None,
     ) -> IngestionStats:
         """Run the pipeline.
 
@@ -53,7 +57,16 @@ class CourseIngestionPipeline:
         fetched or archived - the raw payload is always kept whole, so a
         narrow run does not produce a truncated archive that a later, wider
         run would silently trust.
+
+        `coverage` ('complete' | 'partial' | 'unknown') is the loader's
+        statement about the PAYLOAD - whether it is the whole term - with the
+        evidence in `coverage_note`. It is recorded on the source row, never
+        inferred. A limited or subject-filtered run cannot claim 'complete'.
         """
+        if coverage is not None and coverage not in ("complete", "partial", "unknown"):
+            raise ValueError(f"coverage must be complete, partial or unknown, not {coverage!r}")
+        if coverage == "complete" and (limit is not None or subject_filter):
+            raise ValueError("a limited or subject-filtered load cannot be marked complete")
         stats = IngestionStats(started_at=datetime.now(UTC))
 
         # --- fetch ---
@@ -118,7 +131,13 @@ class CourseIngestionPipeline:
             archive_path=str(fetched.archive_path) if fetched.archive_path else None,
             record_count=parsed.total,
         )
+        if coverage is not None:
+            source.coverage = coverage
+            source.coverage_note = coverage_note
         self.loader.load(outcome.valid, source, stats)
+        # Same payload, same source row: every prerequisite is traceable to
+        # the exact archive the course rows came from.
+        self.prerequisites.load(selected, outcome.valid, source, stats)
 
         if commit:
             self.session.commit()

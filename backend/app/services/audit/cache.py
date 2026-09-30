@@ -143,7 +143,9 @@ logger = logging.getLogger(__name__)
 #:
 #: 6.0.0: an empty credit requirement now reports `satisfied_credits` as
 #: Decimal 0 rather than int 0, which changes the serialized audit.
-AUDIT_ENGINE_VERSION = "6.0.0"
+#: 6.2.0: repeated attempts of one course yield ONE allocation identity and
+#: are credited once; a record with a retake now audits differently.
+AUDIT_ENGINE_VERSION = "6.2.0"
 
 #: Columns whose value changes without the meaning changing.
 _IGNORED_COLUMNS = frozenset({"created_at", "updated_at"})

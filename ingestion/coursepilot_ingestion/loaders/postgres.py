@@ -160,6 +160,18 @@ class CourseLoader:
         )
 
         if existing is not None:
+            # Phase 6.2: loading an OLDER term must not overwrite what a newer
+            # term published. `course` holds one current value per field, so
+            # it reflects the most recent term that wrote it; term codes sort
+            # chronologically (20259 < 20261 < 20267 < 20269 < 20270).
+            # Term-scoped facts - offerings, sections, prerequisites - are
+            # stored per term and are unaffected either way.
+            current_term = self.session.scalar(
+                select(DataSource.term_code).where(DataSource.id == existing.source_id)
+            )
+            if current_term and normalized.term_code < current_term:
+                stats.courses_kept_newer += 1
+                return existing
             changed = False
             for field_name in _MUTABLE_COURSE_FIELDS:
                 new_value = getattr(normalized, field_name, None)

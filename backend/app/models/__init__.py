@@ -35,6 +35,11 @@ section restriction lists, cross-program double-counting policy.
 from app.models.academic import Course, CourseOffering, Subject
 from app.models.audit_cache import StudentAuditCache
 from app.models.provenance import DataSource
+from app.models.prerequisites import (
+    PREREQUISITE_CLASSIFICATIONS,
+    CoursePrerequisite,
+    PrerequisiteReference,
+)
 from app.models.rules_version import RULES_TABLES, RulesVersion
 from app.models.search_version import SEARCH_TABLES, SearchVersion
 from app.models.requirements import (
@@ -68,6 +73,9 @@ from app.models.sections import (
 )
 
 __all__ = [
+    "PREREQUISITE_CLASSIFICATIONS",
+    "CoursePrerequisite",
+    "PrerequisiteReference",
     "CatalogCourseEntry",
     "Course",
     "CourseOffering",
