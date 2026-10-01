@@ -1,7 +1,7 @@
 """Loader for curated program requirements.
 
 Input is a curated JSON definition (see
-`ingestion/tests/fixtures/cs_ba_requirements_26_27.json`), NOT a scraped
+`data/programs/rutgers/nb-undergrad/2026-2027/sas-198-ba.json`), NOT a scraped
 payload. Rutgers publishes requirements as prose, so the structure is a human
 derivation and this loader's job is to persist it faithfully - including the
 prose it was derived from and its curation status.
@@ -35,9 +35,10 @@ from app.models import (
     ProgramRule,
     ProgramVersion,
     Requirement,
-    RequirementCourseOption,
     School,
 )
+from app.services import program_lifecycle
+from app.services.eligibility import query_matches, reconcile, rule_from_definition
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -52,6 +53,8 @@ class RequirementLoadStats:
     requirements_inserted: int = 0
     requirements_updated: int = 0
     eligibility_inserted: int = 0
+    eligibility_removed: int = 0
+    definition_changed: bool = False
     rules_inserted: int = 0
     rules_not_evaluable: int = 0
     unresolved_courses: list[str] = field(default_factory=list)
@@ -62,7 +65,7 @@ class RequirementLoadStats:
             f"schools+{self.schools_inserted} programs+{self.programs_inserted} "
             f"versions+{self.versions_inserted} "
             f"requirements(+{self.requirements_inserted}/~{self.requirements_updated}) "
-            f"eligibility+{self.eligibility_inserted} "
+            f"eligibility(+{self.eligibility_inserted}/-{self.eligibility_removed}) "
             f"rules+{self.rules_inserted}(not_evaluable={self.rules_not_evaluable}) "
             f"unresolved={len(self.unresolved_courses)}"
         )
@@ -99,38 +102,15 @@ class RequirementLoader:
     def _query_courses(self, spec: dict) -> list[Course]:
         """Resolve an `eligible_course_query` (e.g. all CS courses at 300+).
 
-        Keys, all optional: `subject_code`, `min_course_number`,
-        `max_course_number`, `exclude_course_numbers`. The last two arrived
-        with Mathematics (Phase 6.0): "eight 300- to 400-level mathematics
-        courses, excluding 01:640:491,492" is a range with named exceptions,
-        and an unknown key must fail rather than be silently ignored - an
-        ignored exclusion would make an excluded course count.
+        The matching itself lives in app.services.eligibility, which is also
+        what reconciliation uses - one definition of "matches", not two.
+        Unknown keys raise there: an ignored exclusion would make an excluded
+        course count.
         """
-        known = {"subject_code", "min_course_number", "max_course_number",
-                 "exclude_course_numbers"}
-        unknown = set(spec) - known
-        if unknown:
-            raise ValueError(f"unknown eligible_course_query keys: {sorted(unknown)}")
-
-        stmt = select(Course).where(Course.supplement_code == "")
-        if "subject_code" in spec:
-            stmt = stmt.where(Course.subject_code == spec["subject_code"])
-        courses = list(self.session.scalars(stmt).all())
-        if "min_course_number" in spec:
-            floor = int(spec["min_course_number"])
-            courses = [
-                c for c in courses if c.course_number.isdigit() and int(c.course_number) >= floor
-            ]
-        if "max_course_number" in spec:
-            ceiling = int(spec["max_course_number"])
-            courses = [
-                c for c in courses
-                if c.course_number.isdigit() and int(c.course_number) <= ceiling
-            ]
-        excluded = set(spec.get("exclude_course_numbers", ()))
-        if excluded:
-            courses = [c for c in courses if c.course_number not in excluded]
-        return sorted(courses, key=lambda c: c.course_string)
+        rule_from_definition({"eligible_course_query": spec})       # key check
+        courses = self.session.scalars(select(Course).where(Course.supplement_code == ""))
+        return sorted((c for c in courses if query_matches(c, spec)),
+                      key=lambda c: c.course_string)
 
     # ------------------------------------------------------------------ #
     # provenance
@@ -189,11 +169,13 @@ class RequirementLoader:
 
         # --- program ---
         pdef = definition["program"]
+        variant = pdef.get("variant", "")
         program = self.session.scalar(
             select(Program).where(
                 Program.school_id == school.id,
                 Program.code == pdef["code"],
                 Program.degree_type == pdef["degree_type"],
+                Program.variant == variant,
             )
         )
         if program is None:
@@ -202,6 +184,7 @@ class RequirementLoader:
                 code=pdef["code"],
                 name=pdef["name"],
                 degree_type=pdef["degree_type"],
+                variant=variant,
                 source_id=source.id,
             )
             self.session.add(program)
@@ -210,6 +193,7 @@ class RequirementLoader:
 
         # --- version ---
         vdef = definition["program_version"]
+        cdef = definition.get("curation", {})
         version = self.session.scalar(
             select(ProgramVersion).where(
                 ProgramVersion.program_id == program.id,
@@ -220,19 +204,28 @@ class RequirementLoader:
             version = ProgramVersion(
                 program_id=program.id,
                 catalog_year=vdef["catalog_year"],
-                total_credits_min=_dec(vdef.get("total_credits_min")),
-                total_credits_max=_dec(vdef.get("total_credits_max")),
                 # Defaults to EXCLUSIVE: a definition that says nothing about
                 # sharing must not silently grant it.
                 sharing_policy=vdef.get("sharing_policy", "exclusive"),
-                source_prose=vdef.get("source_prose"),
                 source_url=definition["source"]["url"],
                 curation_status=curation,
                 source_id=source.id,
+                definition_sha256=definition_sha256(definition),
             )
             self.session.add(version)
             self.session.flush()
             stats.versions_inserted += 1
+        else:
+            # A changed definition invalidates any validation or review of
+            # the old one (program_lifecycle owns the state change).
+            stats.definition_changed = program_lifecycle.definition_changed(
+                version, definition_sha256(definition))
+        version.total_credits_min = _dec(vdef.get("total_credits_min"))
+        version.total_credits_max = _dec(vdef.get("total_credits_max"))
+        version.source_prose = vdef.get("source_prose")
+        version.admission_prose = vdef.get("admission_prose")
+        version.curated_by = cdef.get("curated_by")
+        version.extractor_version = cdef.get("extractor_version")
 
         # --- requirements (two passes: create, then wire parents) ---
         by_code: dict[str, Requirement] = {}
@@ -298,56 +291,23 @@ class RequirementLoader:
         self.session.flush()
 
         # --- eligibility ---
+        # Each node's rule is STORED, then eligibility is reconciled to
+        # exactly what the rules imply over the current course table - rows
+        # a changed rule no longer implies are removed, not left behind
+        # (app.services.eligibility). A node whose rule was removed keeps an
+        # empty rule rather than NULL, so its old rows are removed too; NULL
+        # means "eligibility comes from elsewhere" (SAS Core certifications).
         for rdef in definition["requirements"]:
             req = by_code[rdef["code"]]
-            # (course, category). `category` is the source's own certification
-            # identifier - a SAS Core goal code, for instance. It stays empty
-            # for requirements whose source certifies no sub-categories, which
-            # is every major requirement.
-            options: list[tuple[Course, str]] = []
-
-            for cs in rdef.get("courses", []):
-                course = self._resolve_course(cs)
-                if course is None:
-                    # Reported, never fabricated.
-                    stats.unresolved_courses.append(f"{rdef['code']}:{cs}")
-                    continue
-                options.append((course, ""))
-
-            # {"AHp": ["01:082:105", ...]} - one row per certifying category,
-            # so a course certified for two categories produces two rows.
-            for category, course_strings in rdef.get("course_categories", {}).items():
-                for cs in course_strings:
-                    course = self._resolve_course(cs)
-                    if course is None:
-                        stats.unresolved_courses.append(f"{rdef['code']}:{cs}")
-                        continue
-                    options.append((course, category))
-
-            if "eligible_course_query" in rdef:
-                options.extend(
-                    (c, "") for c in self._query_courses(rdef["eligible_course_query"])
-                )
-
-            for course, category in options:
-                exists = self.session.scalar(
-                    select(RequirementCourseOption).where(
-                        RequirementCourseOption.requirement_id == req.id,
-                        RequirementCourseOption.course_id == course.id,
-                        RequirementCourseOption.category == category,
-                    )
-                )
-                if exists is not None:
-                    continue
-                self.session.add(
-                    RequirementCourseOption(
-                        requirement_id=req.id,
-                        course_id=course.id,
-                        category=category,
-                        source_id=source.id,
-                    )
-                )
-                stats.eligibility_inserted += 1
+            rule = rule_from_definition(rdef)
+            if rule is None and req.eligibility_rule is not None:
+                rule = {}
+            req.eligibility_rule = rule
+        self.session.flush()
+        report = reconcile(self.session, [r.id for r in by_code.values()])
+        stats.eligibility_inserted += report.inserted
+        stats.eligibility_removed += report.deleted
+        stats.unresolved_courses.extend(report.unresolved)
 
         # --- program-level rules ---
         for rdef in definition.get("program_rules", []):
@@ -396,6 +356,19 @@ class RequirementLoader:
             stats.warnings.append(f"not modeled: {rule['rule']}")
 
         return stats
+
+
+#: Top-level keys that carry requirement meaning. `_README`, `source`,
+#: `curation` and `rules_not_yet_modeled` are documentation and provenance:
+#: editing them must not invalidate a review.
+SEMANTIC_KEYS = ("school", "program", "program_version", "requirements", "program_rules")
+
+
+def definition_sha256(definition: dict) -> str:
+    """Content identity of a curated definition: what a reviewer approves."""
+    semantic = {k: definition.get(k) for k in SEMANTIC_KEYS}
+    canonical = json.dumps(semantic, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def _dec(value) -> Decimal | None:
