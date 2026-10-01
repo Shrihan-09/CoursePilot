@@ -8,9 +8,13 @@
     "",
     "CURATION STATUS: 'unverified'. This definition was encoded by an AI assistant",
     "during Phase 6.0. CoursePilot's source-authority rule is that a model's reading of",
-    "requirement prose is never authoritative on its own, so this stays UNVERIFIED until",
-    "a human re-checks it against the archived prose and changes the status to",
-    "'curated_from_prose'. The program catalog service reports it as pending review.",
+    "requirement prose is never authoritative on its own, so this stays UNVERIFIED and",
+    "PENDING REVIEW until a named human checks it against the archived prose and records",
+    "the approval (Phase 6.3: app.services.program_lifecycle record_review + publish).",
+    "Editing curation_status here does NOT publish it; only a recorded review does.",
+    "",
+    "VARIANT: 'option-a'. The Mathematics page defines Options A (standard), B (honors)",
+    "and C (actuarial) with different requirements; only Option A is encoded.",
     "",
     "SCOPE: Option A only. Options B (honors, admission by application), C (actuarial)",
     "and the interdisciplinary majors are separate curricula and are not encoded.",
@@ -25,7 +29,19 @@
     "curation_status": "unverified"
   },
   "school": {"code": "SAS", "name": "School of Arts and Sciences", "campus_code": "NB"},
-  "program": {"code": "640", "name": "Mathematics", "degree_type": "BA"},
+  "review_questions": [
+    "MATH_UPPER: do '411-412' and '451-452' denote two-semester SEQUENCES that count only as a pair? The encoding accepts either course of a pair on its own.",
+    "MATH_251: what counts as '251 or equivalent'? Only 01:640:251 is encoded.",
+    "MATH_COMPUTING: 14:332:252 (School of Engineering) is accepted as the page states; confirm.",
+    "Is the 'C or better' rule for 250, 251 and 244/252 correctly left unmodeled (minimum grades are out of scope), rather than encoded approximately?"
+  ],
+  "curation": {
+    "curated_by": "AI assistant (Claude), Phase 6.0 - encoder only, not a reviewer",
+    "extractor_version": "manual-encoding/1",
+    "catalog_page": "/schools/sas/program-listing/mathematics-640",
+    "candidate_key": "major/option-a"
+  },
+  "program": {"code": "640", "name": "Mathematics", "degree_type": "BA", "variant": "option-a"},
   "program_version": {
     "catalog_year": "2026-2027",
     "source_prose": "The completion of all the requirements in one of the mathematics major options listed below. ... Option A, Standard Mathematics (Curriculum Code 640). In addition to the requirements above, to complete the standard mathematics major a student must pass eight 300- to 400-level mathematics courses, excluding 01:640:491,492."

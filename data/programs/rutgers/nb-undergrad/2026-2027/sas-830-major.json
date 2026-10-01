@@ -1,0 +1,144 @@
+{
+  "_README": [
+    "Rutgers SAS Psychology (830) major, catalog 2026-2027. PENDING HUMAN REVIEW.",
+    "",
+    "ENCODED by an AI assistant in Phase 6.3 from the official catalog page, archived",
+    "at data/raw/catalog/catalog_psychology-830_2026_2027.html. Every node quotes the sentence",
+    "it came from. An AI encoding is never authoritative: this definition is",
+    "'unverified' and stays pending review until a named human approves it",
+    "(app.services.program_lifecycle). See the review packet in review/.",
+    "",
+    "DEGREE DESIGNATION: the catalog page does not state B.A. or B.S. for this major,",
+    "so degree_type is 'major' rather than a guessed designation.",
+    "",
+    "SCOPE: requirements for students who declared in fall 2017 or later (the page says",
+    "earlier declarants follow different requirements published elsewhere)."
+  ],
+  "source": {
+    "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/psychology-830",
+    "catalog_year": "2026-2027",
+    "retrieved_at": "2026-09-30",
+    "kind": "rutgers_official_catalog",
+    "curation_status": "unverified"
+  },
+  "school": {
+    "code": "SAS",
+    "name": "School of Arts and Sciences",
+    "campus_code": "NB"
+  },
+  "curation": {
+    "curated_by": "AI assistant (Claude), Phase 6.3 - encoder only, not a reviewer",
+    "extractor_version": "manual-encoding/1",
+    "catalog_page": "/schools/sas/program-listing/psychology-830",
+    "candidate_key": "major"
+  },
+  "program": {
+    "code": "830",
+    "name": "Psychology",
+    "degree_type": "major"
+  },
+  "program_version": {
+    "catalog_year": "2026-2027",
+    "source_prose": "The following requirements must be met to complete a major in psychology:",
+    "admission_prose": "The prerequisite for declaring the major in psychology is completion of the following courses with a grade of C or better in each:"
+  },
+  "requirements": [
+    {
+      "code": "PSYC_MAJOR",
+      "name": "Psychology Major",
+      "requirement_type": "all_of",
+      "sort_order": 0,
+      "source_prose": "The following requirements must be met to complete a major in psychology:"
+    },
+    {
+      "code": "PSYC_CORE",
+      "name": "Four Subdiscipline Core Courses",
+      "requirement_type": "choose_n",
+      "min_count": 4,
+      "min_distinct_categories": 4,
+      "parent": "PSYC_MAJOR",
+      "sort_order": 0,
+      "course_categories": {
+        "BEHAV_NEURO": [
+          "01:830:310",
+          "01:830:311",
+          "01:830:313",
+          "01:830:361"
+        ],
+        "CLINICAL": [
+          "01:830:310",
+          "01:830:340",
+          "01:830:346",
+          "01:830:394"
+        ],
+        "COGNITIVE": [
+          "01:830:301",
+          "01:830:303",
+          "01:830:305",
+          "01:830:351"
+        ],
+        "SOCIAL": [
+          "01:830:321",
+          "01:830:338",
+          "01:830:339",
+          "01:830:377"
+        ]
+      },
+      "notes": "01:830:310 appears in two clusters; one course can satisfy only one cluster ('A separate course must be selected from each').",
+      "source_prose": "Four Subdiscipline Core Courses. (A separate course must be selected from each of the following four subdiscipline clusters and must be taken within the 01:830 subject index of the School of Arts and Sciences [SAS] Department of Psychology.)"
+    },
+    {
+      "code": "PSYC_ELECTIVES",
+      "name": "Six Psychology Electives",
+      "requirement_type": "choose_n",
+      "min_count": 6,
+      "parent": "PSYC_MAJOR",
+      "sort_order": 1,
+      "eligible_course_query": {
+        "subject_code": "830",
+        "offering_unit_code": "01"
+      },
+      "notes": "Any undergraduate 01:830 course. NOT modeled: at most three 200-level courses, at most 6 credits of nonclassroom courses, at least one elective in the SAS department. Whether 01:830:101 and 200 (the declaration prerequisites) count as electives is a REVIEW QUESTION.",
+      "source_prose": "Completion of Six Psychology Electives. (To be selected from the department's complete set of course offerings.)"
+    },
+    {
+      "code": "PSYC_400",
+      "name": "One 400-Level Elective",
+      "requirement_type": "choose_n",
+      "min_count": 1,
+      "parent": "PSYC_MAJOR",
+      "sort_order": 2,
+      "eligible_course_query": {
+        "subject_code": "830",
+        "offering_unit_code": "01",
+        "min_course_number": 400,
+        "max_course_number": 499
+      },
+      "source_prose": "Completion of One 400-Level Elective."
+    }
+  ],
+  "program_rules": [],
+  "rules_not_yet_modeled": [
+    {
+      "rule": "One 4-Credit Content Course and Lab Combination.",
+      "why_not": "The page does not list which courses form a content-and-lab combination."
+    },
+    {
+      "rule": "No more than 6 credits of nonclassroom courses such as fieldwork, research, or internships may be applied toward the major.",
+      "why_not": "Course format (classroom vs nonclassroom) is not recorded."
+    },
+    {
+      "rule": "No more than three 200-level courses (10 credits) may be applied.",
+      "why_not": "A per-level maximum is not an engine constraint today."
+    },
+    {
+      "rule": "Grade of C or better in 01:830:101 and 01:830:200 to declare.",
+      "why_not": "Admission rule; kept as admission_prose, not degree completion."
+    }
+  ],
+  "review_questions": [
+    "Confirm the degree designation - the page does not state it.",
+    "Is item 4 (one 400-level elective) IN ADDITION to the six electives, as encoded, or one of them?",
+    "Do 01:830:101 / 01:830:200 count toward the six electives?"
+  ]
+}

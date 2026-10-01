@@ -1,0 +1,164 @@
+{
+  "packet_version": "review-packet/1",
+  "program_key": "sas-830-major",
+  "catalog_year": "2026-2027",
+  "definition_file": "data/programs/rutgers/nb-undergrad/2026-2027/sas-830-major.json",
+  "definition_sha256": "1b88f78c556eea2980a60f1839d8f5fdc92ae982aee33570b0ea25e8ece79b50",
+  "source": {
+    "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/psychology-830",
+    "catalog_page": "/schools/sas/program-listing/psychology-830",
+    "archive": "data/raw/catalog/catalog_psychology-830_2026_2027.html",
+    "archive_present": true,
+    "archive_sha256": "891f466207439b44b8dd934082f187d55bcfa4bdaa618fd659e3bd6277641c34",
+    "prose_sha256": "85c5bf3af0396d478020a56a204efa2dea84d34484638a934630d234d2f990f2"
+  },
+  "curated_by": "AI assistant (Claude), Phase 6.3 - encoder only, not a reviewer",
+  "curation_status_label": "unverified",
+  "lifecycle_state": "validated",
+  "publication_basis": null,
+  "machine_checks": {
+    "passed": true,
+    "quotes_found": 6,
+    "quotes_checked": 6,
+    "errors": [],
+    "warnings": [
+      "PSYC_CORE: 01:830:361 not in the loaded course table"
+    ],
+    "note": "Machine checks are NOT review. They prove quotes exist and the engine can load the tree - not that the encoding means what the prose means."
+  },
+  "non_undergraduate_eligible_rows": 0,
+  "admission_prose": "The prerequisite for declaring the major in psychology is completion of the following courses with a grade of C or better in each:",
+  "requirements": [
+    {
+      "code": "PSYC_MAJOR",
+      "type": "all_of",
+      "parent": null,
+      "quote": "The following requirements must be met to complete a major in psychology:",
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "PSYC_CORE",
+      "type": "choose_n",
+      "parent": "PSYC_MAJOR",
+      "quote": "Four Subdiscipline Core Courses. (A separate course must be selected from each of the following four subdiscipline clusters and must be taken within the 01:830 subject index of the School of Arts and Sciences [SAS] Department of Psychology.)",
+      "notes": "01:830:310 appears in two clusters; one course can satisfy only one cluster ('A separate course must be selected from each').",
+      "min_count": 4,
+      "min_distinct_categories": 4,
+      "course_categories": {
+        "BEHAV_NEURO": [
+          "01:830:310",
+          "01:830:311",
+          "01:830:313",
+          "01:830:361"
+        ],
+        "CLINICAL": [
+          "01:830:310",
+          "01:830:340",
+          "01:830:346",
+          "01:830:394"
+        ],
+        "COGNITIVE": [
+          "01:830:301",
+          "01:830:303",
+          "01:830:305",
+          "01:830:351"
+        ],
+        "SOCIAL": [
+          "01:830:321",
+          "01:830:338",
+          "01:830:339",
+          "01:830:377"
+        ]
+      },
+      "eligible_course_rows": 15
+    },
+    {
+      "code": "PSYC_ELECTIVES",
+      "type": "choose_n",
+      "parent": "PSYC_MAJOR",
+      "quote": "Completion of Six Psychology Electives. (To be selected from the department's complete set of course offerings.)",
+      "notes": "Any undergraduate 01:830 course. NOT modeled: at most three 200-level courses, at most 6 credits of nonclassroom courses, at least one elective in the SAS department. Whether 01:830:101 and 200 (the declaration prerequisites) count as electives is a REVIEW QUESTION.",
+      "min_count": 6,
+      "eligible_course_query": {
+        "subject_code": "830",
+        "offering_unit_code": "01"
+      },
+      "eligible_course_rows": 71
+    },
+    {
+      "code": "PSYC_400",
+      "type": "choose_n",
+      "parent": "PSYC_MAJOR",
+      "quote": "Completion of One 400-Level Elective.",
+      "notes": null,
+      "min_count": 1,
+      "eligible_course_query": {
+        "subject_code": "830",
+        "offering_unit_code": "01",
+        "min_course_number": 400,
+        "max_course_number": 499
+      },
+      "eligible_course_rows": 21
+    }
+  ],
+  "program_rules": [],
+  "rules_not_yet_modeled": [
+    {
+      "rule": "One 4-Credit Content Course and Lab Combination.",
+      "why_not": "The page does not list which courses form a content-and-lab combination."
+    },
+    {
+      "rule": "No more than 6 credits of nonclassroom courses such as fieldwork, research, or internships may be applied toward the major.",
+      "why_not": "Course format (classroom vs nonclassroom) is not recorded."
+    },
+    {
+      "rule": "No more than three 200-level courses (10 credits) may be applied.",
+      "why_not": "A per-level maximum is not an engine constraint today."
+    },
+    {
+      "rule": "Grade of C or better in 01:830:101 and 01:830:200 to declare.",
+      "why_not": "Admission rule; kept as admission_prose, not degree completion."
+    }
+  ],
+  "review_questions": [
+    "Confirm the degree designation - the page does not state it.",
+    "Is item 4 (one 400-level elective) IN ADDITION to the six electives, as encoded, or one of them?",
+    "Do 01:830:101 / 01:830:200 count toward the six electives?"
+  ],
+  "what_to_verify": [
+    "Open the archived page (path below) and find every quoted sentence.",
+    "For each requirement node, confirm the encoding says what the quote says: course lists, counts, levels, exclusions.",
+    "Confirm nothing the page requires for COMPLETION is missing - compare against 'rules not yet modeled'.",
+    "Confirm admission/declaration rules are kept as admission_prose and not as completion requirements.",
+    "Answer every review question; a 'changes_requested' review is a valid outcome.",
+    "Spot-check the eligible-course counts below against the course list you expect."
+  ],
+  "how_to_record": "python -m coursepilot_ingestion.registry_cli review --program sas-830-major --year 2026-2027 --reviewer \"<your full name>\" --decision approved|changes_requested --notes \"...\"  (then, if approved: registry_cli publish --program ... --year ...)",
+  "quotes": [
+    {
+      "node": "program_version",
+      "quote": "The following requirements must be met to complete a major in psychology:"
+    },
+    {
+      "node": "program_version.admission",
+      "quote": "The prerequisite for declaring the major in psychology is completion of the following courses with a grade of C or better in each:"
+    },
+    {
+      "node": "PSYC_MAJOR",
+      "quote": "The following requirements must be met to complete a major in psychology:"
+    },
+    {
+      "node": "PSYC_CORE",
+      "quote": "Four Subdiscipline Core Courses. (A separate course must be selected from each of the following four subdiscipline clusters and must be taken within the 01:830 subject index of the School of Arts and Sciences [SAS] Department of Psychology.)"
+    },
+    {
+      "node": "PSYC_ELECTIVES",
+      "quote": "Completion of Six Psychology Electives. (To be selected from the department's complete set of course offerings.)"
+    },
+    {
+      "node": "PSYC_400",
+      "quote": "Completion of One 400-Level Elective."
+    }
+  ]
+}

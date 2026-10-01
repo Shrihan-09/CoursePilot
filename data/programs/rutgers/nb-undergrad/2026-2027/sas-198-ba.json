@@ -24,6 +24,17 @@
     "name": "School of Arts and Sciences",
     "campus_code": "NB"
   },
+  "review_questions": [
+    "CS_ELECTIVES source_prose omits 'For details, see a computer science adviser or the departmental website.' without marking the elision ('...'). Confirm the omission is harmless and approve adding the marker (a definition change: it moves CS to needs_rereview until re-approved).",
+    "CS_ELECTIVES' query (subject 198, number >= 300) also admits graduate courses (16:198:5xx/6xx): 60 rows on the development database. Should the query add offering_unit_code '01'? (Also a definition change.)",
+    "CS is published with basis 'legacy_curated' (no review record predates Phase 6.3). Converting it to a human_review publication requires passing through needs_rereview, during which CS reports pending_review. Decide when to do that."
+  ],
+  "curation": {
+    "curated_by": "manual encoding, Phase 3 (encoder not recorded)",
+    "extractor_version": "manual-encoding/1",
+    "catalog_page": "/schools/sas/program-listing/computer-science-198",
+    "candidate_key": "major"
+  },
   "program": {
     "code": "198",
     "name": "Computer Science",

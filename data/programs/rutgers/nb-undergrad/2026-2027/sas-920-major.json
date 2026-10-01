@@ -1,0 +1,151 @@
+{
+  "_README": [
+    "Rutgers SAS Sociology (920) major, catalog 2026-2027. PENDING HUMAN REVIEW.",
+    "",
+    "ENCODED by an AI assistant in Phase 6.3 from the official catalog page, archived",
+    "at data/raw/catalog/catalog_sociology-920_2026_2027.html. Every node quotes the sentence",
+    "it came from. An AI encoding is never authoritative: this definition is",
+    "'unverified' and stays pending review until a named human approves it",
+    "(app.services.program_lifecycle). See the review packet in review/.",
+    "",
+    "DEGREE DESIGNATION: the catalog page does not state B.A. or B.S. for this major,",
+    "so degree_type is 'major' rather than a guessed designation."
+  ],
+  "source": {
+    "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/sociology-920",
+    "catalog_year": "2026-2027",
+    "retrieved_at": "2026-09-30",
+    "kind": "rutgers_official_catalog",
+    "curation_status": "unverified"
+  },
+  "school": {
+    "code": "SAS",
+    "name": "School of Arts and Sciences",
+    "campus_code": "NB"
+  },
+  "curation": {
+    "curated_by": "AI assistant (Claude), Phase 6.3 - encoder only, not a reviewer",
+    "extractor_version": "manual-encoding/1",
+    "catalog_page": "/schools/sas/program-listing/sociology-920",
+    "candidate_key": "major"
+  },
+  "program": {
+    "code": "920",
+    "name": "Sociology",
+    "degree_type": "major"
+  },
+  "program_version": {
+    "catalog_year": "2026-2027",
+    "source_prose": "The major in sociology consists of 11 courses totaling 36 credits.",
+    "admission_prose": "Prior to declaring the major in sociology, students must complete Introduction to Sociology (01:920:101) and one of the following courses: 01:920:215, 01:920:311, 01:920:312, 01:920:316."
+  },
+  "requirements": [
+    {
+      "code": "SOC_MAJOR",
+      "name": "Sociology Major",
+      "requirement_type": "all_of",
+      "sort_order": 0,
+      "source_prose": "The major in sociology consists of 11 courses totaling 36 credits. ... Of these eleven courses, five are required courses and six are electives."
+    },
+    {
+      "code": "SOC_REQUIRED",
+      "name": "Five Required Courses",
+      "requirement_type": "all_of",
+      "parent": "SOC_MAJOR",
+      "sort_order": 0,
+      "source_prose": "Of these eleven courses, five are required courses and six are electives."
+    },
+    {
+      "code": "SOC_101",
+      "name": "Introduction to Sociology",
+      "requirement_type": "course",
+      "parent": "SOC_REQUIRED",
+      "sort_order": 0,
+      "courses": [
+        "01:920:101"
+      ]
+    },
+    {
+      "code": "SOC_215",
+      "name": "Six Great Reads: Explorations in Sociology",
+      "requirement_type": "course",
+      "parent": "SOC_REQUIRED",
+      "sort_order": 1,
+      "courses": [
+        "01:920:215"
+      ]
+    },
+    {
+      "code": "SOC_311",
+      "name": "Social Research Methods",
+      "requirement_type": "course",
+      "parent": "SOC_REQUIRED",
+      "sort_order": 2,
+      "courses": [
+        "01:920:311"
+      ]
+    },
+    {
+      "code": "SOC_312",
+      "name": "Introduction to Statistics in Sociology",
+      "requirement_type": "course",
+      "parent": "SOC_REQUIRED",
+      "sort_order": 3,
+      "courses": [
+        "01:920:312"
+      ]
+    },
+    {
+      "code": "SOC_316",
+      "name": "Social Theory",
+      "requirement_type": "course",
+      "parent": "SOC_REQUIRED",
+      "sort_order": 4,
+      "courses": [
+        "01:920:316"
+      ]
+    },
+    {
+      "code": "SOC_ELECTIVES",
+      "name": "Six Sociology Electives",
+      "requirement_type": "choose_n",
+      "min_count": 6,
+      "parent": "SOC_MAJOR",
+      "sort_order": 1,
+      "min_at_level": 300,
+      "min_at_level_count": 3,
+      "constraint_subject_code": "920",
+      "eligible_course_query": {
+        "subject_code": "920",
+        "offering_unit_code": "01",
+        "exclude_course_numbers": [
+          "101",
+          "215",
+          "311",
+          "312",
+          "316"
+        ]
+      },
+      "notes": "NOT modeled: the three any-level electives must each be in a different 'thematic', defined by a departmental checklist the catalog does not publish.",
+      "source_prose": "3 Courses - any level (each in a different thematic - see checklist) ... 3 Courses - 300-level or higher (in any thematic)"
+    }
+  ],
+  "program_rules": [],
+  "rules_not_yet_modeled": [
+    {
+      "rule": "Three any-level electives each in a different thematic (see checklist).",
+      "why_not": "The thematic checklist is not published in the catalog."
+    },
+    {
+      "rule": "Students majoring in sociology must complete at least six courses (21 credits) at Rutgers University-New Brunswick. Each of the three 300-level core courses must be completed in New Brunswick.",
+      "why_not": "Course location/transfer provenance is not recorded on StudentCourse."
+    },
+    {
+      "rule": "Grades of C or better are required in each of the courses.",
+      "why_not": "Minimum grades are out of scope (Phase 6.3)."
+    }
+  ],
+  "review_questions": [
+    "Confirm the degree designation - the page does not state it."
+  ]
+}

@@ -1,0 +1,299 @@
+{
+  "packet_version": "review-packet/1",
+  "program_key": "sas-960-major",
+  "catalog_year": "2026-2027",
+  "definition_file": "data/programs/rutgers/nb-undergrad/2026-2027/sas-960-major.json",
+  "definition_sha256": "07cb81c5313a6a19ed12eb20cbb1d4b9c10d05dff3fd4f8250e84b8fd240304b",
+  "source": {
+    "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/statistics-960",
+    "catalog_page": "/schools/sas/program-listing/statistics-960",
+    "archive": "data/raw/catalog/catalog_statistics-960_2026_2027.html",
+    "archive_present": true,
+    "archive_sha256": "6982a98375fe2de52a92ff62713b3d9d257dc69dbbc555eef05e827b2c6ee656",
+    "prose_sha256": "5f46db7e2a86d771492a543718b50ddec22b5971997962148c04da98dfeebf06"
+  },
+  "curated_by": "AI assistant (Claude), Phase 6.3 - encoder only, not a reviewer",
+  "curation_status_label": "unverified",
+  "lifecycle_state": "validated",
+  "publication_basis": null,
+  "machine_checks": {
+    "passed": true,
+    "quotes_found": 10,
+    "quotes_checked": 10,
+    "errors": [],
+    "warnings": [],
+    "note": "Machine checks are NOT review. They prove quotes exist and the engine can load the tree - not that the encoding means what the prose means."
+  },
+  "non_undergraduate_eligible_rows": 0,
+  "admission_prose": "To declare the major an overall C average or above, based on all times they were taken, must be achieved in Calculus I and II combined (01:640:151-152).",
+  "requirements": [
+    {
+      "code": "STAT_MAJOR",
+      "type": "all_of",
+      "parent": null,
+      "quote": "A total of 46 credits is required: 18 credits in mathematics, 25 credits in statistics, and 3 credits in computer science, as follows:",
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "STAT_CS",
+      "type": "choose_n",
+      "parent": "STAT_MAJOR",
+      "quote": "Computer Science 01:198:107, 110, 111, or 170",
+      "notes": null,
+      "min_count": 1,
+      "courses": [
+        "01:198:107",
+        "01:198:110",
+        "01:198:111",
+        "01:198:170"
+      ],
+      "eligible_course_rows": 4
+    },
+    {
+      "code": "STAT_MATH",
+      "type": "all_of",
+      "parent": "STAT_MAJOR",
+      "quote": "Mathematics 01:640:151, 152, 250, 251",
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "STAT_M151",
+      "type": "course",
+      "parent": "STAT_MATH",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:640:151"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "STAT_M152",
+      "type": "course",
+      "parent": "STAT_MATH",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:640:152"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "STAT_M250",
+      "type": "course",
+      "parent": "STAT_MATH",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:640:250"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "STAT_M251",
+      "type": "course",
+      "parent": "STAT_MATH",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:640:251"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "STAT_CORE",
+      "type": "all_of",
+      "parent": "STAT_MAJOR",
+      "quote": "Statistics 01:960:381, 382, 384, 295 or 390, 463, 486, 490",
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "STAT_381",
+      "type": "choose_n",
+      "parent": "STAT_CORE",
+      "quote": "01:640:477 and 01:640:481 may be taken instead of 01:960:381, 382.",
+      "notes": null,
+      "min_count": 1,
+      "courses": [
+        "01:960:381",
+        "01:640:477"
+      ],
+      "eligible_course_rows": 2
+    },
+    {
+      "code": "STAT_382",
+      "type": "choose_n",
+      "parent": "STAT_CORE",
+      "quote": "01:640:477 and 01:640:481 may be taken instead of 01:960:381, 382.",
+      "notes": null,
+      "min_count": 1,
+      "courses": [
+        "01:960:382",
+        "01:640:481"
+      ],
+      "eligible_course_rows": 2
+    },
+    {
+      "code": "STAT_384",
+      "type": "course",
+      "parent": "STAT_CORE",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:960:384"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "STAT_295_390",
+      "type": "choose_n",
+      "parent": "STAT_CORE",
+      "quote": null,
+      "notes": null,
+      "min_count": 1,
+      "courses": [
+        "01:960:295",
+        "01:960:390"
+      ],
+      "eligible_course_rows": 2
+    },
+    {
+      "code": "STAT_463",
+      "type": "course",
+      "parent": "STAT_CORE",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:960:463"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "STAT_486",
+      "type": "course",
+      "parent": "STAT_CORE",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:960:486"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "STAT_490",
+      "type": "course",
+      "parent": "STAT_CORE",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:960:490"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "STAT_ELECTIVES",
+      "type": "choose_n",
+      "parent": "STAT_MAJOR",
+      "quote": "Two courses chosen from 01:960:365, 467, 476, 483",
+      "notes": null,
+      "min_count": 2,
+      "courses": [
+        "01:960:365",
+        "01:960:467",
+        "01:960:476",
+        "01:960:483"
+      ],
+      "eligible_course_rows": 4
+    },
+    {
+      "code": "STAT_MATH_ELECTIVE",
+      "type": "choose_n",
+      "parent": "STAT_MAJOR",
+      "quote": "Three credits in mathematics electives (01:640:252 or a course at the 300 level or above, but not 01:640:477 or 01:640:481)",
+      "notes": "'Three credits' is encoded as one course; every eligible course is 3+ credits in practice, but that is not checked.",
+      "min_count": 1,
+      "courses": [
+        "01:640:252"
+      ],
+      "eligible_course_query": {
+        "subject_code": "640",
+        "offering_unit_code": "01",
+        "min_course_number": 300,
+        "exclude_course_numbers": [
+          "477",
+          "481"
+        ]
+      },
+      "eligible_course_rows": 45
+    }
+  ],
+  "program_rules": [],
+  "rules_not_yet_modeled": [
+    {
+      "rule": "Grades of C or better must be earned in all courses counted toward the major.",
+      "why_not": "Minimum grades are out of scope (Phase 6.3)."
+    },
+    {
+      "rule": "Credit is not given for both 01:640:477 and 01:960:381, nor for both 01:640:481 and 01:960:382.",
+      "why_not": "A credit-exclusion pair; the choose_n nodes accept either, and the engine uses one course once."
+    }
+  ],
+  "review_questions": [
+    "Confirm the degree designation - the page does not state it.",
+    "Is 01:640:477/481 acceptable in place of 381/382 for every student (encoded as yes)?"
+  ],
+  "what_to_verify": [
+    "Open the archived page (path below) and find every quoted sentence.",
+    "For each requirement node, confirm the encoding says what the quote says: course lists, counts, levels, exclusions.",
+    "Confirm nothing the page requires for COMPLETION is missing - compare against 'rules not yet modeled'.",
+    "Confirm admission/declaration rules are kept as admission_prose and not as completion requirements.",
+    "Answer every review question; a 'changes_requested' review is a valid outcome.",
+    "Spot-check the eligible-course counts below against the course list you expect."
+  ],
+  "how_to_record": "python -m coursepilot_ingestion.registry_cli review --program sas-960-major --year 2026-2027 --reviewer \"<your full name>\" --decision approved|changes_requested --notes \"...\"  (then, if approved: registry_cli publish --program ... --year ...)",
+  "quotes": [
+    {
+      "node": "program_version",
+      "quote": "A total of 46 credits is required: 18 credits in mathematics, 25 credits in statistics, and 3 credits in computer science, as follows:"
+    },
+    {
+      "node": "program_version.admission",
+      "quote": "To declare the major an overall C average or above, based on all times they were taken, must be achieved in Calculus I and II combined (01:640:151-152)."
+    },
+    {
+      "node": "STAT_MAJOR",
+      "quote": "A total of 46 credits is required: 18 credits in mathematics, 25 credits in statistics, and 3 credits in computer science, as follows:"
+    },
+    {
+      "node": "STAT_CS",
+      "quote": "Computer Science 01:198:107, 110, 111, or 170"
+    },
+    {
+      "node": "STAT_MATH",
+      "quote": "Mathematics 01:640:151, 152, 250, 251"
+    },
+    {
+      "node": "STAT_CORE",
+      "quote": "Statistics 01:960:381, 382, 384, 295 or 390, 463, 486, 490"
+    },
+    {
+      "node": "STAT_381",
+      "quote": "01:640:477 and 01:640:481 may be taken instead of 01:960:381, 382."
+    },
+    {
+      "node": "STAT_382",
+      "quote": "01:640:477 and 01:640:481 may be taken instead of 01:960:381, 382."
+    },
+    {
+      "node": "STAT_ELECTIVES",
+      "quote": "Two courses chosen from 01:960:365, 467, 476, 483"
+    },
+    {
+      "node": "STAT_MATH_ELECTIVE",
+      "quote": "Three credits in mathematics electives (01:640:252 or a course at the 300 level or above, but not 01:640:477 or 01:640:481)"
+    }
+  ]
+}

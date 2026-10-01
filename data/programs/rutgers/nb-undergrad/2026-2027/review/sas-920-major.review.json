@@ -1,0 +1,174 @@
+{
+  "packet_version": "review-packet/1",
+  "program_key": "sas-920-major",
+  "catalog_year": "2026-2027",
+  "definition_file": "data/programs/rutgers/nb-undergrad/2026-2027/sas-920-major.json",
+  "definition_sha256": "03595a2a5498a20d887f0fbfe2b257676dd82567d40a9de9ec8e4744ea4592df",
+  "source": {
+    "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/sociology-920",
+    "catalog_page": "/schools/sas/program-listing/sociology-920",
+    "archive": "data/raw/catalog/catalog_sociology-920_2026_2027.html",
+    "archive_present": true,
+    "archive_sha256": "12cd46f47ca97be1a912ca53f9594aa186e815dacb5ad979af81e9c65922b2da",
+    "prose_sha256": "fd3ea25f39c39fb44361d88d0866406a61fbc59e2230dd5f29f7d4abbee33e60"
+  },
+  "curated_by": "AI assistant (Claude), Phase 6.3 - encoder only, not a reviewer",
+  "curation_status_label": "unverified",
+  "lifecycle_state": "validated",
+  "publication_basis": null,
+  "machine_checks": {
+    "passed": true,
+    "quotes_found": 7,
+    "quotes_checked": 7,
+    "errors": [],
+    "warnings": [],
+    "note": "Machine checks are NOT review. They prove quotes exist and the engine can load the tree - not that the encoding means what the prose means."
+  },
+  "non_undergraduate_eligible_rows": 0,
+  "admission_prose": "Prior to declaring the major in sociology, students must complete Introduction to Sociology (01:920:101) and one of the following courses: 01:920:215, 01:920:311, 01:920:312, 01:920:316.",
+  "requirements": [
+    {
+      "code": "SOC_MAJOR",
+      "type": "all_of",
+      "parent": null,
+      "quote": "The major in sociology consists of 11 courses totaling 36 credits. ... Of these eleven courses, five are required courses and six are electives.",
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "SOC_REQUIRED",
+      "type": "all_of",
+      "parent": "SOC_MAJOR",
+      "quote": "Of these eleven courses, five are required courses and six are electives.",
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "SOC_101",
+      "type": "course",
+      "parent": "SOC_REQUIRED",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:920:101"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "SOC_215",
+      "type": "course",
+      "parent": "SOC_REQUIRED",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:920:215"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "SOC_311",
+      "type": "course",
+      "parent": "SOC_REQUIRED",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:920:311"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "SOC_312",
+      "type": "course",
+      "parent": "SOC_REQUIRED",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:920:312"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "SOC_316",
+      "type": "course",
+      "parent": "SOC_REQUIRED",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:920:316"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "SOC_ELECTIVES",
+      "type": "choose_n",
+      "parent": "SOC_MAJOR",
+      "quote": "3 Courses - any level (each in a different thematic - see checklist) ... 3 Courses - 300-level or higher (in any thematic)",
+      "notes": "NOT modeled: the three any-level electives must each be in a different 'thematic', defined by a departmental checklist the catalog does not publish.",
+      "min_count": 6,
+      "min_at_level": 300,
+      "min_at_level_count": 3,
+      "constraint_subject_code": "920",
+      "eligible_course_query": {
+        "subject_code": "920",
+        "offering_unit_code": "01",
+        "exclude_course_numbers": [
+          "101",
+          "215",
+          "311",
+          "312",
+          "316"
+        ]
+      },
+      "eligible_course_rows": 29
+    }
+  ],
+  "program_rules": [],
+  "rules_not_yet_modeled": [
+    {
+      "rule": "Three any-level electives each in a different thematic (see checklist).",
+      "why_not": "The thematic checklist is not published in the catalog."
+    },
+    {
+      "rule": "Students majoring in sociology must complete at least six courses (21 credits) at Rutgers University-New Brunswick. Each of the three 300-level core courses must be completed in New Brunswick.",
+      "why_not": "Course location/transfer provenance is not recorded on StudentCourse."
+    },
+    {
+      "rule": "Grades of C or better are required in each of the courses.",
+      "why_not": "Minimum grades are out of scope (Phase 6.3)."
+    }
+  ],
+  "review_questions": [
+    "Confirm the degree designation - the page does not state it."
+  ],
+  "what_to_verify": [
+    "Open the archived page (path below) and find every quoted sentence.",
+    "For each requirement node, confirm the encoding says what the quote says: course lists, counts, levels, exclusions.",
+    "Confirm nothing the page requires for COMPLETION is missing - compare against 'rules not yet modeled'.",
+    "Confirm admission/declaration rules are kept as admission_prose and not as completion requirements.",
+    "Answer every review question; a 'changes_requested' review is a valid outcome.",
+    "Spot-check the eligible-course counts below against the course list you expect."
+  ],
+  "how_to_record": "python -m coursepilot_ingestion.registry_cli review --program sas-920-major --year 2026-2027 --reviewer \"<your full name>\" --decision approved|changes_requested --notes \"...\"  (then, if approved: registry_cli publish --program ... --year ...)",
+  "quotes": [
+    {
+      "node": "program_version",
+      "quote": "The major in sociology consists of 11 courses totaling 36 credits."
+    },
+    {
+      "node": "program_version.admission",
+      "quote": "Prior to declaring the major in sociology, students must complete Introduction to Sociology (01:920:101) and one of the following courses: 01:920:215, 01:920:311, 01:920:312, 01:920:316."
+    },
+    {
+      "node": "SOC_MAJOR",
+      "quote": "The major in sociology consists of 11 courses totaling 36 credits. ... Of these eleven courses, five are required courses and six are electives."
+    },
+    {
+      "node": "SOC_REQUIRED",
+      "quote": "Of these eleven courses, five are required courses and six are electives."
+    },
+    {
+      "node": "SOC_ELECTIVES",
+      "quote": "3 Courses - any level (each in a different thematic - see checklist) ... 3 Courses - 300-level or higher (in any thematic)"
+    }
+  ]
+}
