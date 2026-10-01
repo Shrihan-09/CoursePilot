@@ -42,11 +42,13 @@ from sqlalchemy.exc import IntegrityError
 
 from .test_postgres_integration import DB_URL, pg_session, requires_postgres  # noqa: F401
 
+from .conftest import CS_REQUIREMENTS, SAS_CORE
+
 pytestmark = pytest.mark.db
 
 FIXTURES = pathlib.Path(__file__).parent / "fixtures"
-CS_REQUIREMENTS = FIXTURES / "cs_ba_requirements_26_27.json"
-CORE_DEFINITION = FIXTURES / "sas_core_26_27.json"
+CS_REQUIREMENTS = CS_REQUIREMENTS
+CORE_DEFINITION = SAS_CORE
 TERM = "20269"
 
 

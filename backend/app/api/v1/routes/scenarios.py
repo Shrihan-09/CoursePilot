@@ -45,7 +45,7 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 from app.api.security import Principal, enforce_request_rate_limit
-from app.api.v1.routes.programs import PROGRAM_KEY_PATTERN
+from app.api.v1.routes.programs import PROGRAM_KEY_MAX_LENGTH, PROGRAM_KEY_PATTERN
 from app.api.v1.routes.student import _resolve, _unlinked
 from app.db.session import get_sync_sessionmaker
 from app.domain.scenario import ProgramComparison, ScenarioAssumption, ScenarioAudit, ScenarioTarget
@@ -63,7 +63,7 @@ router = APIRouter(prefix="/student/scenarios", tags=["scenarios"])
 
 
 class ScenarioRequest(BaseModel):
-    program_key: str = Field(pattern=PROGRAM_KEY_PATTERN, max_length=48)
+    program_key: str = Field(pattern=PROGRAM_KEY_PATTERN, max_length=PROGRAM_KEY_MAX_LENGTH)
     catalog_year: str | None = Field(default=None, pattern=r"^\d{4}-\d{4}$")
 
     model_config = {"extra": "forbid"}

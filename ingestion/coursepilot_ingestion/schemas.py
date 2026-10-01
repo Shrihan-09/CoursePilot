@@ -179,6 +179,9 @@ class IngestionStats(BaseModel):
     #: Phase 6.2 prerequisite counters: inserted / updated / unchanged /
     #: deleted, per-classification, references and unresolved references.
     prerequisites: dict[str, int] = Field(default_factory=dict)
+    #: Phase 6.3 requirement-eligibility reconciliation after the load:
+    #: requirements / inserted / deleted / unchanged.
+    eligibility: dict[str, int] = Field(default_factory=dict)
     source_content_hash: str | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None

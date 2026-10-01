@@ -27,11 +27,14 @@ substitutions, double-counting policy between programs.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 
 from sqlalchemy import (
+    JSON,
     CheckConstraint,
+    DateTime,
     ForeignKey,
     Index,
     Integer,
@@ -138,11 +141,17 @@ class School(Base, TimestampMixin):
 class Program(Base, TimestampMixin):
     """A degree program, independent of catalog year.
 
-    Natural key: (school_id, code, degree_type).
+    Natural key: (school_id, code, degree_type, variant).
 
     `degree_type` is part of identity because the Rutgers CS page defines a
     B.A. and a B.S. with *different* requirements under one program name. They
     are two programs a student can be in, not one program with a flag.
+
+    `variant` (Phase 6.3) is part of identity for the same reason: the
+    Mathematics page defines Option A (standard), B (honors) and C (actuarial)
+    with different requirements under one code and degree. '' means "the
+    program has no variants"; a non-empty value is a slug such as
+    "option-a". Generic - no program is special-cased.
     """
 
     __tablename__ = "program"
@@ -153,6 +162,7 @@ class Program(Base, TimestampMixin):
     code: Mapped[str] = mapped_column(String(16))          # e.g. "198"
     name: Mapped[str] = mapped_column(Text)                # "Computer Science"
     degree_type: Mapped[str] = mapped_column(String(16))   # "BA" | "BS" | "minor"
+    variant: Mapped[str] = mapped_column(String(48), default="", server_default="")
 
     source_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("data_source.id"))
 
@@ -162,7 +172,8 @@ class Program(Base, TimestampMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint("school_id", "code", "degree_type", name="uq_program_natural_key"),
+        UniqueConstraint("school_id", "code", "degree_type", "variant",
+                         name="uq_program_natural_key"),
     )
 
     def __repr__(self) -> str:
@@ -217,6 +228,39 @@ class ProgramVersion(Base, TimestampMixin):
 
     source_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("data_source.id"))
 
+    # --- Phase 6.3: lifecycle and provenance --------------------------------
+    # parsed -> validated -> reviewed -> published, and needs_rereview when
+    # the official source changes after review. Transitions are made only by
+    # app.services.program_lifecycle; see that module for the rules.
+    lifecycle_state: Mapped[str] = mapped_column(
+        String(24), default="parsed", server_default="parsed")
+    # Why a published version is published: a recorded human review, or
+    # grandfathered from before review records existed ('legacy_curated').
+    publication_basis: Mapped[str | None] = mapped_column(String(24))
+    # The official catalog page and the archived snapshot of it this
+    # definition was curated from. `source_id` above is the CURATED JSON's
+    # provenance; these are the RUTGERS page's.
+    catalog_page_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("catalog_page.id", ondelete="SET NULL"))
+    source_snapshot_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("data_source.id", ondelete="SET NULL"))
+    # sha256 of the normalized requirement prose of that snapshot - the
+    # content identity a review is made against (see catalog_registry).
+    source_prose_sha256: Mapped[str | None] = mapped_column(String(64))
+    # sha256 of the curated definition's requirement-bearing content
+    # (program, version, requirements, rules) as canonical JSON - README
+    # text and curation metadata excluded, so only a semantic change moves it.
+    definition_sha256: Mapped[str | None] = mapped_column(String(64))
+    # Who or what ENCODED the definition, and how. May be an AI assistant;
+    # that is recorded here and never as a reviewer.
+    curated_by: Mapped[str | None] = mapped_column(String(128))
+    extractor_version: Mapped[str | None] = mapped_column(String(64))
+    validated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Admission-to-major prose, kept for a future eligibility layer. Never
+    # evaluated by the Degree Engine.
+    admission_prose: Mapped[str | None] = mapped_column(Text)
+
     program: Mapped[Program] = relationship(back_populates="versions")
     requirements: Mapped[list[Requirement]] = relationship(
         back_populates="program_version", cascade="all, delete-orphan"
@@ -241,6 +285,19 @@ class ProgramVersion(Base, TimestampMixin):
         CheckConstraint(
             "sharing_policy IN ('exclusive','share_across_systems')",
             name="sharing_policy_known",
+        ),
+        CheckConstraint(
+            "lifecycle_state IN ('parsed','validated','reviewed','published','needs_rereview')",
+            name="lifecycle_state_known",
+        ),
+        CheckConstraint(
+            "publication_basis IS NULL OR publication_basis IN ('human_review','legacy_curated')",
+            name="publication_basis_known",
+        ),
+        # A published version must say why it is published.
+        CheckConstraint(
+            "lifecycle_state <> 'published' OR publication_basis IS NOT NULL",
+            name="published_has_basis",
         ),
     )
 
@@ -316,6 +373,12 @@ class Requirement(Base, TimestampMixin):
         String(32), default=CurationStatus.UNVERIFIED.value
     )
     source_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("data_source.id"))
+
+    # Phase 6.3: the curated rule eligibility is DERIVED from. Stored so
+    # eligibility can be reconciled whenever courses or the definition change
+    # (app.services.eligibility). NULL means eligibility for this node is
+    # managed by another loader (SAS Core certifications) and is left alone.
+    eligibility_rule: Mapped[dict | None] = mapped_column(JSON(none_as_null=True))
 
     program_version: Mapped[ProgramVersion] = relationship(back_populates="requirements")
     children: Mapped[list[Requirement]] = relationship(

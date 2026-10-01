@@ -1368,7 +1368,7 @@ silently ignored.
 | [engine.py](backend/app/services/audit/engine.py) | Evaluation; allocation runs *before* evaluation because it is a global decision |
 | [requirements.py](backend/app/models/requirements.py) | The schema, with the measurement behind each choice |
 | [audit.py](backend/app/domain/audit.py) | The typed result the LLM will one day read but never write |
-| [cs_ba_requirements_26_27.json](ingestion/tests/fixtures/cs_ba_requirements_26_27.json) | The curated tree, with prose and a documented gap |
+| [sas-198-ba.json](data/programs/rutgers/nb-undergrad/2026-2027/sas-198-ba.json) (was `ingestion/tests/fixtures/cs_ba_requirements_26_27.json` before Phase 6.3) | The curated tree, with prose and a documented gap |
 
 ## What Could Go Wrong?
 
@@ -2052,7 +2052,7 @@ future surprise.
 | [pipelines/core.py](ingestion/coursepilot_ingestion/pipelines/core.py) | Two inputs, two sources, one pipeline |
 | [loaders/core.py](ingestion/coursepilot_ingestion/loaders/core.py) | Why Core attaches to an existing program version |
 | [validators/core.py](ingestion/coursepilot_ingestion/validators/core.py) | Cross-referencing goals against eligibility in both directions |
-| [sas_core_26_27.json](ingestion/tests/fixtures/sas_core_26_27.json) | The curated structure, with every exclusion justified |
+| [sas-core.json](data/programs/rutgers/nb-undergrad/2026-2027/sas-core.json) (was `sas_core_26_27.json` before Phase 6.3) | The curated structure, with every exclusion justified |
 | [probe_core_codes.py](scripts/probe_core_codes.py) | Field-semantics verification before any code was written |
 
 ## What Could Go Wrong?
@@ -7459,7 +7459,7 @@ one.
 
 **C.** Change the comparison to match requirements by code alone and run the real CS and Mathematics comparison test.
 
-**D.** Change one quoted sentence in `math_ba_requirements_26_27.json` by a single word and run the verbatim-prose test.
+**D.** Change one quoted sentence in `sas-640-ba-option-a.json` (formerly `math_ba_requirements_26_27.json`) by a single word and run the verbatim-prose test.
 
 **E.** Remove the `Decimal(0)` start value from `_eval_credits`, audit the development record, and serialize it with warnings as errors.
 
@@ -7636,3 +7636,106 @@ was. A regression test that has never failed has never proven anything.
 - Bitemporal data and "valid time" versus "record time"
 - Idempotent, order-independent ETL
 - Mutation testing (e.g. mutmut) and what "the test can fail" buys
+
+---
+
+# Lesson 30: Who Is Allowed to Say a Program Is Correct
+
+## What We Built
+
+A registry that finds every page in the Rutgers catalog, extracts the
+credentials each page appears to define, and tracks every curated program
+through parsed -> validated -> reviewed -> published. Machines may take a
+definition as far as `validated`; only a named person can take it further.
+We also replaced append-only course eligibility with reconciliation, moved
+curated definitions out of the test fixtures, and encoded six more SAS
+majors - all of them waiting for a human.
+
+---
+
+## Concepts
+
+### A page is not a program
+
+The Mathematics page defines a major with three options, two
+interdisciplinary majors, a minor and a certificate. Treating "one page = one
+program" would either merge seven credentials or invent one. So discovery
+records pages, extraction records CANDIDATES (claims), and only a curated
+definition becomes a program. Each layer can be wrong without corrupting the
+next: a bad heading parse produces a wrong candidate, never a wrong audit.
+
+### Validation is not review
+
+A validator can prove the quoted sentences exist on the archived page, that
+every parent exists, and that the engine can evaluate the tree. It cannot
+prove that "eight 300- to 400-level mathematics courses" was encoded with the
+right exclusions, or that "411-412" means either course rather than a pair.
+So the lifecycle has a state for each claim: `validated` (machine-provable)
+and `reviewed` (a person checked meaning). The assistant that encoded the
+wave is recorded as `curated_by`, and its name is on the list of reviewers
+the code refuses.
+
+### Approve a hash, not a name
+
+A review row stores the source-prose hash and the definition hash it
+approved. Publishing re-checks both. If either changed after review - a
+re-encoded definition, a Rutgers edit - the approval no longer covers what
+would be published, and the version drops to `needs_rereview`. Documentation
+fields are excluded from the definition hash so fixing a typo in a README
+does not demand a new review.
+
+### Derived data must be recomputable
+
+Eligibility rows were written once and appended to. A course that first
+appeared in a later term never became eligible; a course removed from a
+definition never stopped being eligible. The fix stores the RULE and
+recomputes the ROWS - inserting what is missing, deleting what is no longer
+implied, inside a savepoint. The test for "removal" failed before the fix,
+which is the only proof that it tests anything.
+
+### Defense in depth hides untested guards
+
+Failure injection removed the "must be reviewed" check from `publish` - and
+the test still passed, because the next check ("an approved review must
+exist") caught it. Two guards, one test: either guard could be deleted
+unnoticed. The fix was a test per guard, each forging the state the OTHER
+guard would have caught.
+
+### Say what the source does not say
+
+None of the six new pages states B.A. or B.S. for its major. The encoding
+says `degree_type = 'major'` and lists the question for the reviewer, rather
+than guessing a designation that would then look authoritative in the API.
+
+---
+
+## Self-Check
+
+1. Why does discovery never create a `program` row?
+2. What can `validated` prove, and what can it not?
+3. Why is "Claude" refused as a reviewer even though it encoded the definition?
+4. A Rutgers typo fix changes a page's prose. What happens to a published version, and why is that the safe default?
+5. Why are `_README` and `review_questions` excluded from `definition_sha256`?
+6. Why does reconciliation skip requirements whose rule is NULL, and why does a removed rule become `{}` instead?
+7. Why does CS remain `published` although its electives quote fails validation?
+8. Why was the first "unauthorized publish" injection missed?
+9. What does a stable Coursedog `pageId` across years tell you, and what does it not?
+
+## Try It Yourself
+
+**A.** Record a review with `--reviewer "AI assistant"` and read the refusal.
+
+**B.** Edit one count in `sas-920-major.json`, run `registry_cli load`, and watch the version return to `parsed`.
+
+**C.** Delete the `session.delete` line in `eligibility.reconcile` and run `test_eligibility_reconciliation.py`.
+
+**D.** Change one word in an archived page's prose and run `check-sources`.
+
+**E.** Add `offering_unit_code: "01"` to CS_ELECTIVES on a scratch database and compare the eligible rows - then explain why this phase did not ship that change.
+
+## Further Learning
+
+- Four-eyes principle and separation of duties
+- Content-addressed storage; Merkle-style approvals
+- Materialized views and incremental view maintenance
+- Mutation testing and masked mutants

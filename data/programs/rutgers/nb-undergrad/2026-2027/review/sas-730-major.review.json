@@ -1,0 +1,276 @@
+{
+  "packet_version": "review-packet/1",
+  "program_key": "sas-730-major",
+  "catalog_year": "2026-2027",
+  "definition_file": "data/programs/rutgers/nb-undergrad/2026-2027/sas-730-major.json",
+  "definition_sha256": "993d96acfff9dd0e9971490d23f6ddd7692d20e2e6fdd7b43388c1ae2e9d5b07",
+  "source": {
+    "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/philosophy-730",
+    "catalog_page": "/schools/sas/program-listing/philosophy-730",
+    "archive": "data/raw/catalog/catalog_philosophy-730_2026_2027.html",
+    "archive_present": true,
+    "archive_sha256": "d4ea6d7f4617eaff3d146dd0679eb4946623005cd8037235ee55924c4709e085",
+    "prose_sha256": "3afe684f3adc05b48d56b24d94f920e53f089b5799d4f52bdae37a851a8b457d"
+  },
+  "curated_by": "AI assistant (Claude), Phase 6.3 - encoder only, not a reviewer",
+  "curation_status_label": "unverified",
+  "lifecycle_state": "validated",
+  "publication_basis": null,
+  "machine_checks": {
+    "passed": true,
+    "quotes_found": 10,
+    "quotes_checked": 10,
+    "errors": [],
+    "warnings": [
+      "PHIL_LOGIC: 01:730:407 not in the loaded course table",
+      "PHIL_LOGIC: 01:730:408 not in the loaded course table",
+      "PHIL_ANCIENT: 01:190:322 not in the loaded course table",
+      "PHIL_ANCIENT: 01:190:353 not in the loaded course table",
+      "PHIL_ANCIENT: 01:730:306 not in the loaded course table",
+      "PHIL_ANCIENT: 01:730:311 not in the loaded course table",
+      "PHIL_ANCIENT: 01:730:352 not in the loaded course table",
+      "PHIL_ANCIENT: 01:730:402 not in the loaded course table",
+      "PHIL_MODERN: 01:730:309 not in the loaded course table",
+      "PHIL_MODERN: 01:730:404 not in the loaded course table",
+      "PHIL_MODERN: 01:730:406 not in the loaded course table",
+      "PHIL_MODERN: 01:730:417 not in the loaded course table",
+      "PHIL_ETHICS: 01:730:441 not in the loaded course table",
+      "PHIL_ETHICS: 01:730:442 not in the loaded course table",
+      "PHIL_ETHICS: 01:730:459 not in the loaded course table",
+      "PHIL_ETHICS: 01:730:470 not in the loaded course table",
+      "PHIL_CORE_AREAS: 01:730:303 not in the loaded course table",
+      "PHIL_CORE_AREAS: 01:730:327 not in the loaded course table",
+      "PHIL_CORE_AREAS: 01:730:370 not in the loaded course table",
+      "PHIL_CORE_AREAS: 01:730:412 not in the loaded course table",
+      "PHIL_CORE_AREAS: 01:730:419 not in the loaded course table",
+      "PHIL_CORE_AREAS: 01:730:421 not in the loaded course table",
+      "PHIL_CORE_AREAS: 01:730:422 not in the loaded course table",
+      "PHIL_CORE_AREAS: 01:730:423 not in the loaded course table",
+      "PHIL_CORE_AREAS: 01:730:427 not in the loaded course table",
+      "PHIL_CORE_AREAS: 01:730:428 not in the loaded course table",
+      "PHIL_CORE_AREAS: 01:730:435 not in the loaded course table"
+    ],
+    "note": "Machine checks are NOT review. They prove quotes exist and the engine can load the tree - not that the encoding means what the prose means."
+  },
+  "non_undergraduate_eligible_rows": 0,
+  "admission_prose": null,
+  "requirements": [
+    {
+      "code": "PHIL_MAJOR",
+      "type": "all_of",
+      "parent": null,
+      "quote": "Students must pass a minimum of 11 classroom courses of 3 or more credits each in philosophy to earn the major. ... Among these courses must be the following:",
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "PHIL_LOGIC",
+      "type": "choose_n",
+      "parent": "PHIL_MAJOR",
+      "quote": "One semester of logic from among the following:",
+      "notes": null,
+      "min_count": 1,
+      "courses": [
+        "01:730:109",
+        "01:730:201",
+        "01:730:315",
+        "01:730:407",
+        "01:730:408"
+      ],
+      "eligible_course_rows": 3
+    },
+    {
+      "code": "PHIL_ANCIENT",
+      "type": "choose_n",
+      "parent": "PHIL_MAJOR",
+      "quote": "One semester of ancient or medieval philosophy from among the following:",
+      "notes": null,
+      "min_count": 1,
+      "courses": [
+        "01:190:322",
+        "01:190:353",
+        "01:730:301",
+        "01:730:302",
+        "01:730:304",
+        "01:730:305",
+        "01:730:306",
+        "01:730:311",
+        "01:730:352",
+        "01:730:401",
+        "01:730:402",
+        "01:730:403"
+      ],
+      "eligible_course_rows": 6
+    },
+    {
+      "code": "PHIL_MODERN",
+      "type": "choose_n",
+      "parent": "PHIL_MAJOR",
+      "quote": "One semester of modern philosophy from among the following:",
+      "notes": null,
+      "min_count": 1,
+      "courses": [
+        "01:730:307",
+        "01:730:308",
+        "01:730:309",
+        "01:730:404",
+        "01:730:405",
+        "01:730:406",
+        "01:730:416",
+        "01:730:417"
+      ],
+      "eligible_course_rows": 4
+    },
+    {
+      "code": "PHIL_ETHICS",
+      "type": "choose_n",
+      "parent": "PHIL_MAJOR",
+      "quote": "One semester of advanced ethics or political philosophy from among the following:",
+      "notes": null,
+      "min_count": 1,
+      "courses": [
+        "01:730:330",
+        "01:730:341",
+        "01:730:342",
+        "01:730:345",
+        "01:730:441",
+        "01:730:442",
+        "01:730:445",
+        "01:730:450",
+        "01:730:459",
+        "01:730:470"
+      ],
+      "eligible_course_rows": 6
+    },
+    {
+      "code": "PHIL_CORE_AREAS",
+      "type": "choose_n",
+      "parent": "PHIL_MAJOR",
+      "quote": "Two courses from among the following, at least one of which must be at the 400 level:",
+      "notes": null,
+      "min_count": 2,
+      "min_at_level": 400,
+      "min_at_level_count": 1,
+      "constraint_subject_code": "730",
+      "courses": [
+        "01:730:210",
+        "01:730:215",
+        "01:730:220",
+        "01:730:225",
+        "01:730:226",
+        "01:730:256",
+        "01:730:303",
+        "01:730:319",
+        "01:730:320",
+        "01:730:327",
+        "01:730:328",
+        "01:730:329",
+        "01:730:360",
+        "01:730:370",
+        "01:730:410",
+        "01:730:412",
+        "01:730:413",
+        "01:730:415",
+        "01:730:418",
+        "01:730:419",
+        "01:730:420",
+        "01:730:421",
+        "01:730:422",
+        "01:730:423",
+        "01:730:424",
+        "01:730:425",
+        "01:730:426",
+        "01:730:427",
+        "01:730:428",
+        "01:730:429",
+        "01:730:435"
+      ],
+      "eligible_course_rows": 20
+    },
+    {
+      "code": "PHIL_ELECTIVES",
+      "type": "choose_n",
+      "parent": "PHIL_MAJOR",
+      "quote": "Students must pass a minimum of 11 classroom courses of 3 or more credits each in philosophy to earn the major.",
+      "notes": "11 courses minus the 6 named above = 5 more 01:730 courses. NOT modeled: 'classroom' courses only, at least one 200-level (excluding 201, 202, 295, 296), at least six at the 300/400 level (excluding 495, 496) across all eleven.",
+      "min_count": 5,
+      "eligible_course_query": {
+        "subject_code": "730",
+        "offering_unit_code": "01"
+      },
+      "eligible_course_rows": 75
+    }
+  ],
+  "program_rules": [
+    {
+      "code": "PHIL_MAX_D",
+      "name": "At most one grade of D in the major",
+      "rule_type": "max_grade_count",
+      "grade": "D",
+      "max_count": 1,
+      "is_evaluable": true,
+      "source_prose": "No more than one D grade can be applied toward the major."
+    }
+  ],
+  "rules_not_yet_modeled": [
+    {
+      "rule": "At least one of these courses must be at the 200 level, excluding 201, 202, 295, and 296. At least six of these courses must be at the 300 or 400 level, excluding 495 and 496.",
+      "why_not": "Level distribution across the whole major (all eleven courses) is not an engine constraint today."
+    },
+    {
+      "rule": "A student may petition the department to substitute other courses for those on this list.",
+      "why_not": "Petitions are individual decisions, not data."
+    }
+  ],
+  "review_questions": [
+    "Confirm the degree designation - the page does not state it.",
+    "01:190:322 and 01:190:353 are Classics courses counted as 'in philosophy' by the page - confirm they count toward the eleven."
+  ],
+  "what_to_verify": [
+    "Open the archived page (path below) and find every quoted sentence.",
+    "For each requirement node, confirm the encoding says what the quote says: course lists, counts, levels, exclusions.",
+    "Confirm nothing the page requires for COMPLETION is missing - compare against 'rules not yet modeled'.",
+    "Confirm admission/declaration rules are kept as admission_prose and not as completion requirements.",
+    "Answer every review question; a 'changes_requested' review is a valid outcome.",
+    "Spot-check the eligible-course counts below against the course list you expect."
+  ],
+  "how_to_record": "python -m coursepilot_ingestion.registry_cli review --program sas-730-major --year 2026-2027 --reviewer \"<your full name>\" --decision approved|changes_requested --notes \"...\"  (then, if approved: registry_cli publish --program ... --year ...)",
+  "quotes": [
+    {
+      "node": "program_version",
+      "quote": "Students must pass a minimum of 11 classroom courses of 3 or more credits each in philosophy to earn the major."
+    },
+    {
+      "node": "PHIL_MAJOR",
+      "quote": "Students must pass a minimum of 11 classroom courses of 3 or more credits each in philosophy to earn the major. ... Among these courses must be the following:"
+    },
+    {
+      "node": "PHIL_LOGIC",
+      "quote": "One semester of logic from among the following:"
+    },
+    {
+      "node": "PHIL_ANCIENT",
+      "quote": "One semester of ancient or medieval philosophy from among the following:"
+    },
+    {
+      "node": "PHIL_MODERN",
+      "quote": "One semester of modern philosophy from among the following:"
+    },
+    {
+      "node": "PHIL_ETHICS",
+      "quote": "One semester of advanced ethics or political philosophy from among the following:"
+    },
+    {
+      "node": "PHIL_CORE_AREAS",
+      "quote": "Two courses from among the following, at least one of which must be at the 400 level:"
+    },
+    {
+      "node": "PHIL_ELECTIVES",
+      "quote": "Students must pass a minimum of 11 classroom courses of 3 or more credits each in philosophy to earn the major."
+    },
+    {
+      "node": "PHIL_MAX_D",
+      "quote": "No more than one D grade can be applied toward the major."
+    }
+  ]
+}

@@ -1,0 +1,257 @@
+{
+  "_README": [
+    "Rutgers SAS Statistics (960) major, catalog 2026-2027. PENDING HUMAN REVIEW.",
+    "",
+    "ENCODED by an AI assistant in Phase 6.3 from the official catalog page, archived",
+    "at data/raw/catalog/catalog_statistics-960_2026_2027.html. Every node quotes the sentence",
+    "it came from. An AI encoding is never authoritative: this definition is",
+    "'unverified' and stays pending review until a named human approves it",
+    "(app.services.program_lifecycle). See the review packet in review/.",
+    "",
+    "DEGREE DESIGNATION: the catalog page does not state B.A. or B.S. for this major,",
+    "so degree_type is 'major' rather than a guessed designation.",
+    "",
+    "SCOPE: the 'Statistics' major only. The same section of the page also defines",
+    "the Statistics/Mathematics major (curriculum 961), which is not encoded."
+  ],
+  "source": {
+    "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/statistics-960",
+    "catalog_year": "2026-2027",
+    "retrieved_at": "2026-09-30",
+    "kind": "rutgers_official_catalog",
+    "curation_status": "unverified"
+  },
+  "school": {
+    "code": "SAS",
+    "name": "School of Arts and Sciences",
+    "campus_code": "NB"
+  },
+  "curation": {
+    "curated_by": "AI assistant (Claude), Phase 6.3 - encoder only, not a reviewer",
+    "extractor_version": "manual-encoding/1",
+    "catalog_page": "/schools/sas/program-listing/statistics-960",
+    "candidate_key": "major"
+  },
+  "program": {
+    "code": "960",
+    "name": "Statistics",
+    "degree_type": "major"
+  },
+  "program_version": {
+    "catalog_year": "2026-2027",
+    "total_credits_min": 46,
+    "total_credits_max": 46,
+    "source_prose": "A total of 46 credits is required: 18 credits in mathematics, 25 credits in statistics, and 3 credits in computer science, as follows:",
+    "admission_prose": "To declare the major an overall C average or above, based on all times they were taken, must be achieved in Calculus I and II combined (01:640:151-152)."
+  },
+  "requirements": [
+    {
+      "code": "STAT_MAJOR",
+      "name": "Statistics Major",
+      "requirement_type": "all_of",
+      "sort_order": 0,
+      "source_prose": "A total of 46 credits is required: 18 credits in mathematics, 25 credits in statistics, and 3 credits in computer science, as follows:"
+    },
+    {
+      "code": "STAT_CS",
+      "name": "Computer Science",
+      "requirement_type": "choose_n",
+      "min_count": 1,
+      "parent": "STAT_MAJOR",
+      "sort_order": 0,
+      "courses": [
+        "01:198:107",
+        "01:198:110",
+        "01:198:111",
+        "01:198:170"
+      ],
+      "source_prose": "Computer Science 01:198:107, 110, 111, or 170"
+    },
+    {
+      "code": "STAT_MATH",
+      "name": "Mathematics",
+      "requirement_type": "all_of",
+      "parent": "STAT_MAJOR",
+      "sort_order": 1,
+      "source_prose": "Mathematics 01:640:151, 152, 250, 251"
+    },
+    {
+      "code": "STAT_M151",
+      "name": "Calculus I",
+      "requirement_type": "course",
+      "parent": "STAT_MATH",
+      "sort_order": 0,
+      "courses": [
+        "01:640:151"
+      ]
+    },
+    {
+      "code": "STAT_M152",
+      "name": "Calculus II",
+      "requirement_type": "course",
+      "parent": "STAT_MATH",
+      "sort_order": 1,
+      "courses": [
+        "01:640:152"
+      ]
+    },
+    {
+      "code": "STAT_M250",
+      "name": "Introductory Linear Algebra",
+      "requirement_type": "course",
+      "parent": "STAT_MATH",
+      "sort_order": 2,
+      "courses": [
+        "01:640:250"
+      ]
+    },
+    {
+      "code": "STAT_M251",
+      "name": "Multivariable Calculus",
+      "requirement_type": "course",
+      "parent": "STAT_MATH",
+      "sort_order": 3,
+      "courses": [
+        "01:640:251"
+      ]
+    },
+    {
+      "code": "STAT_CORE",
+      "name": "Statistics Core",
+      "requirement_type": "all_of",
+      "parent": "STAT_MAJOR",
+      "sort_order": 2,
+      "source_prose": "Statistics 01:960:381, 382, 384, 295 or 390, 463, 486, 490"
+    },
+    {
+      "code": "STAT_381",
+      "name": "Probability (01:960:381 or 01:640:477)",
+      "requirement_type": "choose_n",
+      "min_count": 1,
+      "parent": "STAT_CORE",
+      "sort_order": 0,
+      "courses": [
+        "01:960:381",
+        "01:640:477"
+      ],
+      "source_prose": "01:640:477 and 01:640:481 may be taken instead of 01:960:381, 382."
+    },
+    {
+      "code": "STAT_382",
+      "name": "Theory of Statistics (01:960:382 or 01:640:481)",
+      "requirement_type": "choose_n",
+      "min_count": 1,
+      "parent": "STAT_CORE",
+      "sort_order": 1,
+      "courses": [
+        "01:960:382",
+        "01:640:481"
+      ],
+      "source_prose": "01:640:477 and 01:640:481 may be taken instead of 01:960:381, 382."
+    },
+    {
+      "code": "STAT_384",
+      "name": "Intermediate Statistical Analysis",
+      "requirement_type": "course",
+      "parent": "STAT_CORE",
+      "sort_order": 2,
+      "courses": [
+        "01:960:384"
+      ]
+    },
+    {
+      "code": "STAT_295_390",
+      "name": "01:960:295 or 390",
+      "requirement_type": "choose_n",
+      "min_count": 1,
+      "parent": "STAT_CORE",
+      "sort_order": 3,
+      "courses": [
+        "01:960:295",
+        "01:960:390"
+      ]
+    },
+    {
+      "code": "STAT_463",
+      "name": "Regression Methods",
+      "requirement_type": "course",
+      "parent": "STAT_CORE",
+      "sort_order": 4,
+      "courses": [
+        "01:960:463"
+      ]
+    },
+    {
+      "code": "STAT_486",
+      "name": "Applied Statistical Learning",
+      "requirement_type": "course",
+      "parent": "STAT_CORE",
+      "sort_order": 5,
+      "courses": [
+        "01:960:486"
+      ]
+    },
+    {
+      "code": "STAT_490",
+      "name": "Introduction to Experimental Design",
+      "requirement_type": "course",
+      "parent": "STAT_CORE",
+      "sort_order": 6,
+      "courses": [
+        "01:960:490"
+      ]
+    },
+    {
+      "code": "STAT_ELECTIVES",
+      "name": "Two Statistics Electives",
+      "requirement_type": "choose_n",
+      "min_count": 2,
+      "parent": "STAT_MAJOR",
+      "sort_order": 3,
+      "courses": [
+        "01:960:365",
+        "01:960:467",
+        "01:960:476",
+        "01:960:483"
+      ],
+      "source_prose": "Two courses chosen from 01:960:365, 467, 476, 483"
+    },
+    {
+      "code": "STAT_MATH_ELECTIVE",
+      "name": "Mathematics Elective (three credits)",
+      "requirement_type": "choose_n",
+      "min_count": 1,
+      "parent": "STAT_MAJOR",
+      "sort_order": 4,
+      "courses": [
+        "01:640:252"
+      ],
+      "eligible_course_query": {
+        "subject_code": "640",
+        "offering_unit_code": "01",
+        "min_course_number": 300,
+        "exclude_course_numbers": [
+          "477",
+          "481"
+        ]
+      },
+      "notes": "'Three credits' is encoded as one course; every eligible course is 3+ credits in practice, but that is not checked.",
+      "source_prose": "Three credits in mathematics electives (01:640:252 or a course at the 300 level or above, but not 01:640:477 or 01:640:481)"
+    }
+  ],
+  "program_rules": [],
+  "rules_not_yet_modeled": [
+    {
+      "rule": "Grades of C or better must be earned in all courses counted toward the major.",
+      "why_not": "Minimum grades are out of scope (Phase 6.3)."
+    },
+    {
+      "rule": "Credit is not given for both 01:640:477 and 01:960:381, nor for both 01:640:481 and 01:960:382.",
+      "why_not": "A credit-exclusion pair; the choose_n nodes accept either, and the engine uses one course once."
+    }
+  ],
+  "review_questions": [
+    "Confirm the degree designation - the page does not state it.",
+    "Is 01:640:477/481 acceptable in place of 381/382 for every student (encoded as yes)?"
+  ]
+}

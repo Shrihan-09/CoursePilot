@@ -31,7 +31,13 @@ SAMPLE = FIXTURE_DIR / "soc_courses_sample.json"
 SECTION_SAMPLE = FIXTURE_DIR / "soc_sections_sample.json"
 WINTER_SAMPLE = FIXTURE_DIR / "soc_winter_sections_sample.json"
 CS_SAMPLE = FIXTURE_DIR / "soc_cs_courses_sample.json"
-CS_REQUIREMENTS = FIXTURE_DIR / "cs_ba_requirements_26_27.json"
+# Curated program definitions are CoursePilot DATA, not test fixtures: they
+# live in data/programs/ and tests read them from there (Phase 6.3).
+CURATED_DIR = (pathlib.Path(__file__).resolve().parents[2]
+               / "data" / "programs" / "rutgers" / "nb-undergrad" / "2026-2027")
+CS_REQUIREMENTS = CURATED_DIR / "sas-198-ba.json"
+MATH_REQUIREMENTS = CURATED_DIR / "sas-640-ba-option-a.json"
+SAS_CORE = CURATED_DIR / "sas-core.json"
 
 # The term the archived fixture payload was captured for (Fall 2026).
 FIXTURE_TERM = "20269"

@@ -1,0 +1,218 @@
+{
+  "packet_version": "review-packet/1",
+  "program_key": "sas-220-major",
+  "catalog_year": "2026-2027",
+  "definition_file": "data/programs/rutgers/nb-undergrad/2026-2027/sas-220-major.json",
+  "definition_sha256": "d06f338655dd11bc1ee538b79e0e076298318ece008ee88c1f6b637b0c363fc1",
+  "source": {
+    "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/economics-220",
+    "catalog_page": "/schools/sas/program-listing/economics-220",
+    "archive": "data/raw/catalog/catalog_economics-220_2026_2027.html",
+    "archive_present": true,
+    "archive_sha256": "962a5105b32faddb363f101c7a0e9b654c7125daed5074757cc8366a6b73b38d",
+    "prose_sha256": "99477789d0efff70cc89eeadc194e62bdc630cec677f980a860e6acb92b31cb7"
+  },
+  "curated_by": "AI assistant (Claude), Phase 6.3 - encoder only, not a reviewer",
+  "curation_status_label": "unverified",
+  "lifecycle_state": "validated",
+  "publication_basis": null,
+  "machine_checks": {
+    "passed": true,
+    "quotes_found": 8,
+    "quotes_checked": 8,
+    "errors": [],
+    "warnings": [],
+    "note": "Machine checks are NOT review. They prove quotes exist and the engine can load the tree - not that the encoding means what the prose means."
+  },
+  "non_undergraduate_eligible_rows": 2,
+  "admission_prose": "To declare a major in economics, a student must have a grade of C or better in both 01:220:102 Introduction to Microeconomics and 01:220:103 Introduction to Macroeconomics. The student must also have completed the required calculus course with a grade of C or better.",
+  "requirements": [
+    {
+      "code": "ECON_MAJOR",
+      "type": "all_of",
+      "parent": null,
+      "quote": "The seven required courses (five in economics, one in statistics, and one in mathematics) plus seven electives within economics (which may, under certain circumstances, include a limited number of courses from related disciplines) constitute the major.",
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "ECON_CORE",
+      "type": "all_of",
+      "parent": "ECON_MAJOR",
+      "quote": "The foundation of the curriculum in economics consists of 01:220:102,103, 320, 321, and 322.",
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "ECON_102",
+      "type": "course",
+      "parent": "ECON_CORE",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:220:102"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "ECON_103",
+      "type": "course",
+      "parent": "ECON_CORE",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:220:103"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "ECON_320",
+      "type": "course",
+      "parent": "ECON_CORE",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:220:320"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "ECON_321",
+      "type": "course",
+      "parent": "ECON_CORE",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:220:321"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "ECON_322",
+      "type": "course",
+      "parent": "ECON_CORE",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:220:322"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "ECON_STATS",
+      "type": "choose_n",
+      "parent": "ECON_MAJOR",
+      "quote": "It also requires one semester of statistics (01:960:211 or preferably 285) with a grade of C or better.",
+      "notes": null,
+      "min_count": 1,
+      "courses": [
+        "01:960:211",
+        "01:960:285"
+      ],
+      "eligible_course_rows": 2
+    },
+    {
+      "code": "ECON_CALC",
+      "type": "course",
+      "parent": "ECON_MAJOR",
+      "quote": "One semester of calculus (01:640:135 or equivalent) with a grade of C or better also is required.",
+      "notes": "'or equivalent' is not modeled: the page does not name the equivalents (01:640:151 is the obvious candidate, but the page does not say so).",
+      "courses": [
+        "01:640:135"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "ECON_ELECTIVES",
+      "type": "choose_n",
+      "parent": "ECON_MAJOR",
+      "quote": "plus seven electives within economics (which may, under certain circumstances, include a limited number of courses from related disciplines) ... Students may take 33:010:272 and 275. These courses will count toward the required seven electives",
+      "notes": "Any undergraduate 01:220 course other than the required ones, plus the two accounting courses the page names. OVER-APPROXIMATION: the 'no more than three lower-level electives' limit depends on each course's prerequisites and is not modeled; 'related disciplines' courses are not named and are not encoded.",
+      "min_count": 7,
+      "courses": [
+        "33:010:272",
+        "33:010:275"
+      ],
+      "eligible_course_query": {
+        "subject_code": "220",
+        "offering_unit_code": "01",
+        "exclude_course_numbers": [
+          "102",
+          "103",
+          "200",
+          "320",
+          "321",
+          "322"
+        ]
+      },
+      "eligible_course_rows": 39
+    }
+  ],
+  "program_rules": [],
+  "rules_not_yet_modeled": [
+    {
+      "rule": "Students can count no more than three courses that have no prerequisites, or whose prerequisites are only 01:220:102 and 103 (or only 200), toward the seven required electives.",
+      "why_not": "Classifying a course as 'lower-level' needs its prerequisite structure; Phase 6.2 parses prerequisites but the requirement layer does not use them."
+    },
+    {
+      "rule": "Engineering students who take 01:220:200 use it in place of 01:220:102 and 103 and take eight electives instead of seven.",
+      "why_not": "A school-dependent alternative that also changes the elective count; not representable without a student-attribute condition."
+    },
+    {
+      "rule": "A maximum of three economics courses taken outside the Department of Economics at Rutgers University-New Brunswick may be applied toward the major.",
+      "why_not": "Course location/transfer provenance is not recorded on StudentCourse."
+    },
+    {
+      "rule": "Minimum cumulative grade-point average of 2.0 in the major; C or better in the required courses; only one elective with a grade of D.",
+      "why_not": "Minimum grades and GPA are out of scope (Phase 6.3)."
+    },
+    {
+      "rule": "Students who major in economics (220) may not minor in environmental and business economics (373).",
+      "why_not": "Cross-program restrictions are out of scope."
+    }
+  ],
+  "review_questions": [
+    "Confirm the degree designation (B.A.?) - the page does not state it.",
+    "Should ECON_CALC accept 01:640:151 as the 'equivalent'?",
+    "Are 01:220 honors/independent-study/internship courses (e.g. 1-credit internship) valid electives?"
+  ],
+  "what_to_verify": [
+    "Open the archived page (path below) and find every quoted sentence.",
+    "For each requirement node, confirm the encoding says what the quote says: course lists, counts, levels, exclusions.",
+    "Confirm nothing the page requires for COMPLETION is missing - compare against 'rules not yet modeled'.",
+    "Confirm admission/declaration rules are kept as admission_prose and not as completion requirements.",
+    "Answer every review question; a 'changes_requested' review is a valid outcome.",
+    "Spot-check the eligible-course counts below against the course list you expect."
+  ],
+  "how_to_record": "python -m coursepilot_ingestion.registry_cli review --program sas-220-major --year 2026-2027 --reviewer \"<your full name>\" --decision approved|changes_requested --notes \"...\"  (then, if approved: registry_cli publish --program ... --year ...)",
+  "quotes": [
+    {
+      "node": "program_version",
+      "quote": "The seven required courses (five in economics, one in statistics, and one in mathematics) plus seven electives within economics (which may, under certain circumstances, include a limited number of courses from related disciplines) constitute the major."
+    },
+    {
+      "node": "program_version.admission",
+      "quote": "To declare a major in economics, a student must have a grade of C or better in both 01:220:102 Introduction to Microeconomics and 01:220:103 Introduction to Macroeconomics. The student must also have completed the required calculus course with a grade of C or better."
+    },
+    {
+      "node": "ECON_MAJOR",
+      "quote": "The seven required courses (five in economics, one in statistics, and one in mathematics) plus seven electives within economics (which may, under certain circumstances, include a limited number of courses from related disciplines) constitute the major."
+    },
+    {
+      "node": "ECON_CORE",
+      "quote": "The foundation of the curriculum in economics consists of 01:220:102,103, 320, 321, and 322."
+    },
+    {
+      "node": "ECON_STATS",
+      "quote": "It also requires one semester of statistics (01:960:211 or preferably 285) with a grade of C or better."
+    },
+    {
+      "node": "ECON_CALC",
+      "quote": "One semester of calculus (01:640:135 or equivalent) with a grade of C or better also is required."
+    },
+    {
+      "node": "ECON_ELECTIVES",
+      "quote": "plus seven electives within economics (which may, under certain circumstances, include a limited number of courses from related disciplines) ... Students may take 33:010:272 and 275. These courses will count toward the required seven electives"
+    }
+  ]
+}

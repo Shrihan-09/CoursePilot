@@ -1,0 +1,197 @@
+{
+  "_README": [
+    "Rutgers SAS Linguistics (615) major, catalog 2026-2027. PENDING HUMAN REVIEW.",
+    "",
+    "ENCODED by an AI assistant in Phase 6.3 from the official catalog page, archived",
+    "at data/raw/catalog/catalog_linguistics-615_2026_2027.html. Every node quotes the sentence",
+    "it came from. An AI encoding is never authoritative: this definition is",
+    "'unverified' and stays pending review until a named human approves it",
+    "(app.services.program_lifecycle). See the review packet in review/.",
+    "",
+    "DEGREE DESIGNATION: the catalog page does not state B.A. or B.S. for this major,",
+    "so degree_type is 'major' rather than a guessed designation.",
+    "",
+    "SCOPE: the linguistics major. The separate 'Bachelor of Arts in Speech and Hearing",
+    "Sciences in Linguistics' section on the same page is a different curriculum, not encoded."
+  ],
+  "source": {
+    "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/linguistics-615",
+    "catalog_year": "2026-2027",
+    "retrieved_at": "2026-09-30",
+    "kind": "rutgers_official_catalog",
+    "curation_status": "unverified"
+  },
+  "school": {
+    "code": "SAS",
+    "name": "School of Arts and Sciences",
+    "campus_code": "NB"
+  },
+  "curation": {
+    "curated_by": "AI assistant (Claude), Phase 6.3 - encoder only, not a reviewer",
+    "extractor_version": "manual-encoding/1",
+    "catalog_page": "/schools/sas/program-listing/linguistics-615",
+    "candidate_key": "major"
+  },
+  "program": {
+    "code": "615",
+    "name": "Linguistics",
+    "degree_type": "major"
+  },
+  "program_version": {
+    "catalog_year": "2026-2027",
+    "source_prose": "A major in linguistics consists of 12, 3-credit courses offered by the School of Arts and Sciences, distributed as follows:"
+  },
+  "requirements": [
+    {
+      "code": "LING_MAJOR",
+      "name": "Linguistics Major",
+      "requirement_type": "all_of",
+      "sort_order": 0,
+      "source_prose": "A major in linguistics consists of 12, 3-credit courses offered by the School of Arts and Sciences, distributed as follows:"
+    },
+    {
+      "code": "LING_201",
+      "name": "Introduction to Linguistic Theory",
+      "requirement_type": "course",
+      "parent": "LING_MAJOR",
+      "sort_order": 0,
+      "courses": [
+        "01:615:201"
+      ],
+      "source_prose": "Introduction: one introductory course (01:615:201)"
+    },
+    {
+      "code": "LING_CORE",
+      "name": "Four Core Theoretical Courses",
+      "requirement_type": "all_of",
+      "parent": "LING_MAJOR",
+      "sort_order": 1,
+      "source_prose": "Theory: four B core theoretical courses (01:615:305, 315, 325, 350)"
+    },
+    {
+      "code": "LING_305",
+      "name": "Core 305",
+      "requirement_type": "course",
+      "parent": "LING_CORE",
+      "sort_order": 0,
+      "courses": [
+        "01:615:305"
+      ]
+    },
+    {
+      "code": "LING_315",
+      "name": "Core 315",
+      "requirement_type": "course",
+      "parent": "LING_CORE",
+      "sort_order": 1,
+      "courses": [
+        "01:615:315"
+      ]
+    },
+    {
+      "code": "LING_325",
+      "name": "Core 325",
+      "requirement_type": "course",
+      "parent": "LING_CORE",
+      "sort_order": 2,
+      "courses": [
+        "01:615:325"
+      ]
+    },
+    {
+      "code": "LING_350",
+      "name": "Core 350",
+      "requirement_type": "course",
+      "parent": "LING_CORE",
+      "sort_order": 3,
+      "courses": [
+        "01:615:350"
+      ]
+    },
+    {
+      "code": "LING_ELECTIVES",
+      "name": "Six Electives",
+      "requirement_type": "choose_n",
+      "min_count": 6,
+      "parent": "LING_MAJOR",
+      "sort_order": 2,
+      "eligible_course_query": {
+        "subject_code": "615",
+        "offering_unit_code": "01",
+        "min_course_number": 300,
+        "exclude_course_numbers": [
+          "305",
+          "315",
+          "325",
+          "350",
+          "495",
+          "496",
+          "497"
+        ]
+      },
+      "notes": "OVER-APPROXIMATION: the page refers to lists of 'C' and 'D' courses and approved outside courses that it does not publish, so any undergraduate 01:615 course at 300+ is accepted and outside courses are not encoded.",
+      "source_prose": "Electives: six courses ... At least three (3-6) C courses chosen from a list of linguistics courses at the 300 level or above"
+    },
+    {
+      "code": "LING_CAPSTONE",
+      "name": "Capstone Experience",
+      "requirement_type": "any_of",
+      "parent": "LING_MAJOR",
+      "sort_order": 3,
+      "source_prose": "Capstone experience: either a senior honors thesis (01:615:495/496) or the advanced seminar (01:615:497)"
+    },
+    {
+      "code": "LING_THESIS",
+      "name": "Senior Honors Thesis (495 and 496)",
+      "requirement_type": "all_of",
+      "parent": "LING_CAPSTONE",
+      "sort_order": 0,
+      "notes": "'495/496' read as the two-semester thesis; a REVIEW QUESTION."
+    },
+    {
+      "code": "LING_495",
+      "name": "Senior Honors Thesis I",
+      "requirement_type": "course",
+      "parent": "LING_THESIS",
+      "sort_order": 0,
+      "courses": [
+        "01:615:495"
+      ]
+    },
+    {
+      "code": "LING_496",
+      "name": "Senior Honors Thesis II",
+      "requirement_type": "course",
+      "parent": "LING_THESIS",
+      "sort_order": 1,
+      "courses": [
+        "01:615:496"
+      ]
+    },
+    {
+      "code": "LING_497",
+      "name": "Advanced Seminar",
+      "requirement_type": "course",
+      "parent": "LING_CAPSTONE",
+      "sort_order": 1,
+      "courses": [
+        "01:615:497"
+      ]
+    }
+  ],
+  "program_rules": [],
+  "rules_not_yet_modeled": [
+    {
+      "rule": "At most three (0-3) D courses chosen from a list of linguistics courses at the 300 level or above and/or from the list of approved courses from outside the department.",
+      "why_not": "The C/D course lists and the approved outside-course list are not published in the catalog."
+    },
+    {
+      "rule": "Grades of C or better must be earned in all coursework that is to be applied to the major.",
+      "why_not": "Minimum grades are out of scope (Phase 6.3)."
+    }
+  ],
+  "review_questions": [
+    "Confirm the degree designation - the page does not state it.",
+    "Does '01:615:495/496' mean both semesters, or either one?"
+  ]
+}

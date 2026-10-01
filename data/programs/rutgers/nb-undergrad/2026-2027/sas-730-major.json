@@ -1,0 +1,213 @@
+{
+  "_README": [
+    "Rutgers SAS Philosophy (730) major, catalog 2026-2027. PENDING HUMAN REVIEW.",
+    "",
+    "ENCODED by an AI assistant in Phase 6.3 from the official catalog page, archived",
+    "at data/raw/catalog/catalog_philosophy-730_2026_2027.html. Every node quotes the sentence",
+    "it came from. An AI encoding is never authoritative: this definition is",
+    "'unverified' and stays pending review until a named human approves it",
+    "(app.services.program_lifecycle). See the review packet in review/.",
+    "",
+    "DEGREE DESIGNATION: the catalog page does not state B.A. or B.S. for this major,",
+    "so degree_type is 'major' rather than a guessed designation."
+  ],
+  "source": {
+    "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/philosophy-730",
+    "catalog_year": "2026-2027",
+    "retrieved_at": "2026-09-30",
+    "kind": "rutgers_official_catalog",
+    "curation_status": "unverified"
+  },
+  "school": {
+    "code": "SAS",
+    "name": "School of Arts and Sciences",
+    "campus_code": "NB"
+  },
+  "curation": {
+    "curated_by": "AI assistant (Claude), Phase 6.3 - encoder only, not a reviewer",
+    "extractor_version": "manual-encoding/1",
+    "catalog_page": "/schools/sas/program-listing/philosophy-730",
+    "candidate_key": "major"
+  },
+  "program": {
+    "code": "730",
+    "name": "Philosophy",
+    "degree_type": "major"
+  },
+  "program_version": {
+    "catalog_year": "2026-2027",
+    "source_prose": "Students must pass a minimum of 11 classroom courses of 3 or more credits each in philosophy to earn the major."
+  },
+  "requirements": [
+    {
+      "code": "PHIL_MAJOR",
+      "name": "Philosophy Major",
+      "requirement_type": "all_of",
+      "sort_order": 0,
+      "source_prose": "Students must pass a minimum of 11 classroom courses of 3 or more credits each in philosophy to earn the major. ... Among these courses must be the following:"
+    },
+    {
+      "code": "PHIL_LOGIC",
+      "name": "Logic",
+      "requirement_type": "choose_n",
+      "min_count": 1,
+      "parent": "PHIL_MAJOR",
+      "sort_order": 0,
+      "courses": [
+        "01:730:109",
+        "01:730:201",
+        "01:730:315",
+        "01:730:407",
+        "01:730:408"
+      ],
+      "source_prose": "One semester of logic from among the following:"
+    },
+    {
+      "code": "PHIL_ANCIENT",
+      "name": "Ancient or Medieval Philosophy",
+      "requirement_type": "choose_n",
+      "min_count": 1,
+      "parent": "PHIL_MAJOR",
+      "sort_order": 1,
+      "courses": [
+        "01:190:322",
+        "01:190:353",
+        "01:730:301",
+        "01:730:302",
+        "01:730:304",
+        "01:730:305",
+        "01:730:306",
+        "01:730:311",
+        "01:730:352",
+        "01:730:401",
+        "01:730:402",
+        "01:730:403"
+      ],
+      "source_prose": "One semester of ancient or medieval philosophy from among the following:"
+    },
+    {
+      "code": "PHIL_MODERN",
+      "name": "Modern Philosophy",
+      "requirement_type": "choose_n",
+      "min_count": 1,
+      "parent": "PHIL_MAJOR",
+      "sort_order": 2,
+      "courses": [
+        "01:730:307",
+        "01:730:308",
+        "01:730:309",
+        "01:730:404",
+        "01:730:405",
+        "01:730:406",
+        "01:730:416",
+        "01:730:417"
+      ],
+      "source_prose": "One semester of modern philosophy from among the following:"
+    },
+    {
+      "code": "PHIL_ETHICS",
+      "name": "Advanced Ethics or Political Philosophy",
+      "requirement_type": "choose_n",
+      "min_count": 1,
+      "parent": "PHIL_MAJOR",
+      "sort_order": 3,
+      "courses": [
+        "01:730:330",
+        "01:730:341",
+        "01:730:342",
+        "01:730:345",
+        "01:730:441",
+        "01:730:442",
+        "01:730:445",
+        "01:730:450",
+        "01:730:459",
+        "01:730:470"
+      ],
+      "source_prose": "One semester of advanced ethics or political philosophy from among the following:"
+    },
+    {
+      "code": "PHIL_CORE_AREAS",
+      "name": "Two Core-Area Courses (one at the 400 level)",
+      "requirement_type": "choose_n",
+      "min_count": 2,
+      "parent": "PHIL_MAJOR",
+      "sort_order": 4,
+      "min_at_level": 400,
+      "min_at_level_count": 1,
+      "constraint_subject_code": "730",
+      "courses": [
+        "01:730:210",
+        "01:730:215",
+        "01:730:220",
+        "01:730:225",
+        "01:730:226",
+        "01:730:256",
+        "01:730:303",
+        "01:730:319",
+        "01:730:320",
+        "01:730:327",
+        "01:730:328",
+        "01:730:329",
+        "01:730:360",
+        "01:730:370",
+        "01:730:410",
+        "01:730:412",
+        "01:730:413",
+        "01:730:415",
+        "01:730:418",
+        "01:730:419",
+        "01:730:420",
+        "01:730:421",
+        "01:730:422",
+        "01:730:423",
+        "01:730:424",
+        "01:730:425",
+        "01:730:426",
+        "01:730:427",
+        "01:730:428",
+        "01:730:429",
+        "01:730:435"
+      ],
+      "source_prose": "Two courses from among the following, at least one of which must be at the 400 level:"
+    },
+    {
+      "code": "PHIL_ELECTIVES",
+      "name": "Further Philosophy Courses (to reach eleven)",
+      "requirement_type": "choose_n",
+      "min_count": 5,
+      "parent": "PHIL_MAJOR",
+      "sort_order": 5,
+      "eligible_course_query": {
+        "subject_code": "730",
+        "offering_unit_code": "01"
+      },
+      "notes": "11 courses minus the 6 named above = 5 more 01:730 courses. NOT modeled: 'classroom' courses only, at least one 200-level (excluding 201, 202, 295, 296), at least six at the 300/400 level (excluding 495, 496) across all eleven.",
+      "source_prose": "Students must pass a minimum of 11 classroom courses of 3 or more credits each in philosophy to earn the major."
+    }
+  ],
+  "program_rules": [
+    {
+      "code": "PHIL_MAX_D",
+      "name": "At most one grade of D in the major",
+      "rule_type": "max_grade_count",
+      "grade": "D",
+      "max_count": 1,
+      "is_evaluable": true,
+      "source_prose": "No more than one D grade can be applied toward the major."
+    }
+  ],
+  "rules_not_yet_modeled": [
+    {
+      "rule": "At least one of these courses must be at the 200 level, excluding 201, 202, 295, and 296. At least six of these courses must be at the 300 or 400 level, excluding 495 and 496.",
+      "why_not": "Level distribution across the whole major (all eleven courses) is not an engine constraint today."
+    },
+    {
+      "rule": "A student may petition the department to substitute other courses for those on this list.",
+      "why_not": "Petitions are individual decisions, not data."
+    }
+  ],
+  "review_questions": [
+    "Confirm the degree designation - the page does not state it.",
+    "01:190:322 and 01:190:353 are Classics courses counted as 'in philosophy' by the page - confirm they count toward the eleven."
+  ]
+}

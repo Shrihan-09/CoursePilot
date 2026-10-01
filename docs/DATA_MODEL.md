@@ -6973,3 +6973,150 @@ SQLite      593 passed,  66 skipped   (was 570 / 66; +23)
 retrieval    46 passed                (unchanged)
 alembic check                          clean, head d839d664f019
 ```
+
+## 38. Program registry, lifecycle, provenance and eligibility reconciliation (Phase 6.3)
+
+Phase 6.0 made the engine generic over programs. Phase 6.3 makes ADDING a
+program a governed, auditable act: discovered from Rutgers' own catalog,
+encoded, machine-validated, reviewed by a named person, and only then
+student-facing.
+
+### 38.1 A page is not a program
+
+```
+catalog_page (per catalog year)  ─<  program_candidate  ──>  program_version
+   DISCOVERED -> FETCHED              PARSED (a claim)          parsed -> validated -> reviewed -> published
+   navigation tree, snapshot,         heading, credential        curated definition, lifecycle,
+   prose_sha256                       type, parent, code         provenance, reviews
+```
+
+* **Discovery** reads the navigation tree Coursedog embeds in every catalog
+  page (`__NUXT_DATA__`): 516 pages in 2026-27, 459 in 2025-26. It upserts
+  `catalog_page` rows and never deletes - `last_seen_at` says when a page
+  was last present. Discovery creates no `program`.
+* **Fetch** archives a page (public catalog only, one request at a time,
+  2 s apart) and records its normalized-prose hash.
+* **Candidates** come from the page's own headings: `<h3>` sections and
+  `<p><strong>` sub-headings. Mathematics 640 yields ten: major, Options A,
+  B and C, two interdisciplinary majors, a minor, two unknowns (honors,
+  five-year BA/MA) and a certificate. `unknown` is a real answer - it is
+  shown, never guessed. Admission headings ("Entry Requirements for the
+  Major") are recorded separately and are never credentials.
+* Known extractor gaps (`catalog-headings/2`): majors introduced by plain
+  paragraphs (Statistics: "Statistics", "Statistics/Mathematics") and track
+  lists (Data Science's five tracks) are not detected.
+
+### 38.2 Identity
+
+| question | key |
+|---|---|
+| which program | `(school, code, degree_type, variant)` - `variant` new; `''` = no variants |
+| which version | program + `catalog_year` |
+| which page | `(catalog_key, catalog_year, url_path)`; Coursedog `pageId` stored, not trusted as identity |
+
+API keys gain an optional variant suffix: `sas-640-ba-option-a`. A stable
+`pageId` says the PAGE persisted across years, never that its requirements
+did: the CS page's prose hash differs between 2025-26 and 2026-27 although
+its requirement paragraph is identical (faculty lists and other text
+changed). Every year is curated, validated and reviewed on its own.
+
+`degree_type` is what the page states. None of the six pages newly encoded
+in this phase states B.A. or B.S. for its major (only faculty biographies
+mention degrees); they use `degree_type = 'major'` rather than a guess.
+
+### 38.3 Lifecycle
+
+`app.services.program_lifecycle` is the only code that assigns
+`lifecycle_state` (a test scans the application for any other assignment).
+
+| transition | requires |
+|---|---|
+| -> `parsed` | the loader stored a definition |
+| `parsed` -> `validated` | schema checks, every quote found verbatim on the archived page, engine evaluates the tree, loaded hash = file hash |
+| `validated` -> `reviewed` | `record_review` by a **named human**, decision `approved` |
+| `reviewed` -> `published` | the latest review is `approved` AND covers the current `source_prose_sha256` and `definition_sha256` |
+| any reviewed/published -> `needs_rereview` | the page prose or the definition changed |
+
+Refused reviewer names include AI/model/vendor names, "assistant", "system",
+"bot", "script", "pipeline", "validator", "parser", placeholders ("unknown",
+"N/A", "test") and anything under three characters. `curated_by` records who
+ENCODED a definition (for the wave: "AI assistant (Claude) ... encoder only,
+not a reviewer") and is never consulted by review or publication.
+
+`support_status` now follows the lifecycle: `supported` iff `published`.
+The curated_from_prose LABEL alone no longer makes anything supported.
+The migration grandfathers versions the old rule called supported (the CS
+B.A.) as `published` with `publication_basis = 'legacy_curated'` - a stated
+basis, not an invented review.
+
+`program_review` is append-only: a later review adds a row, so "who approved
+which text" survives re-review.
+
+### 38.4 Content identity
+
+* `source_prose_sha256` - sha256 of the page's normalized prose (markup and
+  Coursedog build churn stripped). Page-level and therefore conservative:
+  any text change on the page asks for re-review.
+* `definition_sha256` - sha256 of the canonical JSON of the definition's
+  requirement-bearing keys (`school`, `program`, `program_version`,
+  `requirements`, `program_rules`). README, `source`, `curation`,
+  `rules_not_yet_modeled` and `review_questions` are excluded: editing
+  documentation does not invalidate a review.
+
+### 38.5 Eligibility is reconciled, not appended
+
+Before 6.3 `requirement_course_option` was materialized once, at definition
+load, and only appended to. Two defects followed, both reproduced by tests
+written before the fix:
+
+* a course first seen in a later term never became eligible (six real CS
+  electives - 01:198:415, 431, 442, 443, 452, 494 - were missing on the
+  development database);
+* a course removed from a definition stayed eligible forever.
+
+Now each requirement stores its rule (`requirement.eligibility_rule`:
+`courses`, `course_categories`, `query`), and `app.services.eligibility.reconcile`
+makes the rows EXACTLY what the rule implies over course identities across
+all loaded terms. It runs after every definition load and after every SOC
+course ingestion, inside a SAVEPOINT; a failure leaves the previous set
+intact. Requirements without a rule (SAS Core: eligibility comes from SOC
+certifications) are never touched. Queries gained `offering_unit_code`.
+
+On the development database: CS_ELECTIVES 53 -> 86 rows, the six missing
+electives present, a second run changes nothing. The same run shows 60
+graduate (16:198) courses eligible for CS_ELECTIVES under the existing
+query - a pre-existing defect, left for the CS reviewer because fixing it
+changes the published definition.
+
+### 38.6 Where curated data lives
+
+```
+data/programs/rutgers/nb-undergrad/2026-2027/
+    sas-198-ba.json  sas-640-ba-option-a.json  sas-220-major.json ...  sas-core.json
+    review/<name>.review.json  review/<name>.review.md
+```
+
+Moved from `ingestion/tests/fixtures/` (tests now read the real files).
+Archived pages stay in the gitignored `data/raw/catalog/`.
+
+### 38.7 Operating it
+
+```
+python -m coursepilot_ingestion.registry_cli discover --year 2026-2027
+python -m coursepilot_ingestion.registry_cli fetch --year 2026-2027 --school sas --subject 220 --network
+python -m coursepilot_ingestion.registry_cli load | link | validate | check-sources | status | packets
+python -m coursepilot_ingestion.registry_cli review  --program <key> --year <y> --reviewer "<name>" --decision approved
+python -m coursepilot_ingestion.registry_cli publish --program <key> --year <y>
+```
+
+`review` and `publish` are for the human reviewer only.
+
+### 38.8 API
+
+`GET /api/v1/programs` - unchanged shape plus `variant`, `lifecycle_state`,
+`publication_basis`, `curated_by`, `source_prose_sha256`, `last_checked_at`
+per version. `?include_discovered=true[&catalog_year=...]` adds a separate
+`discovered` list (pages and unlinked candidates: no key, not auditable).
+Without it `discovered` is `null`, so a student-facing picker can never be
+polluted by catalog claims. Listing costs a fixed number of queries (4 for
+programs, 2 for discovered).
