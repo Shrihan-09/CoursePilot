@@ -116,10 +116,14 @@ def _course(session, source, title):
 
 
 def _version(session, source, program, year, *, curated, sharing="share_across_systems"):
+    # Phase 6.3: "supported" means lifecycle `published`. A curated fixture
+    # stands for a published version (grandfathered basis, no fake reviewer).
     version = ProgramVersion(program_id=program.id, catalog_year=year,
                              sharing_policy=sharing, source_id=source.id,
                              curation_status=CURATED if curated else
-                             CurationStatus.UNVERIFIED.value)
+                             CurationStatus.UNVERIFIED.value,
+                             lifecycle_state="published" if curated else "parsed",
+                             publication_basis="legacy_curated" if curated else None)
     session.add(version)
     session.flush()
     return version
@@ -679,21 +683,25 @@ def test_program_discovery_derives_support_status_from_curation(world) -> None:
     assert p1.program_key == world["keys"]["p1"]
 
 
-def test_support_status_is_the_least_verified_node() -> None:
+def test_support_status_follows_the_lifecycle_not_the_label() -> None:
     from app.services.programs import support_status
 
-    assert support_status(CURATED, [CURATED, CURATED], 2).value == "supported"
-    assert support_status(CURATED, [CURATED, "unverified"], 2).value == "pending_review"
-    assert support_status(CURATED, [CURATED, "synthetic"], 2).value == "unavailable"
-    assert support_status(CURATED, [], 0).value == "unavailable"
+    assert support_status("published", [CURATED, CURATED], 2).value == "supported"
+    # A curated_from_prose LABEL no longer makes a program supported.
+    for state in ("parsed", "validated", "reviewed", "needs_rereview"):
+        assert support_status(state, [CURATED, CURATED], 2).value == "pending_review"
+    assert support_status("published", [CURATED, "synthetic"], 2).value == "unavailable"
+    assert support_status("published", [CURATED], 0).value == "unavailable"
 
 
 def test_program_keys_are_natural_and_strict() -> None:
     from app.services.programs import InvalidProgramKey, parse_program_key, program_key
 
     assert program_key("SAS", "640", "BA") == "sas-640-ba"
-    assert parse_program_key("sas-640-ba") == ("sas", "640", "ba")
-    for bad in ("sas-640", "sas-640-ba-x", "sas_640-ba-", "../etc-x-y", ""):
+    assert program_key("SAS", "640", "BA", "option-a") == "sas-640-ba-option-a"
+    assert parse_program_key("sas-640-ba") == ("sas", "640", "ba", "")
+    assert parse_program_key("sas-640-ba-option-a") == ("sas", "640", "ba", "option-a")
+    for bad in ("sas-640", "sas-640-ba-", "sas_640-ba-", "../etc-x-y", "sas--640-ba", ""):
         with pytest.raises(InvalidProgramKey):
             parse_program_key(bad)
 

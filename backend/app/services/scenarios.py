@@ -135,7 +135,8 @@ def resolve_target(
         )
 
     return version, ScenarioTarget(
-        program_key=program_key(school.code, program.code, program.degree_type),
+        program_key=program_key(school.code, program.code, program.degree_type,
+                                program.variant),
         program_name=program.name,
         program_code=program.code,
         degree_type=program.degree_type,
