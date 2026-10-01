@@ -5,7 +5,7 @@ Everything here is real Rutgers data:
   * course rows come from archived SOC payloads (`soc_cs_courses_sample.json`,
     `soc_math_courses_sample.json` - see scripts/make_math_fixture.py);
   * the Mathematics requirements come from the archived official catalog page,
-    encoded in `math_ba_requirements_26_27.json` with the sentence behind each
+    encoded in `data/programs/.../sas-640-ba-option-a.json` with the sentence behind each
     node;
   * SAS Core is the same curated source already used for CS, loaded into BOTH
     majors.
@@ -46,13 +46,12 @@ from coursepilot_ingestion.pipelines.core import CoreIngestionPipeline
 from coursepilot_ingestion.schemas import IngestionStats
 from sqlalchemy import func, select
 
-from .conftest import CS_REQUIREMENTS, FIXTURE_TERM
+from .conftest import CS_REQUIREMENTS, FIXTURE_TERM, MATH_REQUIREMENTS, SAS_CORE
 
 FIXTURES = pathlib.Path(__file__).parent / "fixtures"
-MATH_REQUIREMENTS = FIXTURES / "math_ba_requirements_26_27.json"
 MATH_SOC = FIXTURES / "soc_math_courses_sample.json"
 CS_SOC = FIXTURES / "soc_cs_courses_sample.json"
-CORE_DEFINITION = FIXTURES / "sas_core_26_27.json"
+CORE_DEFINITION = SAS_CORE
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 MATH_ARCHIVE = REPO_ROOT / "data" / "raw" / "catalog" / "catalog_mathematics-640_2026_2027.html"
 NUXT = re.compile(r'<script[^>]*id="__NUXT_DATA__"[^>]*>(.*?)</script>', re.DOTALL)

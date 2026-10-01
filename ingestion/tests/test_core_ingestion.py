@@ -34,8 +34,10 @@ from sqlalchemy import func, select
 
 from .test_degree_audit import _audit, _course, _enroll, _find, _student
 
+from .conftest import SAS_CORE
+
 FIXTURES = pathlib.Path(__file__).parent / "fixtures"
-CORE_DEFINITION = FIXTURES / "sas_core_26_27.json"
+CORE_DEFINITION = SAS_CORE
 Y26 = "2026-2027"
 
 # Courses in the CS fixture that SOC certifies for a core goal.
