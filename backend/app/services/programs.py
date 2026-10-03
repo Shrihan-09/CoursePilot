@@ -87,6 +87,20 @@ class InvalidProgramKey(ValueError):
     """The key is not of the form `<school>-<program>-<degree>[-<variant>]`."""
 
 
+class ProgramVariantRequired(LookupError):
+    """The key names a program that exists ONLY as variants (Phase 6.4).
+
+    `sas-640-ba` when Rutgers defines Mathematics Options A, B and C: the
+    options have different requirements, so evaluating "Mathematics" would
+    mean choosing one. CoursePilot never chooses; it returns the choices.
+    """
+
+    def __init__(self, key: str, variants: list[str]) -> None:
+        super().__init__(f"{key!r} has variants; choose one of: {', '.join(variants)}")
+        self.key = key
+        self.variants = variants
+
+
 def program_key(school_code: str, program_code: str, degree_type: str,
                 variant: str = "") -> str:
     """`SAS`, `640`, `BA`, `option-a` -> `sas-640-ba-option-a`."""
@@ -296,18 +310,26 @@ def list_discovered(session: Session, catalog_year: str | None = None) -> list[D
 
 
 def find_program(session: Session, key: str) -> tuple[Program, School] | None:
+    """Exact natural-key lookup. A variant-less key that matches only
+    variants raises ProgramVariantRequired rather than picking one."""
     school_code, code, degree_type, variant = parse_program_key(key)
-    row = session.execute(
+    rows = session.execute(
         select(Program, School)
         .join(School, School.id == Program.school_id)
         .where(
             func.lower(School.code) == school_code,
             func.lower(Program.code) == code,
             func.lower(Program.degree_type) == degree_type,
-            func.lower(Program.variant) == variant,
         )
-    ).first()
-    return None if row is None else (row[0], row[1])
+        .order_by(Program.variant)
+    ).all()
+    exact = [r for r in rows if r[0].variant.lower() == variant]
+    if exact:
+        return exact[0][0], exact[0][1]
+    if not variant and rows:
+        raise ProgramVariantRequired(key, [
+            program_key(s.code, p.code, p.degree_type, p.variant) for p, s in rows])
+    return None
 
 
 def get_program(session: Session, key: str) -> ProgramInfo | None:
@@ -322,6 +344,7 @@ def version_info(session: Session, version: ProgramVersion) -> ProgramVersionInf
 __all__ = [
     "DiscoveredEntry",
     "InvalidProgramKey",
+    "ProgramVariantRequired",
     "ProgramInfo",
     "ProgramVersionInfo",
     "SupportStatus",

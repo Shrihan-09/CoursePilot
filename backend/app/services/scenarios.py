@@ -74,6 +74,7 @@ from app.models import Program, ProgramVersion, School, Student
 from app.services.audit.engine import DegreeAuditEngine
 from app.services.programs import (
     SupportStatus,
+    ProgramVariantRequired,
     find_program,
     program_key,
     version_info,
@@ -98,6 +99,14 @@ class ProgramNotEvaluable(ScenarioError):
     pass
 
 
+class ProgramChoiceRequired(ScenarioError):
+    """Phase 6.4: the key names only variants; the student must choose one."""
+
+    def __init__(self, message: str, variants: list[str]) -> None:
+        super().__init__(message)
+        self.variants = variants
+
+
 class ScenarioWouldWrite(RuntimeError):
     """Evaluation left pending changes in the session. Never expected."""
 
@@ -110,7 +119,10 @@ class ScenarioWouldWrite(RuntimeError):
 def resolve_target(
     session: Session, student: Student, key: str, catalog_year: str | None
 ) -> tuple[ProgramVersion, ScenarioTarget]:
-    found = find_program(session, key)
+    try:
+        found = find_program(session, key)
+    except ProgramVariantRequired as exc:
+        raise ProgramChoiceRequired(str(exc), exc.variants) from None
     if found is None:
         raise ProgramNotFound(f"No program {key!r} is known to CoursePilot.")
     program, school = found
