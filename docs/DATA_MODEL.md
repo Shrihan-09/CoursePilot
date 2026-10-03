@@ -7120,3 +7120,168 @@ per version. `?include_discovered=true[&catalog_year=...]` adds a separate
 Without it `discovered` is `null`, so a student-facing picker can never be
 polluted by catalog claims. Listing costs a fixed number of queries (4 for
 programs, 2 for discovered).
+
+## 39. Academic rule semantics: grades, quotas, sequences, GPA, options, co-requisites (Phase 6.4)
+
+Two domains, deliberately separate, sharing one grade primitive:
+
+```
+                      StudentCourse attempts (grade, status, term, credit_origin)
+                                        |
+                          app.domain.grades / attempts      (shared, pure)
+                           /                         \
+      DEGREE COMPLETION ("does it count?")      COURSE ELIGIBILITY ("may I take it?")
+      app.services.audit.engine                 app.services.prerequisites
+        min_grade, grade quotas,                app.services.course_eligibility
+        sequences, GPA rules, options             prerequisite grade conditions,
+        SAS repeated-course policy                placement/permission alternatives,
+                                                  co-requisites for a proposed term
+```
+
+Neither imports the other (a test asserts it). No language model decides
+any rule.
+
+### 39.1 Evidence
+
+Every policy is cited to an archived public Rutgers page (2026-27 NB
+undergraduate catalog, SAS) - archived in `data/raw/catalog/`:
+
+| page | what it decides |
+|---|---|
+| Grades and Records (`/pages/tu9NUN0OlrWop3UP6wEn`) | scale A 4.0, B+ 3.5, B 3.0, C+ 2.5, C 2.0, D 1.0, F 0.0; P = A..C, NC = D/F; T, W, NG, H, S/U, XF; GPA formula; credit prefixes |
+| Academic Credit (`/pages/K25vg3W9DQ92RnkIWslJ`) | AP/IB/transfer "not computed in the cumulative grade-point average"; transfer accepted only at C or better; exam credit then Rutgers enrollment = E credit |
+| Registration and Course Information (`/pages/LnmAHVj0CVcmVyycHY1b`) | repeating courses: after C or better, repeats are E credit; F/D repeats stay in the GPA unless the elective replacement policy (prefix) applies |
+
+Rule inventory (`scripts/inventory_academic_rules.py` ->
+`docs/investigations/evidence/phase-6-4-rule-inventory.json`), measured:
+
+| | catalog sentences (11 SAS pages) | SOC course x term x text (5 terms) |
+|---|---|---|
+| minimum grade | 77 | 132 (59 distinct; 28 uniform section notes) |
+| GPA | 34 | 46 (27 distinct) |
+| grade quota | 7 | - |
+| sequence ("A-B") | 72 | - |
+| option / track | 46 | - |
+| co-requisite | 58 | 400 (288 distinct; 153 uniform) |
+| admission to major | 18 | - |
+| placement | - | 110 |
+| program restriction | - | 60 |
+
+### 39.2 Grade semantics (`app.domain.grades`)
+
+Three three-valued questions per attempt: `earns_credit`, `meets_minimum`,
+`gpa_points` (plus `at_most` for quotas). Unrecognized symbols - including
+`D-`, which the pre-6.4 failing list contained but Rutgers does not use - are
+UNKNOWN, never guessed. Transfer and exam credit (`student_course.credit_origin`)
+complete a course but cannot prove a grade and never enter the GPA.
+
+### 39.3 Which attempt answers which question (`app.domain.attempts`)
+
+| question | policy |
+|---|---|
+| degree credit / allocation | SAS repeated-course rule: attempts after the first C-or-better (or Pass, or exam credit) are E credit; the latest credit-earning eligible attempt represents the course |
+| degree minimum grade | met by an ELIGIBLE attempt - a B earned after a C is E credit and does not meet "B or better" |
+| prerequisite grade | any attempt that earned it - an E-credit repeat does not unearn an earlier C |
+| GPA | E-credit repeats excluded; an F/D followed by another graded attempt -> UNKNOWN (prefix not stored) |
+| grade quotas | one entry per course identity, by the attempt allocated |
+
+A non-final attempt (T grade, NG) before a repeat makes the later attempt's
+status uncertain, and the answer UNKNOWN.
+
+### 39.4 Degree completion (Degree Engine 6.4.0)
+
+* `requirement.min_grade` - strictest minimum on the path from the root.
+  Applied when eligibility is computed, BEFORE allocation: a D in a "C or
+  better" course is not a candidate for that requirement. UNKNOWN (P vs B,
+  transfer, T grade, pending retake) allocates provisionally.
+* `requirement.grade_quota_max_count` / `grade_quota_at_most` - "at most N
+  allocated courses at or below G". Local deterministic repair swaps a
+  low-graded course for an unclaimed qualifying one; then a three-valued
+  verdict.
+* `requirement.category_sequences` - a category covered only when EVERY
+  course of a sequence is allocated; a local repair pulls in the missing
+  member when unclaimed. Evidence for "A-B" = both courses: the Mathematics
+  page's own "Three semesters of calculus (01:640:151-152, and 251 ...)". No
+  order is stated, so none is enforced.
+* Program rule `max_grade_count` now counts courses ALLOCATED to the
+  program's major requirements, once each ("courses required for the
+  major", "applied toward the major"); before 6.4 it counted every attempt on
+  the record. Definitions unchanged; engine semantics changed.
+* Program rule `min_gpa` with `gpa_scope` (`cumulative`, `subject:<code>`,
+  `courses:...`; `major` is refused - Rutgers does not define it). Computed
+  values are evidence; satisfaction needs a record known to be complete,
+  which no CoursePilot record is today -> NOT_EVALUABLE.
+* Evidence: `DegreeAuditResult.grade_evaluations` (course, attempt term,
+  earned grade, required grade, result, reason, policy source) and
+  `Allocation.earned_grade` / `required_grade`; `RuleResult.evidence`.
+
+### 39.5 Options
+
+A program with variants is a set of programs (Phase 6.3). Phase 6.4: a key
+without a variant for a program that exists only as variants
+(`sas-640-ba` when only `...-option-a` exists) raises
+`ProgramVariantRequired` -> HTTP 409 listing the variant keys. CoursePilot
+never selects an option.
+
+### 39.6 Course eligibility
+
+* `app.domain.conditions` reads prerequisite condition texts - from
+  `courseNotes` and, new, a `sectionNotes` text identical on EVERY section
+  (`course_prerequisite.section_condition_note`). Interpreted:
+  minimum grade (scope `all` / `named` / `unspecified`) and "OR PLACEMENT
+  TEST / PERMISSION / EQUIVALENT" alternatives that restate the prerequisite
+  exactly. Stored in `interpreted_conditions` with a parser version; raw text
+  kept. Everything else stays uninterpreted and caps SATISFIED at UNKNOWN.
+* `app.domain.corequisites` -> `course_corequisite` (one row per offering):
+  `pre_or_co` (earlier or same term), `co` (same term; earlier completion
+  UNKNOWN), `concurrent_only` (same term only). "OR HIGHER", "COURSE FROM
+  ...", AND-lists and damaged codes are `unsupported` (UNKNOWN).
+* `app.services.course_eligibility.check_proposal(student, courses, term,
+  proposed)` = P AND C, or P OR C when "PRE OR COREQ: X" names exactly the
+  prerequisite's courses; uninterpreted conditions re-applied after
+  combining; the prerequisite's minimum grade also governs an earlier
+  completion inside a co-requisite.
+
+Coverage on the five archived terms: 728 offerings publish condition text
+(637 of them via uniform section notes); minimum grade interpreted for 75
+(all 53, named 21, unspecified 1); alternatives for 80; 503 keep an
+uninterpreted condition (other 312, permission 156, placement 31, program
+restriction 30, conflicting/advisory grade 14). Co-requisites: 215 offerings
+(44 courseNotes, 171 uniform section notes); clauses parsed 116, unsupported
+111; 67 offerings have section-specific co-requisites, not loaded.
+
+Prerequisite outcomes, Fall 2026, synthetic students (`scripts/measure_prerequisite_outcomes.py`):
+
+| history | before 6.4 (1,233 offerings) | after 6.4 (1,307) |
+|---|---|---|
+| B in every referenced course | 1,158 SAT / 75 UNK | 1,113 SAT / 194 UNK |
+| D in every referenced course | 1,158 SAT / 75 UNK | 1,081 SAT / 31 UNSAT / 195 UNK |
+| nothing taken | 1,192 UNSAT / 41 UNK | 1,168 UNSAT / 139 UNK |
+
+UNKNOWN rose because more of what Rutgers publishes is now read: 156 of
+the 194 come from uniform section notes Phase 6.2 ignored ("PREREQ: SENIOR
+STATUS", ROTC, committee approval, "OR EQUIVALENT"); courseNotes-caused
+UNKNOWN fell from about 42 to 5 (the CS, Chemistry and Economics grade
+notes are now decided). A D student is no longer told a "C or better"
+prerequisite is satisfied (31 offerings).
+
+### 39.7 Schema (migration `6ba645ee0f9c`)
+
+`requirement.min_grade`, `grade_quota_max_count`, `grade_quota_at_most`,
+`category_sequences`; `program_rule.min_gpa`, `gpa_scope` (+ `min_gpa`
+rule type); `student_course.credit_origin` (`completed_requires_grade`
+relaxed for non-Rutgers credit); `course_prerequisite.section_condition_note`,
+`interpreted_conditions`, `condition_parser_version`; table
+`course_corequisite`. CHECKs only widened; the downgrade refuses when rows
+exist the old constraints would reject. Audit cache key includes
+`credit_origin`; `AUDIT_ENGINE_VERSION` 6.4.0.
+
+### 39.8 Curated programs
+
+Encoded with verbatim quotes: Mathematics (C minimums on 250/251/244-252
+and computing; "all but one" quota; 411-412 / 451-452 sequences),
+Economics (C minimums on the core, statistics and calculus; one-D elective
+quota; GPA-in-the-major rule, NOT_EVALUABLE), Statistics, Sociology,
+Linguistics (C or better for everything counted). Definition hashes changed
+-> `parsed` -> re-validated to `validated`. CS, Philosophy, Psychology:
+definitions unchanged. Nothing reviewed, nothing published.

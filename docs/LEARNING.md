@@ -7739,3 +7739,107 @@ than guessing a designation that would then look authoritative in the API.
 - Content-addressed storage; Merkle-style approvals
 - Materialized views and incremental view maintenance
 - Mutation testing and masked mutants
+
+---
+
+# Lesson 31: "C or Better" Is Three Questions, and Sometimes the Answer Is "We Don't Know"
+
+## What We Built
+
+One grade module both rule engines share, and two engines that stay apart:
+the Degree Engine now knows minimum grades, grade quotas, two-course
+sequences and GPA rules; the course-eligibility layer now reads minimum-grade
+prerequisite notes, placement alternatives and co-requisites, and answers
+"may this student take X in term T alongside P?". Every rule is traced to an
+archived Rutgers page, and everything Rutgers does not settle is UNKNOWN.
+
+---
+
+## Concepts
+
+### Read the registrar before writing the comparator
+
+"C or better" sounds like `grade >= "C"`. The SAS Grades and Records page
+says more: Pass means A..C, so P meets "C or better" but not "B or better";
+No Credit means D or F; a T grade is temporary; transfer credit carries no
+Rutgers grade at all. And the old code's failing list included "D-" - a
+grade Rutgers does not award. The comparator is ten lines; knowing what the
+ten lines must say took three archived policy pages.
+
+### The same retake, three different answers
+
+A student earns C, then repeats and earns B. For the DEGREE, the B is E
+credit (SAS: a course passed with C or better "must be repeated for E
+credit"), so "B or better" is not met. For a PREREQUISITE, the student did
+earn a C - an E-credit repeat does not erase it. For the GPA, the repeat is
+excluded - but after an F or D, whether the original stays in the average
+depends on a prefix CoursePilot does not store, so the GPA is UNKNOWN. "Latest
+wins" and "highest wins" are each wrong for one of the three.
+
+### Scope is the hard part of a rule
+
+"Prerequisites are grades of C or higher in Intro to Micro 220:102, ..." names
+three courses; the prerequisite expression also accepts other-campus
+equivalents the note never mentions. Is a D in the equivalent acceptable?
+The note does not say. So the named courses are strict, the others are
+ambiguous: an A satisfies under any reading, a D is UNKNOWN. The same move
+answers "GPA in the major": Rutgers never says which courses, so the rule is
+encoded and refused.
+
+### Reading more can raise the UNKNOWN rate - and that is progress
+
+Phase 6.2 ignored section notes. Reading the ones published identically on
+every section found "PREREQ: SENIOR STATUS", ROTC requirements and committee
+approvals. The UNKNOWN rate for a well-prepared student rose from 6% to 15%,
+while UNKNOWNs from course notes fell from about 42 to 5. A planner that was
+telling students they could take courses gated on senior status was not
+more useful at 6%; it was wrong.
+
+### An allocator that does not know a rule will quietly break it
+
+The first sequence test failed: a student who completed 411 AND 412 was told
+the analysis requirement was unmet, because the matching held only eight of
+nine eligible courses and dropped 412. The rule was right; the allocation
+fed it the wrong courses. Minimum grades avoid this by filtering eligibility
+BEFORE allocation; sequences and quotas got small deterministic repairs AFTER
+it. The lesson is general: every constraint must either shape the input to
+the allocator or be repaired after it.
+
+### Write the over-parse test before the parser gets clever
+
+A tolerance for trailing text ("01:185:201 IF CLOSED CONTACT INSTRUCTOR")
+also accepted "01:185:201 AND APPROVAL BY RUCCS EXECUTIVE COMMITTEE" - an
+approval requirement silently discarded. The fix was a whitelist of known
+logistics phrases, and the committee sentence became a permanent test.
+
+---
+
+## Self-Check
+
+1. Why does P satisfy "C or better" but not "B or better"?
+2. A student has C then B in 01:640:250. Which attempts answer the degree, prerequisite and GPA questions, and why do they differ?
+3. Why is transfer credit able to complete a course but not to prove "C or better"?
+4. What are the three scopes of a minimum-grade prerequisite note, and how does each treat a D in an unnamed equivalent?
+5. Why is the Economics "GPA in the major" rule stored but never computed?
+6. Why does a minimum grade filter eligibility before allocation, while a quota is repaired after?
+7. What does "PRE OR COREQ: X" change about combining the prerequisite and the co-requisite, and why must uninterpreted conditions be re-applied afterwards?
+8. The UNKNOWN rate rose. Make the case that this phase still made prerequisites more accurate.
+
+## Try It Yourself
+
+**A.** Change `meets_minimum` so a D meets "C or better" and run `test_grade_semantics.py`.
+
+**B.** Give the CS fixture's 01:198:112 a D and ask `check` about 01:198:211.
+
+**C.** Remove the `_LOGISTICS` whitelist check and see which test catches the committee approval.
+
+**D.** Audit Mathematics with nine upper-level courses including 411 and 412 but disable `_apply_sequence_categories`.
+
+**E.** Ask the API for `sas-640-ba` after loading only Option A.
+
+## Further Learning
+
+- Kleene three-valued logic and SQL NULL, again - now with scope as a third source of unknowns
+- Registrar policy as data: grade replacement, credit prefixes, transfer articulation
+- Constraint satisfaction vs post-hoc repair in assignment problems
+- Measuring parser coverage honestly: precision before recall
