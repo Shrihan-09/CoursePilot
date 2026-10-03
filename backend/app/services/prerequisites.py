@@ -17,8 +17,14 @@ Answers are deliberately conservative:
 | offering exists, SOC published no prerequisite | SATISFIED, `has_prerequisite=False` |
 | prerequisite parsed | the three-valued evaluation |
 | unsupported / malformed / unknown expression | UNKNOWN - never guessed |
-| a `courseNotes` condition (e.g. minimum grade) | caps SATISFIED at UNKNOWN |
+| an INTERPRETED minimum grade (Phase 6.4) | evaluated on the student's grades |
+| an interpreted "OR PLACEMENT TEST / PERMISSION" alternative (6.4) | prerequisite OR UNKNOWN |
+| any condition still NOT interpreted | caps SATISFIED at UNKNOWN |
 | campuses publish different prerequisites for the term | UNKNOWN (`campus_prerequisites_differ`) |
+
+Grades come from app.domain.grades; which attempt answers is
+app.domain.attempts.prerequisite_grade - any attempt that earned the grade,
+unlike the Degree Engine's E-credit rule.
 
 Read-only, deterministic, and no language model is involved anywhere.
 """
@@ -30,18 +36,20 @@ from dataclasses import dataclass, field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.domain.attempts import Attempt
+from app.domain.grades import Tri, earns_credit, outcome
 from app.domain.prerequisites import (
+    AnyOf,
     AttemptState,
     Evaluation,
+    GradeCondition,
+    course_keys,
     PrereqStatus,
     Unsupported,
     evaluate,
     from_json,
 )
 from app.models import Course, CourseOffering, CoursePrerequisite, Student, StudentCourse
-
-#: Mirrors the Degree Engine: these grades earn nothing.
-FAILING_GRADES = frozenset({"F", "D-", "NC", "W"})
 
 
 @dataclass(slots=True)
@@ -53,35 +61,53 @@ class PrerequisiteCheck:
     #: What Rutgers published, verbatim, and how CoursePilot classified it.
     raw_text: str | None = None
     condition_note: str | None = None
+    section_condition_note: str | None = None
     classification: str | None = None
     canonical_text: str | None = None
+    #: Phase 6.4: how CoursePilot read the condition texts (None: no condition).
+    interpreted_conditions: dict | None = None
+    #: The courses the published expression names (co-requisites compare
+    #: against this to detect a "PRE OR COREQ" relaxation).
+    expression_courses: list[str] = field(default_factory=list)
     evidence: Evaluation | None = None
     reasons: list[str] = field(default_factory=list)
 
 
-def attempt_history(session: Session, student: Student) -> dict[str, AttemptState]:
-    """The student's best standing per course: passed > in progress > not passed.
+def attempts_by_course(session: Session, student: Student) -> dict[str, list[Attempt]]:
+    """Every attempt, with grade and credit origin, per course key. Read-only."""
+    out: dict[str, list[Attempt]] = {}
+    rows = session.execute(
+        select(Course.course_string, StudentCourse.term_code, StudentCourse.status,
+               StudentCourse.grade, StudentCourse.credit_origin)
+        .join(Course, Course.id == StudentCourse.course_id)
+        .where(StudentCourse.student_id == student.id)
+        .order_by(Course.course_string, StudentCourse.term_code)
+    ).all()
+    for course_key, term, status, grade, origin in rows:
+        out.setdefault(course_key, []).append(
+            Attempt(course_key, term, status, grade, origin or "rutgers"))
+    return out
 
-    Every attempt is read; none is modified. A retake that passed makes the
-    course PASSED however many failed attempts preceded it.
+
+def attempt_history(session: Session, student: Student) -> dict[str, AttemptState]:
+    """Phase 6.2 view: best standing per course, passed > in progress > not passed.
+
+    Kept for callers that only need completion. Grades are classified by
+    app.domain.grades (Phase 6.4): an outcome whose credit is unknown (a
+    temporary grade, NG) is IN_PROGRESS-like, never PASSED.
     """
     rank = {AttemptState.NOT_PASSED: 0, AttemptState.IN_PROGRESS: 1, AttemptState.PASSED: 2}
     history: dict[str, AttemptState] = {}
-    rows = session.execute(
-        select(Course.course_string, StudentCourse.status, StudentCourse.grade)
-        .join(Course, Course.id == StudentCourse.course_id)
-        .where(StudentCourse.student_id == student.id)
-    ).all()
-    for course_key, status, grade in rows:
-        if status == "completed" and grade not in FAILING_GRADES:
-            state = AttemptState.PASSED
-        elif status == "in_progress":
-            state = AttemptState.IN_PROGRESS
-        else:
-            state = AttemptState.NOT_PASSED
-        if rank[state] > rank[history.get(course_key, AttemptState.NOT_PASSED)]:
-            history[course_key] = state
-        history.setdefault(course_key, state)
+    for course_key, attempts in attempts_by_course(session, student).items():
+        for a in attempts:
+            credit = earns_credit(outcome(a.status, a.grade, a.credit_origin))
+            state = (AttemptState.PASSED if a.status == "completed" and credit is Tri.YES
+                     else AttemptState.IN_PROGRESS if a.status != "planned"
+                     and credit is Tri.UNKNOWN
+                     else AttemptState.NOT_PASSED)
+            if rank[state] > rank[history.get(course_key, AttemptState.NOT_PASSED)]:
+                history[course_key] = state
+            history.setdefault(course_key, state)
     return history
 
 
@@ -96,7 +122,7 @@ def check_many(
     Three queries whatever the candidate count - offerings, prerequisites,
     history - so a planner scoring hundreds of candidates is not N+1.
     """
-    history = attempt_history(session, student)
+    history = attempts_by_course(session, student)
     offered = {
         key for key, in session.execute(
             select(Course.course_string)
@@ -127,22 +153,46 @@ def _check(key, term_code, offered, rows, history) -> PrerequisiteCheck:
     if not rows:
         return PrerequisiteCheck(key, term_code, PrereqStatus.SATISFIED, False,
                                  reasons=["no_prerequisite_published"])
-    if len({(r.raw_text, r.condition_note) for r in rows}) > 1:
+    if len({(r.raw_text, r.condition_note, r.section_condition_note) for r in rows}) > 1:
         return PrerequisiteCheck(key, term_code, PrereqStatus.UNKNOWN, True,
                                  raw_text=rows[0].raw_text,
                                  reasons=["campus_prerequisites_differ"])
 
     row = rows[0]
     expr = (from_json(row.expression) if row.expression is not None
-            else Unsupported(row.classification, row.raw_text or row.condition_note or ""))
-    conditions = tuple((row.condition_kinds or "").split(",")) if row.condition_note else ()
-    evidence = evaluate(expr, history, unmodeled_conditions=tuple(c for c in conditions if c))
+            else Unsupported(row.classification,
+                             row.raw_text or row.condition_note or row.section_condition_note
+                             or ""))
+    interpreted = row.interpreted_conditions
+    grade_condition = None
+    if interpreted is not None:
+        unmodeled = tuple(interpreted.get("uninterpreted", ()))
+        minimum = interpreted.get("minimum_grade")
+        if minimum:
+            grade_condition = GradeCondition(minimum["grade"], minimum["scope"],
+                                             frozenset(minimum.get("courses", ())))
+        alternatives = sorted({k for alt in interpreted.get("alternatives", ())
+                               for k in alt["kinds"]})
+        if alternatives and row.expression is not None:
+            # "PREREQ - X OR PLACEMENT TEST": the published prerequisite OR an
+            # alternative CoursePilot cannot check.
+            expr = AnyOf((expr, *(Unsupported(k, k) for k in alternatives)))
+    else:
+        # Rows loaded before Phase 6.4: the Phase 6.2 behaviour, unchanged.
+        conditions = tuple((row.condition_kinds or "").split(",")) if row.condition_note else ()
+        unmodeled = tuple(c for c in conditions if c)
+    evidence = evaluate(expr, history, unmodeled_conditions=unmodeled,
+                        grade_condition=grade_condition)
     return PrerequisiteCheck(
         key, term_code, evidence.status, True,
         raw_text=row.raw_text, condition_note=row.condition_note,
+        section_condition_note=row.section_condition_note,
         classification=row.classification, canonical_text=row.canonical_text,
+        interpreted_conditions=interpreted,
+        expression_courses=(course_keys(from_json(row.expression))
+                            if row.expression is not None else []),
         evidence=evidence, reasons=list(evidence.unknown_reasons),
     )
 
 
-__all__ = ["FAILING_GRADES", "PrerequisiteCheck", "attempt_history", "check", "check_many"]
+__all__ = ["PrerequisiteCheck", "attempt_history", "attempts_by_course", "check", "check_many"]

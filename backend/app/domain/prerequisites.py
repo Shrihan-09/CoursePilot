@@ -45,9 +45,19 @@ title text. Treating the words case-insensitively would split real titles.
   * anything that does not tokenize -> MALFORMED / UNKNOWN.
 
 Minimum-grade conditions are NOT in `preReqNotes` at all; they appear in
-SOC `courseNotes` ("Student needs C or better in all prerequisites"). They
-are carried beside the expression as an unmodeled condition, which caps any
-evaluation at UNKNOWN (see `evaluate`).
+SOC `courseNotes` ("Student needs C or better in all prerequisites"). Phase
+6.2 carried them beside the expression as an unmodeled condition capping any
+evaluation at UNKNOWN. Phase 6.4 interprets the observed forms
+(app.domain.conditions) and evaluates them here as a `GradeCondition`;
+whatever is still not interpreted keeps capping exactly as before.
+
+## Phase 6.4 additions
+
+  * `ConcurrentReq` - a co-requisite leaf ("may be taken in the same term"),
+    produced only by app.domain.corequisites and evaluated against a
+    proposed term (`term_code`, `proposed`).
+  * history values may be attempt LISTS (app.domain.attempts.Attempt), which
+    carry grades; AttemptState values keep their Phase 6.2 meaning.
 """
 
 from __future__ import annotations
@@ -108,6 +118,19 @@ class AtLeast:
 
 
 @dataclass(frozen=True, slots=True)
+class ConcurrentReq:
+    """A co-requisite: the course taken in the SAME term (Phase 6.4).
+
+    `prior_allowed`: True  - completing it earlier also satisfies ("PRE OR COREQ")
+                     None  - the source does not say ("COREQ: X") -> UNKNOWN
+                     False - only the same term ("MUST BE TAKEN CONCURRENTLY")
+    """
+
+    course_key: str
+    prior_allowed: bool | None
+
+
+@dataclass(frozen=True, slots=True)
 class Unsupported:
     """A condition CoursePilot does not interpret. Always evaluates UNKNOWN."""
 
@@ -116,7 +139,7 @@ class Unsupported:
     references: tuple[str, ...] = ()
 
 
-Expr = Union[CourseReq, AllOf, AnyOf, AtLeast, Unsupported]
+Expr = Union[CourseReq, ConcurrentReq, AllOf, AnyOf, AtLeast, Unsupported]
 
 
 def course_keys(expr: Expr) -> list[str]:
@@ -124,7 +147,7 @@ def course_keys(expr: Expr) -> list[str]:
     out: list[str] = []
 
     def walk(e: Expr) -> None:
-        if isinstance(e, CourseReq):
+        if isinstance(e, CourseReq | ConcurrentReq):
             if e.course_key not in out:
                 out.append(e.course_key)
         elif isinstance(e, Unsupported):
@@ -152,7 +175,7 @@ def canonicalize(expr: Expr) -> Expr:
       * children are sorted by their canonical text, so order is irrelevant
       * a single-child AND/OR collapses to the child
     """
-    if isinstance(expr, CourseReq | Unsupported):
+    if isinstance(expr, CourseReq | ConcurrentReq | Unsupported):
         return expr
     if isinstance(expr, AtLeast):
         kids = sorted({to_text(canonicalize(c)): canonicalize(c) for c in expr.children}.items())
@@ -172,6 +195,10 @@ def to_text(expr: Expr) -> str:
     """Canonical text. Parses back to the same structure with `parse`."""
     if isinstance(expr, CourseReq):
         return expr.course_key
+    if isinstance(expr, ConcurrentReq):
+        mode = {True: "before or same term", None: "same term; earlier unspecified",
+                False: "same term only"}[expr.prior_allowed]
+        return f"CONCURRENT[{expr.course_key}: {mode}]"
     if isinstance(expr, Unsupported):
         return f"UNSUPPORTED[{expr.reason}]"
     if isinstance(expr, AtLeast):
@@ -185,6 +212,8 @@ def to_text(expr: Expr) -> str:
 def to_json(expr: Expr) -> dict:
     if isinstance(expr, CourseReq):
         return {"course": expr.course_key}
+    if isinstance(expr, ConcurrentReq):
+        return {"concurrent": expr.course_key, "prior_allowed": expr.prior_allowed}
     if isinstance(expr, Unsupported):
         return {"unsupported": expr.reason, "text": expr.text,
                 "references": list(expr.references)}
@@ -197,6 +226,8 @@ def to_json(expr: Expr) -> dict:
 def from_json(data: dict) -> Expr:
     if "course" in data:
         return CourseReq(data["course"])
+    if "concurrent" in data:
+        return ConcurrentReq(data["concurrent"], data.get("prior_allowed"))
     if "unsupported" in data:
         return Unsupported(data["unsupported"], data.get("text", ""),
                            tuple(data.get("references", ())))
@@ -443,6 +474,36 @@ class Evaluation:
     missing_courses: list[str] = field(default_factory=list)
     pending_courses: list[str] = field(default_factory=list)
     unknown_reasons: list[str] = field(default_factory=list)
+    #: Phase 6.4: one entry per course whose GRADE decided (or left
+    #: undecided) its leaf - course, required grade, earned grade, result.
+    grade_checks: list[dict] = field(default_factory=list)
+    #: Phase 6.4: co-requisite leaves and how each was met.
+    concurrent_checks: list[dict] = field(default_factory=list)
+    #: Phase 6.4: the status BEFORE unmodeled conditions capped it, so a
+    #: caller combining this with another rule can re-apply the cap after.
+    uncapped_status: PrereqStatus | None = None
+    unmodeled_conditions: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class GradeCondition:
+    """An interpreted minimum-grade prerequisite condition (app.domain.conditions).
+
+    scope "all":         every prerequisite course needs `minimum`
+    scope "named":       the `courses` named need it; the others are ambiguous
+    scope "unspecified": every course is ambiguous
+    Ambiguous: a grade at/above `minimum` satisfies under any reading; a passing
+    grade below it is UNKNOWN.
+    """
+
+    minimum: str
+    scope: str
+    courses: frozenset[str] = frozenset()
+
+    def applies(self, course_key: str) -> str:
+        if self.scope == "all" or (self.scope == "named" and course_key in self.courses):
+            return "strict"
+        return "ambiguous"
 
 
 def _combine_all(states: list[PrereqStatus]) -> PrereqStatus:
@@ -475,37 +536,152 @@ def _combine_at_least(n: int, states: list[PrereqStatus]) -> PrereqStatus:
 
 def evaluate(
     expr: Expr,
-    history: dict[str, AttemptState],
+    history: dict,
     *,
     unmodeled_conditions: tuple[str, ...] = (),
+    grade_condition: GradeCondition | None = None,
+    term_code: str | None = None,
+    proposed: frozenset[str] = frozenset(),
 ) -> Evaluation:
-    """Evaluate a prerequisite expression against a student's course history.
+    """Evaluate a prerequisite (or co-requisite) expression for a student.
 
-    `history` maps course key -> the student's best AttemptState in it; a
-    missing key means never taken.
+    `history` maps course key -> the student's AttemptState (Phase 6.2) or
+    list of Attempts (Phase 6.4, carries grades); a missing key means never
+    taken.
 
     `unmodeled_conditions` are published conditions CoursePilot does not
-    interpret (e.g. a minimum-grade note). They only ever LOWER confidence: a
-    result that would be SATISFIED becomes UNKNOWN, because the condition
-    might not be met; an UNSATISFIED result stays UNSATISFIED, because a
-    further restriction cannot make a failed expression pass.
+    interpret. They only ever LOWER confidence: SATISFIED becomes UNKNOWN; an
+    UNSATISFIED result stays UNSATISFIED, because a further restriction cannot
+    make a failed expression pass.
+
+    `grade_condition`: an interpreted minimum grade (see GradeCondition).
+    `term_code` / `proposed`: the term being asked about and the courses
+    proposed for it - only co-requisite leaves read them.
     """
+    from app.domain.attempts import prerequisite_grade, term_order
+    from app.domain.grades import Tri
+
     out = Evaluation(status=PrereqStatus.UNKNOWN)
+    to_status = {Tri.YES: PrereqStatus.SATISFIED, Tri.NO: PrereqStatus.UNSATISFIED,
+                 Tri.UNKNOWN: PrereqStatus.UNKNOWN}
+
+    def record(key: str, status: PrereqStatus, reason: str | None = None) -> PrereqStatus:
+        if status is PrereqStatus.SATISFIED:
+            _add(out.satisfied_courses, key)
+        elif status is PrereqStatus.UNSATISFIED:
+            _add(out.missing_courses, key)
+        else:
+            _add(out.pending_courses, key)
+            if reason:
+                _add(out.unknown_reasons, f"{reason}:{key}")
+        return status
+
+    def course_leaf(key: str) -> PrereqStatus:
+        value = history.get(key)
+        rule = grade_condition.applies(key) if grade_condition else None
+        if value is None or isinstance(value, AttemptState):
+            state = value or AttemptState.NOT_PASSED
+            if state is AttemptState.PASSED:
+                if rule:      # passed, but no grade on hand to compare
+                    out.grade_checks.append({"course": key, "required_grade":
+                                             grade_condition.minimum, "scope": rule,
+                                             "earned_grade": None, "result": "unknown",
+                                             "reason": "no_grade_information"})
+                    return record(key, PrereqStatus.UNKNOWN, "no_grade_information")
+                return record(key, PrereqStatus.SATISFIED)
+            if state is AttemptState.IN_PROGRESS:
+                return record(key, PrereqStatus.UNKNOWN, "in_progress")
+            return record(key, PrereqStatus.UNSATISFIED)
+        attempts = value
+        base = prerequisite_grade(attempts, None)
+        if not rule:
+            return record(key, to_status[base.status],
+                          "in_progress" if base.status is Tri.UNKNOWN else None)
+        check = prerequisite_grade(attempts, grade_condition.minimum)
+        if rule == "strict":
+            status = to_status[check.status]
+            reason = check.reason
+        elif check.status is Tri.YES:
+            status, reason = PrereqStatus.SATISFIED, "meets_minimum"
+        elif base.status is Tri.YES:
+            status, reason = PrereqStatus.UNKNOWN, "grade_scope_ambiguous"
+        else:
+            status, reason = to_status[base.status], base.reason
+        used = check.attempt or base.attempt
+        out.grade_checks.append({
+            "course": key, "required_grade": grade_condition.minimum, "scope": rule,
+            "earned_grade": used.grade if used else None,
+            "term": used.term_code if used else None,
+            "credit_origin": used.credit_origin if used else None,
+            "result": status.value, "reason": reason})
+        return record(key, status, reason if status is PrereqStatus.UNKNOWN else None)
+
+    def concurrent_leaf(e: ConcurrentReq) -> PrereqStatus:
+        key = e.course_key
+        entry = {"course": key, "prior_allowed": e.prior_allowed}
+        if key in proposed:
+            entry["met_by"] = "proposed_same_term"
+            out.concurrent_checks.append(entry)
+            return record(key, PrereqStatus.SATISFIED)
+        value = history.get(key)
+        if value is None or isinstance(value, AttemptState):
+            if value is AttemptState.PASSED:
+                done = Tri.YES
+            elif value is AttemptState.IN_PROGRESS:
+                done = Tri.UNKNOWN
+            else:
+                done = Tri.NO
+            same_term = False
+        else:
+            target = term_order(term_code)
+            same_term = any(a.status == "in_progress" and a.term_code == term_code
+                            for a in value)
+            earlier = [a for a in value if target is not None
+                       and term_order(a.term_code) is not None
+                       and term_order(a.term_code) < target]
+            done = prerequisite_grade(earlier, None).status if earlier else Tri.NO
+            # Completing it EARLIER makes it a prerequisite course, so an
+            # interpreted minimum grade governs that completion too ("A grade
+            # below a 'C' in a prerequisite course will not satisfy prereq").
+            rule = grade_condition.applies(key) if grade_condition else None
+            if earlier and rule:
+                meets = prerequisite_grade(earlier, grade_condition.minimum).status
+                if rule == "strict" or meets is Tri.YES:
+                    done = meets
+                elif done is Tri.YES:
+                    done = Tri.UNKNOWN
+                entry["required_grade"] = grade_condition.minimum
+            if target is None and value:
+                done = Tri.UNKNOWN
+        if same_term:
+            entry["met_by"] = "enrolled_same_term"
+            out.concurrent_checks.append(entry)
+            return record(key, PrereqStatus.SATISFIED)
+        if done is Tri.YES:
+            entry["met_by"] = "completed_earlier"
+            out.concurrent_checks.append(entry)
+            if e.prior_allowed is True:
+                return record(key, PrereqStatus.SATISFIED)
+            if e.prior_allowed is None:
+                return record(key, PrereqStatus.UNKNOWN, "corequisite_prior_completion_unspecified")
+            return record(key, PrereqStatus.UNSATISFIED)
+        if done is Tri.UNKNOWN and e.prior_allowed is not False:
+            entry["met_by"] = "pending"
+            out.concurrent_checks.append(entry)
+            return record(key, PrereqStatus.UNKNOWN, "in_progress")
+        entry["met_by"] = None
+        out.concurrent_checks.append(entry)
+        return record(key, PrereqStatus.UNSATISFIED)
 
     def walk(e: Expr) -> PrereqStatus:
         if isinstance(e, CourseReq):
             if e.course_key not in out.required_courses:
                 out.required_courses.append(e.course_key)
-            state = history.get(e.course_key, AttemptState.NOT_PASSED)
-            if state is AttemptState.PASSED:
-                _add(out.satisfied_courses, e.course_key)
-                return PrereqStatus.SATISFIED
-            if state is AttemptState.IN_PROGRESS:
-                _add(out.pending_courses, e.course_key)
-                _add(out.unknown_reasons, f"in_progress:{e.course_key}")
-                return PrereqStatus.UNKNOWN
-            _add(out.missing_courses, e.course_key)
-            return PrereqStatus.UNSATISFIED
+            return course_leaf(e.course_key)
+        if isinstance(e, ConcurrentReq):
+            if e.course_key not in out.required_courses:
+                out.required_courses.append(e.course_key)
+            return concurrent_leaf(e)
         if isinstance(e, Unsupported):
             _add(out.unknown_reasons, f"unsupported:{e.reason}")
             return PrereqStatus.UNKNOWN
@@ -517,6 +693,8 @@ def evaluate(
         return _combine_at_least(e.n, states)
 
     out.status = walk(expr)
+    out.uncapped_status = out.status
+    out.unmodeled_conditions = tuple(unmodeled_conditions)
     if unmodeled_conditions and out.status is PrereqStatus.SATISFIED:
         out.status = PrereqStatus.UNKNOWN
         for condition in unmodeled_conditions:
@@ -536,9 +714,11 @@ __all__ = [
     "AtLeast",
     "AttemptState",
     "Classification",
+    "ConcurrentReq",
     "CourseReq",
     "Evaluation",
     "Expr",
+    "GradeCondition",
     "ParseResult",
     "PrereqStatus",
     "Unsupported",
