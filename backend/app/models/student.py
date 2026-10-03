@@ -46,6 +46,23 @@ class EnrollmentStatus(StrEnum):
     PLANNED = "planned"
 
 
+class CreditOrigin(StrEnum):
+    """Where a completed course's credit came from (Phase 6.4).
+
+    Rutgers SAS "Academic Credit": credit earned "through Advanced Placement
+    examinations, International Baccalaureate, and ... proficiency
+    examinations" or "in transfer" is "not computed in the cumulative
+    grade-point average", and transfer grades "are not posted to the Rutgers
+    transcript". So such a record establishes that a Rutgers course
+    equivalent was credited, without a Rutgers letter grade - see
+    app.domain.grades for what that can and cannot satisfy.
+    """
+
+    RUTGERS = "rutgers"
+    TRANSFER = "transfer"
+    EXAM_CREDIT = "exam_credit"     # AP, IB, A-Level, proficiency examination
+
+
 class Student(Base, TimestampMixin):
     """One student's academic record.
 
@@ -122,6 +139,9 @@ class StudentCourse(Base, TimestampMixin):
     # Student-reported data is evidence, not fact. Defaults to self-reported
     # so an unverified record can never masquerade as a registrar record.
     source_kind: Mapped[str] = mapped_column(String(32), default="student_self_reported")
+    # Phase 6.4: Rutgers coursework, transfer equivalency, or exam credit.
+    credit_origin: Mapped[str] = mapped_column(
+        String(16), default=CreditOrigin.RUTGERS.value, server_default=CreditOrigin.RUTGERS.value)
 
     student: Mapped[Student] = relationship(back_populates="courses")
 
@@ -133,10 +153,16 @@ class StudentCourse(Base, TimestampMixin):
         CheckConstraint(
             "credits_earned IS NULL OR credits_earned >= 0", name="credits_earned_non_negative"
         ),
-        # A completed course without a grade is a data error we want caught at
-        # the boundary; planned/in-progress courses legitimately have none.
+        # A completed RUTGERS course without a grade is a data error we want
+        # caught at the boundary; planned/in-progress courses legitimately have
+        # none, and transfer/exam credit carries no Rutgers grade (Phase 6.4).
         CheckConstraint(
-            "status <> 'completed' OR grade IS NOT NULL", name="completed_requires_grade"
+            "status <> 'completed' OR grade IS NOT NULL OR credit_origin <> 'rutgers'",
+            name="completed_requires_grade",
+        ),
+        CheckConstraint(
+            "credit_origin IN ('rutgers','transfer','exam_credit')",
+            name="credit_origin_known",
         ),
         Index("ix_student_course_status", "student_id", "status"),
     )

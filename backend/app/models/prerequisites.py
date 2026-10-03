@@ -82,6 +82,18 @@ class CoursePrerequisite(Base, TimestampMixin):
     parse_detail: Mapped[str | None] = mapped_column(Text)
     parser_version: Mapped[str] = mapped_column(String(16))
 
+    # --- Phase 6.4: conditions CoursePilot can now interpret ----------------
+    # A SOC sectionNotes text that states a prerequisite condition and is
+    # published IDENTICALLY on every section of the offering - only then is it
+    # a course-level fact rather than a section-level one.
+    section_condition_note: Mapped[str | None] = mapped_column(Text)
+    # The deterministic reading of the condition texts (app.domain.conditions):
+    # {"minimum_grade": {"grade": "C", "scope": "all"|"named"|"unspecified",
+    #  "courses": [...]}, "alternatives": ["placement", ...],
+    #  "uninterpreted": ["permission", ...]}. NULL when there is no condition.
+    interpreted_conditions: Mapped[dict | None] = mapped_column(JSON(none_as_null=True))
+    condition_parser_version: Mapped[str | None] = mapped_column(String(16))
+
     source_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("data_source.id"))
 
     references: Mapped[list[PrerequisiteReference]] = relationship(
@@ -97,7 +109,8 @@ class CoursePrerequisite(Base, TimestampMixin):
         ),
         # Something was published: an expression, a condition, or both.
         CheckConstraint(
-            "raw_text IS NOT NULL OR condition_note IS NOT NULL",
+            "raw_text IS NOT NULL OR condition_note IS NOT NULL "
+            "OR section_condition_note IS NOT NULL",
             name="has_source_text",
         ),
     )
@@ -130,4 +143,52 @@ class PrerequisiteReference(Base, TimestampMixin):
     )
 
 
-__all__ = ["PREREQUISITE_CLASSIFICATIONS", "CoursePrerequisite", "PrerequisiteReference"]
+COREQUISITE_CLASSIFICATIONS = ("parsed", "unsupported")
+
+
+class CourseCorequisite(Base, TimestampMixin):
+    """A term-scoped co-requisite (Phase 6.4): COURSE-TAKING eligibility.
+
+    "PRE OR COREQ: 01:146:356" - the course may be taken once 01:146:356 is
+    passed OR in the SAME term. Co-requisites are not degree requirements;
+    they live beside prerequisites, one row per offering, and are evaluated
+    against completed courses PLUS a proposed term's courses
+    (app.services.course_eligibility). Nothing here plans a term.
+
+    Sources: SOC `courseNotes`, or a `sectionNotes` text that every section of
+    the offering yields the same rule from. `raw_text` keeps every source text
+    exactly as published.
+    """
+
+    __tablename__ = "course_corequisite"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    offering_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("course_offering.id", ondelete="CASCADE"), unique=True
+    )
+    course_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("course.id", ondelete="CASCADE"))
+    term_code: Mapped[str] = mapped_column(String(16))
+
+    # --- what Rutgers published ---
+    raw_text: Mapped[str] = mapped_column(Text)
+    source_field: Mapped[str] = mapped_column(String(24))      # courseNotes | sectionNotes:all
+    # --- how CoursePilot interpreted it ---
+    classification: Mapped[str] = mapped_column(String(24))
+    expression: Mapped[dict | None] = mapped_column(JSON(none_as_null=True))
+    canonical_text: Mapped[str | None] = mapped_column(Text)
+    parse_detail: Mapped[str | None] = mapped_column(Text)
+    parser_version: Mapped[str] = mapped_column(String(16))
+
+    source_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("data_source.id"))
+
+    __table_args__ = (
+        Index("ix_course_corequisite_course_term", "course_id", "term_code"),
+        CheckConstraint(
+            "classification IN ('" + "','".join(COREQUISITE_CLASSIFICATIONS) + "')",
+            name="corequisite_classification_known",
+        ),
+    )
+
+
+__all__ = ["COREQUISITE_CLASSIFICATIONS", "PREREQUISITE_CLASSIFICATIONS", "CourseCorequisite",
+           "CoursePrerequisite", "PrerequisiteReference"]

@@ -380,6 +380,23 @@ class Requirement(Base, TimestampMixin):
     # managed by another loader (SAS Core certifications) and is left alone.
     eligibility_rule: Mapped[dict | None] = mapped_column(JSON(none_as_null=True))
 
+    # --- Phase 6.4: grade semantics (app.domain.grades) ---------------------
+    # Minimum grade for every course allocated to this node AND its subtree;
+    # the strictest minimum on the path from the root applies.
+    #   Mathematics: "Courses 01:640:250, 251, and 244/252 must be passed with
+    #   grades of C or better."
+    min_grade: Mapped[str | None] = mapped_column(String(4))
+    # Grade quota: at most `grade_quota_max_count` allocated courses may have a
+    # grade at or below `grade_quota_at_most`.
+    #   Mathematics: "All but one of these courses ... must be passed with a
+    #   grade of C or better."   -> max 1 at or below D
+    grade_quota_max_count: Mapped[int | None] = mapped_column(Integer)
+    grade_quota_at_most: Mapped[str | None] = mapped_column(String(4))
+    # Category members that are SEQUENCES - every course of the sequence must
+    # be allocated here for it to cover its category:
+    #   {"ANALYSIS": [["01:640:411", "01:640:412"]]}   (catalog "411-412")
+    category_sequences: Mapped[dict | None] = mapped_column(JSON(none_as_null=True))
+
     program_version: Mapped[ProgramVersion] = relationship(back_populates="requirements")
     children: Mapped[list[Requirement]] = relationship(
         back_populates="parent", cascade="all, delete-orphan", remote_side=None
@@ -402,6 +419,11 @@ class Requirement(Base, TimestampMixin):
         CheckConstraint(
             "requirement_type IN ('all_of','any_of','choose_n','credits','course')",
             name="requirement_type_known",
+        ),
+        CheckConstraint(
+            "grade_quota_max_count IS NULL OR "
+            "(grade_quota_max_count >= 0 AND grade_quota_at_most IS NOT NULL)",
+            name="grade_quota_complete",
         ),
         Index("ix_requirement_parent_sort", "parent_id", "sort_order"),
     )
@@ -553,11 +575,16 @@ class ProgramRuleType(StrEnum):
       RESIDENCY         "A minimum of seven courses must be taken in the
                          Rutgers University-New Brunswick Department of
                          Computer Science."
+      MIN_GPA           (Phase 6.4) "students must have a minimum cumulative
+                         grade-point average of 2.0 in the major." Scoped by
+                         `gpa_scope`; see app.domain.gpa for which scopes are
+                         defined and which are refused.
     """
 
     MAX_GRADE_COUNT = "max_grade_count"
     COURSE_EXCLUSION = "course_exclusion"
     RESIDENCY = "residency"
+    MIN_GPA = "min_gpa"
 
 
 class ProgramRule(Base, TimestampMixin):
@@ -604,6 +631,12 @@ class ProgramRule(Base, TimestampMixin):
     # `course` table (it may not be offered), and the exclusion is still real.
     excluded_course_strings: Mapped[str | None] = mapped_column(Text)
 
+    # MIN_GPA (Phase 6.4): the threshold and WHICH courses the average covers
+    # ('cumulative', 'subject:<code>', or 'major' - which Rutgers does not
+    # define and is therefore never computed).
+    min_gpa: Mapped[Decimal | None] = mapped_column(Numeric(4, 3))
+    gpa_scope: Mapped[str | None] = mapped_column(String(32))
+
     # False when the rule is authoritative but the data to check it is absent.
     is_evaluable: Mapped[bool] = mapped_column(default=True)
     not_evaluable_reason: Mapped[str | None] = mapped_column(Text)
@@ -619,7 +652,7 @@ class ProgramRule(Base, TimestampMixin):
     __table_args__ = (
         UniqueConstraint("program_version_id", "code", name="uq_program_rule_code"),
         CheckConstraint(
-            "rule_type IN ('max_grade_count','course_exclusion','residency')",
+            "rule_type IN ('max_grade_count','course_exclusion','residency','min_gpa')",
             name="program_rule_type_known",
         ),
         CheckConstraint("max_count IS NULL OR max_count >= 0", name="rule_max_count_non_negative"),
