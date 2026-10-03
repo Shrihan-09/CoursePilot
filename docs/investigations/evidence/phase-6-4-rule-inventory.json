@@ -1,0 +1,771 @@
+{
+  "phase": "6.4",
+  "catalog": {
+    "counts": {
+      "degree_minimum_grade": 77,
+      "admission_to_major": 18,
+      "sequence": 72,
+      "grade_quota": 7,
+      "option_or_track": 46,
+      "gpa": 34,
+      "corequisite": 58,
+      "residency_or_location": 19
+    },
+    "per_page": {
+      "computer-science-198": {
+        "degree_minimum_grade": 10,
+        "admission_to_major": 3,
+        "sequence": 3,
+        "grade_quota": 1,
+        "option_or_track": 4,
+        "gpa": 2,
+        "corequisite": 3
+      },
+      "mathematics-640": {
+        "option_or_track": 13,
+        "sequence": 19,
+        "degree_minimum_grade": 20,
+        "residency_or_location": 3,
+        "admission_to_major": 2,
+        "gpa": 4,
+        "corequisite": 10
+      },
+      "economics-220": {
+        "degree_minimum_grade": 23,
+        "residency_or_location": 5,
+        "admission_to_major": 2,
+        "gpa": 3,
+        "grade_quota": 1,
+        "option_or_track": 5,
+        "sequence": 1,
+        "corequisite": 2
+      },
+      "psychology-830": {
+        "admission_to_major": 1,
+        "degree_minimum_grade": 6,
+        "gpa": 5,
+        "residency_or_location": 1,
+        "corequisite": 20
+      },
+      "statistics-960": {
+        "admission_to_major": 2,
+        "sequence": 2,
+        "degree_minimum_grade": 3,
+        "grade_quota": 1,
+        "corequisite": 1
+      },
+      "philosophy-730": {
+        "grade_quota": 2,
+        "residency_or_location": 2,
+        "degree_minimum_grade": 2,
+        "gpa": 3,
+        "option_or_track": 1
+      },
+      "sociology-920": {
+        "degree_minimum_grade": 2,
+        "admission_to_major": 3,
+        "gpa": 4,
+        "residency_or_location": 2,
+        "corequisite": 1
+      },
+      "linguistics-615": {
+        "degree_minimum_grade": 2,
+        "gpa": 3,
+        "corequisite": 1
+      },
+      "data-science-219": {
+        "admission_to_major": 2,
+        "degree_minimum_grade": 2,
+        "option_or_track": 9
+      },
+      "physics-750": {
+        "residency_or_location": 4,
+        "sequence": 44,
+        "option_or_track": 4,
+        "gpa": 4,
+        "degree_minimum_grade": 1,
+        "admission_to_major": 2,
+        "grade_quota": 2,
+        "corequisite": 15
+      },
+      "political-science-790": {
+        "degree_minimum_grade": 6,
+        "option_or_track": 10,
+        "admission_to_major": 1,
+        "gpa": 6,
+        "residency_or_location": 2,
+        "sequence": 3,
+        "corequisite": 5
+      }
+    },
+    "examples": {
+      "degree_minimum_grade": [
+        {
+          "page": "computer-science-198",
+          "text": "Students who are having difficulty earning grades of C or better are strongly encouraged to see a computer science academic adviser."
+        },
+        {
+          "page": "computer-science-198",
+          "text": "Entry Requirements for the Major Students wishing to declare a major in computer science must achieve a grade of C or better in 01:198:111, 112, and 205, and 01:640:151-152."
+        },
+        {
+          "page": "computer-science-198",
+          "text": "Students in the honors track will have their progress reviewed by the honors committee and are expected to earn grades of B or better in their advanced computer science courses (300 level and above)."
+        },
+        {
+          "page": "computer-science-198",
+          "text": "Prerequisite: 01:198:112, with a grade of C or better."
+        },
+        {
+          "page": "computer-science-198",
+          "text": "Prerequisites: 01:640:152 and 250, both with grades of C or better."
+        },
+        {
+          "page": "computer-science-198",
+          "text": "Prerequisite: 01:198:323 or 01:640:373, with a grade of C or better."
+        },
+        {
+          "page": "computer-science-198",
+          "text": "Prerequisite: 01:198:205 and either 01:198:211 or 14:332:331, all with grades of C or better."
+        },
+        {
+          "page": "computer-science-198",
+          "text": "01:198:314, all with grades of C or better."
+        }
+      ],
+      "admission_to_major": [
+        {
+          "page": "computer-science-198",
+          "text": "Entry Requirements for the Major Students wishing to declare a major in computer science must achieve a grade of C or better in 01:198:111, 112, and 205, and 01:640:151-152."
+        },
+        {
+          "page": "computer-science-198",
+          "text": "This course is for students seeking admission to Rutgers Business School: Undergraduate-New Brunswick."
+        },
+        {
+          "page": "computer-science-198",
+          "text": "This course is for students seeking admission to Rutgers Business School: Undergraduate-New Brunswick."
+        },
+        {
+          "page": "mathematics-640",
+          "text": "Admission to the honors track is by application, which is available from the mathematics undergraduate office or from the mathematics department website ."
+        },
+        {
+          "page": "mathematics-640",
+          "text": "Students must apply for admission (usually in the junior year), complete a standard mathematics major, satisfy undergraduate requirements set by the GSE as well as those set by the School of Arts and Sciences, and, in the fifth year, complete additional coursework, including an additional mathematic"
+        },
+        {
+          "page": "economics-220",
+          "text": "To declare a major in economics, a student must have a grade of C or better in both 01:220:102 Introduction to Microeconomics and 01:220:103 Introduction to Macroeconomics."
+        },
+        {
+          "page": "economics-220",
+          "text": "Prerequisites: 01:220:320, 01:220:321, and 01:220:322, Calculus II and admission by special permission."
+        },
+        {
+          "page": "psychology-830",
+          "text": "The prerequisite for declaring the major in psychology is completion of the following courses with a grade of C or better in each: 01:830:101 General Psychology (3) 01:830:200 Quantitative Methods in Psychology (3)* The following requirements must be met to complete a major in psychology: 1."
+        }
+      ],
+      "sequence": [
+        {
+          "page": "computer-science-198",
+          "text": "Entry Requirements for the Major Students wishing to declare a major in computer science must achieve a grade of C or better in 01:198:111, 112, and 205, and 01:640:151-152."
+        },
+        {
+          "page": "computer-science-198",
+          "text": "2) three courses in mathematics, 01:640:151-152 and 01:640:250; and 3) five electives from a designated list of courses in computer science and related disciplines (e.g., electrical engineering, mathematics)."
+        },
+        {
+          "page": "computer-science-198",
+          "text": "Prerequisite: 01:198:344 01:198:493,494 Independent Study in Computer Science (BA,BA) 01:198:495-496 Computer Science Honors Capstone Program (3,3) Fall and spring semester of year long capstone program for Computer Science undergraduate honors students."
+        },
+        {
+          "page": "mathematics-640",
+          "text": "Three semesters of calculus (01:640:151-152, and 251 or equivalent), Introductory Linear Algebra (01:640:250), and Elementary Differential Equations (01:640:244 or 01:640:252)."
+        },
+        {
+          "page": "mathematics-640",
+          "text": "At least four of the upper-level courses used to complete the major must be taken at Rutgers University-New Brunswick, including one of 01:640:311,312, 411-412, and one of 01:640:350, 351, 451-452."
+        },
+        {
+          "page": "mathematics-640",
+          "text": "01:640:250, 300 (honors), 411-412, and 451-452; two semesters of 1-credit honors seminar, at least one at the junior/senior level; and four mathematics electives as approved by the honors committee."
+        },
+        {
+          "page": "mathematics-640",
+          "text": "Core biology and chemistry required courses: 01:119:115-116 General Biology I and II (4,4), or equivalent 01:160:161-162 General Chemistry I and II (4,4), or equivalent 01:160:171 Introduction to Experimentation (1) Mathematics required courses: 01:640:151,152, 251 Calculus for Mathematical and Phys"
+        },
+        {
+          "page": "mathematics-640",
+          "text": "Minor Requirements A minor in mathematics consists of three semesters of calculus (ordinarily 01:640:151-152, 251), linear algebra (01:640:250), and four additional 3- or 4-credit courses, one of which may be either 01:640:244 or 252, and the rest of which must be 300- or 400-level mathematics cours"
+        }
+      ],
+      "grade_quota": [
+        {
+          "page": "computer-science-198",
+          "text": "No more than one grade of D can be accepted in the courses required for the major."
+        },
+        {
+          "page": "economics-220",
+          "text": "Only one elective course with a grade of D can count toward the major."
+        },
+        {
+          "page": "statistics-960",
+          "text": "At most two grades of D can be counted towards the Statistics minor."
+        },
+        {
+          "page": "philosophy-730",
+          "text": "No more than one D grade can be applied toward the major."
+        },
+        {
+          "page": "philosophy-730",
+          "text": "No more than one D grade can be applied toward the minor."
+        },
+        {
+          "page": "physics-750",
+          "text": "No more than one D grade may be applied toward the minor."
+        },
+        {
+          "page": "physics-750",
+          "text": "No more than one D grade may be applied toward the minor."
+        }
+      ],
+      "option_or_track": [
+        {
+          "page": "computer-science-198",
+          "text": "Departmental Honors Program The Department of Computer Science's honors program consists of an honors track and honors graduation requirements."
+        },
+        {
+          "page": "computer-science-198",
+          "text": "Honors Track The department offers a special honors track to qualified students."
+        },
+        {
+          "page": "computer-science-198",
+          "text": "Students in the honors track will have their progress reviewed by the honors committee and are expected to earn grades of B or better in their advanced computer science courses (300 level and above)."
+        },
+        {
+          "page": "computer-science-198",
+          "text": "Students who successfully complete the honors track with a grade-point average (GPA) in their computer sciences courses of at least 3.6 will automatically qualify for graduation with honors in computer science."
+        },
+        {
+          "page": "mathematics-640",
+          "text": "Students in the bachelor of science (B.S.) program (honors track) will be prepared to engage in graduate-level work in a doctoral program."
+        },
+        {
+          "page": "mathematics-640",
+          "text": "Mathematics Major Options Option A, Standard Mathematics (Curriculum Code 640)."
+        },
+        {
+          "page": "mathematics-640",
+          "text": "Option B, Honors Track."
+        },
+        {
+          "page": "mathematics-640",
+          "text": "The Department of Mathematics offers a special honors track to qualified students."
+        }
+      ],
+      "gpa": [
+        {
+          "page": "computer-science-198",
+          "text": "Students who successfully complete the honors track with a grade-point average (GPA) in their computer sciences courses of at least 3.6 will automatically qualify for graduation with honors in computer science."
+        },
+        {
+          "page": "computer-science-198",
+          "text": "Alternatives include graduate courses in computer science or advanced honors-level courses in a related discipline such as mathematics.) a GPA in computer science courses of at least 3.6 Courses 01:198:103 Introduction to Computer Infrastructure (1) Provides students with no computer experience othe"
+        },
+        {
+          "page": "mathematics-640",
+          "text": "To graduate with biomathematics honors, a biomathematics major must: 1. have a cumulative grade-point average of 3.4 or better in the five mathematics courses at or above the 300 level taken to fulfill the biomathematics required and elective courses;"
+        },
+        {
+          "page": "mathematics-640",
+          "text": "2. have a cumulative grade-point average of 3.4 or better in the four courses taken to fulfill the biomathematics required upper-level science courses;"
+        },
+        {
+          "page": "mathematics-640",
+          "text": "3. have an overall cumulative grade-point average of 3.0;"
+        },
+        {
+          "page": "mathematics-640",
+          "text": "To graduate with departmental honors, a mathematics major must have a cumulative grade-point average of at least 3.4 or better in mathematics courses at the 300 level or above and an overall cumulative grade-point average of at least 3.0, and must complete successfully two courses that are either ap"
+        },
+        {
+          "page": "economics-220",
+          "text": "To satisfactorily complete the major, students must have a minimum cumulative grade-point average of 2.0 in the major."
+        },
+        {
+          "page": "economics-220",
+          "text": "Honors Research in Economics Majors who apply for departmental honors research usually have cumulative grade-point averages that generously exceed the minimum required 3.0 overall and 3.4 in economics."
+        }
+      ],
+      "corequisite": [
+        {
+          "page": "computer-science-198",
+          "text": "Corequisite: Any course offered by the Department of Computer Science at Rutgers."
+        },
+        {
+          "page": "computer-science-198",
+          "text": "Corequisite: 01:198:211."
+        },
+        {
+          "page": "computer-science-198",
+          "text": "Students must already have completed the three core courses in the Certificate program, and must have either completed or be concurrently enrolled in a domain course for the Certificate in order to register for this course."
+        },
+        {
+          "page": "mathematics-640",
+          "text": "Corequisite: 01:640:111."
+        },
+        {
+          "page": "mathematics-640",
+          "text": "Corequisite: 01:640:112."
+        },
+        {
+          "page": "mathematics-640",
+          "text": "Corequisite: 01:640:123."
+        },
+        {
+          "page": "mathematics-640",
+          "text": "Not open to students concurrently taking or with credit for 01:640:477, 01:960:381, 14:332:226, or 01:198:206."
+        },
+        {
+          "page": "mathematics-640",
+          "text": "Corequisite for 01:640:111: 01:640:011."
+        }
+      ],
+      "residency_or_location": [
+        {
+          "page": "mathematics-640",
+          "text": "At least four of the upper-level courses used to complete the major must be taken at Rutgers University-New Brunswick, including one of 01:640:311,312, 411-412, and one of 01:640:350, 351, 451-452."
+        },
+        {
+          "page": "mathematics-640",
+          "text": "Three of the four courses beyond 01:640:251 must be taken at Rutgers University-New Brunswick."
+        },
+        {
+          "page": "mathematics-640",
+          "text": "Before Taking Mathematics Courses Entering first-year students and most transfer students are required to take the mathematics placement test before registering for any mathematics course at Rutgers University-New Brunswick."
+        },
+        {
+          "page": "economics-220",
+          "text": "For both students who begin at Rutgers as first-year students and for transfer students, a maximum of three economics courses taken outside the Department of Economics at Rutgers University-New Brunswick may be applied toward the major."
+        },
+        {
+          "page": "economics-220",
+          "text": "Enrolled economics majors who wish to take an economics course outside of Rutgers-New Brunswick must have prior approval from the undergraduate adviser."
+        },
+        {
+          "page": "economics-220",
+          "text": "All courses taken outside Rutgers-New Brunswick need to be preapproved."
+        },
+        {
+          "page": "economics-220",
+          "text": "Students are permitted to bring in only three credits for each field from outside of Rutgers University-New Brunswick."
+        },
+        {
+          "page": "economics-220",
+          "text": "In other words, at least two of the three classes for each field must be taken at Rutgers University-New Brunswick; only one course in each field can come from transfer credit, AP credit, study abroad, or other Rutgers campuses."
+        }
+      ]
+    }
+  },
+  "soc": {
+    "terms": [
+      "2025_9_NB",
+      "2026_1_NB",
+      "2026_7_NB",
+      "2026_9_NB",
+      "2027_0_NB"
+    ],
+    "counts": {
+      "placement": 110,
+      "corequisite": 400,
+      "program_restriction": 60,
+      "gpa": 46,
+      "prerequisite_minimum_grade": 132
+    },
+    "by_field": {
+      "placement": {
+        "sectionNotes": 91,
+        "courseNotes": 19
+      },
+      "corequisite": {
+        "sectionNotes": 349,
+        "courseNotes": 51
+      },
+      "program_restriction": {
+        "sectionNotes": 45,
+        "courseNotes": 15
+      },
+      "gpa": {
+        "courseNotes": 11,
+        "sectionNotes": 35
+      },
+      "prerequisite_minimum_grade": {
+        "courseNotes": 63,
+        "sectionNotes": 69
+      }
+    },
+    "distinct_texts": {
+      "placement": 75,
+      "corequisite": 288,
+      "program_restriction": 42,
+      "gpa": 27,
+      "prerequisite_minimum_grade": 59
+    },
+    "section_notes_uniform_across_all_sections": {
+      "placement": 51,
+      "corequisite": 153,
+      "program_restriction": 17,
+      "gpa": 33,
+      "prerequisite_minimum_grade": 28
+    },
+    "examples": {
+      "placement": [
+        {
+          "course": "01:013:141",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "PREREQ: 01:013:140 OR 01:074:140 OR PLACEMENT TEST"
+        },
+        {
+          "course": "01:013:240",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "PREREQ: 01:013:141 OR 01:013:145 OR 01:074:141 OR 01:074:145 OR PLACEMENT"
+        },
+        {
+          "course": "01:013:252",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "PREREQ:563:102 OR 563:121 OR PLACEMENT TEST"
+        },
+        {
+          "course": "01:013:290",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "PREREQ 01:013:191 OR 01:973:191 OR PLACEMENT"
+        },
+        {
+          "course": "01:013:340",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "PREREQ: 01:013:241 OR 01:074:241 OR PLACEMENT"
+        },
+        {
+          "course": "01:119:115",
+          "term": "2025_9_NB",
+          "field": "courseNotes",
+          "text": "Writing prerequisite of (01:355:101, 01:355:103, or 01:355:104, or placement into 355:101 or 355:104) and Math prerequisite of (01:640:026 or placement into 640:CMA, 640:PCA, 640:CLG, or 640:CLS). 2 COMMON HR EXAMS GIVEN IN THE EVENING, 7:45-9:05PM, days of the week and dates TBD. Lectures start Tue"
+        },
+        {
+          "course": "01:160:165",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "PREREQ:640:111 OR 640:115 OR 640:135, 138, 151, 152, 291 OR APPROPRIATE PERFORMANCE ON MATH PLACEMENT TEST"
+        },
+        {
+          "course": "01:165:201",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "PREREQ: 01:165:102 OR PLACEMENT"
+        }
+      ],
+      "corequisite": [
+        {
+          "course": "01:090:226",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "RECOMMENDED FOR NEW FIRST YEAR & TRANSFER STUDENTS PRE/CO-REQ: COLLEGE W. 355:101"
+        },
+        {
+          "course": "01:119:117",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "PRE-REQ:119:115 CO-REQ:119:116"
+        },
+        {
+          "course": "01:119:117",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "PRE-REQ: 119:115 CO-REQ: 119:116"
+        },
+        {
+          "course": "01:119:132",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "PRE OR COREQ: 119:131; LABS BEGIN WEEK OF SEPT 8TH; THIS APPLIES TO ALL SECTIONS"
+        },
+        {
+          "course": "01:146:329",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "PRE/COREQ: 01:146:328;"
+        },
+        {
+          "course": "01:146:357",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "PRE OR COREQ: 01:146:356"
+        },
+        {
+          "course": "01:146:357",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "PRE OR CO-REQ: 01:146:356"
+        },
+        {
+          "course": "01:160:134",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "COREQ: 640:111 OR 115; CHE SCHEDULE GO TO SCHEDULING .RUTGERS.EDU"
+        }
+      ],
+      "program_restriction": [
+        {
+          "course": "01:146:408",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "PREREQ: OPEN ONLY TO SENIOR CBN HONOR STUDENTS"
+        },
+        {
+          "course": "01:377:371",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "ADDITIONAL PRE- OR CO-REQ: 01:37 7:370 MAJORS ONLY UNTIL APRIL 8TH"
+        },
+        {
+          "course": "03:691:391",
+          "term": "2025_9_NB",
+          "field": "courseNotes",
+          "text": "Please contact Instructor directly for instructions, course materials, and training schedules. MS III Courses are restricted to 03:691, by SPN Officer Track only cadets (students) 03:691:391 co-requisite is 03:691:393 and vice versa"
+        },
+        {
+          "course": "03:691:491",
+          "term": "2025_9_NB",
+          "field": "courseNotes",
+          "text": "Please contact Instructor directly for instructions, course materials, and training schedules. Army Officer Track Cadets are strongly encouraged to declare the 691 minor prior to registering for 400-level courses Co-requisites - Applies to Officer Track only cadets (students) 03:691:491 co-requisite"
+        },
+        {
+          "course": "04:567:393",
+          "term": "2025_9_NB",
+          "field": "courseNotes",
+          "text": "COURSE NOTE: MUST BE JUNIOR OR SENIOR STATUS, MAJORS ONLY, 75 OR MORE OVERALL CREDITS, FIVE (5) COURSES IN MAJOR, ONE (1) FOUNDATION COURSE IN MAJOR, 04:567:200, 2.75 MAJOR GPA, 2.5 OVERALL GPA, PERMISSION OF INSTRUCTOR"
+        },
+        {
+          "course": "07:081:455",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "DESIGN MAJORS ONLY PREREQUISITES 07:081:221, 222, 321 AND 322"
+        },
+        {
+          "course": "09:910:472",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "RESTRICTED TO SOCIAL WORK MAJORS ; COREQ: 910:471"
+        },
+        {
+          "course": "09:910:472",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "RESTRICTED TO SOCIAL WORK MAJORS ; COREQ: 910:472"
+        }
+      ],
+      "gpa": [
+        {
+          "course": "01:146:410",
+          "term": "2025_9_NB",
+          "field": "courseNotes",
+          "text": "2.8 GPA is required"
+        },
+        {
+          "course": "01:377:493",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "90 CREDITS COMPLETED, APPROVAL O F DEPARTMENT, 2.0 GPA (OVERALL A ND IN MAJOR) REQUIRED."
+        },
+        {
+          "course": "01:377:497",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "MUST HAVE COMPLETED 01:377:493 O R 01:377:498 WITH A C OR HIGHER. APPROVAL OF DEPARTMENT AND 2.0 G PA (OVERALL AND IN MAJOR) REQ."
+        },
+        {
+          "course": "01:447:488",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "MUST HAVE A CUMULATIVE GPA OF 2.8 OR GREATER"
+        },
+        {
+          "course": "01:830:497",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "AUTOMATICALLY REGISTERED FOR 830:490:H1; SENIORS ONLY IN DEPT HONORS WITH 3.4 OR BETTER CUM GPA IN PSYCH COURSES; DEPT P#"
+        },
+        {
+          "course": "01:955:490",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "90 CREDITS COMPLETED, APPROVAL O F DEPARTMENT AND 2.0 GPA (BOTH O VERALL AND IN MAJOR) REQUIRED."
+        },
+        {
+          "course": "01:955:497",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "MUST HAVE COMPLETED 01:955:490 W ITH A C OR HIGHER. APPROVAL OF D EPARTMENT AND 2.0 GPA (BOTH OVER ALL AND IN MAJOR) REQUIRED."
+        },
+        {
+          "course": "04:567:393",
+          "term": "2025_9_NB",
+          "field": "courseNotes",
+          "text": "COURSE NOTE: MUST BE JUNIOR OR SENIOR STATUS, MAJORS ONLY, 75 OR MORE OVERALL CREDITS, FIVE (5) COURSES IN MAJOR, ONE (1) FOUNDATION COURSE IN MAJOR, 04:567:200, 2.75 MAJOR GPA, 2.5 OVERALL GPA, PERMISSION OF INSTRUCTOR"
+        }
+      ],
+      "prerequisite_minimum_grade": [
+        {
+          "course": "01:160:161",
+          "term": "2025_9_NB",
+          "field": "courseNotes",
+          "text": "Student needs C or better in all prerequisites. STUDENTS WILL RECEIVE INFORMATION REGARDING THE ONLINE RECITATIONS VIA EMAIL, SAKAI AND OR THE GENERAL CHEMISTRY WEBSITE (http://generalchemistry.rutgers.edu/)"
+        },
+        {
+          "course": "01:160:162",
+          "term": "2025_9_NB",
+          "field": "courseNotes",
+          "text": "Student needs C or better in all prerequisites."
+        },
+        {
+          "course": "01:198:111",
+          "term": "2025_9_NB",
+          "field": "courseNotes",
+          "text": "A grade below a 'C' in a prerequisite course will not satisfy prereq"
+        },
+        {
+          "course": "01:220:320",
+          "term": "2025_9_NB",
+          "field": "courseNotes",
+          "text": "220:320 REPLACES 220:203. CREDIT NOT GIVEN FOR BOTH 220:320 AND 220:203. Prerequisites are grades of C or higher in Intro to Micro 220:102, Intro to Macro 220:103, and Calculus I 640:135 or 151"
+        },
+        {
+          "course": "01:220:321",
+          "term": "2025_9_NB",
+          "field": "courseNotes",
+          "text": "220:321 REPLACES 220:204. CREDIT NOT GIVEN FOR BOTH 220:321 AND 220:204. Prerequisites are grades of C or higher in Intro to Micro 220:102, Intro to Macro 220:103, and Calculus I 640:135 or 151"
+        },
+        {
+          "course": "01:220:322",
+          "term": "2025_9_NB",
+          "field": "courseNotes",
+          "text": "Prerequisites are grades of C or higher in Intro to Micro 01:220:102, Intro to Macro 01:220:103, Calculus I 01:640:135 or 151 and Stats 01:960:285 or 211"
+        },
+        {
+          "course": "01:377:497",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "MUST HAVE COMPLETED 01:377:493 O R 01:377:498 WITH A C OR HIGHER. APPROVAL OF DEPARTMENT AND 2.0 G PA (OVERALL AND IN MAJOR) REQ."
+        },
+        {
+          "course": "01:955:497",
+          "term": "2025_9_NB",
+          "field": "sectionNotes",
+          "text": "MUST HAVE COMPLETED 01:955:490 W ITH A C OR HIGHER. APPROVAL OF D EPARTMENT AND 2.0 GPA (BOTH OVER ALL AND IN MAJOR) REQUIRED."
+        }
+      ]
+    }
+  },
+  "curated": {
+    "rules_not_yet_modeled": [
+      {
+        "definition": "sas-198-ba.json",
+        "rule": "At most two of the five electives may be taken outside the Department of Computer Science; at least two must be CS at the 300 level or above.",
+        "why_not": "IMPLEMENTED as group constraints on CS_ELECTIVES (max_outside_subject / min_at_level), not as a program rule."
+      },
+      {
+        "definition": "sas-220-major.json",
+        "rule": "Students can count no more than three courses that have no prerequisites, or whose prerequisites are only 01:220:102 and 103 (or only 200), toward the seven required electives.",
+        "why_not": "Classifying a course as 'lower-level' needs its prerequisite structure; Phase 6.2 parses prerequisites but the requirement layer does not use them."
+      },
+      {
+        "definition": "sas-220-major.json",
+        "rule": "Engineering students who take 01:220:200 use it in place of 01:220:102 and 103 and take eight electives instead of seven.",
+        "why_not": "A school-dependent alternative that also changes the elective count; not representable without a student-attribute condition."
+      },
+      {
+        "definition": "sas-220-major.json",
+        "rule": "A maximum of three economics courses taken outside the Department of Economics at Rutgers University-New Brunswick may be applied toward the major.",
+        "why_not": "Course location/transfer provenance is not recorded on StudentCourse."
+      },
+      {
+        "definition": "sas-220-major.json",
+        "rule": "Which courses make up the 'grade-point average ... in the major'.",
+        "why_not": "Phase 6.4 encodes the 2.0 rule (ECON_MAJOR_GPA) but its scope is not defined by the catalog, so it is reported NOT_EVALUABLE, never computed. Minimum grades and the one-D elective quota are now encoded."
+      },
+      {
+        "definition": "sas-220-major.json",
+        "rule": "Students who major in economics (220) may not minor in environmental and business economics (373).",
+        "why_not": "Cross-program restrictions are out of scope."
+      },
+      {
+        "definition": "sas-615-major.json",
+        "rule": "At most three (0-3) D courses chosen from a list of linguistics courses at the 300 level or above and/or from the list of approved courses from outside the department.",
+        "why_not": "The C/D course lists and the approved outside-course list are not published in the catalog."
+      },
+      {
+        "definition": "sas-640-ba-option-a.json",
+        "rule": "An appropriate Rutgers graduate mathematics course may be substituted for the required analysis and/or algebra course, with departmental approval.",
+        "why_not": "Requires departmental approval, which no CoursePilot data records."
+      },
+      {
+        "definition": "sas-640-ba-option-a.json",
+        "rule": "Students must notify the mathematics department in writing if they are not following the standard mathematics major option.",
+        "why_not": "An administrative step, not an academic requirement a record can satisfy."
+      },
+      {
+        "definition": "sas-730-major.json",
+        "rule": "At least one of these courses must be at the 200 level, excluding 201, 202, 295, and 296. At least six of these courses must be at the 300 or 400 level, excluding 495 and 496.",
+        "why_not": "Level distribution across the whole major (all eleven courses) is not an engine constraint today."
+      },
+      {
+        "definition": "sas-730-major.json",
+        "rule": "A student may petition the department to substitute other courses for those on this list.",
+        "why_not": "Petitions are individual decisions, not data."
+      },
+      {
+        "definition": "sas-830-major.json",
+        "rule": "One 4-Credit Content Course and Lab Combination.",
+        "why_not": "The page does not list which courses form a content-and-lab combination."
+      },
+      {
+        "definition": "sas-830-major.json",
+        "rule": "No more than 6 credits of nonclassroom courses such as fieldwork, research, or internships may be applied toward the major.",
+        "why_not": "Course format (classroom vs nonclassroom) is not recorded."
+      },
+      {
+        "definition": "sas-830-major.json",
+        "rule": "No more than three 200-level courses (10 credits) may be applied.",
+        "why_not": "A per-level maximum is not an engine constraint today."
+      },
+      {
+        "definition": "sas-830-major.json",
+        "rule": "Grade of C or better in 01:830:101 and 01:830:200 to declare.",
+        "why_not": "Admission rule; kept as admission_prose, not degree completion."
+      },
+      {
+        "definition": "sas-920-major.json",
+        "rule": "Three any-level electives each in a different thematic (see checklist).",
+        "why_not": "The thematic checklist is not published in the catalog."
+      },
+      {
+        "definition": "sas-920-major.json",
+        "rule": "Students majoring in sociology must complete at least six courses (21 credits) at Rutgers University-New Brunswick. Each of the three 300-level core courses must be completed in New Brunswick.",
+        "why_not": "Course location/transfer provenance is not recorded on StudentCourse."
+      },
+      {
+        "definition": "sas-960-major.json",
+        "rule": "Credit is not given for both 01:640:477 and 01:960:381, nor for both 01:640:481 and 01:960:382.",
+        "why_not": "A credit-exclusion pair; the choose_n nodes accept either, and the engine uses one course once."
+      }
+    ],
+    "count": 18
+  }
+}
