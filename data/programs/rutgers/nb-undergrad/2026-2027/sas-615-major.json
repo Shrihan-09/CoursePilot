@@ -12,7 +12,11 @@
     "so degree_type is 'major' rather than a guessed designation.",
     "",
     "SCOPE: the linguistics major. The separate 'Bachelor of Arts in Speech and Hearing",
-    "Sciences in Linguistics' section on the same page is a different curriculum, not encoded."
+    "Sciences in Linguistics' section on the same page is a different curriculum, not encoded.",
+    "",
+    "PHASE 6.4: grade semantics encoded (min_grade / grade_quota / GPA rule) from the",
+    "sentences quoted in each node; the definition changed, so it returns to 'parsed'",
+    "and must be re-validated. Still pending human review."
   ],
   "source": {
     "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/linguistics-615",
@@ -47,7 +51,8 @@
       "name": "Linguistics Major",
       "requirement_type": "all_of",
       "sort_order": 0,
-      "source_prose": "A major in linguistics consists of 12, 3-credit courses offered by the School of Arts and Sciences, distributed as follows:"
+      "source_prose": "A major in linguistics consists of 12, 3-credit courses offered by the School of Arts and Sciences, distributed as follows: ... Grades of C or better must be earned in all coursework that is to be applied to the major.",
+      "min_grade": "C"
     },
     {
       "code": "LING_201",
@@ -184,10 +189,6 @@
     {
       "rule": "At most three (0-3) D courses chosen from a list of linguistics courses at the 300 level or above and/or from the list of approved courses from outside the department.",
       "why_not": "The C/D course lists and the approved outside-course list are not published in the catalog."
-    },
-    {
-      "rule": "Grades of C or better must be earned in all coursework that is to be applied to the major.",
-      "why_not": "Minimum grades are out of scope (Phase 6.3)."
     }
   ],
   "review_questions": [

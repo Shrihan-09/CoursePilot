@@ -9,7 +9,11 @@
     "(app.services.program_lifecycle). See the review packet in review/.",
     "",
     "DEGREE DESIGNATION: the catalog page does not state B.A. or B.S. for this major,",
-    "so degree_type is 'major' rather than a guessed designation."
+    "so degree_type is 'major' rather than a guessed designation.",
+    "",
+    "PHASE 6.4: grade semantics encoded (min_grade / grade_quota / GPA rule) from the",
+    "sentences quoted in each node; the definition changed, so it returns to 'parsed'",
+    "and must be re-validated. Still pending human review."
   ],
   "source": {
     "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/economics-220",
@@ -53,7 +57,8 @@
       "requirement_type": "all_of",
       "parent": "ECON_MAJOR",
       "sort_order": 0,
-      "source_prose": "The foundation of the curriculum in economics consists of 01:220:102,103, 320, 321, and 322."
+      "source_prose": "The foundation of the curriculum in economics consists of 01:220:102,103, 320, 321, and 322. ... A grade of C or better is required in 01:102,103, 320, 321, 322, the required statistics course, and the required calculus course.",
+      "min_grade": "C"
     },
     {
       "code": "ECON_102",
@@ -116,7 +121,8 @@
         "01:960:211",
         "01:960:285"
       ],
-      "source_prose": "It also requires one semester of statistics (01:960:211 or preferably 285) with a grade of C or better."
+      "source_prose": "It also requires one semester of statistics (01:960:211 or preferably 285) with a grade of C or better. ... A grade of C or better is required in 01:102,103, 320, 321, 322, the required statistics course, and the required calculus course.",
+      "min_grade": "C"
     },
     {
       "code": "ECON_CALC",
@@ -127,8 +133,9 @@
       "courses": [
         "01:640:135"
       ],
-      "source_prose": "One semester of calculus (01:640:135 or equivalent) with a grade of C or better also is required.",
-      "notes": "'or equivalent' is not modeled: the page does not name the equivalents (01:640:151 is the obvious candidate, but the page does not say so)."
+      "source_prose": "One semester of calculus (01:640:135 or equivalent) with a grade of C or better also is required. ... A grade of C or better is required in 01:102,103, 320, 321, 322, the required statistics course, and the required calculus course.",
+      "notes": "'or equivalent' is not modeled: the page does not name the equivalents (01:640:151 is the obvious candidate, but the page does not say so).",
+      "min_grade": "C"
     },
     {
       "code": "ECON_ELECTIVES",
@@ -154,10 +161,24 @@
         ]
       },
       "notes": "Any undergraduate 01:220 course other than the required ones, plus the two accounting courses the page names. OVER-APPROXIMATION: the 'no more than three lower-level electives' limit depends on each course's prerequisites and is not modeled; 'related disciplines' courses are not named and are not encoded.",
-      "source_prose": "plus seven electives within economics (which may, under certain circumstances, include a limited number of courses from related disciplines) ... Students may take 33:010:272 and 275. These courses will count toward the required seven electives"
+      "source_prose": "plus seven electives within economics (which may, under certain circumstances, include a limited number of courses from related disciplines) ... Students may take 33:010:272 and 275. These courses will count toward the required seven electives ... Only one elective course with a grade of D can count toward the major.",
+      "grade_quota": {
+        "max_count": 1,
+        "at_most": "D"
+      }
     }
   ],
-  "program_rules": [],
+  "program_rules": [
+    {
+      "code": "ECON_MAJOR_GPA",
+      "name": "Minimum cumulative GPA of 2.0 in the major",
+      "rule_type": "min_gpa",
+      "min_gpa": 2.0,
+      "gpa_scope": "major",
+      "is_evaluable": true,
+      "source_prose": "To satisfactorily complete the major, students must have a minimum cumulative grade-point average of 2.0 in the major."
+    }
+  ],
   "rules_not_yet_modeled": [
     {
       "rule": "Students can count no more than three courses that have no prerequisites, or whose prerequisites are only 01:220:102 and 103 (or only 200), toward the seven required electives.",
@@ -172,8 +193,8 @@
       "why_not": "Course location/transfer provenance is not recorded on StudentCourse."
     },
     {
-      "rule": "Minimum cumulative grade-point average of 2.0 in the major; C or better in the required courses; only one elective with a grade of D.",
-      "why_not": "Minimum grades and GPA are out of scope (Phase 6.3)."
+      "rule": "Which courses make up the 'grade-point average ... in the major'.",
+      "why_not": "Phase 6.4 encodes the 2.0 rule (ECON_MAJOR_GPA) but its scope is not defined by the catalog, so it is reported NOT_EVALUABLE, never computed. Minimum grades and the one-D elective quota are now encoded."
     },
     {
       "rule": "Students who major in economics (220) may not minor in environmental and business economics (373).",

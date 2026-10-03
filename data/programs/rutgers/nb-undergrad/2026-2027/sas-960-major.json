@@ -12,7 +12,11 @@
     "so degree_type is 'major' rather than a guessed designation.",
     "",
     "SCOPE: the 'Statistics' major only. The same section of the page also defines",
-    "the Statistics/Mathematics major (curriculum 961), which is not encoded."
+    "the Statistics/Mathematics major (curriculum 961), which is not encoded.",
+    "",
+    "PHASE 6.4: grade semantics encoded (min_grade / grade_quota / GPA rule) from the",
+    "sentences quoted in each node; the definition changed, so it returns to 'parsed'",
+    "and must be re-validated. Still pending human review."
   ],
   "source": {
     "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/statistics-960",
@@ -50,7 +54,8 @@
       "name": "Statistics Major",
       "requirement_type": "all_of",
       "sort_order": 0,
-      "source_prose": "A total of 46 credits is required: 18 credits in mathematics, 25 credits in statistics, and 3 credits in computer science, as follows:"
+      "source_prose": "A total of 46 credits is required: 18 credits in mathematics, 25 credits in statistics, and 3 credits in computer science, as follows: ... Grades of C or better must be earned in all courses counted toward the major.",
+      "min_grade": "C"
     },
     {
       "code": "STAT_CS",
@@ -241,10 +246,6 @@
   ],
   "program_rules": [],
   "rules_not_yet_modeled": [
-    {
-      "rule": "Grades of C or better must be earned in all courses counted toward the major.",
-      "why_not": "Minimum grades are out of scope (Phase 6.3)."
-    },
     {
       "rule": "Credit is not given for both 01:640:477 and 01:960:381, nor for both 01:640:481 and 01:960:382.",
       "why_not": "A credit-exclusion pair; the choose_n nodes accept either, and the engine uses one course once."

@@ -1,9 +1,9 @@
 {
-  "packet_version": "review-packet/1",
+  "packet_version": "review-packet/2",
   "program_key": "sas-615-major",
   "catalog_year": "2026-2027",
   "definition_file": "data/programs/rutgers/nb-undergrad/2026-2027/sas-615-major.json",
-  "definition_sha256": "7c0669c106a683312aabd94b8b5293b30be4c525e6ff1fe8e6c5e33f5b3ff7a1",
+  "definition_sha256": "2f7a9a6e4914a0902e60d11a62ae0dca19aeb452d409b89f49de9a4cb53fcfb3",
   "source": {
     "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/linguistics-615",
     "catalog_page": "/schools/sas/program-listing/linguistics-615",
@@ -18,8 +18,8 @@
   "publication_basis": null,
   "machine_checks": {
     "passed": true,
-    "quotes_found": 7,
-    "quotes_checked": 7,
+    "quotes_found": 8,
+    "quotes_checked": 8,
     "errors": [],
     "warnings": [],
     "note": "Machine checks are NOT review. They prove quotes exist and the engine can load the tree - not that the encoding means what the prose means."
@@ -31,8 +31,9 @@
       "code": "LING_MAJOR",
       "type": "all_of",
       "parent": null,
-      "quote": "A major in linguistics consists of 12, 3-credit courses offered by the School of Arts and Sciences, distributed as follows:",
+      "quote": "A major in linguistics consists of 12, 3-credit courses offered by the School of Arts and Sciences, distributed as follows: ... Grades of C or better must be earned in all coursework that is to be applied to the major.",
       "notes": null,
+      "min_grade": "C",
       "eligible_course_rows": 0
     },
     {
@@ -176,10 +177,6 @@
     {
       "rule": "At most three (0-3) D courses chosen from a list of linguistics courses at the 300 level or above and/or from the list of approved courses from outside the department.",
       "why_not": "The C/D course lists and the approved outside-course list are not published in the catalog."
-    },
-    {
-      "rule": "Grades of C or better must be earned in all coursework that is to be applied to the major.",
-      "why_not": "Minimum grades are out of scope (Phase 6.3)."
     }
   ],
   "review_questions": [
@@ -202,7 +199,7 @@
     },
     {
       "node": "LING_MAJOR",
-      "quote": "A major in linguistics consists of 12, 3-credit courses offered by the School of Arts and Sciences, distributed as follows:"
+      "quote": "A major in linguistics consists of 12, 3-credit courses offered by the School of Arts and Sciences, distributed as follows: ... Grades of C or better must be earned in all coursework that is to be applied to the major."
     },
     {
       "node": "LING_201",

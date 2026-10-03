@@ -1,9 +1,9 @@
 {
-  "packet_version": "review-packet/1",
+  "packet_version": "review-packet/2",
   "program_key": "sas-920-major",
   "catalog_year": "2026-2027",
   "definition_file": "data/programs/rutgers/nb-undergrad/2026-2027/sas-920-major.json",
-  "definition_sha256": "03595a2a5498a20d887f0fbfe2b257676dd82567d40a9de9ec8e4744ea4592df",
+  "definition_sha256": "13749d3a9aa0767838753f79fdc743da7953497035730bcde5aa506b14dc2297",
   "source": {
     "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/sociology-920",
     "catalog_page": "/schools/sas/program-listing/sociology-920",
@@ -18,8 +18,8 @@
   "publication_basis": null,
   "machine_checks": {
     "passed": true,
-    "quotes_found": 7,
-    "quotes_checked": 7,
+    "quotes_found": 8,
+    "quotes_checked": 8,
     "errors": [],
     "warnings": [],
     "note": "Machine checks are NOT review. They prove quotes exist and the engine can load the tree - not that the encoding means what the prose means."
@@ -31,8 +31,9 @@
       "code": "SOC_MAJOR",
       "type": "all_of",
       "parent": null,
-      "quote": "The major in sociology consists of 11 courses totaling 36 credits. ... Of these eleven courses, five are required courses and six are electives.",
+      "quote": "The major in sociology consists of 11 courses totaling 36 credits. ... Of these eleven courses, five are required courses and six are electives. ... Grades of C or better are required in each of the courses",
       "notes": null,
+      "min_grade": "C",
       "eligible_course_rows": 0
     },
     {
@@ -131,10 +132,6 @@
     {
       "rule": "Students majoring in sociology must complete at least six courses (21 credits) at Rutgers University-New Brunswick. Each of the three 300-level core courses must be completed in New Brunswick.",
       "why_not": "Course location/transfer provenance is not recorded on StudentCourse."
-    },
-    {
-      "rule": "Grades of C or better are required in each of the courses.",
-      "why_not": "Minimum grades are out of scope (Phase 6.3)."
     }
   ],
   "review_questions": [
@@ -160,7 +157,7 @@
     },
     {
       "node": "SOC_MAJOR",
-      "quote": "The major in sociology consists of 11 courses totaling 36 credits. ... Of these eleven courses, five are required courses and six are electives."
+      "quote": "The major in sociology consists of 11 courses totaling 36 credits. ... Of these eleven courses, five are required courses and six are electives. ... Grades of C or better are required in each of the courses"
     },
     {
       "node": "SOC_REQUIRED",

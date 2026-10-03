@@ -98,13 +98,13 @@ def test_a_course_removed_from_a_curated_list_stops_being_eligible(session, tmp_
     session.commit()
 
     assert _eligible(session, "MATH_DIFFEQ") == {"01:640:252"}
-    # The query-derived (uncategorized) rows lose every 4xx course; 411/412
-    # and 451/452 stay as ANALYSIS/ALGEBRA rows because the definition still
-    # names them in its categories.
+    # The query-derived (uncategorized) rows lose every 4xx course; the
+    # single-course category members (311, 312 / 350, 351) stay. (Since
+    # Phase 6.4, 411-412 and 451-452 are sequences, not single members.)
     upper_now = _eligible(session, "MATH_UPPER", category="")
     assert "01:640:361" in upper_now
     assert not any(int(c.split(":")[2]) >= 400 for c in upper_now)
-    assert "01:640:411" in _eligible(session, "MATH_UPPER", category="ANALYSIS")
+    assert _eligible(session, "MATH_UPPER", category="ANALYSIS") == {"01:640:311", "01:640:312"}
 
 
 def test_a_query_narrowed_by_offering_unit_drops_graduate_courses(session, tmp_path) -> None:

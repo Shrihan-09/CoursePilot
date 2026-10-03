@@ -2,13 +2,13 @@
 
 - **Lifecycle:** `validated`
 - **Encoded by:** AI assistant (Claude), Phase 6.3 - encoder only, not a reviewer - encoding is not review
-- **Definition:** `data/programs/rutgers/nb-undergrad/2026-2027/sas-220-major.json`  sha256 `d06f338655dd11bc`
+- **Definition:** `data/programs/rutgers/nb-undergrad/2026-2027/sas-220-major.json`  sha256 `0a01e4315d455f44`
 - **Source:** https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/economics-220
 - **Archive:** `data/raw/catalog/catalog_economics-220_2026_2027.html`  prose sha256 `99477789d0efff70`
 
 ## Machine checks (not review)
 
-- passed: **True**, quotes found verbatim: 8/8
+- passed: **True**, quotes found verbatim: 13/13
 - 2 eligible row(s) are courses outside offering unit 01 (graduate 16:xxx, or another school's course) - check each was meant: named explicitly, or admitted by a query
 
 ## Review questions
@@ -35,25 +35,29 @@
 | node | type | parent | encoding | eligible rows |
 |---|---|---|---|---|
 | `ECON_MAJOR` | all_of |  |  | 0 |
-| `ECON_CORE` | all_of | ECON_MAJOR |  | 0 |
+| `ECON_CORE` | all_of | ECON_MAJOR | minimum grade C (this node and its subtree) | 0 |
 | `ECON_102` | course | ECON_CORE | courses: 01:220:102 | 1 |
 | `ECON_103` | course | ECON_CORE | courses: 01:220:103 | 1 |
 | `ECON_320` | course | ECON_CORE | courses: 01:220:320 | 1 |
 | `ECON_321` | course | ECON_CORE | courses: 01:220:321 | 1 |
 | `ECON_322` | course | ECON_CORE | courses: 01:220:322 | 1 |
-| `ECON_STATS` | choose_n | ECON_MAJOR | min_count=1<br>courses: 01:960:211, 01:960:285 | 2 |
-| `ECON_CALC` | course | ECON_MAJOR | courses: 01:640:135 | 1 |
-| `ECON_ELECTIVES` | choose_n | ECON_MAJOR | min_count=7<br>courses: 33:010:272, 33:010:275<br>query {"exclude_course_numbers": ["102", "103", "200", "320", "321", "322"], "offering_unit_code": "01", "subject_code": "220"} | 39 |
+| `ECON_STATS` | choose_n | ECON_MAJOR | min_count=1<br>courses: 01:960:211, 01:960:285<br>minimum grade C (this node and its subtree) | 2 |
+| `ECON_CALC` | course | ECON_MAJOR | courses: 01:640:135<br>minimum grade C (this node and its subtree) | 1 |
+| `ECON_ELECTIVES` | choose_n | ECON_MAJOR | min_count=7<br>courses: 33:010:272, 33:010:275<br>query {"exclude_course_numbers": ["102", "103", "200", "320", "321", "322"], "offering_unit_code": "01", "subject_code": "220"}<br>grade quota: at most 1 at or below D | 39 |
 
 ### Quotes and notes
 
 - **ECON_MAJOR**: "The seven required courses (five in economics, one in statistics, and one in mathematics) plus seven electives within economics (which may, under certain circumstances, include a limited number of courses from related disciplines) constitute the major."
-- **ECON_CORE**: "The foundation of the curriculum in economics consists of 01:220:102,103, 320, 321, and 322."
-- **ECON_STATS**: "It also requires one semester of statistics (01:960:211 or preferably 285) with a grade of C or better."
-- **ECON_CALC**: "One semester of calculus (01:640:135 or equivalent) with a grade of C or better also is required."
+- **ECON_CORE**: "The foundation of the curriculum in economics consists of 01:220:102,103, 320, 321, and 322. ... A grade of C or better is required in 01:102,103, 320, 321, 322, the required statistics course, and the required calculus course."
+- **ECON_STATS**: "It also requires one semester of statistics (01:960:211 or preferably 285) with a grade of C or better. ... A grade of C or better is required in 01:102,103, 320, 321, 322, the required statistics course, and the required calculus course."
+- **ECON_CALC**: "One semester of calculus (01:640:135 or equivalent) with a grade of C or better also is required. ... A grade of C or better is required in 01:102,103, 320, 321, 322, the required statistics course, and the required calculus course."
   - note: 'or equivalent' is not modeled: the page does not name the equivalents (01:640:151 is the obvious candidate, but the page does not say so).
-- **ECON_ELECTIVES**: "plus seven electives within economics (which may, under certain circumstances, include a limited number of courses from related disciplines) ... Students may take 33:010:272 and 275. These courses will count toward the required seven electives"
+- **ECON_ELECTIVES**: "plus seven electives within economics (which may, under certain circumstances, include a limited number of courses from related disciplines) ... Students may take 33:010:272 and 275. These courses will count toward the required seven electives ... Only one elective course with a grade of D can count toward the major."
   - note: Any undergraduate 01:220 course other than the required ones, plus the two accounting courses the page names. OVER-APPROXIMATION: the 'no more than three lower-level electives' limit depends on each course's prerequisites and is not modeled; 'related disciplines' courses are not named and are not encoded.
+
+## Program rules
+
+- `ECON_MAJOR_GPA` (min_gpa, evaluable=True): "To satisfactorily complete the major, students must have a minimum cumulative grade-point average of 2.0 in the major."
 
 ## Rules not yet modeled
 
@@ -63,8 +67,8 @@
   _why:_ A school-dependent alternative that also changes the elective count; not representable without a student-attribute condition.
 - A maximum of three economics courses taken outside the Department of Economics at Rutgers University-New Brunswick may be applied toward the major.  
   _why:_ Course location/transfer provenance is not recorded on StudentCourse.
-- Minimum cumulative grade-point average of 2.0 in the major; C or better in the required courses; only one elective with a grade of D.  
-  _why:_ Minimum grades and GPA are out of scope (Phase 6.3).
+- Which courses make up the 'grade-point average ... in the major'.  
+  _why:_ Phase 6.4 encodes the 2.0 rule (ECON_MAJOR_GPA) but its scope is not defined by the catalog, so it is reported NOT_EVALUABLE, never computed. Minimum grades and the one-D elective quota are now encoded.
 - Students who major in economics (220) may not minor in environmental and business economics (373).  
   _why:_ Cross-program restrictions are out of scope.
 

@@ -9,7 +9,11 @@
     "(app.services.program_lifecycle). See the review packet in review/.",
     "",
     "DEGREE DESIGNATION: the catalog page does not state B.A. or B.S. for this major,",
-    "so degree_type is 'major' rather than a guessed designation."
+    "so degree_type is 'major' rather than a guessed designation.",
+    "",
+    "PHASE 6.4: grade semantics encoded (min_grade / grade_quota / GPA rule) from the",
+    "sentences quoted in each node; the definition changed, so it returns to 'parsed'",
+    "and must be re-validated. Still pending human review."
   ],
   "source": {
     "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/sociology-920",
@@ -45,7 +49,8 @@
       "name": "Sociology Major",
       "requirement_type": "all_of",
       "sort_order": 0,
-      "source_prose": "The major in sociology consists of 11 courses totaling 36 credits. ... Of these eleven courses, five are required courses and six are electives."
+      "source_prose": "The major in sociology consists of 11 courses totaling 36 credits. ... Of these eleven courses, five are required courses and six are electives. ... Grades of C or better are required in each of the courses",
+      "min_grade": "C"
     },
     {
       "code": "SOC_REQUIRED",
@@ -139,10 +144,6 @@
     {
       "rule": "Students majoring in sociology must complete at least six courses (21 credits) at Rutgers University-New Brunswick. Each of the three 300-level core courses must be completed in New Brunswick.",
       "why_not": "Course location/transfer provenance is not recorded on StudentCourse."
-    },
-    {
-      "rule": "Grades of C or better are required in each of the courses.",
-      "why_not": "Minimum grades are out of scope (Phase 6.3)."
     }
   ],
   "review_questions": [

@@ -2,13 +2,13 @@
 
 - **Lifecycle:** `validated`
 - **Encoded by:** AI assistant (Claude), Phase 6.3 - encoder only, not a reviewer - encoding is not review
-- **Definition:** `data/programs/rutgers/nb-undergrad/2026-2027/sas-615-major.json`  sha256 `7c0669c106a68331`
+- **Definition:** `data/programs/rutgers/nb-undergrad/2026-2027/sas-615-major.json`  sha256 `2f7a9a6e4914a090`
 - **Source:** https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/linguistics-615
 - **Archive:** `data/raw/catalog/catalog_linguistics-615_2026_2027.html`  prose sha256 `e52bbf8c4b60df84`
 
 ## Machine checks (not review)
 
-- passed: **True**, quotes found verbatim: 7/7
+- passed: **True**, quotes found verbatim: 8/8
 
 ## Review questions
 
@@ -28,7 +28,7 @@
 
 | node | type | parent | encoding | eligible rows |
 |---|---|---|---|---|
-| `LING_MAJOR` | all_of |  |  | 0 |
+| `LING_MAJOR` | all_of |  | minimum grade C (this node and its subtree) | 0 |
 | `LING_201` | course | LING_MAJOR | courses: 01:615:201 | 1 |
 | `LING_CORE` | all_of | LING_MAJOR |  | 0 |
 | `LING_305` | course | LING_CORE | courses: 01:615:305 | 1 |
@@ -44,7 +44,7 @@
 
 ### Quotes and notes
 
-- **LING_MAJOR**: "A major in linguistics consists of 12, 3-credit courses offered by the School of Arts and Sciences, distributed as follows:"
+- **LING_MAJOR**: "A major in linguistics consists of 12, 3-credit courses offered by the School of Arts and Sciences, distributed as follows: ... Grades of C or better must be earned in all coursework that is to be applied to the major."
 - **LING_201**: "Introduction: one introductory course (01:615:201)"
 - **LING_CORE**: "Theory: four B core theoretical courses (01:615:305, 315, 325, 350)"
 - **LING_ELECTIVES**: "Electives: six courses ... At least three (3-6) C courses chosen from a list of linguistics courses at the 300 level or above"
@@ -57,8 +57,6 @@
 
 - At most three (0-3) D courses chosen from a list of linguistics courses at the 300 level or above and/or from the list of approved courses from outside the department.  
   _why:_ The C/D course lists and the approved outside-course list are not published in the catalog.
-- Grades of C or better must be earned in all coursework that is to be applied to the major.  
-  _why:_ Minimum grades are out of scope (Phase 6.3).
 
 ## How to record your decision
 
