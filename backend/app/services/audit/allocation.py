@@ -237,6 +237,18 @@ class AllocationPlan:
             if not slots:
                 self._by_course.pop(course_key, None)
 
+    def release_slot(self, slot_key: tuple[str, int]) -> None:
+        """Drop ONE slot's allocation (Phase 6.4 grade-quota repair)."""
+        course_key = self.by_slot.pop(slot_key, None)
+        self.slot_system.pop(slot_key, None)
+        self.slot_category.pop(slot_key, None)
+        if course_key is not None:
+            slots = self._by_course.get(course_key, [])
+            if slot_key in slots:
+                slots.remove(slot_key)
+            if not slots:
+                self._by_course.pop(course_key, None)
+
     def assign(
         self,
         requirement_code: str,

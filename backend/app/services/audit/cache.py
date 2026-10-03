@@ -145,7 +145,10 @@ logger = logging.getLogger(__name__)
 #: Decimal 0 rather than int 0, which changes the serialized audit.
 #: 6.2.0: repeated attempts of one course yield ONE allocation identity and
 #: are credited once; a record with a retake now audits differently.
-AUDIT_ENGINE_VERSION = "6.2.0"
+#: 6.4.0: grade semantics - minimum grades, grade quotas scoped to allocated
+#: courses, sequence categories, the SAS repeated-course policy for degree
+#: credit, and credit origin; most records with grades audit differently.
+AUDIT_ENGINE_VERSION = "6.4.0"
 
 #: Columns whose value changes without the meaning changing.
 _IGNORED_COLUMNS = frozenset({"created_at", "updated_at"})
@@ -227,6 +230,7 @@ def academic_fingerprint(session: Session, student: Student) -> str:
             StudentCourse.grade,
             StudentCourse.credits_earned,
             StudentCourse.source_kind,
+            StudentCourse.credit_origin,
             Course.course_string,
             Course.supplement_code,
             Course.title,

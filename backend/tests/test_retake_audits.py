@@ -47,7 +47,9 @@ def test_the_real_audit_allocates_a_repeated_course_once(retake_world) -> None:
 
     x = retake_world["courses"]["X"]
     assert [a.requirement_code for a in _applied(result, x)] == ["P1_X"]
-    assert _applied(result, x)[0].term_code == "20261"          # most recent pass
+    # Phase 6.4 (SAS repeated-course policy): the original A counts; the
+    # later B is E credit.
+    assert (_applied(result, x)[0].term_code, _applied(result, x)[0].earned_grade) == ("20259", "A")
     assert any(f.code == "repeated_course" for f in result.findings)
 
 
@@ -100,6 +102,6 @@ def test_an_audit_cached_before_the_fix_is_never_served(retake_world, monkeypatc
 
         served, from_cache = audit_with_cache(session, student)
 
-    assert cache_module.AUDIT_ENGINE_VERSION == "6.2.0"
+    assert cache_module.AUDIT_ENGINE_VERSION == "6.4.0"
     assert from_cache is False
     assert len(_applied(served, x)) == 1
