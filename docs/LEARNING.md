@@ -7843,3 +7843,103 @@ logistics phrases, and the committee sentence became a permanent test.
 - Registrar policy as data: grade replacement, credit prefixes, transfer articulation
 - Constraint satisfaction vs post-hoc repair in assignment problems
 - Measuring parser coverage honestly: precision before recall
+
+---
+
+# Lesson 32: A Planner That Asks Instead of Deciding
+
+## What We Built
+
+A deterministic semester planner. Given a student's record and a program, it
+proposes which COURSES to take in which terms - with a reason and evidence
+for every course, and an honest list of what it could not plan and why. It
+contains no academic rule of its own: the Degree Engine says what remains and
+whether a course counts; the course-eligibility service says whether a course
+may be taken; the planner only chooses, in a documented order, and asks them
+again after every choice.
+
+---
+
+## Concepts
+
+### Reuse the judge, do not write a second one
+
+The tempting design copies the requirement logic into the planner ("CS
+electives need five courses at the 300 level..."). Two judges drift. Instead
+the planner hands the Degree Engine a hypothetical record - the real one plus
+planned courses as in-progress attempts with no grade - and reads the
+verdict. Double counting, sharing, quotas and sequences are then impossible
+to get wrong in the planner, because the planner never counts.
+
+### "Would pass" is a hypothesis, not a fact
+
+To find what a course needs, the planner asks eligibility twice: from the
+record alone, and as if planned courses were passed. The second answer is a
+hypothesis. A course eligible only under it is CONDITIONAL - "if you pass
+112 with a C" - and is never labelled satisfied. Pretending the future grade
+is known would be inventing a transcript.
+
+### A batch is not a proposal
+
+`check_proposal(["205", "211"])` means "taking both this term". Using it to
+evaluate a list of ALTERNATIVES let one unplanned candidate satisfy another's
+co-requisite. Same function, same inputs, different question - the bug was
+in what the call meant, not in what it computed. A named flag
+(`independent=True`) makes the question explicit.
+
+### Missing data is not an empty prerequisite
+
+A Newark course CoursePilot has never loaded has no prerequisite row, so a
+naive search treats it as free and routes students through it. "We know
+nothing about it" must be infeasible, not zero-cost - the same principle as
+UNKNOWN in Phase 6.2, applied to search.
+
+### Greedy needs the right score
+
+A greedy planner accepts a course when progress goes up. "Six electives,
+three at the 300 level" counted six 200-level courses as complete progress,
+leaving no slot for the 300-level ones. The fix was the score, not the
+search: count only the slots that can still be part of a valid selection.
+The predicate is the Degree Engine's own (`constraint_counts`), so the score
+and the verdict cannot disagree.
+
+### Prove the tests can fail
+
+Each guarantee - UNKNOWN never planned, prerequisites before dependents,
+historical never "confirmed", no writes - was broken on purpose. Two
+injected faults changed nothing: not every bug is reachable, and saying
+which ones are structurally impossible is part of the evidence. An
+independent oracle that re-checks every placed course against strictly
+earlier terms turned "the plan looks right" into "every course was
+re-verified".
+
+---
+
+## Self-Check
+
+1. Why are planned courses given to the Degree Engine as in-progress attempts with no grade, rather than as completed with a passing grade?
+2. What is the difference between `satisfied_by_history` and `conditional_on_plan`, and why can a conditional course never become satisfied inside the plan?
+3. Why did batching candidates through `check_proposal` silently satisfy a co-requisite?
+4. A prerequisite is `(21:640:113 and 21:640:114) or 01:640:112`. Why must the planner not choose the first branch?
+5. Why does a historical offering place a course while "offered only in other seasons" does not?
+6. What would go wrong if the planner counted every planned course as progress?
+7. Two injected faults were not detected. Why is that acceptable here, and when would it not be?
+
+## Try It Yourself
+
+**A.** Remove `independent=True` from `_evaluate` and run `test_g_same_term_corequisite_is_grouped`.
+
+**B.** Make `_plannable` always return None and plan Economics for the development student.
+
+**C.** Delete the level rule from `progress` and plan Sociology.
+
+**D.** Run `scripts/inject_planning_failures.py F` and read which tests fail.
+
+**E.** Request a plan with `"student_id"` in the body.
+
+## Further Learning
+
+- Greedy algorithms and the role of the objective function
+- Hypothetical reasoning: counterfactual queries against a rule engine
+- Search with unknown edge costs (unknown is not zero)
+- Mutation testing: measuring a test suite by the faults it catches

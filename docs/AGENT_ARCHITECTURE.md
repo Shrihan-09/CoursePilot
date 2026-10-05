@@ -113,6 +113,12 @@ this set. See `docs/RAG_ARCHITECTURE.md`.
 
 ### 3.4 Planning agent
 
+> **Phase 6.5:** semester-level COURSE planning is now deterministic
+> (`app.services.planning.engine`, DATA_MODEL section 40) and makes no LLM
+> call. An LLM may at most explain a plan that engine produced; it never
+> produces or alters one. The agent contract below is unimplemented and
+> kept for the record.
+
 The only LLM call that touches academic content. Constraints:
 
 - Structured output. The response is parsed into `PlanResponse`; prose is not
