@@ -14,7 +14,7 @@ course pipeline stays readable and section work cannot destabilize it.
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -97,6 +97,16 @@ class RawSocSection(BaseModel):
     specialPermissionDropCodeDescription: str | None = None
 
     crossListedSectionType: str | None = None
+
+    # Phase 6.6. sessionDates: "05/26/2026 - 07/02/2026" on every Summer 2026
+    # section, absent on Fall/Spring. The four lists are SOC's structured
+    # "open to" restriction (rendered as openToText).
+    sessionDates: str | None = None
+    sessionDatePrintIndicator: str | None = None
+    majors: list[dict] = Field(default_factory=list)
+    minors: list[dict] = Field(default_factory=list)
+    unitMajors: list[dict] = Field(default_factory=list)
+    honorPrograms: list[dict] = Field(default_factory=list)
 
     meetingTimes: list[RawSocMeetingTime] = Field(default_factory=list)
     instructors: list[RawSocInstructor] = Field(default_factory=list)
@@ -194,6 +204,27 @@ class NormalizedCrossListing(BaseModel):
     section_number: str | None = None
 
 
+RESTRICTION_KINDS = frozenset({"major", "unit", "minor", "unit_major", "honor_program"})
+
+
+class NormalizedRestriction(BaseModel):
+    """One structured "open to" entry (see app.models.SectionRestriction)."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    ordinal: int = Field(ge=0)
+    kind: str
+    code: str = Field(min_length=1, max_length=16)
+    unit_code: str | None = Field(default=None, max_length=16)
+
+    @field_validator("kind")
+    @classmethod
+    def _check_kind(cls, v: str) -> str:
+        if v not in RESTRICTION_KINDS:
+            raise ValueError(f"restriction kind {v!r} not in {sorted(RESTRICTION_KINDS)}")
+        return v
+
+
 class NormalizedSection(BaseModel):
     """CoursePilot's canonical section."""
 
@@ -233,9 +264,14 @@ class NormalizedSection(BaseModel):
 
     cross_listed_section_type: str | None = None
 
+    session_dates_raw: str | None = None
+    session_start_date: date | None = None
+    session_end_date: date | None = None
+
     meetings: list[NormalizedMeeting] = Field(default_factory=list)
     instructors: list[NormalizedInstructor] = Field(default_factory=list)
     cross_listings: list[NormalizedCrossListing] = Field(default_factory=list)
+    restrictions: list[NormalizedRestriction] = Field(default_factory=list)
 
     @field_validator("index_number")
     @classmethod
@@ -286,6 +322,7 @@ class SectionIngestionStats(BaseModel):
     meetings_written: int = 0
     instructors_written: int = 0
     cross_listings_written: int = 0
+    restrictions_written: int = 0
 
     # Sections whose parent offering is not in the database. Never silently
     # dropped: counted here and listed in `unmatched_details`.
