@@ -7943,3 +7943,88 @@ re-verified".
 - Hypothetical reasoning: counterfactual queries against a rule engine
 - Search with unknown edge costs (unknown is not zero)
 - Mutation testing: measuring a test suite by the faults it catches
+
+---
+
+# Lesson 33: Sections Are Facts, Unknowns Are Not Free Time
+
+## What We Built
+
+A schedule engine that takes exact courses for one Rutgers term and returns
+section combinations that fit - every meeting checked, session dates
+respected, required lab records included, restrictions it cannot verify
+flagged instead of assumed - or a structured reason none exist. It never
+changes the course list and never touches registration.
+
+---
+
+## Concepts
+
+### Investigate before you model
+
+The brief assumed one registration index is one complete registration. The
+data agreed for 1,024 lecture-and-recitation sections - and disagreed for
+Physics 01:750:193, whose lab is a separate 0-credit record that a note says
+you must also register for. The brief assumed nothing about dates; Summer
+2026 publishes them on every section, and two M/W 6-10 PM classes in May-July
+and July do not conflict. Both facts came from reading the archive, not the
+specification.
+
+### "No meeting time" means four different things
+
+Asynchronous online work is genuinely free. A lecture with no posted time,
+research by arrangement, and a garbled time (11:30 PM to 12:50 PM) are
+unknowns. Treating them all as free produces schedules that collide on the
+first day; treating them all as conflicts hides real options. The engine
+names each, frees only the first, and ranks the rest last.
+
+### Unknown is a third answer, again
+
+A section open to "MAJ: 694" is not closed to a CS major: the student may
+have a 694 major or minor CoursePilot has never recorded. The honest answer
+is "needs confirmation", and the engine can only say "not satisfied" when it
+knows the student's attributes are complete - which today it never does.
+
+### Structure beats brute force
+
+Five large introductory courses have two billion section combinations.
+Forward checking (drop incompatible sections from later courses as soon as
+one is chosen), grouping identical sections, and a branch-and-bound bound on
+the ranking turned that into 142,816 search steps - and the bound is exact,
+which a brute-force comparison proves.
+
+### A closed section is still evidence
+
+Structural validity (fits, components, restrictions) and availability (open
+in a snapshot) are different questions. Keeping them apart lets a later
+phase say "your saved schedule is valid; one section just opened" without
+rebuilding anything - and stops an old download from posing as live data.
+
+---
+
+## Self-Check
+
+1. Why does choosing one index normally choose a lecture AND a recitation, and when does it not?
+2. Why are unknown session dates treated as overlapping rather than disjoint?
+3. Which meeting kinds are free time, and why is a TBA lecture not?
+4. Why is a restriction to another major UNKNOWN rather than NOT_SATISFIED?
+5. Why can the scheduler prune with the first four ranking components but not with gap minutes?
+6. Two requested courses are cross-listed. What does the engine refuse to do, and what does it leave to degree rules?
+7. Why does an archived open/closed flag not change the ranking?
+
+## Try It Yourself
+
+**A.** Make `dates_may_overlap` always return True and schedule 01:014:386 with 01:202:201 in Summer 2026.
+
+**B.** Remove the companion slot and schedule 01:750:193.
+
+**C.** Run `scripts/benchmark_schedules.py` and compare nodes with the Cartesian product.
+
+**D.** Request 01:830:101 with `"earliest_start": "22:00"` and read the blocker.
+
+## Further Learning
+
+- Constraint satisfaction: backtracking, forward checking, variable ordering
+- Branch and bound with monotone lower bounds
+- Allen's interval algebra and date-aware recurrence overlap
+- Data freshness and provenance labels in user-facing systems

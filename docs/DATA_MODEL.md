@@ -7459,3 +7459,123 @@ passed (candidates are evaluated before any same-term pick) and candidate
 pools from other versions (the Degree Engine credits them nowhere). An
 independent oracle in the tests re-checks every placed course with
 `check_proposal` against strictly earlier terms only.
+
+## 41. Deterministic section scheduling (Phase 6.6)
+
+```
+Planning Engine   "which courses, which term?"         app.services.planning    (6.5)
+Schedule Engine   "which sections of THOSE courses?"   app.services.scheduling  (6.6)
+```
+
+`POST /api/v1/student/schedules/generate` takes a term, exact course codes,
+optional preferences and `max_results` (1-25, default 10), and returns ranked
+section combinations - or a structured reason there are none. It never
+chooses, adds, drops or substitutes a course (an architecture test forbids
+it from importing the planning or audit packages), never registers or
+touches WebReg, writes nothing, and calls no LLM.
+
+Investigation and real examples: `docs/investigations/phase-6-6-soc-scheduling-semantics.md`.
+
+### 41.1 Schema (migration `87bec76b788c`)
+
+* `course_section.session_dates_raw / session_start_date / session_end_date`
+  (+ CHECK start <= end) - SOC `sessionDates`, published on all 1,698 Summer
+  2026 sections and on no Fall/Spring section. Dates are NULL unless the
+  text parses exactly.
+* `section_restriction(section_id, ordinal, kind, code, unit_code)` - SOC's
+  structured "open to" lists; `kind` in major / unit / minor / unit_major /
+  honor_program. Previously only the `openToText` prose was kept.
+
+Backfilled by re-running the idempotent section pipeline over the archived
+payloads: 19,033 restriction rows, 1,698 dated sections, no other row changed;
+a second run inserted and updated nothing.
+
+### 41.2 Meetings
+
+| row | kind | conflicts |
+|---|---|---|
+| day + military start/end, end > start | timed | interval overlap |
+| no time, `ONLINE INSTRUCTION(INTERNET)` | asynchronous | never |
+| no time, class mode (LEC/RECIT/LAB...) | tba | unknown |
+| no time, other modes (RSCH-MA, PROJ-IND...) | arranged | unknown |
+| unusable time (07:966:333 `2330-1250`) | malformed | unknown |
+
+Unknown is never free time: such a section makes `time_verified = false`,
+adds `SCHEDULE_TIME_UNKNOWN`, and ranks after verified ones.
+
+Conflict: same weekday, date ranges that may overlap, and
+`start_A < end_B + buffer and start_B < end_A + buffer` over EVERY meeting of
+both sections. Back-to-back (end == start) is not a conflict; `buffer` is the
+student's `minimum_minutes_between_classes` (default 0). Unknown dates are
+assumed to overlap - they can add a conflict, never hide one.
+
+### 41.3 Components, restrictions, availability, cross-listing
+
+* A registration index bundles its lecture and recitation rows. A
+  REQUIRED COMPANION record (same course string, supplement code, 0 credits,
+  and a note saying both are required - 01:750:193/194 "LB") becomes a second
+  slot of the same course; anything less explicit is reported
+  `LINKED_COMPONENT_UNVERIFIED`, never bundled.
+* Restrictions: SATISFIED when the student's declared major, school unit
+  (SAS = "01", as SOC pairs them) or unit/major pair is listed; otherwise
+  UNKNOWN, because CoursePilot records no minors, second majors, honors or
+  class standing. Special permission and uninterpreted eligibility prose are
+  UNKNOWN too. NOT_SATISFIED requires attributes declared complete (none are
+  today) and is a hard exclusion. UNKNOWN is scheduled only with a
+  needs-confirmation issue and ranks after verified sections.
+* Availability is a separate field: open/closed from a SOC download, labelled
+  `archived_snapshot` with its timestamp and source hash. A closed section
+  still proves a schedule exists; an archived snapshot does not reorder
+  options (`closed_sections_if_live` counts only live data, which no source
+  provides yet).
+* A section is never chosen with an index from its own cross-listing
+  (01:013:120 10052 <-> 01:074:120 10053: one class, two codes).
+
+### 41.4 Course eligibility
+
+`check_proposal` (Phase 6.4) is always called for the requested set (a
+same-term proposal, so co-requisites among them count). UNSATISFIED ->
+`COURSE_ELIGIBILITY_FAILED`, no options; UNKNOWN -> needs-confirmation
+issue. No prerequisite logic lives in the scheduler.
+
+### 41.5 Search and ranking
+
+Constraint satisfaction: one slot per requested course (and companion);
+domains filtered by the hard window, avoided days and failed restrictions;
+sections with identical meetings, dates, campus, restriction evidence and
+cross-listing are grouped (searched once, the others listed as
+`equivalent_sections`). Backtracking with forward checking, slots ordered
+most-constrained first, memoized pair compatibility.
+
+Ranking, lexicographic: needs-confirmation sections, unknown-time sections,
+preferred-campus misses (soft), class days, gap minutes, closed sections (live
+only), index numbers. The first four only grow as sections are added, so the
+search keeps the top `max_results` by branch and bound - verified against
+brute force in tests. Limits: 8 courses, 200,000 nodes; a stopped search says
+`SEARCH_LIMIT_REACHED`, never "no schedule".
+
+### 41.6 Unschedulable results
+
+`TERM_SCHEDULE_NOT_PUBLISHED` (no section data - earlier terms are never
+borrowed), `COURSE_NOT_OFFERED` / `COURSE_NOT_IN_PARTIAL_TERM_DATA`,
+`NO_SECTIONS`, `USER_CONSTRAINTS_EXCLUDE_ALL_SECTIONS`,
+`SECTION_RESTRICTION_NOT_SATISFIED`, `ALL_SECTIONS_CONFLICT` (the course pair
+with no compatible sections), `NO_COMPATIBLE_COMBINATION` (3+ courses), and
+`USER_CONSTRAINTS_TOO_STRICT` naming which of the student's own constraints
+block on their own - reported, never relaxed.
+
+### 41.7 Measured (development data, Fall 2026, 15 runs)
+
+`scripts/benchmark_schedules.py`:
+
+| case | sections | Cartesian | nodes | full p50 / p95 | SQL |
+|---|---|---|---|---|---|
+| 3 courses | 2-9 | 108 | 74 | 31 / 41 ms | 13 |
+| 4 courses + lab companion | 2-9 | 8,748 | 1,491 | 34 / 52 ms | 13 |
+| 5 courses | 1-22 | 1,980 | 285 | 28 / 35 ms | 13 |
+| 5 courses, 1-hour break | 1-22 | 1,980 | 65 | 26 / 29 ms | 13 |
+| 5 largest courses (engine) | 59-109 | 2,012,800,104 | 142,816 | load 288 + search 373 ms | 7 |
+
+Statement count is independent of section count (batched loading); every run
+byte-identical. Failure injection (`scripts/inject_schedule_failures.py`):
+16 of 16 faults detected (A-P).
