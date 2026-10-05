@@ -7285,3 +7285,177 @@ quota; GPA-in-the-major rule, NOT_EVALUABLE), Statistics, Sociology,
 Linguistics (C or better for everything counted). Definition hashes changed
 -> `parsed` -> re-validated to `validated`. CS, Philosophy, Psychology:
 definitions unchanged. Nothing reviewed, nothing published.
+
+## 40. Deterministic multi-semester course planning (Phase 6.5)
+
+```
+Degree Engine        "what remains? does X count?"   app.services.audit               reused
+course eligibility   "may the student take X in T?"  app.services.course_eligibility  reused
+Planning Engine      "which courses, which term?"    app.services.planning            NEW
+Schedule Engine      "which section, which time?"    -                                not this phase
+```
+
+`POST /api/v1/student/plans/generate` returns a `PlanResult`: terms, each
+with planned COURSES (never sections), every course carrying structured
+reasons and evidence, plus blockers / needs-confirmation / warnings and
+fingerprints of every input. No LLM is called anywhere on this path (an
+architecture test checks imports, transitively, in a fresh interpreter).
+
+### 40.1 Nothing academic is decided by the planner
+
+| question | answered by | how the planner asks |
+|---|---|---|
+| what remains? | Degree Engine | `audit(student, program_version=, projected=planned)` |
+| does a planned course count, where, once? | Degree Engine allocation | the same projected audit; planned courses are in-progress attempts with NO grade |
+| minimum grades, quotas, sequences on planned courses | Degree Engine | provisional, exactly as real in-progress work |
+| may the student take X in term T? | `check_proposal` | twice per candidate (40.2) |
+| retakes, co-requisites, PRE OR COREQ | `check_proposal` | `proposed=` same-term partners |
+
+Engine extensions, all optional and read-only: `audit(projected=)` (transient
+`StudentCourse` objects, never added to the session); `check_many(projected=)`;
+`check_proposal(projected=, as_of_term=, independent=)`;
+`DegreeAuditEngine.baseline_memo` (opt-in reuse of the earned baseline
+across many projections of one unchanged record); `constraint_counts(req,
+allocated)` - the single definition of the subject/level predicates, now
+shared by the audit's violations and the planner's progress measure.
+
+### 40.2 Eligibility states
+
+```
+A = check_proposal(history only)
+B = check_proposal(history + planned-earlier and in-progress courses ASSUMED passed)
+A SATISFIED   -> satisfied_by_history
+B SATISFIED   -> conditional_on_plan    each course that must be passed, with the
+                                        interpreted minimum grade ("C") where one applies
+B UNKNOWN     -> needs_confirmation     never placed
+B UNSATISFIED -> unsatisfied            may become plannable through a dependency path
+```
+
+The assumption in B is a HYPOTHESIS used only to find what would unlock a
+course; the result is never labelled satisfied. Phase 6.4 alone decides
+grades: a recorded D below a target's "C or better" is read from the grade
+evidence and planned as a RETAKE (a prerequisite accepts any attempt that
+earned the grade; for the degree a D retake is E credit, which the Degree
+Engine reports itself).
+
+**Finding.** `check_proposal(courses=[...])` treats its courses as ONE
+same-term proposal - correct for "this schedule", wrong for a batch of
+ALTERNATIVES: batching every candidate let 01:198:205, merely another
+candidate, satisfy 211's "CO-REQ: 01:198:205". `independent=True` judges each
+candidate alone (plus explicit partners); the planner always uses it.
+
+### 40.3 Candidates, dependencies, co-requisites
+
+* Candidates = `requirement_course_option` rows of the leaf requirements the
+  projected audit reports unmet (an ANY_OF plans only as many alternatives as
+  it still needs), minus passed, in-progress, planned and program-excluded
+  courses.
+* Dependency paths (`dependencies.DependencyPlanner`) walk the published
+  prerequisite IR without flattening: AND = union, OR = ONE child, AT LEAST n
+  = the n cheapest; key `(courses added, -courses that also count, canonical
+  text)`. Unsupported/unreadable prerequisites, cycles (reported with the
+  path) and depth > 6 are infeasible. A course with no Course row or no
+  offering evidence is NOT a free course - **finding**: Newark's
+  21:640:113/114 (absent from CoursePilot's data) looked like a zero-cost
+  path to 01:640:135 until `plannable` was added. The prerequisite closure
+  is prefetched one batch per level, not one query per course.
+* Co-requisites: a candidate unmet ALONE only for a missing same-term partner
+  is tried with the partners its published rule names (already planned
+  first, then course string); `check_proposal(proposed={partner})` decides.
+  An uninterpretable co-requisite is UNKNOWN and never planned.
+
+### 40.4 Offering evidence (`offerings.OfferingIndex`)
+
+| situation | kind | placed? |
+|---|---|---|
+| SOC data for the term lists the course | `confirmed_in_term` | yes |
+| that term's SOC data is complete and omits it | `not_offered_in_term` | no |
+| no complete data; offered earlier in the same season | `historically_offered_in_season` | yes, labelled evidence |
+| offered only in other seasons | `offered_in_other_seasons_only` | no |
+| never observed | `no_offering_evidence` | no |
+
+A future term is evaluated under the latest same-season PUBLISHED rules
+(`rules_term`, reason `rules_from_earlier_term`); "earlier / same term"
+co-requisite comparisons use the planned term (`as_of_term`).
+
+### 40.5 The selection procedure (deterministic, greedy - not "optimal")
+
+Terms in order (Fall/Spring; Summer/Winter only if requested). Per term,
+eligible, placeable, fixed-credit candidates by the key: needed dependency
+first; more unlocked courses; scarcity (eligible candidates minus remaining
+need); confirmed before historical; history before conditional; course
+string. A requirement candidate is ACCEPTED only if the projected audit shows
+strict progress in USEFUL units - courses/credits capped at the need, plus
+distinct categories; with N needed and L required at a level only N - L
+lower-level courses count (and only N - K category repeats).
+**Findings:** without the level rule six 200-level Sociology electives
+filled "six, three at the 300 level"; without the category rule Psychology
+took three COGNITIVE courses for "four subdisciplines". A pruning pass then
+removes courses the final allocation credits nowhere and nothing depends
+on. Stop: nothing remains, `max_terms`, or one empty term per season in a
+row. The plan is never described as optimal or as the earliest graduation.
+
+Load limits (`max_credits_per_term` 15, `max_courses_per_term` 5,
+`max_terms` 8) are CoursePilot settings; the response labels them
+`coursepilot_planning_setting_not_rutgers_policy` and the client cannot
+change that label. A variable-credit course is never placed (reported).
+There is no difficulty model.
+
+### 40.6 Issues
+
+| code | severity |
+|---|---|
+| `REQUIREMENT_NOT_PLANNED` / `PLAN_HORIZON_REACHED` | blocker |
+| `NO_ELIGIBLE_COURSE`, `DEPENDENCY_CYCLE`, `PROGRAM_RULE_VIOLATED` | blocker |
+| `ELIGIBILITY_UNKNOWN` (courses + Phase 6.4 reasons) | needs_confirmation |
+| `NO_PLACEABLE_OFFERING` (by reason: season, no evidence, variable credit, blocked dependency) | needs_confirmation |
+| `UNRESOLVED_PROGRAM_RULE` (GPA, residency), `PROGRAM_PENDING_REVIEW`, `IN_PROGRESS_OUTCOME_ASSUMED_PENDING` | warning |
+
+### 40.7 Identity, side effects, persistence
+
+The record is the principal's, resolved as for `/student/scenarios`;
+`extra="forbid"` rejects `student_id`, `account_id` and every other unknown
+field (422). `program_key` is optional (default: the student's own program;
+a variant-only key is 409); `start_term` must follow every recorded term.
+Nothing is written: projected attempts are transient, the session is checked
+for pending changes, and tests compare every table's content hash before
+and after. Plans are generated on demand and NOT stored - no migration. A
+later phase can detect staleness from `metadata`: `planning_engine_version`
+(6.5.0), `audit_engine_version`, `academic_fingerprint`, `rules_fingerprint`,
+`offering_dataset` (SOC term:hash), `constraints`.
+
+`app/services/planning/__init__.py` keeps the original, still unimplemented
+`Planner` (LLM proposal) protocol unchanged; it is not used by, and may never
+feed, the deterministic engine.
+
+### 40.8 Measured (development data, 7 runs, start Spring 2027)
+
+`scripts/benchmark_planning.py`:
+
+| case | status | placed | p50 | p95 | SQL statements |
+|---|---|---|---|---|---|
+| CS development student (small) | covers all | 14 | 0.82 s | 1.43 s | 142 |
+| what-if, 7 other programs | 3 covers all, 4 partial | 8-21 | 0.24-1.09 s | 0.29-2.53 s | 138-216 |
+| empty record, CS (large) | partial | 35 | 5.21 s | 7.58 s | 261 |
+| empty record, Math Option A (large) | partial | 33 | 3.31 s | 5.39 s | 321 |
+
+Statements per placed course 7.5-25.6, identical across warm runs (the first
+run also lazy-loads ORM relationships); every run byte-identical. About 77%
+of a large plan is the Degree Engine's exact global allocation optimizer
+(~0.47 s per projected audit, ~24 audits). The PARTIAL plans are data limits,
+not planner limits: e.g. 01:220:102's prerequisite
+(`unsupported:minimum_course_level`), Philosophy courses offered in one
+season with UNKNOWN prerequisites.
+
+### 40.9 Failure injection (`scripts/inject_planning_failures.py`)
+
+Detected: A UNKNOWN as eligible; B an unmet prerequisite not holding a course
+back; C co-requisite ignored; C2 candidates batched as one proposal; D double
+counting; E non-contributing course kept; F historical as confirmed; G no
+canonical tie-break; H what-if writing; I audits against the wrong program
+version; J future minimum-grade prerequisite as satisfied. Neutralised by
+structure (recorded, not counted as detected): counting same-term picks as
+passed (candidates are evaluated before any same-term pick) and candidate
+pools from other versions (the Degree Engine credits them nowhere). An
+independent oracle in the tests re-checks every placed course with
+`check_proposal` against strictly earlier terms only.

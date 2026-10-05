@@ -413,10 +413,12 @@ async def test_no_path_parameterised_student_route_exists(app) -> None:
     # Enumerated on purpose: adding a student route must be a reviewed change.
     # Phase 6.0 added the two scenario routes after checking they resolve the
     # student by ownership and reject any identity field in the body (422) -
-    # see tests/test_multi_program.py.
+    # see tests/test_multi_program.py. Phase 6.5 added plans/generate on the
+    # same terms - see tests/test_planning_api.py.
     assert sorted(student_self_service) == [
         "/api/v1/student/audit",
         "/api/v1/student/context",
+        "/api/v1/student/plans/generate",
         "/api/v1/student/scenarios/audit",
         "/api/v1/student/scenarios/compare",
     ]
