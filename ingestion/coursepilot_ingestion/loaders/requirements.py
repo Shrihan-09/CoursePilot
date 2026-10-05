@@ -37,6 +37,7 @@ from app.models import (
     Requirement,
     School,
 )
+from app.domain.grades import LETTER_POINTS, validate_minimum
 from app.services import program_lifecycle
 from app.services.eligibility import query_matches, reconcile, rule_from_definition
 from sqlalchemy import select
@@ -256,6 +257,8 @@ class RequirementLoader:
                 existing.notes = rdef.get("notes")
                 existing.source_prose = rdef.get("source_prose")
                 existing.curation_status = curation
+                for attr, value in _grade_semantics(rdef).items():
+                    setattr(existing, attr, value)
                 stats.requirements_updated += 1
                 by_code[rdef["code"]] = existing
                 continue
@@ -278,6 +281,7 @@ class RequirementLoader:
                 source_prose=rdef.get("source_prose"),
                 curation_status=curation,
                 source_id=source.id,
+                **_grade_semantics(rdef),
             )
             self.session.add(req)
             self.session.flush()
@@ -310,7 +314,29 @@ class RequirementLoader:
         stats.unresolved_courses.extend(report.unresolved)
 
         # --- program-level rules ---
+        # Inserted or refreshed in place (Phase 6.4: before, an existing rule
+        # was skipped, so a re-curated threshold or reason never reached the
+        # database). Rules a definition no longer states are removed.
+        stated = set()
         for rdef in definition.get("program_rules", []):
+            stated.add(rdef["code"])
+            evaluable = rdef.get("is_evaluable", True)
+            fields = dict(
+                name=rdef["name"],
+                rule_type=rdef["rule_type"],
+                grade=rdef.get("grade"),
+                max_count=rdef.get("max_count"),
+                min_count=rdef.get("min_count"),
+                subject_code=rdef.get("subject_code"),
+                offering_unit_code=rdef.get("offering_unit_code"),
+                excluded_course_strings=rdef.get("excluded_course_strings"),
+                min_gpa=_dec(rdef.get("min_gpa")),
+                gpa_scope=rdef.get("gpa_scope"),
+                is_evaluable=evaluable,
+                not_evaluable_reason=rdef.get("not_evaluable_reason"),
+                source_prose=rdef.get("source_prose"),
+                curation_status=curation,
+            )
             existing = self.session.scalar(
                 select(ProgramRule).where(
                     ProgramRule.program_version_id == version.id,
@@ -318,31 +344,18 @@ class RequirementLoader:
                 )
             )
             if existing is not None:
+                for attr, value in fields.items():
+                    setattr(existing, attr, value)
                 continue
-
-            evaluable = rdef.get("is_evaluable", True)
-            self.session.add(
-                ProgramRule(
-                    program_version_id=version.id,
-                    code=rdef["code"],
-                    name=rdef["name"],
-                    rule_type=rdef["rule_type"],
-                    grade=rdef.get("grade"),
-                    max_count=rdef.get("max_count"),
-                    min_count=rdef.get("min_count"),
-                    subject_code=rdef.get("subject_code"),
-                    offering_unit_code=rdef.get("offering_unit_code"),
-                    excluded_course_strings=rdef.get("excluded_course_strings"),
-                    is_evaluable=evaluable,
-                    not_evaluable_reason=rdef.get("not_evaluable_reason"),
-                    source_prose=rdef.get("source_prose"),
-                    curation_status=curation,
-                    source_id=source.id,
-                )
-            )
+            self.session.add(ProgramRule(program_version_id=version.id, code=rdef["code"],
+                                         source_id=source.id, **fields))
             stats.rules_inserted += 1
             if not evaluable:
                 stats.rules_not_evaluable += 1
+        for stale in self.session.scalars(select(ProgramRule).where(
+                ProgramRule.program_version_id == version.id)):
+            if stale.code not in stated:
+                self.session.delete(stale)
 
         self.session.flush()
 
@@ -369,6 +382,26 @@ def definition_sha256(definition: dict) -> str:
     semantic = {k: definition.get(k) for k in SEMANTIC_KEYS}
     canonical = json.dumps(semantic, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _grade_semantics(rdef: dict) -> dict:
+    """Phase 6.4 requirement fields, validated against the Rutgers scale."""
+    quota = rdef.get("grade_quota") or {}
+    if quota and (quota.get("at_most", "").upper() not in LETTER_POINTS
+                  or int(quota.get("max_count", -1)) < 0):
+        raise ValueError(f"{rdef['code']}: grade_quota needs max_count >= 0 and a letter at_most")
+    sequences = rdef.get("category_sequences")
+    if sequences:
+        for category, seqs in sequences.items():
+            if not all(isinstance(seq, list) and len(seq) >= 2 for seq in seqs):
+                raise ValueError(f"{rdef['code']}: sequence for {category} needs 2+ courses")
+    return {
+        "min_grade": validate_minimum(rdef["min_grade"]) if rdef.get("min_grade") else None,
+        "grade_quota_max_count": int(quota["max_count"]) if quota else None,
+        "grade_quota_at_most": quota["at_most"].upper() if quota else None,
+        "category_sequences": ({k: [list(seq) for seq in v] for k, v in sorted(sequences.items())}
+                               if sequences else None),
+    }
 
 
 def _dec(value) -> Decimal | None:

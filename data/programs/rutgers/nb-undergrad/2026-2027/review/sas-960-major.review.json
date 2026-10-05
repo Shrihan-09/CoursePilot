@@ -1,9 +1,9 @@
 {
-  "packet_version": "review-packet/1",
+  "packet_version": "review-packet/2",
   "program_key": "sas-960-major",
   "catalog_year": "2026-2027",
   "definition_file": "data/programs/rutgers/nb-undergrad/2026-2027/sas-960-major.json",
-  "definition_sha256": "07cb81c5313a6a19ed12eb20cbb1d4b9c10d05dff3fd4f8250e84b8fd240304b",
+  "definition_sha256": "07d3c4434542b97013599546bd3f7b94d665e971995d964afe281603e25588f5",
   "source": {
     "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/statistics-960",
     "catalog_page": "/schools/sas/program-listing/statistics-960",
@@ -18,8 +18,8 @@
   "publication_basis": null,
   "machine_checks": {
     "passed": true,
-    "quotes_found": 10,
-    "quotes_checked": 10,
+    "quotes_found": 11,
+    "quotes_checked": 11,
     "errors": [],
     "warnings": [],
     "note": "Machine checks are NOT review. They prove quotes exist and the engine can load the tree - not that the encoding means what the prose means."
@@ -31,8 +31,9 @@
       "code": "STAT_MAJOR",
       "type": "all_of",
       "parent": null,
-      "quote": "A total of 46 credits is required: 18 credits in mathematics, 25 credits in statistics, and 3 credits in computer science, as follows:",
+      "quote": "A total of 46 credits is required: 18 credits in mathematics, 25 credits in statistics, and 3 credits in computer science, as follows: ... Grades of C or better must be earned in all courses counted toward the major.",
       "notes": null,
+      "min_grade": "C",
       "eligible_course_rows": 0
     },
     {
@@ -233,10 +234,6 @@
   "program_rules": [],
   "rules_not_yet_modeled": [
     {
-      "rule": "Grades of C or better must be earned in all courses counted toward the major.",
-      "why_not": "Minimum grades are out of scope (Phase 6.3)."
-    },
-    {
       "rule": "Credit is not given for both 01:640:477 and 01:960:381, nor for both 01:640:481 and 01:960:382.",
       "why_not": "A credit-exclusion pair; the choose_n nodes accept either, and the engine uses one course once."
     }
@@ -265,7 +262,7 @@
     },
     {
       "node": "STAT_MAJOR",
-      "quote": "A total of 46 credits is required: 18 credits in mathematics, 25 credits in statistics, and 3 credits in computer science, as follows:"
+      "quote": "A total of 46 credits is required: 18 credits in mathematics, 25 credits in statistics, and 3 credits in computer science, as follows: ... Grades of C or better must be earned in all courses counted toward the major."
     },
     {
       "node": "STAT_CS",

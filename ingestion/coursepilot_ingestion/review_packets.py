@@ -32,7 +32,7 @@ from coursepilot_ingestion.program_registry import (
     validate_definition,
 )
 
-PACKET_VERSION = "review-packet/1"
+PACKET_VERSION = "review-packet/2"      # 2: Phase 6.4 grade semantics shown per node
 GENERIC_CHECKS = [
     "Open the archived page (path below) and find every quoted sentence.",
     "For each requirement node, confirm the encoding says what the quote says: course lists, counts, levels, exclusions.",
@@ -77,6 +77,11 @@ def build_packet(path: pathlib.Path, session: Session | None = None) -> dict:
             node["course_categories"] = r["course_categories"]
         if r.get("eligible_course_query"):
             node["eligible_course_query"] = r["eligible_course_query"]
+        # Phase 6.4 grade semantics - what the reviewer must check against
+        # the quoted prose.
+        for key in ("min_grade", "grade_quota", "category_sequences"):
+            if r.get(key):
+                node[key] = r[key]
         if r["code"] in counts:
             node["eligible_course_rows"] = counts[r["code"]]
         nodes.append(node)
@@ -179,6 +184,15 @@ def to_markdown(p: dict) -> str:
             enc.append("; ".join(f"{k}: {', '.join(v)}" for k, v in n["course_categories"].items()))
         if "eligible_course_query" in n:
             enc.append("query " + json.dumps(n["eligible_course_query"], sort_keys=True))
+        if "min_grade" in n:
+            enc.append(f"minimum grade {n['min_grade']} (this node and its subtree)")
+        if "grade_quota" in n:
+            q = n["grade_quota"]
+            enc.append(f"grade quota: at most {q['max_count']} at or below {q['at_most']}")
+        if "category_sequences" in n:
+            enc.append("sequences: " + "; ".join(
+                f"{cat}: {' + '.join(seq)}" for cat, seqs in sorted(n["category_sequences"].items())
+                for seq in seqs))
         lines.append(f"| `{n['code']}` | {n['type']} | {n['parent'] or ''} | "
                      f"{'<br>'.join(enc).replace('|', '/')} | {n.get('eligible_course_rows', '')} |")
     lines += ["", "### Quotes and notes", ""]

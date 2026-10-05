@@ -42,6 +42,7 @@ from app.services.programs import (
     InvalidProgramKey,
     DiscoveredEntry,
     ProgramInfo,
+    ProgramVariantRequired,
     get_program,
     list_discovered,
     list_programs,
@@ -179,6 +180,11 @@ async def program(
         info = await run_in_threadpool(_get, program_key)
     except InvalidProgramKey:
         raise HTTPException(status_code=422, detail="Invalid program key.") from None
+    except ProgramVariantRequired as exc:
+        # Phase 6.4: the program exists only as variants (options) with
+        # different requirements - the client must choose, CoursePilot won't.
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                            detail=str(exc)) from None
     if info is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail="No such program.")

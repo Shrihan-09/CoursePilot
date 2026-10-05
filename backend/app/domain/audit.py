@@ -95,6 +95,30 @@ class Allocation(BaseModel):
     status: str  # the StudentCourse status that produced this allocation
     credits_applied: Decimal | None = None
     reason: str
+    # Phase 6.4: the grade this allocation rests on, and the minimum the
+    # requirement imposes (None when it imposes none).
+    earned_grade: str | None = None
+    required_grade: str | None = None
+
+
+class GradeEvaluation(BaseModel):
+    """One minimum-grade or grade-quota decision, with its evidence (Phase 6.4).
+
+    Structured so an explanation can be generated from facts - "CS112 counts
+    because you earned B and the requirement is C or better" - without a
+    model deciding anything.
+    """
+
+    requirement_code: str
+    course: CourseRef
+    kind: str                      # minimum_grade | grade_quota
+    required_grade: str            # "C" (minimum) or "D" (quota: at or below)
+    earned_grade: str | None
+    term_code: str | None
+    credit_origin: str = "rutgers"
+    result: str                    # satisfied | unsatisfied | unknown
+    reason: str
+    policy_source: str | None = None
 
 
 class RequirementResult(BaseModel):
@@ -145,6 +169,9 @@ class RuleResult(BaseModel):
     observed_count: int | None = None
     allowed_count: int | None = None
     affected_courses: list[CourseRef] = Field(default_factory=list)
+    # Phase 6.4: structured inputs behind the verdict (e.g. the GPA
+    # computation: included/excluded attempts, credits, value).
+    evidence: dict | None = None
 
     reason: str
     source_prose: str | None = None
@@ -196,6 +223,8 @@ class DegreeAuditResult(BaseModel):
     findings: list[AuditFinding] = Field(default_factory=list)
     # Courses that earn no credit toward this program, per a program rule.
     excluded_courses: list[CourseRef] = Field(default_factory=list)
+    # Phase 6.4: every minimum-grade / grade-quota decision the audit made.
+    grade_evaluations: list[GradeEvaluation] = Field(default_factory=list)
 
     # Courses on the record that no requirement could use. Not an error - free
     # electives are normal - but the student should be able to see them.

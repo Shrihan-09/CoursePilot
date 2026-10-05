@@ -51,6 +51,7 @@ from app.db.session import get_sync_sessionmaker
 from app.domain.scenario import ProgramComparison, ScenarioAssumption, ScenarioAudit, ScenarioTarget
 from app.services.scenarios import (
     CatalogYearUnavailable,
+    ProgramChoiceRequired,
     ProgramNotEvaluable,
     ProgramNotFound,
     compare_with_current,
@@ -80,6 +81,9 @@ def _translate(exc: Exception) -> HTTPException:
         return HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     if isinstance(exc, ProgramNotEvaluable):
         return HTTPException(status_code=422, detail=str(exc))
+    if isinstance(exc, ProgramChoiceRequired):
+        return HTTPException(status_code=status.HTTP_409_CONFLICT,
+                             detail=str(exc))
     raise exc
 
 
@@ -103,7 +107,8 @@ async def _run(fn, principal: Principal, body: ScenarioRequest, event: str):
     started = time.perf_counter()
     try:
         outcome = await run_in_threadpool(fn, principal.account_id, body)
-    except (ProgramNotFound, CatalogYearUnavailable, ProgramNotEvaluable) as exc:
+    except (ProgramNotFound, CatalogYearUnavailable, ProgramNotEvaluable,
+            ProgramChoiceRequired) as exc:
         raise _translate(exc) from None
     except Exception:
         # Same rule as /student/audit: an engine failure is never dressed up

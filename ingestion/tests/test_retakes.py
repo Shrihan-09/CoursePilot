@@ -90,7 +90,12 @@ def test_fail_then_pass_counts_the_passing_attempt_once(cs_session) -> None:
     assert any(f.code == "non_passing_grade" for f in result.findings)
 
 
-def test_pass_then_retake_uses_the_most_recent_passing_attempt(cs_session) -> None:
+def test_pass_then_retake_counts_the_original_pass(cs_session) -> None:
+    """Phase 6.4 replaced "most recent passing attempt" with the SAS policy:
+    "If [a student has earned a grade of C or better] and choose[s] to repeat
+    the course, it must be repeated for E credit" - no degree credit. So the
+    original A counts and the later C is E credit (Registration and Course
+    Information, Repeating Courses; archived 2026-27)."""
     student = _student(cs_session, [
         ("01:198:314", "20259", "completed", "A"),
         ("01:198:314", "20261", "completed", "C"),
@@ -99,7 +104,7 @@ def test_pass_then_retake_uses_the_most_recent_passing_attempt(cs_session) -> No
 
     allocated = _allocations(result, "01:198:314")
     assert len(allocated) == 1
-    assert allocated[0].term_code == "20261"
+    assert (allocated[0].term_code, allocated[0].earned_grade) == ("20259", "A")
 
 
 def test_an_in_progress_retake_after_a_pass_does_not_add_a_slot(cs_session) -> None:

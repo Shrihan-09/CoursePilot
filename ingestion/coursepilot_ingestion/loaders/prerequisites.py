@@ -27,6 +27,20 @@ One row per offering, keyed on `offering_id`:
 
 References are synced to the expression: added, kept, or removed, and each
 is (re-)resolved to a `course` row when one exists.
+
+## Phase 6.4
+
+  * A `sectionNotes` text that states a prerequisite condition is a
+    COURSE-level fact only when every section of the offering publishes the
+    same text; it is stored as `section_condition_note`. Section-specific
+    notes stay section-level and are not loaded.
+  * `interpreted_conditions` is app.domain.conditions' reading of the
+    condition texts (minimum grade, placement/permission alternatives, what is
+    still uninterpreted), versioned by `condition_parser_version`.
+  * Co-requisites are loaded into `course_corequisite` (one row per
+    offering) from `courseNotes`, or from section notes when EVERY section
+    yields the same parsed rule. Re-running is idempotent; a co-requisite that
+    disappears is removed.
 """
 
 from __future__ import annotations
@@ -34,14 +48,24 @@ from __future__ import annotations
 import hashlib
 import logging
 
+from app.domain.conditions import CONDITION_PARSER_VERSION, clean, interpret
+from app.domain.corequisites import COREQUISITE_PARSER_VERSION, parse_note
 from app.domain.prerequisites import (
     PARSER_VERSION,
     COURSE_KEY,
     condition_kinds,
+    course_keys,
     parse,
     to_json,
 )
-from app.models import Course, CourseOffering, CoursePrerequisite, DataSource, PrerequisiteReference
+from app.models import (
+    Course,
+    CourseCorequisite,
+    CourseOffering,
+    CoursePrerequisite,
+    DataSource,
+    PrerequisiteReference,
+)
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
@@ -91,6 +115,16 @@ class PrerequisiteLoader:
         course_ids = dict(self.session.execute(
             select(Course.course_string, Course.id).where(Course.supplement_code == "")
         ).all())
+        by_subject_number: dict[tuple[str, str], list[str]] = {}
+        for course_string in course_ids:
+            unit, subject, number = course_string.split(":")
+            by_subject_number.setdefault((subject, number), []).append(course_string)
+        existing_coreqs = {
+            c.offering_id: c
+            for c in self.session.scalars(
+                select(CourseCorequisite).where(CourseCorequisite.term_code.in_(term_codes))
+            ).all()
+        }
 
         for normalized in courses:
             key = (*normalized.natural_key, normalized.campus_code)
@@ -101,18 +135,30 @@ class PrerequisiteLoader:
                 continue
 
             raw_text = raw.preReqNotes if (raw.preReqNotes or "").strip() else None
-            note = getattr(raw, "courseNotes", None)
+            course_note_raw = getattr(raw, "courseNotes", None)
+            note = course_note_raw
             kinds = condition_kinds(note)
             note = note if kinds else None
+            section_texts = [s.get("sectionNotes") for s in (raw.sections or [])]
+            section_note = _uniform(section_texts)
+            section_note = section_note if condition_kinds(section_note) else None
+            kinds = tuple(dict.fromkeys(kinds + condition_kinds(section_note)))
             current = existing.get(offering.id)
+            resolve = _resolver(by_subject_number, normalized.offering_unit_code)
 
-            if raw_text is None and note is None:
+            self._load_corequisite(offering, course_note_raw, section_texts, source, resolve,
+                                   existing_coreqs.get(offering.id), counts)
+
+            if raw_text is None and note is None and section_note is None:
                 if current is not None:
                     self.session.delete(current)
                     counts["deleted"] = counts.get("deleted", 0) + 1
                 continue
 
             result = parse(raw_text) if raw_text else None
+            expression_courses = (set(course_keys(result.expression))
+                                  if result and result.expression is not None else set())
+            interpreted = interpret([note, section_note], expression_courses, resolve)
             fields = {
                 "course_id": offering.course_id,
                 "term_code": offering.term_code,
@@ -128,10 +174,14 @@ class PrerequisiteLoader:
                 "canonical_text": result.canonical_text if result else None,
                 "parse_detail": result.detail if result else None,
                 "parser_version": PARSER_VERSION,
+                "section_condition_note": section_note,
+                "interpreted_conditions": interpreted,
+                "condition_parser_version": CONDITION_PARSER_VERSION if interpreted else None,
                 "source_id": source.id,
             }
             references = sorted(set(result.references if result else ())
-                                | set(COURSE_KEY.findall(note or "")))
+                                | set(COURSE_KEY.findall(note or ""))
+                                | set(COURSE_KEY.findall(section_note or "")))
 
             if current is None:
                 current = CoursePrerequisite(offering_id=offering.id, **fields)
@@ -149,10 +199,66 @@ class PrerequisiteLoader:
                 counts.get(f"class:{fields['classification']}", 0) + 1)
             if kinds:
                 counts["with_condition_note"] = counts.get("with_condition_note", 0) + 1
+            if interpreted:
+                if interpreted.get("minimum_grade"):
+                    counts["condition:minimum_grade"] = counts.get("condition:minimum_grade", 0) + 1
+                if interpreted.get("alternatives"):
+                    counts["condition:alternatives"] = counts.get("condition:alternatives", 0) + 1
+                if interpreted.get("uninterpreted"):
+                    counts["condition:uninterpreted"] = (
+                        counts.get("condition:uninterpreted", 0) + 1)
 
         self.session.flush()
         counts["references_resolved_late"] = self._resolve_outstanding()
         return stats
+
+    def _load_corequisite(self, offering, course_note, section_texts, source, resolve,
+                          current, counts) -> None:
+        """Upsert / remove the offering's co-requisite (Phase 6.4)."""
+        parsed = [(p, "courseNotes", course_note) for p in parse_note(course_note, resolve)]
+        if not parsed and section_texts:
+            per_section = [parse_note(t, resolve) for t in section_texts]
+            canon = {tuple((p.classification, p.canonical_text or "") for p in parses)
+                     for parses in per_section}
+            if len(canon) == 1 and per_section[0]:
+                texts = sorted({clean(t) for t in section_texts if t})
+                parsed = [(p, "sectionNotes:all", " || ".join(texts)) for p in per_section[0]]
+        if not parsed:
+            if current is not None:
+                self.session.delete(current)
+                counts["corequisites_deleted"] = counts.get("corequisites_deleted", 0) + 1
+            return
+        if len(parsed) > 1:
+            # Several co-requisite clauses: one row, combined only if all parsed.
+            from app.domain.prerequisites import AllOf, canonicalize, to_text
+            if all(p.classification == "parsed" for p, _, _ in parsed):
+                expr = canonicalize(AllOf(tuple(p.expression for p, _, _ in parsed)))
+                classification, canonical, detail = "parsed", to_text(expr), None
+            else:
+                expr, classification, canonical = None, "unsupported", None
+                detail = "; ".join(p.detail or "" for p, _, _ in parsed if p.detail)
+        else:
+            p = parsed[0][0]
+            expr, classification = p.expression, p.classification
+            canonical, detail = p.canonical_text, p.detail
+        fields = {
+            "course_id": offering.course_id, "term_code": offering.term_code,
+            "raw_text": parsed[0][2], "source_field": parsed[0][1],
+            "classification": classification,
+            "expression": to_json(expr) if expr is not None else None,
+            "canonical_text": canonical, "parse_detail": detail,
+            "parser_version": COREQUISITE_PARSER_VERSION, "source_id": source.id,
+        }
+        if current is None:
+            self.session.add(CourseCorequisite(offering_id=offering.id, **fields))
+            counts["corequisites_inserted"] = counts.get("corequisites_inserted", 0) + 1
+        elif any(getattr(current, k) != v for k, v in fields.items() if k != "source_id"):
+            for k, v in fields.items():
+                setattr(current, k, v)
+            counts["corequisites_updated"] = counts.get("corequisites_updated", 0) + 1
+        else:
+            counts["corequisites_unchanged"] = counts.get("corequisites_unchanged", 0) + 1
+        counts[f"corequisite:{classification}"] = counts.get(f"corequisite:{classification}", 0) + 1
 
     def _resolve_outstanding(self) -> int:
         """Resolve EVERY still-unresolved reference whose course now exists.
@@ -203,3 +309,30 @@ class PrerequisiteLoader:
             counts["references"] = counts.get("references", 0) + 1
             if course_id is None:
                 counts["references_unresolved"] = counts.get("references_unresolved", 0) + 1
+
+
+def _uniform(texts: list) -> str | None:
+    """The section note EVERY section publishes, or None."""
+    if not texts:
+        return None
+    cleaned = {(t or "").strip() for t in texts}
+    if len(cleaned) != 1:
+        return None
+    only = cleaned.pop()
+    return only or None
+
+
+def _resolver(by_subject_number: dict, own_unit: str):
+    """Resolve a short code "subject:number" against the course table.
+
+    The course's own offering unit first (Rutgers shorthand within a school),
+    else the single course with that subject and number; ambiguous or absent
+    resolves to nothing - never a guessed unit.
+    """
+    def resolve(subject: str, number: str) -> str | None:
+        options = by_subject_number.get((subject, number), [])
+        own = f"{own_unit}:{subject}:{number}"
+        if own in options:
+            return own
+        return options[0] if len(options) == 1 else None
+    return resolve

@@ -43,6 +43,7 @@ from app.models.registry import (
     ProgramReview,
 )
 from app.models.prerequisites import (
+    CourseCorequisite,
     PREREQUISITE_CLASSIFICATIONS,
     CoursePrerequisite,
     PrerequisiteReference,
@@ -71,7 +72,7 @@ from app.models.identity import (
     StudentLinkEvent,
     UserAccount,
 )
-from app.models.student import EnrollmentStatus, Student, StudentCourse
+from app.models.student import CreditOrigin, EnrollmentStatus, Student, StudentCourse
 from app.models.sections import (
     CourseSection,
     SectionCrossListing,
@@ -86,7 +87,9 @@ __all__ = [
     "ProgramCandidate",
     "ProgramReview",
     "PREREQUISITE_CLASSIFICATIONS",
+    "CourseCorequisite",
     "CoursePrerequisite",
+    "CreditOrigin",
     "PrerequisiteReference",
     "CatalogCourseEntry",
     "Course",

@@ -140,7 +140,11 @@ def test_core_needs_no_new_tables(pg_session, cs_payload_bytes: bytes) -> None:
     tables = set(inspect(engine).get_table_names())
     engine.dispose()
 
-    assert not any("core" in t for t in tables), (
+    # "core" as a WORD of the table name: the Phase 6.4 table
+    # `course_corequisite` contains the letters but is not a SAS Core table.
+    import re
+
+    assert not any(re.search(r"(^|_)core($|_)", t) for t in tables), (
         "Core should reuse requirement tables, not add its own"
     )
 

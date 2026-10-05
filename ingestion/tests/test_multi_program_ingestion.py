@@ -262,7 +262,11 @@ def test_the_excluded_seminar_is_not_an_upper_level_option(session, two_programs
         .where(RequirementCourseOption.requirement_id == upper.id)))
     assert "01:640:491" not in eligible and "01:640:492" not in eligible
     assert {"01:640:311", "01:640:350", "01:640:361"} <= eligible
-    assert dict(options)["ANALYSIS"] == 4 and dict(options)["ALGEBRA"] == 4
+    # Phase 6.4: 411-412 and 451-452 are SEQUENCES (category_sequences), so
+    # only the single-course members carry a category row.
+    assert dict(options)["ANALYSIS"] == 2 and dict(options)["ALGEBRA"] == 2
+    assert upper.category_sequences == {"ALGEBRA": [["01:640:451", "01:640:452"]],
+                                        "ANALYSIS": [["01:640:411", "01:640:412"]]}
 
 
 def test_reloading_math_is_idempotent(session, two_programs) -> None:

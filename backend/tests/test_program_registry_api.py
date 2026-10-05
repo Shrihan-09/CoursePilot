@@ -122,7 +122,13 @@ async def test_variants_are_distinct_programs_and_status_follows_lifecycle(regis
         a = await ac.get(f"/api/v1/programs/{w['school']}-640-ba-option-a")
         b = await ac.get(f"/api/v1/programs/{w['school']}-640-ba-option-b")
         bare = await ac.get(f"/api/v1/programs/{w['school']}-640-ba")
-    assert a.status_code == b.status_code == 200 and bare.status_code == 404
+    assert a.status_code == b.status_code == 200
+    # Phase 6.4: a key without a variant, for a program that exists only as
+    # variants, is an explicit choice - never a silent pick, never "not found".
+    assert bare.status_code == 409
+    assert bare.json()["detail"] == (
+        f"'{w['school']}-640-ba' has variants; choose one of: "
+        f"{w['school']}-640-ba-option-a, {w['school']}-640-ba-option-b")
     va, vb = a.json()["versions"][0], b.json()["versions"][0]
     assert a.json()["variant"] == "option-a"
     # curated_from_prose label, but only `validated`: NOT supported.

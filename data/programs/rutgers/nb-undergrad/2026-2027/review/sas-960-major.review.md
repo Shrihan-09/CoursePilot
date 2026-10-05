@@ -2,13 +2,13 @@
 
 - **Lifecycle:** `validated`
 - **Encoded by:** AI assistant (Claude), Phase 6.3 - encoder only, not a reviewer - encoding is not review
-- **Definition:** `data/programs/rutgers/nb-undergrad/2026-2027/sas-960-major.json`  sha256 `07cb81c5313a6a19`
+- **Definition:** `data/programs/rutgers/nb-undergrad/2026-2027/sas-960-major.json`  sha256 `07d3c4434542b970`
 - **Source:** https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/statistics-960
 - **Archive:** `data/raw/catalog/catalog_statistics-960_2026_2027.html`  prose sha256 `5f46db7e2a86d771`
 
 ## Machine checks (not review)
 
-- passed: **True**, quotes found verbatim: 10/10
+- passed: **True**, quotes found verbatim: 11/11
 
 ## Review questions
 
@@ -32,7 +32,7 @@
 
 | node | type | parent | encoding | eligible rows |
 |---|---|---|---|---|
-| `STAT_MAJOR` | all_of |  |  | 0 |
+| `STAT_MAJOR` | all_of |  | minimum grade C (this node and its subtree) | 0 |
 | `STAT_CS` | choose_n | STAT_MAJOR | min_count=1<br>courses: 01:198:107, 01:198:110, 01:198:111, 01:198:170 | 4 |
 | `STAT_MATH` | all_of | STAT_MAJOR |  | 0 |
 | `STAT_M151` | course | STAT_MATH | courses: 01:640:151 | 1 |
@@ -52,7 +52,7 @@
 
 ### Quotes and notes
 
-- **STAT_MAJOR**: "A total of 46 credits is required: 18 credits in mathematics, 25 credits in statistics, and 3 credits in computer science, as follows:"
+- **STAT_MAJOR**: "A total of 46 credits is required: 18 credits in mathematics, 25 credits in statistics, and 3 credits in computer science, as follows: ... Grades of C or better must be earned in all courses counted toward the major."
 - **STAT_CS**: "Computer Science 01:198:107, 110, 111, or 170"
 - **STAT_MATH**: "Mathematics 01:640:151, 152, 250, 251"
 - **STAT_CORE**: "Statistics 01:960:381, 382, 384, 295 or 390, 463, 486, 490"
@@ -64,8 +64,6 @@
 
 ## Rules not yet modeled
 
-- Grades of C or better must be earned in all courses counted toward the major.  
-  _why:_ Minimum grades are out of scope (Phase 6.3).
 - Credit is not given for both 01:640:477 and 01:960:381, nor for both 01:640:481 and 01:960:382.  
   _why:_ A credit-exclusion pair; the choose_n nodes accept either, and the engine uses one course once.
 

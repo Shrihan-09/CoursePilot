@@ -2,13 +2,13 @@
 
 - **Lifecycle:** `validated`
 - **Encoded by:** AI assistant (Claude), Phase 6.3 - encoder only, not a reviewer - encoding is not review
-- **Definition:** `data/programs/rutgers/nb-undergrad/2026-2027/sas-920-major.json`  sha256 `03595a2a5498a20d`
+- **Definition:** `data/programs/rutgers/nb-undergrad/2026-2027/sas-920-major.json`  sha256 `13749d3a9aa07678`
 - **Source:** https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/sociology-920
 - **Archive:** `data/raw/catalog/catalog_sociology-920_2026_2027.html`  prose sha256 `fd3ea25f39c39fb4`
 
 ## Machine checks (not review)
 
-- passed: **True**, quotes found verbatim: 7/7
+- passed: **True**, quotes found verbatim: 8/8
 
 ## Review questions
 
@@ -31,7 +31,7 @@
 
 | node | type | parent | encoding | eligible rows |
 |---|---|---|---|---|
-| `SOC_MAJOR` | all_of |  |  | 0 |
+| `SOC_MAJOR` | all_of |  | minimum grade C (this node and its subtree) | 0 |
 | `SOC_REQUIRED` | all_of | SOC_MAJOR |  | 0 |
 | `SOC_101` | course | SOC_REQUIRED | courses: 01:920:101 | 1 |
 | `SOC_215` | course | SOC_REQUIRED | courses: 01:920:215 | 1 |
@@ -42,7 +42,7 @@
 
 ### Quotes and notes
 
-- **SOC_MAJOR**: "The major in sociology consists of 11 courses totaling 36 credits. ... Of these eleven courses, five are required courses and six are electives."
+- **SOC_MAJOR**: "The major in sociology consists of 11 courses totaling 36 credits. ... Of these eleven courses, five are required courses and six are electives. ... Grades of C or better are required in each of the courses"
 - **SOC_REQUIRED**: "Of these eleven courses, five are required courses and six are electives."
 - **SOC_ELECTIVES**: "3 Courses - any level (each in a different thematic - see checklist) ... 3 Courses - 300-level or higher (in any thematic)"
   - note: NOT modeled: the three any-level electives must each be in a different 'thematic', defined by a departmental checklist the catalog does not publish.
@@ -53,8 +53,6 @@
   _why:_ The thematic checklist is not published in the catalog.
 - Students majoring in sociology must complete at least six courses (21 credits) at Rutgers University-New Brunswick. Each of the three 300-level core courses must be completed in New Brunswick.  
   _why:_ Course location/transfer provenance is not recorded on StudentCourse.
-- Grades of C or better are required in each of the courses.  
-  _why:_ Minimum grades are out of scope (Phase 6.3).
 
 ## How to record your decision
 

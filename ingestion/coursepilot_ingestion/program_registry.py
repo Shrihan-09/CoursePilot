@@ -52,7 +52,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from coursepilot_ingestion.catalog_registry import CatalogRegistry, page_prose
-from coursepilot_ingestion.loaders.requirements import definition_sha256
+from coursepilot_ingestion.loaders.requirements import _grade_semantics, definition_sha256
 from coursepilot_ingestion.sources.catalog import CATALOG_HOSTS, SOURCE_KIND, USER_AGENT
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
@@ -286,6 +286,22 @@ def validate_definition(definition: dict, page_html: str | None,
             if len(category) > CATEGORY_MAX:
                 rep.errors.append(f"{r['code']}: category {category!r} exceeds "
                                   f"{CATEGORY_MAX} characters")
+        # Phase 6.4 grade semantics: the loader's own validation, surfaced here.
+        try:
+            _grade_semantics(r)
+        except (ValueError, KeyError) as exc:
+            rep.errors.append(f"{r['code']}: {exc}")
+        for category in (r.get("category_sequences") or {}):
+            if not r.get("min_distinct_categories"):
+                rep.errors.append(f"{r['code']}: category_sequences without "
+                                  "min_distinct_categories")
+    for rule in definition.get("program_rules", []):
+        if rule.get("rule_type") == "min_gpa":
+            scope = rule.get("gpa_scope") or ""
+            if not (scope in ("cumulative", "major") or scope.startswith(("subject:", "courses:"))):
+                rep.errors.append(f"{rule['code']}: unknown gpa_scope {scope!r}")
+            if rule.get("min_gpa") is None:
+                rep.errors.append(f"{rule['code']}: min_gpa rule without a threshold")
     if not definition.get("curation", {}).get("catalog_page"):
         rep.errors.append("curation.catalog_page missing: provenance cannot be linked")
 

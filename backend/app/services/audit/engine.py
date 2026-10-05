@@ -27,12 +27,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.observability import redact_id
+from app.domain.attempts import Attempt, degree_credit_attempt, degree_minimum_grade
 from app.domain.audit import (
     Allocation,
     AuditFinding,
     AuditStatus,
     CourseRef,
     DegreeAuditResult,
+    GradeEvaluation,
     RequirementResult,
     RequirementStatus,
     RuleResult,
@@ -71,7 +73,9 @@ from app.services.audit.categories import (
     CategoryCandidate,
     CategoryRequest,
 )
+from app.domain.grades import LETTERS, POLICY_SOURCES, Tri, at_most, earns_credit, outcome
 from app.services.audit.rules import (
+    RuleContext,
     StudentCourseView,
     evaluate_rule,
     excluded_course_strings,
@@ -89,8 +93,24 @@ DISCLAIMER = (
 # a planned course is an intention, not evidence.
 COUNTABLE = {EnrollmentStatus.COMPLETED.value, EnrollmentStatus.IN_PROGRESS.value}
 
-# Grades that do not earn credit toward a requirement.
-FAILING_GRADES = {"F", "D-", "NC", "W"}
+# Which grades earn credit is no longer a list kept here: it is
+# app.domain.grades.earns_credit, shared with the prerequisite evaluator
+# (Phase 6.4). The pre-6.4 list {F, D-, NC, W} contained "D-", which is not a
+# Rutgers grade, and missed XF, S and U.
+
+
+def _attempts_by_course(records) -> dict:
+    out: dict = defaultdict(list)
+    for sc, course in records:
+        out[course.id].append(Attempt(course.course_string, sc.term_code, sc.status, sc.grade,
+                                      sc.credit_origin or "rutgers", handle=sc))
+    return out
+
+
+def strictest(grades) -> str | None:
+    """The most demanding of several minimum grades ("B" over "C")."""
+    present = [g for g in grades if g]
+    return min(present, key=LETTERS.index) if present else None
 
 
 class DegreeAuditEngine:
@@ -185,33 +205,18 @@ class DegreeAuditEngine:
     ) -> dict:
         """The one attempt per course that allocation and credit may use.
 
-        Policy (Phase 6.2), derived from the engine's existing semantics
-        rather than from a grade ranking:
-
-          * only a USABLE attempt can represent a course - countable status
-            (completed or in progress) and not a failing grade;
-          * earned beats provisional: a completed attempt is preferred over an
-            in-progress one, exactly as SATISFIED outranks
-            PROVISIONALLY_SATISFIED elsewhere in the engine;
-          * among attempts of the same kind, the most recent term.
-
-        Deliberately NOT "highest grade wins": which grade Rutgers counts on a
-        repeat (grade replacement, GPA) is not modeled, and choosing by grade
-        would pretend it is. For allocation the only thing that matters is
-        that one course yields one allocation identity.
-
-        A course with no usable attempt has no representative, so its rows
-        behave exactly as before (a failed-only course is still reported).
+        Phase 6.2 made one course one allocation identity. Phase 6.4 chooses
+        WHICH attempt by the SAS repeated-course policy
+        (app.domain.attempts.degree_credit_attempt): attempts after a final
+        C-or-better are E credit and never represent the course; among the
+        rest, the latest credit-earning attempt, else the latest provisional
+        one. Still not "highest grade wins" and not "latest wins".
         """
-        best: dict = {}
-        for sc, course in records:
-            if sc.status not in COUNTABLE or sc.grade in FAILING_GRADES:
-                continue
-            rank = (sc.status == EnrollmentStatus.COMPLETED.value, sc.term_code)
-            current = best.get(course.id)
-            if current is None or rank > current[0]:
-                best[course.id] = (rank, sc)
-        return {course_id: sc for course_id, (_, sc) in best.items()}
+        return {course_id: choice.attempt.handle
+                for course_id, choice in (
+                    (cid, degree_credit_attempt(atts))
+                    for cid, atts in _attempts_by_course(records).items())
+                if choice.attempt is not None}
 
     # ------------------------------------------------------------------ #
     # slots
@@ -450,6 +455,151 @@ class DegreeAuditEngine:
                 )
 
     # ------------------------------------------------------------------ #
+    # sequence categories (Phase 6.4)
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def _apply_sequence_categories(
+        requirements: list[Requirement],
+        plan,
+        candidates: list[Candidate],
+        course_by_key: dict,
+    ) -> None:
+        """Let a COMPLETED sequence cover its category.
+
+        The matching fills slots without knowing that "411-412" covers a
+        category only as a pair, so it may hold one course of the pair and
+        leave the other unused. For each uncovered category with a sequence
+        the student holds partly, the missing members - if eligible here and
+        unclaimed in this system - replace held courses that cover nothing
+        (no selected category, no complete sequence). Local and deterministic,
+        like the category pass: no other requirement loses a course.
+        """
+        for req in sorted(requirements, key=lambda r: (r.sort_order, r.code)):
+            if not req.category_sequences:
+                continue
+            key_of: dict[str, str] = {}
+            for c in candidates:
+                if req.code in c.eligible_requirements and c.course_key in course_by_key:
+                    key_of.setdefault(course_by_key[c.course_key]["ref"].course_string,
+                                      c.course_key)
+            for category, sequences in sorted(req.category_sequences.items()):
+                held_strings = {course_by_key[k]["ref"].course_string
+                                for k in plan.courses_for(req.code) if k in course_by_key}
+                if any(set(seq) <= held_strings for seq in sequences):
+                    continue
+                if category in set(plan.categories_for(req.code)):
+                    continue
+                for seq in sequences:
+                    missing = [c for c in seq if c not in held_strings]
+                    if not missing or not all(c in key_of for c in seq):
+                        continue
+                    free = [key_of[c] for c in missing
+                            if req.requirement_system not in plan.systems_for_course(key_of[c])]
+                    if len(free) != len(missing):
+                        continue
+                    protected = {key_of[c] for s2 in req.category_sequences.values()
+                                 for q in s2 for c in q if c in key_of}
+                    spare = sorted(
+                        (slot for slot, k in plan.by_slot.items()
+                         if slot[0] == req.code and not plan.slot_category.get(slot)
+                         and k not in protected),
+                        key=lambda slot: plan.by_slot[slot], reverse=True)
+                    if len(spare) < len(free):
+                        continue
+                    for slot, course_key in zip(spare, free):
+                        plan.release_slot(slot)
+                        plan.assign(req.code, slot[1], course_key, req.requirement_system)
+                    break
+
+    # ------------------------------------------------------------------ #
+    # grade quotas (Phase 6.4)
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def _apply_grade_quotas(
+        requirements: list[Requirement],
+        plan,
+        candidates: list[Candidate],
+        course_by_key: dict,
+        grade_evaluations: list[GradeEvaluation],
+    ) -> dict:
+        """Hold each quota node to "at most N courses at or below grade G".
+
+        Deterministic LOCAL repair first: while a node holds more low-graded
+        courses than its quota allows, swap one (that carries no selected
+        category) for an eligible course not claimed in the same system whose
+        grade is known to be above G. Nothing is taken from another
+        requirement, so the repair can only help this node.
+
+        Then the verdict, three-valued: known low grades over the quota are a
+        violation; grades that cannot be compared (P vs "C", temporary
+        grades) that COULD exceed it make the node provisional.
+
+        One course is one allocation identity, so a retaken course is
+        counted once, by the attempt that represents it.
+        """
+        state: dict = {}
+        for req in sorted(requirements, key=lambda r: (r.sort_order, r.code)):
+            if req.grade_quota_max_count is None:
+                continue
+            limit, ceiling = req.grade_quota_max_count, req.grade_quota_at_most
+
+            def low(key, ceiling=ceiling):
+                return at_most(course_by_key[key]["outcome"], ceiling)
+
+            held = [k for k in plan.courses_for(req.code) if k in course_by_key]
+            bad = sorted(k for k in held if low(k) is Tri.YES)
+            if len(bad) > limit:
+                free = sorted(
+                    c.course_key for c in candidates
+                    if req.code in c.eligible_requirements
+                    and c.course_key not in held
+                    and req.requirement_system not in plan.systems_for_course(c.course_key)
+                    and low(c.course_key) is Tri.NO
+                )
+                slot_of = {plan.by_slot[k]: k for k in plan.by_slot if k[0] == req.code}
+                for course_key in list(reversed(bad)):
+                    if len(bad) <= limit or not free:
+                        break
+                    slot = slot_of.get(course_key)
+                    if slot is None or plan.slot_category.get(slot):
+                        continue
+                    replacement = free.pop(0)
+                    plan.release_slot(slot)
+                    plan.assign(req.code, slot[1], replacement, req.requirement_system)
+                    bad.remove(course_key)
+                held = [k for k in plan.courses_for(req.code) if k in course_by_key]
+
+            known = sorted(k for k in held if low(k) is Tri.YES)
+            unknown = sorted(k for k in held if low(k) is Tri.UNKNOWN)
+            violation = None
+            if len(known) > limit:
+                violation = (f"at most {limit} course(s) with a grade of {ceiling} or lower may "
+                             f"count (found {len(known)})")
+            for key in held:
+                verdict = low(key)
+                entry = course_by_key[key]
+                if verdict is Tri.YES:
+                    result = "unsatisfied" if violation else "satisfied"
+                    reason = f"counts toward the quota of {limit}"
+                elif verdict is Tri.UNKNOWN:
+                    result, reason = "unknown", "grade cannot be compared with the quota grade"
+                else:
+                    result, reason = "satisfied", "above the quota grade"
+                grade_evaluations.append(GradeEvaluation(
+                    requirement_code=req.code, course=entry["ref"], kind="grade_quota",
+                    required_grade=ceiling, earned_grade=entry.get("grade"),
+                    term_code=entry["term_code"], result=result, reason=reason,
+                    policy_source=POLICY_SOURCES["grades_and_records"]))
+            state[req.code] = {
+                "violation": violation,
+                "pending": not violation and len(known) + len(unknown) > limit,
+                "counted": known, "unknown": unknown, "limit": limit, "ceiling": ceiling,
+            }
+        return state
+
+    # ------------------------------------------------------------------ #
     # evaluation
     # ------------------------------------------------------------------ #
 
@@ -462,6 +612,8 @@ class DegreeAuditEngine:
         eligibility: dict[str, set[str]],
         allocations: list[Allocation],
         option_categories: dict[tuple[str, str], set[str]] | None = None,
+        min_grade_for: dict[str, str | None] | None = None,
+        quota_state: dict | None = None,
     ) -> RequirementResult:
         kids = sorted(
             children_by_parent.get(req.id, []), key=lambda r: (r.sort_order, r.code)
@@ -475,6 +627,8 @@ class DegreeAuditEngine:
                 eligibility,
                 allocations,
                 option_categories,
+                min_grade_for,
+                quota_state,
             )
             for k in kids
         ]
@@ -483,9 +637,18 @@ class DegreeAuditEngine:
         allocated_keys = plan.courses_for(req.code)
         allocated = [course_by_key[k] for k in allocated_keys if k in course_by_key]
         refs = [entry["ref"] for entry in allocated]
+        # Provisional: in progress, a non-final outcome, or (Phase 6.4) a
+        # minimum grade this requirement imposes that cannot be compared.
         provisional = any(
-            entry["status"] == EnrollmentStatus.IN_PROGRESS.value for entry in allocated
+            entry["status"] == EnrollmentStatus.IN_PROGRESS.value
+            or entry.get("provisional")
+            or req.code in entry.get("grade_pending", ())
+            for entry in allocated
         )
+        required_grade = (min_grade_for or {}).get(req.code)
+        quota = (quota_state or {}).get(req.code)
+        if quota and quota["pending"]:
+            provisional = True
 
         for entry in allocated:
             shared_systems = plan.systems_for_course(entry["key"])
@@ -510,6 +673,8 @@ class DegreeAuditEngine:
                     status=entry["status"],
                     credits_applied=entry["credits"],
                     reason=reason,
+                    earned_grade=entry.get("grade"),
+                    required_grade=required_grade,
                 )
             )
 
@@ -539,6 +704,7 @@ class DegreeAuditEngine:
                 provisional,
                 option_categories or {},
                 plan.categories_for(req.code),
+                quota,
             )
         elif rtype == RequirementType.CREDITS.value:
             self._eval_credits(result, req, allocated, provisional)
@@ -627,6 +793,7 @@ class DegreeAuditEngine:
         provisional: bool,
         option_categories: dict[tuple[str, str], set[str]],
         chosen_categories: list[str] | None = None,
+        quota: dict | None = None,
     ) -> None:
         need = req.min_count or 0
         got = len(allocated)
@@ -634,6 +801,8 @@ class DegreeAuditEngine:
         result.satisfied_count = got
 
         violations = self._constraint_violations(req, allocated)
+        if quota and quota["violation"]:
+            violations.append(quota["violation"])
 
         # "meet at least N of these goals" - a SEPARATE condition from the
         # course count. Rutgers SAS Arts and the Humanities requires two
@@ -644,7 +813,7 @@ class DegreeAuditEngine:
             # audit reports that edge rather than re-deriving a best case.
             selected = chosen_categories or []
             if selected:
-                distinct = len(set(selected))
+                single_covered = set(selected)
             else:
                 course_categories = {
                     entry["key"]: frozenset(
@@ -653,7 +822,19 @@ class DegreeAuditEngine:
                     for entry in allocated
                 }
                 course_categories = {k: v for k, v in course_categories.items() if v}
-                distinct, _ = max_distinct_categories(course_categories)
+                _, assignment = max_distinct_categories(course_categories)
+                single_covered = set(assignment.values())
+            # Phase 6.4: a category member may be a SEQUENCE ("411-412"). It
+            # covers its category only when EVERY course of it is allocated
+            # here. Sequence courses carry no single-course category, so a
+            # course is never counted toward two categories.
+            held = {entry["ref"].course_string for entry in allocated}
+            sequence_covered = {
+                category
+                for category, sequences in (req.category_sequences or {}).items()
+                if any(set(seq) <= held for seq in sequences)
+            }
+            distinct = len(single_covered | sequence_covered)
             result.distinct_categories = distinct
             result.needed_distinct_categories = req.min_distinct_categories
             if distinct < req.min_distinct_categories:
@@ -840,8 +1021,26 @@ class DegreeAuditEngine:
         credits_in_progress = Decimal(0)
 
         records = self._load_student_courses(student, statuses)
-        representative = self._representative_attempts(records)
+        attempts_by_course = _attempts_by_course(records)
+        credits_by_id = {course.id: course.credits for _, course in records}
+        choice_by_course = {cid: degree_credit_attempt(atts)
+                            for cid, atts in attempts_by_course.items()}
+        representative = {cid: c.attempt.handle for cid, c in choice_by_course.items()
+                          if c.attempt is not None}
         reported_repeats: set = set()
+
+        # Phase 6.4: the minimum grade each requirement imposes - its own or
+        # the strictest one inherited from an ancestor.
+        by_id = {r.id: r for r in requirements}
+        min_grade_for: dict[str, str | None] = {}
+        for r in requirements:
+            path, node = [], r
+            while node is not None:
+                path.append(node.min_grade)
+                node = by_id.get(node.parent_id)
+            min_grade_for[r.code] = strictest(path)
+        grade_evaluations: list[GradeEvaluation] = []
+        effective_eligibility: dict[str, set[str]] = {}
 
         for sc, course in records:
             ref = CourseRef(
@@ -890,7 +1089,8 @@ class DegreeAuditEngine:
                             ),
                         )
                     )
-                if sc.grade in FAILING_GRADES and sc.status in COUNTABLE:
+                if sc.status in COUNTABLE and earns_credit(
+                        outcome(sc.status, sc.grade, sc.credit_origin)) is Tri.NO:
                     findings.append(
                         AuditFinding(
                             severity=Severity.WARNING,
@@ -931,7 +1131,8 @@ class DegreeAuditEngine:
 
             if sc.status not in COUNTABLE:
                 continue
-            if sc.grade in FAILING_GRADES:
+            attempt_outcome = outcome(sc.status, sc.grade, sc.credit_origin)
+            if earns_credit(attempt_outcome) is Tri.NO:
                 findings.append(
                     AuditFinding(
                         severity=Severity.WARNING,
@@ -945,7 +1146,46 @@ class DegreeAuditEngine:
                 continue
 
             key = f"{course.id}:{sc.term_code}"
-            eligible = eligibility.get(str(course.id), set())
+            choice = choice_by_course.get(course.id)
+            provisional = bool(choice and choice.attempt and choice.attempt.handle is sc
+                               and choice.provisional)
+            if provisional and sc.status == EnrollmentStatus.COMPLETED.value:
+                findings.append(
+                    AuditFinding(
+                        severity=Severity.WARNING,
+                        code="grade_outcome_not_final",
+                        message=(
+                            f"{course.course_string} has grade {sc.grade!r}, which is not a final "
+                            "outcome CoursePilot can interpret; it counts only provisionally."
+                        ),
+                    )
+                )
+
+            # Minimum grades decide ELIGIBILITY per requirement, before any
+            # allocation: a D in a "C or better" course is not a candidate for
+            # that requirement at all, so the allocator can never use it there.
+            eligible = set(eligibility.get(str(course.id), set()))
+            grade_pending: set[str] = set()
+            for code in sorted(eligible):
+                minimum = min_grade_for.get(code)
+                if not minimum:
+                    continue
+                check = degree_minimum_grade(attempts_by_course[course.id], minimum)
+                used = check.attempt
+                grade_evaluations.append(GradeEvaluation(
+                    requirement_code=code, course=ref, kind="minimum_grade",
+                    required_grade=minimum, earned_grade=used.grade if used else None,
+                    term_code=used.term_code if used else None,
+                    credit_origin=used.credit_origin if used else "rutgers",
+                    result={Tri.YES: "satisfied", Tri.NO: "unsatisfied",
+                            Tri.UNKNOWN: "unknown"}[check.status],
+                    reason=check.reason, policy_source=POLICY_SOURCES["grades_and_records"]))
+                if check.status is Tri.NO:
+                    eligible.discard(code)
+                elif check.status is Tri.UNKNOWN:
+                    grade_pending.add(code)
+            effective_eligibility[str(course.id)] = eligible
+
             course_by_key[key] = {
                 "key": key,
                 "ref": ref,
@@ -954,6 +1194,11 @@ class DegreeAuditEngine:
                 "credits": credits,
                 "subject_code": course.subject_code,
                 "course_number": course.course_number,
+                # Phase 6.4
+                "grade": sc.grade,
+                "outcome": attempt_outcome,
+                "provisional": provisional,
+                "grade_pending": grade_pending,
             }
             candidates.append(
                 Candidate(
@@ -1044,7 +1289,7 @@ class DegreeAuditEngine:
             # claimed in this requirement's system.
             available: list[tuple[str, Decimal | None, str]] = []
             for key, entry in course_by_key.items():
-                if req.code not in eligibility.get(entry["ref"].course_id, set()):
+                if req.code not in effective_eligibility.get(entry["ref"].course_id, set()):
                     continue
                 if req.requirement_system in plan.systems_for_course(key):
                     continue
@@ -1059,6 +1304,12 @@ class DegreeAuditEngine:
             ):
                 plan.assign(req.code, i, course_key, req.requirement_system)
 
+        # --- sequence categories, then grade quotas (Phase 6.4) ---
+        self._apply_sequence_categories(requirements, plan, candidates, course_by_key)
+        quota_state = self._apply_grade_quotas(
+            requirements, plan, candidates, course_by_key, grade_evaluations
+        )
+
         # --- evaluate ---
         allocations: list[Allocation] = []
         results = [
@@ -1070,6 +1321,8 @@ class DegreeAuditEngine:
                 eligibility,
                 allocations,
                 option_categories,
+                min_grade_for,
+                quota_state,
             )
             for r in sorted(roots, key=lambda x: (x.sort_order, x.code))
         ]
@@ -1081,7 +1334,32 @@ class DegreeAuditEngine:
         ]
 
         # --- program-level rules ---
-        rule_results: list[RuleResult] = [evaluate_rule(r, rule_views) for r in rules]
+        # Phase 6.4: grade-count rules see the courses applied to the MAJOR
+        # (each course once, by its counted attempt); GPA rules see every
+        # attempt with its credits.
+        major_codes = {r.code for r in requirements if r.requirement_system == "major"}
+        applied: dict[str, StudentCourseView] = {}
+        for code in sorted(major_codes):
+            for key in plan.courses_for(code):
+                entry = course_by_key.get(key)
+                if entry is None or entry["ref"].course_string in applied:
+                    continue
+                applied[entry["ref"].course_string] = StudentCourseView(
+                    ref=entry["ref"], course_string=entry["ref"].course_string,
+                    subject_code=entry["subject_code"], offering_unit_code="",
+                    status=entry["status"], grade=entry.get("grade"), credits=entry["credits"])
+        credits_of = {}
+        for cid, atts in attempts_by_course.items():
+            for a in atts:
+                earned = a.handle.credits_earned
+                credits_of[(a.course_key, a.term_code)] = (
+                    earned if earned is not None else credits_by_id.get(cid))
+        context = RuleContext(
+            applied_to_major=[applied[k] for k in sorted(applied)],
+            attempts=[a for atts in attempts_by_course.values() for a in atts],
+            credits_of=credits_of,
+        )
+        rule_results: list[RuleResult] = [evaluate_rule(r, rule_views, context) for r in rules]
         for rr in rule_results:
             if rr.status is RequirementStatus.NOT_EVALUABLE:
                 findings.append(
@@ -1167,6 +1445,7 @@ class DegreeAuditEngine:
             sharing_policy=version.sharing_policy,
             findings=findings,
             excluded_courses=excluded_refs,
+            grade_evaluations=grade_evaluations,
             unallocated_courses=unallocated,
             disclaimers=[DISCLAIMER],
         )
