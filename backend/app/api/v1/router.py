@@ -16,6 +16,7 @@ from app.api.v1.routes import (
     plans,
     programs,
     scenarios,
+    schedules,
     student,
 )
 
@@ -27,9 +28,9 @@ api_router.include_router(student.router)
 api_router.include_router(programs.router)
 api_router.include_router(scenarios.router)
 api_router.include_router(plans.router)
+api_router.include_router(schedules.router)
 api_router.include_router(admin.router)
 
 # Future routers land here as they are implemented:
 #   courses.router      — course search / lookup
 #   students.router     — profile, completed courses
-#   schedule.router     — schedule generation
