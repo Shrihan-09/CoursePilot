@@ -113,6 +113,45 @@ def strictest(grades) -> str | None:
     return min(present, key=LETTERS.index) if present else None
 
 
+def constraint_counts(req, allocated: list[dict]) -> dict[str, int | None]:
+    """How many allocated courses fall OUTSIDE the constrained subject and how
+    many are AT the required level (None when the requirement has no such
+    constraint). `allocated` items need "subject_code" and "course_number".
+
+    The single definition of both predicates: the audit's violations below
+    and Phase 6.5's planner (measuring progress toward a constraint the count
+    alone does not show) both read it.
+    """
+    outside = at_level = None
+    if req.max_outside_subject is not None and req.constraint_subject_code:
+        outside = sum(1 for e in allocated if e["subject_code"] != req.constraint_subject_code)
+    if req.min_at_level is not None and req.min_at_level_count is not None:
+        at_level = sum(
+            1
+            for e in allocated
+            if e["subject_code"] == (req.constraint_subject_code or e["subject_code"])
+            and e["course_number"].isdigit()
+            and int(e["course_number"]) >= req.min_at_level
+        )
+    return {"outside": outside, "at_level": at_level}
+
+
+def _constraint_checks(req, allocated: list[dict]) -> list[str]:
+    counts = constraint_counts(req, allocated)
+    problems: list[str] = []
+    if counts["outside"] is not None and counts["outside"] > req.max_outside_subject:
+        problems.append(
+            f"at most {req.max_outside_subject} may be outside subject "
+            f"{req.constraint_subject_code} (found {counts['outside']})"
+        )
+    if counts["at_level"] is not None and counts["at_level"] < req.min_at_level_count:
+        problems.append(
+            f"at least {req.min_at_level_count} must be at the {req.min_at_level} "
+            f"level or above (found {counts['at_level']})"
+        )
+    return problems
+
+
 class DegreeAuditEngine:
     """Evaluates one student against one program version."""
 
@@ -132,6 +171,11 @@ class DegreeAuditEngine:
         self.objective = objective or DEFAULT_OBJECTIVE
         # Guards the baseline audit against recomputing its own baseline.
         self._computing_baseline = False
+        # Phase 6.5: the earned baseline depends only on stored completed
+        # courses, which projected (planned) attempts never are, so a caller
+        # auditing many projections of one unchanged record may opt in to
+        # reusing it. None = recompute every time (the default).
+        self.baseline_memo: dict | None = None
 
     # ------------------------------------------------------------------ #
     # loading
@@ -365,13 +409,19 @@ class DegreeAuditEngine:
         """
         from app.services.audit.baseline import EARNED_STATUSES, baseline_from_result
 
+        memo_key = (student.id, version.id)
+        if self.baseline_memo is not None and memo_key in self.baseline_memo:
+            return self.baseline_memo[memo_key]
         engine = DegreeAuditEngine(
             self.session, category_strategy=self.category_strategy, objective=self.objective
         )
         engine._computing_baseline = True
-        return baseline_from_result(
+        satisfied = baseline_from_result(
             engine.audit(student, statuses=EARNED_STATUSES, program_version=version)
         ).satisfied
+        if self.baseline_memo is not None:
+            self.baseline_memo[memo_key] = satisfied
+        return satisfied
 
     # ------------------------------------------------------------------ #
     # category-aware allocation
@@ -863,32 +913,7 @@ class DegreeAuditEngine:
     @staticmethod
     def _constraint_violations(req: Requirement, allocated: list[dict]) -> list[str]:
         """Check the constraints measured in the real CS elective clause."""
-        problems: list[str] = []
-
-        if req.max_outside_subject is not None and req.constraint_subject_code:
-            outside = [
-                e for e in allocated if e["subject_code"] != req.constraint_subject_code
-            ]
-            if len(outside) > req.max_outside_subject:
-                problems.append(
-                    f"at most {req.max_outside_subject} may be outside subject "
-                    f"{req.constraint_subject_code} (found {len(outside)})"
-                )
-
-        if req.min_at_level is not None and req.min_at_level_count is not None:
-            at_level = [
-                e
-                for e in allocated
-                if e["subject_code"] == (req.constraint_subject_code or e["subject_code"])
-                and e["course_number"].isdigit()
-                and int(e["course_number"]) >= req.min_at_level
-            ]
-            if len(at_level) < req.min_at_level_count:
-                problems.append(
-                    f"at least {req.min_at_level_count} must be at the {req.min_at_level} "
-                    f"level or above (found {len(at_level)})"
-                )
-        return problems
+        return _constraint_checks(req, allocated)
 
     @staticmethod
     def _eval_credits(
@@ -925,8 +950,16 @@ class DegreeAuditEngine:
         *,
         statuses: frozenset[str] | None = None,
         program_version: ProgramVersion | None = None,
+        projected: tuple = (),
     ) -> DegreeAuditResult:
         """Evaluate a student's degree progress.
+
+        `projected` (Phase 6.5) - hypothetical attempts as (StudentCourse,
+        Course) pairs that are NOT in the database: transient rows, never
+        added to the session, appended to the record for this one evaluation.
+        The Planning Engine passes planned courses as IN-PROGRESS attempts, so
+        every rule treats them exactly as it treats real in-progress work -
+        provisionally, with no grade assumed. Omitted, behaviour is unchanged.
 
         `statuses` restricts which StudentCourse rows are considered. It
         changes the INPUT, never the rules: passing
@@ -1021,6 +1054,10 @@ class DegreeAuditEngine:
         credits_in_progress = Decimal(0)
 
         records = self._load_student_courses(student, statuses)
+        if projected:
+            records = sorted(
+                [*records, *projected],
+                key=lambda r: (r[1].course_string, r[1].supplement_code, r[0].term_code))
         attempts_by_course = _attempts_by_course(records)
         credits_by_id = {course.id: course.credits for _, course in records}
         choice_by_course = {cid: degree_credit_attempt(atts)

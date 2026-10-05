@@ -31,6 +31,7 @@ Read-only, deterministic, and no language model is involved anywhere.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from sqlalchemy import select
@@ -111,18 +112,39 @@ def attempt_history(session: Session, student: Student) -> dict[str, AttemptStat
     return history
 
 
+def with_projected(history: dict[str, list[Attempt]],
+                   projected: Sequence[Attempt]) -> dict[str, list[Attempt]]:
+    """History plus hypothetical attempts (Phase 6.5), as a NEW mapping.
+
+    Used by the Planning Engine to ask "would this be met IF the planned
+    earlier courses were completed?". The evaluator is not changed: it simply
+    receives more attempts. The caller labels the answer conditional.
+    """
+    if not projected:
+        return history
+    out = {k: list(v) for k, v in history.items()}
+    for a in projected:
+        out.setdefault(a.course_key, []).append(a)
+    return out
+
+
 def check_many(
     session: Session,
     student: Student,
     course_keys: list[str],
     term_code: str,
+    *,
+    projected: Sequence[Attempt] = (),
 ) -> dict[str, PrerequisiteCheck]:
     """Evaluate many candidate courses for one term in a fixed number of queries.
 
     Three queries whatever the candidate count - offerings, prerequisites,
     history - so a planner scoring hundreds of candidates is not N+1.
+
+    `projected` (Phase 6.5): hypothetical attempts added to the student's
+    history for this evaluation only; nothing is written.
     """
-    history = attempts_by_course(session, student)
+    history = with_projected(attempts_by_course(session, student), projected)
     offered = {
         key for key, in session.execute(
             select(Course.course_string)
@@ -195,4 +217,5 @@ def _check(key, term_code, offered, rows, history) -> PrerequisiteCheck:
     )
 
 
-__all__ = ["PrerequisiteCheck", "attempt_history", "attempts_by_course", "check", "check_many"]
+__all__ = ["PrerequisiteCheck", "attempt_history", "attempts_by_course", "check", "check_many",
+           "with_projected"]

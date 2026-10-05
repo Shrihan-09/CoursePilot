@@ -27,11 +27,13 @@ degree is the Degree Engine's question.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.domain.attempts import Attempt
 from app.domain.prerequisites import (
     ConcurrentReq,
     Evaluation,
@@ -43,7 +45,12 @@ from app.domain.prerequisites import (
     from_json,
 )
 from app.models import Course, CourseCorequisite, Student
-from app.services.prerequisites import PrerequisiteCheck, attempts_by_course, check_many
+from app.services.prerequisites import (
+    PrerequisiteCheck,
+    attempts_by_course,
+    check_many,
+    with_projected,
+)
 
 
 @dataclass(slots=True)
@@ -111,16 +118,33 @@ def _corequisite(rows: list[CourseCorequisite], history, term_code: str,
 
 
 def check_proposal(session: Session, student: Student, course_keys_: list[str], term_code: str,
-                   proposed: frozenset[str] | set[str] = frozenset()) -> dict[str, EligibilityCheck]:
+                   proposed: frozenset[str] | set[str] = frozenset(), *,
+                   projected: Sequence[Attempt] = (),
+                   as_of_term: str | None = None,
+                   independent: bool = False) -> dict[str, EligibilityCheck]:
     """Eligibility of each candidate course for `term_code`, given the term's
     other proposed courses. Fixed query count whatever the candidate count.
 
     A candidate is never its own co-requisite partner: X in `proposed` does
     not satisfy a co-requisite naming X for X itself.
+
+    Phase 6.5 (Planning Engine), both optional and read-only:
+      * `projected` - hypothetical attempts added to the history;
+      * `as_of_term` - the term the student would TAKE the course in, when it
+        differs from `term_code`, the term whose PUBLISHED rules are applied
+        (a future term has no SOC data, so the planner evaluates it under the
+        latest published rules and labels that an assumption). Co-requisite
+        "earlier / same term" comparisons use `as_of_term`;
+      * `independent` - the candidates are NOT a proposal together: each is
+        judged alone (plus `proposed`). Without it, the candidates are each
+        other's same-term partners - right for "this term's schedule", wrong
+        for a batch of ALTERNATIVES, where it would let one unplanned
+        candidate satisfy another's co-requisite (Phase 6.5 finding).
     """
-    proposed = frozenset(proposed) | frozenset(course_keys_)
-    prerequisites = check_many(session, student, course_keys_, term_code)
-    history = attempts_by_course(session, student)
+    proposed = frozenset(proposed) | (frozenset() if independent else frozenset(course_keys_))
+    prerequisites = check_many(session, student, course_keys_, term_code, projected=projected)
+    history = with_projected(attempts_by_course(session, student), projected)
+    evaluation_term = as_of_term or term_code
     coreq_rows: dict[str, list[CourseCorequisite]] = {}
     for key, row in session.execute(
         select(Course.course_string, CourseCorequisite)
@@ -132,7 +156,7 @@ def check_proposal(session: Session, student: Student, course_keys_: list[str], 
     out: dict[str, EligibilityCheck] = {}
     for key in course_keys_:
         pre = prerequisites[key]
-        co = _corequisite(coreq_rows.get(key, []), history, term_code, proposed - {key},
+        co = _corequisite(coreq_rows.get(key, []), history, evaluation_term, proposed - {key},
                           set(pre.expression_courses), _grade_condition(pre))
         if not co.has_corequisite:
             status, how = pre.status, "prerequisite"
