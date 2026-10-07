@@ -46,6 +46,9 @@ CASES = {
                                 "01:198:107"],
 }
 HIGH = ["01:355:101", "01:119:115", "01:090:120", "01:198:111", "01:160:161"]
+#: Phase 6.6.1: two LB lab bundles, an academic co-requisite pair (205 + 203)
+#: and a lab course with a partial co-requisite (119:117 + 119:116).
+COMPONENTS = ["01:750:193", "01:750:203", "01:750:205", "01:119:116", "01:119:117"]
 
 
 def pct(values, p):
@@ -67,7 +70,8 @@ def main() -> None:
     with Session(engine) as s:
         student = s.scalar(select(Student).where(Student.external_ref == "smoke-1"))
         attrs = student_attributes(s, student)
-        for name, courses in [*CASES.items(), ("high-section (engine stages)", HIGH)]:
+        for name, courses in [*CASES.items(), ("high-section (engine stages)", HIGH),
+                              ("component-heavy (engine stages)", COMPONENTS)]:
             prefs = (SchedulePreferences(minimum_minutes_between_classes=60)
                      if "break" in name else SchedulePreferences())
             full, load, search_rank, counts, outputs = [], [], [], [], set()
@@ -81,7 +85,7 @@ def main() -> None:
                 t2 = time.perf_counter()
                 load.append((t1 - t0) * 1000)
                 search_rank.append((t2 - t1) * 1000)
-                if "high" not in name:
+                if "engine stages" not in name:
                     statements["n"] = 0
                     t3 = time.perf_counter()
                     result = generate_schedule(s, student, term_code=TERM, courses=courses,
