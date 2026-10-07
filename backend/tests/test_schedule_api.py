@@ -35,7 +35,7 @@ async def test_a_student_gets_an_answer_about_their_own_record(world) -> None:  
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "term_schedule_not_published" and payload["options"] == []
-    assert payload["metadata"]["schedule_engine_version"] == "6.6.0"
+    assert payload["metadata"]["schedule_engine_version"] == "6.6.1"
 
 
 @requires_db
