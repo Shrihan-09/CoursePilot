@@ -8028,3 +8028,71 @@ rebuilding anything - and stops an old download from posing as live data.
 - Branch and bound with monotone lower bounds
 - Allen's interval algebra and date-aware recurrence overlap
 - Data freshness and provenance labels in user-facing systems
+
+---
+
+# Lesson 34: A Lab Is Three Different Things
+
+## What We Built
+
+Proof, on real Rutgers records, that CoursePilot tells apart a lab that is a
+meeting of the same registration, a lab that is a second registration of the
+same course, and a lab that is a separate course with its own credits - and
+that none of them can be silently dropped from a plan or a schedule.
+
+---
+
+## Concepts
+
+### The same word, three relationships
+
+"Lab" in 01:119:117 is a meeting under one index. "Lab" in 01:750:193 is a
+0-credit second record you must also register for. "Lab" in 01:750:205 is a
+1-credit course that requires 01:750:203 in the same term. Each needs a
+different owner: the meeting model, the Schedule Engine, the eligibility
+engine. Merging any two produces a confident wrong answer.
+
+### Silence is the dangerous failure
+
+The worst bug found was not a wrong rule but a missing one: a co-requisite
+printed on 26 of 28 sections was stored nowhere, so eligibility said
+"satisfied". Errors that raise an alarm get fixed; errors that make the
+system quietly agree do not. The fix was not cleverness - it was refusing to
+turn "some sections say so" into "nobody says so".
+
+### Publishers make typos; parsers must meet them
+
+"CO-REQUSITE", "MU ST ALSO REGISTER", "03:61:103": the source is typed by
+people. A parser can accept an observed misspelling (evidence) without
+guessing at unobserved ones, and anything it still cannot read must become
+UNKNOWN rather than disappear.
+
+### Tests that touch more than one engine find more bugs
+
+The end-to-end test - plan a term, then schedule it - found two bugs that
+neither engine's own tests could: a second course record silently making a
+course unplannable, and a co-requisite partner crashing the planner.
+
+---
+
+## Self-Check
+
+1. Why does a 0-credit LB record never appear in a degree plan, while 01:750:205 does?
+2. A co-requisite appears on some sections only. Why is the course UNKNOWN rather than UNSATISFIED or SATISFIED?
+3. Why must a registration phrase name a course code before it becomes a co-requisite?
+4. Why is a meeting time written only in a section note treated as unverified rather than parsed?
+5. Which failure is worse: a schedule without its required lab, or no schedule at all? Why?
+
+## Try It Yourself
+
+**A.** Run `scripts/inject_component_failures.py C2` and read which test notices the old behaviour.
+
+**B.** Request 01:750:205 alone, then with 01:750:203, and compare `relationships`.
+
+**C.** Schedule Summer 2026 01:160:308 and read `meeting_text_in_notes`.
+
+## Further Learning
+
+- Data provenance and evidence-based modeling
+- Open-world vs closed-world assumptions in rule systems
+- Integration testing across service boundaries

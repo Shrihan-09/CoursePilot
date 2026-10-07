@@ -7579,3 +7579,86 @@ block on their own - reported, never relaxed.
 Statement count is independent of section count (batched loading); every run
 byte-identical. Failure injection (`scripts/inject_schedule_failures.py`):
 16 of 16 faults detected (A-P).
+
+## 42. Labs, recitations, workshops and linked components (Phase 6.6.1)
+
+Evidence: `docs/investigations/phase-6-6-1-linked-component-semantics.md`.
+
+### 42.1 Three relationships, three owners
+
+| relationship | example (real) | owner | what it produces |
+|---|---|---|---|
+| MEETING - "index A has lecture + recitation meetings" | 01:750:203 index 13386: T/F LEC + M RECIT; 01:119:115: LEC + WORKSHOP | section meeting model | one `SectionChoice`, `meeting_components: ["LEC","RECIT"]`; every row conflict-checked |
+| REGISTRATION - "course X requires indexes A + B" | 01:750:193/194/202 + 0-credit `LB` record ("MUST REGISTER [FOR] BOTH ...") | Schedule Engine | a bundle: `primary` + `required_companion` choice, `component_evidence` (verbatim note), relationship `registration_component` |
+| ACADEMIC - "course X requires course Y concurrently" | 01:750:205 -> 01:750:203; 01:750:229 -> 01:750:227; 01:119:117 -> 01:119:116 | Phase 6.4 eligibility (`check_proposal`) | Y must be requested too; relationship `academic_corequisite`; the Planning Engine places X and Y in the same term |
+
+The Planning Engine plans COURSES (01:750:194 once, 4 credits); the
+Schedule Engine expands a course into its registration bundle (lecture +
+LB lab). A 0-credit registration record never becomes a planned course and
+never adds credits; a separate lab course (01:750:205, 1 credit) is a course
+with its own credits.
+
+### 42.2 What changed
+
+* Co-requisite parser v2 (`app.domain.corequisites.normalize_forms`):
+  "X IS A CO-REQUISITE", Rutgers' "CO-REQUSITE", "MUST [ALSO] REGISTER FOR
+  [LAB|LECTURE] <course>" and "AUTO-REGISTERED FOR <course>" are read. A
+  registration phrase must name a course; "MUST REGISTER FOR BOTH REC AND LAB"
+  names none and stays a REGISTRATION fact.
+* A co-requisite on SOME sections (60 offerings - before, nothing was stored
+  and eligibility said SATISFIED) is stored with `source_field =
+  "sectionNotes:some"` and "published on N of M sections" in `parse_detail`.
+  Unmet, it evaluates UNKNOWN (`corequisite_on_some_sections`), never
+  SATISFIED; with Y proposed it is SATISFIED. No schema change.
+* Eligibility reads a course's BASE record (supplement "") when it has one:
+  the LB record's prerequisite row no longer makes the course UNKNOWN.
+* Condition parser v2: "MUST REGISTER [FOR] BOTH" after a restated
+  prerequisite is registration logistics (the Schedule Engine enforces it).
+* Schedule Engine 6.6.1: companion evidence from either record and the
+  observed wordings (still requires same course string + supplement code + 0
+  credits); a section whose note states a meeting time RANGE is
+  `time_verified = false` with `MEETING_TIME_IN_NOTES` (Summer 01:160:308:
+  "RECIT: TWH 8:00-8:50AM" exists only in prose); a note naming a section of
+  another requested course raises `SECTION_NOTE_REFERENCES_REQUESTED_COURSE`;
+  `credits`, `total_credits`, `meeting_components`, `component_evidence`,
+  `meeting_text_in_notes` and result-level `relationships`.
+* Planning Engine: a course whose co-requisite is unknown only because it is
+  partial is tried with its partner; a partner that serves no requirement no
+  longer crashes the planner.
+
+### 42.3 Unknown behaviour
+
+| situation | result |
+|---|---|
+| a second record exists, no explicit "both" statement | not bundled; `LINKED_COMPONENT_UNVERIFIED` + relationship `registration_component_unverified` |
+| verified required component cannot fit | blocker naming both slots (`ALL_SECTIONS_CONFLICT`, `01:750:193#LB`) - never a schedule without it |
+| co-requisite on some sections, partner not requested | course eligibility UNKNOWN, needs confirmation |
+| co-requisite text CoursePilot cannot read (ROTC "... F 8:00AM - 1:00PM", "01:563:1 31") | stored `unsupported`: UNKNOWN |
+| meeting time only in prose | `time_verified = false`, ranked after verified, never "conflict-free" |
+| section pairing only in prose | needs confirmation; no compatibility invented |
+
+No SOC field links one index to another or one course to another; no
+machine-readable lecture/lab pairing and no optional lab exists in the
+archive, so none is modelled.
+
+### 42.4 Live data
+
+The bundle is rebuilt from the current section rows on every request; a
+section, component, meeting or restriction that changes is picked up with no
+engine change. Availability stays a separate field.
+
+### 42.5 Backfill
+
+Re-run the course stage (it carries the prerequisite/co-requisite loader) for
+each archived term, then nothing else - no migration:
+
+```bash
+cd ingestion
+for yt in "2025 9" "2026 1" "2026 7" "2026 9" "2027 0"; do set -- $yt
+  ../backend/.venv/Scripts/python.exe -m coursepilot_ingestion.cli --year $1 --term $2 \
+    --campus NB --all --stage courses --cache-dir ../data/raw --database-url "<url>"
+done
+```
+
+Development data after it: `sectionNotes:some` 73 rows (32 parsed, 41
+unsupported), `sectionNotes:all` 198 (was 171); a second run changed nothing.
