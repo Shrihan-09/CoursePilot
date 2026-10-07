@@ -22,6 +22,7 @@ from app.domain.schedule import (
     DEFAULT_MAX_RESULTS,
     MAX_REQUESTED_COURSES,
     MAX_RESULTS_LIMIT,
+    CourseRelationship,
     ScheduleIssue,
     ScheduleMetadata,
     SchedulePreferences,
@@ -83,10 +84,19 @@ def generate_schedule(session: Session, student: Student, *, term_code: str,
 
     offered = [c for c in requested if c in term.slots_of]
     failed = False
+    relationships: list[CourseRelationship] = []
     if offered:
         checks = check_proposal(session, student, offered, term_code)
         for key in offered:
             check = checks[key]
+            co = check.corequisite
+            for entry in (co.evidence.concurrent_checks if co.evidence else []):
+                if entry.get("met_by") == "proposed_same_term":
+                    # Phase 6.4's verdict, recorded for the client: an
+                    # ACADEMIC co-requisite met by another requested course.
+                    relationships.append(CourseRelationship(
+                        kind="academic_corequisite", course=key, related=entry["course"],
+                        evidence=co.raw_text, source=co.source_field))
             if check.status is PrereqStatus.UNSATISFIED:
                 failed = True
                 issues.append(ScheduleIssue(
@@ -95,6 +105,12 @@ def generate_schedule(session: Session, student: Student, *, term_code: str,
                              "(Phase 6.4 course eligibility)."),
                     courses=[key], details={"combination": check.combination,
                                             "prerequisite": check.prerequisite.raw_text,
+                                            "prerequisite_status": check.prerequisite.status.value,
+                                            "corequisite": co.raw_text,
+                                            "corequisite_status": co.status.value,
+                                            "missing_corequisites": (
+                                                co.evidence.missing_courses
+                                                if co.evidence else []),
                                             "reasons": check.prerequisite.reasons}))
             elif check.status is PrereqStatus.UNKNOWN:
                 issues.append(ScheduleIssue(
@@ -112,7 +128,7 @@ def generate_schedule(session: Session, student: Student, *, term_code: str,
                                       search=SearchStats(node_limit=NODE_LIMIT,
                                                          solution_limit=SOLUTION_LIMIT)))
     else:
-        result = schedule(term, requested, prefs, max_results, issues)
+        result = schedule(term, requested, prefs, max_results, issues, relationships)
 
     if session.new or session.dirty or session.deleted:
         session.rollback()

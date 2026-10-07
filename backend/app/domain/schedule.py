@@ -24,12 +24,13 @@ Vocabulary is deliberate:
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal
 from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 #: Bumped whenever the same inputs could produce different options.
-SCHEDULE_ENGINE_VERSION = "6.6.0"
+SCHEDULE_ENGINE_VERSION = "6.6.1"
 
 #: SOC weekday codes (H = Thursday, U = Sunday), in calendar order.
 WEEKDAYS = ("M", "T", "W", "H", "F", "S", "U")
@@ -214,7 +215,9 @@ class SectionChoice(BaseModel):
     """One registration index chosen for one requested course."""
 
     course: str                              # the REQUESTED course code
-    component: str = "primary"               # primary | required_companion
+    #: primary | required_companion (a second registration record of the SAME
+    #: course, e.g. 01:750:193 "LB" - see component_evidence)
+    component: str = "primary"
     course_string: str
     supplement_code: str = ""
     title: str | None = None
@@ -230,6 +233,16 @@ class SectionChoice(BaseModel):
     notes: str | None = None
     #: Structurally identical alternatives; the choice is the lowest index.
     equivalent_sections: list[EquivalentSection] = Field(default_factory=list)
+    #: Phase 6.6.1 - for clients, no note parsing needed:
+    credits: Decimal | None = None           # this record's credits (0 for an LB lab)
+    #: Meeting kinds under THIS one index, e.g. ["LEC", "RECIT"] - one
+    #: registration with several meetings, not several registrations.
+    meeting_components: list[str] = Field(default_factory=list)
+    #: Why a required_companion was included: the Rutgers note, verbatim.
+    component_evidence: str | None = None
+    #: Meeting times Rutgers describes only in the section note (not in the
+    #: structured meetings) - conflict freedom cannot be verified.
+    meeting_text_in_notes: str | None = None
 
 
 class ScheduleIssue(BaseModel):
@@ -255,6 +268,8 @@ class ScheduleScore(BaseModel):
 class ScheduleOption(BaseModel):
     rank: int
     choices: list[SectionChoice]
+    #: Sum of the chosen records' credits; None if any is variable/unknown.
+    total_credits: Decimal | None = None
     score: ScheduleScore
     reasons: list[Reason] = Field(default_factory=list)
     issues: list[ScheduleIssue] = Field(default_factory=list)
@@ -288,6 +303,25 @@ class ScheduleMetadata(BaseModel):
     search: SearchStats
 
 
+class CourseRelationship(BaseModel):
+    """A relationship that shaped the request, for clients and explanations.
+
+    kind:
+      registration_component     - `related` (same course, another record) must be
+                                   registered too; verified from `evidence`
+      registration_component_unverified - a second record exists, Rutgers does
+                                   not say it is required; NOT scheduled
+      academic_corequisite       - Phase 6.4: `course` requires `related` in the
+                                   same term; satisfied by this request
+    """
+
+    kind: str
+    course: str
+    related: str
+    evidence: str | None = None
+    source: str | None = None                # where the evidence was published
+
+
 class ScheduleResult(BaseModel):
     term_code: str
     status: ScheduleStatus
@@ -295,6 +329,7 @@ class ScheduleResult(BaseModel):
     preferences: SchedulePreferences
     options: list[ScheduleOption] = Field(default_factory=list)
     issues: list[ScheduleIssue] = Field(default_factory=list)
+    relationships: list[CourseRelationship] = Field(default_factory=list)
     metadata: ScheduleMetadata
 
     def canonical_json(self) -> str:
@@ -304,7 +339,8 @@ class ScheduleResult(BaseModel):
 __all__ = [
     "DEFAULT_MAX_RESULTS", "MAX_REQUESTED_COURSES", "MAX_RESULTS_LIMIT",
     "SCHEDULE_ENGINE_VERSION", "TIME_UNKNOWN_KINDS", "WEEKDAYS", "AvailabilityEvidence",
-    "AvailabilityFreshness", "AvailabilityState", "EquivalentSection", "MeetingInterval",
+    "AvailabilityFreshness", "AvailabilityState", "CourseRelationship", "EquivalentSection",
+    "MeetingInterval",
     "MeetingKind", "Reason",
     "RestrictionEntry", "RestrictionEvidence", "RestrictionOutcome", "ScheduleIssue",
     "ScheduleMetadata", "ScheduleOption", "ScheduleResult", "ScheduleScore",

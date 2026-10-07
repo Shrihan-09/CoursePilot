@@ -15,8 +15,12 @@ recitation to a particular lab). A companion is recognized only when BOTH
 are true:
 
   * structural - same course string, a non-empty supplement code, 0 credits;
-  * explicit   - a section or course note of that record says registration
-    in both is required.
+  * explicit   - a section note of EITHER record says registration in both
+    is required. Phase 6.6.1: the observed wordings are "MUST REGISTER FOR
+    BOTH A REC & A LAB TOGETHER" (01:750:193 LB), "MUST REGISTER BOTH LEC/REC
+    & LAB" (01:750:194, Fall 2026) and "MUST REGISTER FOR BOTH REC AND LAB
+    SECTION" written on the BASE record only (01:750:202, Fall 2025); 6.6
+    read only the companion's notes and missed the last two.
 
 A supplement record meeting only the first test is reported
 (LINKED_COMPONENT_UNVERIFIED) and never silently bundled or dropped.
@@ -81,8 +85,16 @@ from app.services.scheduling.meetings import normalize, time_verified
 #: them in openToText ("UNIT/MAJOR: 01/202 (School of Arts and Sciences / ...").
 SCHOOL_UNIT_CODES = {"SAS": "01"}
 
-_BOTH_REQUIRED = re.compile(r"MUST REGISTER FOR BOTH|REGISTER FOR BOTH|BOTH A REC|TOGETHER",
-                            re.I)
+_BOTH_REQUIRED = re.compile(
+    r"\bREGISTER\s+(?:FOR\s+)?BOTH\b"
+    r"|\bBOTH\s+(?:A\s+)?(?:REC|LEC)\w*\s*(?:&|AND|/)\s*(?:A\s+)?LAB\w*"
+    r"|\b(?:REC|LEC)\w*\s*(?:&|AND|/)\s*(?:A\s+)?LAB\w*\s+TOGETHER\b", re.I)
+#: A clock-time RANGE in prose ("RECIT: TWH 8:00-8:50AM", "WORKSHOP:MW
+#: 9:30AM-10:50", "LAB- T,W,TH 9AM-11:30AM"). Course codes ("01:146:328") and
+#: dates ("05/26 - 07/02") never match: a range needs a dash between times.
+_TIME_RANGE = re.compile(
+    r"(?<![\d:/])(?:\d{1,2}:\d{2}\s*(?:AM|PM|A|P)?|\d{1,2}\s*(?:AM|PM))\s*(?:-|TO)\s*"
+    r"(?:\d{1,2}:\d{2}\s*(?:AM|PM|A|P)?|\d{1,2}\s*(?:AM|PM))(?![\d:/])", re.I)
 SOC_KIND = "rutgers_official_api"
 
 
@@ -144,6 +156,13 @@ def evaluate_restriction(entries: list[RestrictionEntry], attrs: StudentAttribut
                                special_permission=special_permission, reasons=reasons)
 
 
+def prose_meeting_text(*notes: str | None) -> str | None:
+    """The section note, when it states a meeting time the structured
+    meetings may not contain (Phase 6.6.1). Never parsed into intervals."""
+    text = " ".join(n for n in notes if n)
+    return text.strip() if _TIME_RANGE.search(text) else None
+
+
 @dataclass
 class SectionCandidate:
     slot: str
@@ -163,6 +182,13 @@ class SectionCandidate:
     cross_listed: list[str]
     notes: str | None
     time_verified: bool
+    credits: object = None
+    component_evidence: str | None = None
+    meeting_text_in_notes: str | None = None
+
+    @property
+    def meeting_components(self) -> list[str]:
+        return sorted({m.mode_desc for m in self.meetings if m.mode_desc})
 
 
 @dataclass
@@ -178,10 +204,19 @@ class TermData:
     not_offered: list[str] = field(default_factory=list)
     unverified_components: dict[str, list[str]] = field(default_factory=dict)
     cross_listed_requests: list[tuple[str, str]] = field(default_factory=list)
+    #: (kind, course, related, evidence, source) - see CourseRelationship.
+    relationships: list[tuple[str, str, str, str | None, str | None]] = field(
+        default_factory=list)
 
 
-def _note_text(*parts: str | None) -> str:
-    return " ".join(p for p in parts if p)
+def _both_note(records) -> tuple[str, str] | None:
+    """(index, note) of the first section - by index - whose note says both
+    records must be registered."""
+    for _, s in sorted(records, key=lambda cs: cs[1].index_number):
+        for text in (s.section_notes, s.comments_text):
+            if text and _BOTH_REQUIRED.search(text):
+                return s.index_number, text.strip()
+    return None
 
 
 def load_term(session: Session, term_code: str, courses: list[str],
@@ -246,20 +281,22 @@ def load_term(session: Session, term_code: str, courses: list[str],
             data.not_offered.append(key)
             continue
         primary = "" if "" in variants else variants[0]
-        slots = [(primary, "primary")]
+        slots = [(primary, "primary", None)]
         for sup in variants:
             if sup == primary:
                 continue
             course0 = records[(key, sup)][0][0]
-            notes = _note_text(*(s.section_notes for _, s in records[(key, sup)]),
-                               *(s.comments_text for _, s in records[(key, sup)]))
-            if (course0.credits is not None and course0.credits == 0
-                    and _BOTH_REQUIRED.search(notes)):
-                slots.append((sup, "required_companion"))
+            evidence = _both_note(records[(key, sup)]) or _both_note(records[(key, primary)])
+            if course0.credits is not None and course0.credits == 0 and evidence:
+                slots.append((sup, "required_companion", evidence))
+                data.relationships.append(("registration_component", key, f"{key} {sup}",
+                                           evidence[1], f"sectionNotes index {evidence[0]}"))
             else:
                 data.unverified_components.setdefault(key, []).append(sup or "(none)")
+                data.relationships.append(("registration_component_unverified", key,
+                                           f"{key} {sup}".strip(), None, None))
         data.slots_of[key] = []
-        for sup, component in slots:
+        for sup, component, evidence in slots:
             slot = key if component == "primary" else f"{key}#{sup}"
             data.slots_of[key].append(slot)
             out = []
@@ -270,6 +307,7 @@ def load_term(session: Session, term_code: str, courses: list[str],
                                 end_date=s.session_end_date, campus=m.campus_abbrev,
                                 campus_name=m.campus_name, building=m.building_code,
                                 room=m.room_number) for m in meetings[s.id]]
+                prose = prose_meeting_text(s.section_notes, s.comments_text)
                 out.append(SectionCandidate(
                     slot=slot, course=key, component=component, course_string=key,
                     supplement_code=sup, title=course.title, section_id=s.id,
@@ -284,7 +322,10 @@ def load_term(session: Session, term_code: str, courses: list[str],
                         special_permission=s.special_permission_add_description
                         or s.special_permission_add_code),
                     cross_listed=sorted(xlists[s.id]), notes=s.section_notes,
-                    time_verified=time_verified(ms)))
+                    time_verified=time_verified(ms) and prose is None,
+                    credits=course.credits,
+                    component_evidence=evidence[1] if evidence else None,
+                    meeting_text_in_notes=prose))
             data.candidates[slot] = sorted(out, key=lambda c: c.index_number)
 
     # Requested courses that are cross-listings of each other.

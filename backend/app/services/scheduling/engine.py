@@ -39,13 +39,16 @@ interchangeable index, without dropping any distinct schedule.
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
+from decimal import Decimal
 
 from app.domain.schedule import (
     TIME_UNKNOWN_KINDS,
     WEEKDAYS,
     AvailabilityFreshness,
     AvailabilityState,
+    CourseRelationship,
     EquivalentSection,
     MeetingKind,
     Reason,
@@ -107,7 +110,7 @@ def _signature(c: SectionCandidate, live: bool) -> tuple:
     r = c.restriction
     return (meetings, r.outcome.value, tuple((e.kind, e.code, e.unit_code) for e in r.entries),
             r.eligibility_text, r.special_permission, c.time_verified,
-            tuple(c.cross_listed), c.supplement_code,
+            tuple(c.cross_listed), c.supplement_code, c.meeting_text_in_notes or "",
             c.availability.state.value if live else "")
 
 
@@ -186,12 +189,38 @@ def _choice(c: SectionCandidate, equivalents: list[SectionCandidate]) -> Section
         supplement_code=c.supplement_code, title=c.title, section_number=c.section_number,
         index_number=c.index_number, campus_code=c.campus_code, meetings=c.meetings,
         instructors=c.instructors, availability=c.availability, restriction=c.restriction,
-        cross_listed_indexes=c.cross_listed, time_verified=c.time_verified, notes=c.notes)
+        cross_listed_indexes=c.cross_listed, time_verified=c.time_verified, notes=c.notes,
+        credits=c.credits, meeting_components=c.meeting_components,
+        component_evidence=c.component_evidence,
+        meeting_text_in_notes=c.meeting_text_in_notes)
+
+
+_SECTION_REF = re.compile(r"(?:\d{2}:)?(\d{3}:\d{3}):([0-9A-Z]{2})\b")
 
 
 def _option_issues(choices: list[SectionCandidate], prefs: SchedulePreferences) -> list:
     issues = []
+    requested = {c.course.split(":", 1)[1]: c.course for c in choices}   # "160:314" -> key
     for c in choices:
+        if c.meeting_text_in_notes:
+            issues.append(ScheduleIssue(
+                severity=Severity.NEEDS_CONFIRMATION, code="MEETING_TIME_IN_NOTES",
+                message=(f"{c.course} index {c.index_number}: Rutgers describes meeting times "
+                         "in the section note that CoursePilot cannot verify against the "
+                         "published meetings; conflict freedom is not verified."),
+                courses=[c.course], indexes=[c.index_number],
+                details={"note": c.meeting_text_in_notes}))
+        for m in _SECTION_REF.finditer(c.notes or ""):
+            other = requested.get(m.group(1))
+            if other and other != c.course:
+                issues.append(ScheduleIssue(
+                    severity=Severity.NEEDS_CONFIRMATION,
+                    code="SECTION_NOTE_REFERENCES_REQUESTED_COURSE",
+                    message=(f"{c.course} index {c.index_number}'s note names section "
+                             f"{m.group(2)} of {other}, also requested; CoursePilot cannot "
+                             "verify which sections Rutgers allows together."),
+                    courses=sorted({c.course, other}), indexes=[c.index_number],
+                    details={"note": c.notes}))
         if c.restriction.outcome is RestrictionOutcome.UNKNOWN:
             issues.append(ScheduleIssue(
                 severity=Severity.NEEDS_CONFIRMATION, code="SECTION_RESTRICTION_UNKNOWN",
@@ -273,8 +302,13 @@ def _search(term, prefs, live: bool = False, keep: int | None = None):
 
 
 def schedule(term: TermData, courses: list[str], prefs: SchedulePreferences, max_results: int,
-             base_issues: list[ScheduleIssue]) -> ScheduleResult:
+             base_issues: list[ScheduleIssue],
+             relationships: list[CourseRelationship] = ()) -> ScheduleResult:
     issues = list(base_issues)
+    links = sorted([*relationships, *(CourseRelationship(
+        kind=k, course=c, related=r, evidence=e, source=src)
+        for k, c, r, e, src in term.relationships)],
+        key=lambda x: (x.course, x.kind, x.related))
     live = False                      # SOC downloads are archived snapshots (see candidates)
     meta = dict(term_code=term.term_code, section_dataset=term.dataset,
                 availability_freshness=AvailabilityFreshness.ARCHIVED if term.dataset else None,
@@ -283,7 +317,7 @@ def schedule(term: TermData, courses: list[str], prefs: SchedulePreferences, max
     def result(status, options=(), stats=None):
         return ScheduleResult(
             term_code=term.term_code, status=status, requested_courses=courses,
-            preferences=prefs, options=list(options),
+            preferences=prefs, options=list(options), relationships=links,
             issues=sorted(issues, key=lambda i: (i.severity.value, i.code, i.courses, i.indexes)),
             metadata=ScheduleMetadata(**meta, search=stats or SearchStats(
                 node_limit=NODE_LIMIT, solution_limit=SOLUTION_LIMIT)))
@@ -344,8 +378,11 @@ def schedule(term: TermData, courses: list[str], prefs: SchedulePreferences, max
     ranked.sort(key=lambda r: r[0])
     options = []
     for rank, (_k, choices, score) in enumerate(ranked[:max_results], start=1):
+        credits = [c.credits for c in choices]
         options.append(ScheduleOption(
             rank=rank, choices=[_choice(c, by_index[c.index_number][1]) for c in choices],
+            total_credits=(sum((Decimal(x) for x in credits), Decimal(0))
+                           if all(x is not None for x in credits) else None),
             score=score,
             reasons=_reasons(choices, score, prefs), issues=_option_issues(choices, prefs),
             days=sorted({m.day for c in choices for m in c.meetings
