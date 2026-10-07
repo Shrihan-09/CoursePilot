@@ -152,16 +152,35 @@ def check_many(
             .where(Course.course_string.in_(course_keys), CourseOffering.term_code == term_code)
         ).all()
     }
-    published: dict[str, list[CoursePrerequisite]] = {}
-    for key, prereq in session.execute(
-        select(Course.course_string, CoursePrerequisite)
+    published = base_record_rows(session.execute(
+        select(Course.course_string, Course.supplement_code, CoursePrerequisite)
         .join(Course, Course.id == CoursePrerequisite.course_id)
         .where(Course.course_string.in_(course_keys), CoursePrerequisite.term_code == term_code)
-    ).all():
-        published.setdefault(key, []).append(prereq)
+    ).all())
 
     return {key: _check(key, term_code, key in offered, published.get(key, []), history)
             for key in course_keys}
+
+
+def base_record_rows(rows) -> dict[str, list]:
+    """(course_string, supplement_code, row) -> rows per course, from the BASE
+    record (supplement "") whenever the course has one.
+
+    Phase 6.6.1 finding: 01:750:194 publishes a second, 0-credit "LB" record -
+    a REGISTRATION component of the same course - whose prerequisite note
+    differs only by "FOR ALL SECTIONS". Treating it as a second campus made
+    the course UNKNOWN ("campus_prerequisites_differ") for every student. The
+    academic course is the base record; a course published only under a
+    supplement code keeps its rows.
+    """
+    grouped: dict[str, list] = {}
+    for key, supplement, row in rows:
+        grouped.setdefault(key, []).append(((supplement or "").strip(), row))
+    out: dict[str, list] = {}
+    for key, items in grouped.items():
+        base = [row for sup, row in items if sup == ""]
+        out[key] = base or [row for _, row in items]
+    return out
 
 
 def check(session: Session, student: Student, course_key: str, term_code: str) -> PrerequisiteCheck:
@@ -217,5 +236,5 @@ def _check(key, term_code, offered, rows, history) -> PrerequisiteCheck:
     )
 
 
-__all__ = ["PrerequisiteCheck", "attempt_history", "attempts_by_course", "check", "check_many",
-           "with_projected"]
+__all__ = ["PrerequisiteCheck", "attempt_history", "attempts_by_course", "base_record_rows",
+           "check", "check_many", "with_projected"]

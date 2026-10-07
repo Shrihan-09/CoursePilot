@@ -1,5 +1,5 @@
 """Section entities: CourseSection, SectionMeeting, SectionInstructor,
-SectionCrossListing.
+SectionCrossListing, SectionRestriction.
 
 Every decision here is driven by measurements against the real SOC payload
 (4,400 courses / 11,992 sections / 17,457 meeting rows). See
@@ -18,21 +18,24 @@ Deliberately NOT modeled, and why:
     "enroll", "seat", "wait", "avail", "max", or "limit" anywhere in the
     section objects. Only a boolean openStatus. Inventing columns for data the
     source does not supply would invite fabricated values later.
-  * sessionDates, subtopic, legendKey - empty on 100% of 11,992 sections.
+  * subtopic, legendKey - empty on 100% of 11,992 sections. (sessionDates was
+    also empty on every Fall 2026 section; Phase 6.6 found it on every Summer
+    2026 section and now stores it - see CourseSection.session_dates_raw.)
   * printed - the constant 'Y' on 100% of sections; carries no information.
-  * majors / minors / unitMajors / honorPrograms - real one-to-many
-    restriction lists (21.9% / 2.1% / 8.9% / 1.2%). Deferred to a later phase;
-    the human-readable forms are preserved in open_to_text and
-    section_eligibility so nothing is lost.
+  * (Phase 6.6: majors / minors / unitMajors / honorPrograms, deferred here,
+    are now stored as SectionRestriction rows - a scheduler must evaluate
+    them, which it cannot do from open_to_text prose.)
 """
 
 from __future__ import annotations
 
 import uuid
+from datetime import date
 
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    Date,
     ForeignKey,
     Index,
     Integer,
@@ -119,6 +122,15 @@ class CourseSection(Base, TimestampMixin):
 
     cross_listed_section_type: Mapped[str | None] = mapped_column(String(8))
 
+    # Phase 6.6: SOC `sessionDates`, e.g. "05/26/2026 - 07/02/2026". The
+    # Phase 3 measurement ("empty on 100%") was of Fall 2026 only; Summer 2026
+    # publishes it on 1,698 of 1,698 sections, and a Summer schedule cannot
+    # tell a May-June section from a July-August one without it. The raw text
+    # is kept; the dates are NULL unless the text parses exactly.
+    session_dates_raw: Mapped[str | None] = mapped_column(Text)
+    session_start_date: Mapped[date | None] = mapped_column(Date)
+    session_end_date: Mapped[date | None] = mapped_column(Date)
+
     source_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("data_source.id"))
 
     offering: Mapped["CourseOffering"] = relationship(back_populates="sections")  # noqa: F821
@@ -133,8 +145,17 @@ class CourseSection(Base, TimestampMixin):
     cross_listings: Mapped[list[SectionCrossListing]] = relationship(
         back_populates="section", cascade="all, delete-orphan"
     )
+    restrictions: Mapped[list[SectionRestriction]] = relationship(
+        back_populates="section", cascade="all, delete-orphan",
+        order_by="SectionRestriction.ordinal",
+    )
 
     __table_args__ = (
+        CheckConstraint(
+            "session_start_date IS NULL OR session_end_date IS NULL "
+            "OR session_start_date <= session_end_date",
+            name="session_dates_ordered",
+        ),
         UniqueConstraint("term_code", "index_number", name="uq_section_term_index"),
         UniqueConstraint("offering_id", "section_number", name="uq_section_offering_number"),
         # Measured: numeric in 11,992 of 11,992. Enforced because a
@@ -344,3 +365,50 @@ class SectionCrossListing(Base, TimestampMixin):
 
     def __repr__(self) -> str:
         return f"<SectionCrossListing -> {self.registration_index}>"
+
+
+#: SOC list -> restriction kind. `majors` entries carry isUnitCode /
+#: isMajorCode flags: a unit code ("14") means "students of that school".
+RESTRICTION_KINDS = ("major", "unit", "minor", "unit_major", "honor_program")
+
+
+class SectionRestriction(Base, TimestampMixin):
+    """One entry of a section's structured "open to" restriction (Phase 6.6).
+
+    SOC publishes four lists - `majors`, `minors`, `unitMajors`,
+    `honorPrograms` - whose human-readable rendering is `openToText`
+    ("MAJ: 014 (Africana ...); MINOR: 014 (Africana Studies)"). Phase 3
+    stored only the text; a scheduler cannot evaluate prose, so the entries
+    are stored as data. Measured on Fall 2026: majors on 2,623 sections,
+    unitMajors 1,071, minors 248, honorPrograms 141.
+
+    Natural key: (section_id, ordinal) - entries have no identity of their
+    own, and the source order is kept.
+    """
+
+    __tablename__ = "section_restriction"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    section_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("course_section.id", ondelete="CASCADE"), index=True
+    )
+    ordinal: Mapped[int] = mapped_column(Integer)
+    kind: Mapped[str] = mapped_column(String(16))
+    code: Mapped[str] = mapped_column(String(16))
+    # unit_major entries only: the school ("01") of the major ("202").
+    unit_code: Mapped[str | None] = mapped_column(String(16))
+
+    section: Mapped[CourseSection] = relationship(back_populates="restrictions")
+
+    __table_args__ = (
+        UniqueConstraint("section_id", "ordinal", name="uq_restriction_section_ordinal"),
+        CheckConstraint("ordinal >= 0", name="restriction_ordinal_non_negative"),
+        CheckConstraint(
+            "kind IN ('major','unit','minor','unit_major','honor_program')",
+            name="restriction_kind_known",
+        ),
+        CheckConstraint("length(trim(code)) > 0", name="restriction_code_not_blank"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<SectionRestriction {self.kind}:{self.code}>"

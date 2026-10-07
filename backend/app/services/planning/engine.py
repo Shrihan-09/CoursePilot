@@ -191,6 +191,14 @@ def progress(result: DegreeAuditResult, requirements: dict | None = None) -> tup
     return (met, amount)
 
 
+def _partner_may_help(co) -> bool:
+    """A co-requisite a same-term partner could satisfy: unmet, or UNKNOWN only
+    because Rutgers publishes it on some sections (Phase 6.6.1). Any other
+    UNKNOWN stays needs-confirmation."""
+    return co.status is PrereqStatus.UNSATISFIED or (
+        co.status is PrereqStatus.UNKNOWN and co.reasons == ["corequisite_on_some_sections"])
+
+
 def _walk(results):
     for node in results:
         yield node
@@ -593,9 +601,10 @@ class PlanningEngine:
         # partner is missing. They are tried with a partner below.
         coreq_pending = {
             k for k, s in states.items()
-            if s is EligibilityState.UNSATISFIED and evaluated[k][1] is not None
+            if s in (EligibilityState.UNSATISFIED, EligibilityState.NEEDS_CONFIRMATION)
+            and evaluated[k][1] is not None
             and evaluated[k][1].corequisite.has_corequisite
-            and evaluated[k][1].corequisite.status is PrereqStatus.UNSATISFIED
+            and _partner_may_help(evaluated[k][1].corequisite)
             and (evaluated[k][1].prerequisite.status is not PrereqStatus.UNSATISFIED
                  or " OR " in evaluated[k][1].combination)
             and evaluated[k][2].kind in PLACEABLE and self.course_info[k].credits is not None}
@@ -737,11 +746,15 @@ class PlanningEngine:
             .order_by(CourseCorequisite.id)))
 
     def _alternatives(self, key, serves, ready, rank, planned) -> int:
-        """Equally ranked ready candidates serving the same requirements."""
-        mine = rank(key)[:-1]
+        """Equally ranked ready candidates serving the same requirements.
+
+        A co-requisite partner added only to satisfy another course (Phase
+        6.6.1 finding: 01:750:227 for 01:750:229) serves no requirement and is
+        not a ranked candidate - it has no alternatives, and is not ranked."""
         codes = set(serves.get(key, ()))
         if not codes:
             return 0
+        mine = rank(key)[:-1]
         return sum(1 for k in ready if k != key and k not in planned
                    and set(serves.get(k, ())) == codes and rank(k)[:-1] == mine)
 

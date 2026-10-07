@@ -76,6 +76,7 @@ from app.models.student import CreditOrigin, EnrollmentStatus, Student, StudentC
 from app.models.sections import (
     CourseSection,
     SectionCrossListing,
+    SectionRestriction,
     SectionInstructor,
     SectionMeeting,
 )
@@ -113,6 +114,7 @@ __all__ = [
     "SharingPolicy",
     "School",
     "SectionCrossListing",
+    "SectionRestriction",
     "SectionInstructor",
     "SectionMeeting",
     "PROVIDER_DEV",

@@ -45,7 +45,7 @@ from collections.abc import Callable
 
 from app.domain.prerequisites import _CONDITION_KINDS
 
-CONDITION_PARSER_VERSION = "1"
+CONDITION_PARSER_VERSION = "2"
 
 Resolve = Callable[[str, str], str | None]
 
@@ -76,8 +76,11 @@ _RESTATEMENT = re.compile(r"^(FOR ALL SECTIONS:\s*)?PRE-?REQ(UISITE)?S?\s*[-:]?\
 #: Registration logistics that may trail a restated prerequisite. A WHITELIST:
 #: anything else after the course list ("AND APPROVAL BY ... COMMITTEE") is
 #: a condition and is never dropped.
+#: Phase 6.6.1: "MUST REGISTER [FOR] BOTH LEC/REC & LAB" (01:750:194) is the
+#: same course's REGISTRATION bundle - enforced by the Schedule Engine
+#: (app.services.scheduling.candidates), not an academic condition.
 _LOGISTICS = re.compile(r"^(IF CLOSED\b|LABS? BEGIN\b|(THIS )?APPLIES TO ALL\b|"
-                        r"(FOR )?ALL SECTIONS\b)", re.I)
+                        r"(FOR )?ALL SECTIONS\b|MUST REGISTER (FOR )?BOTH\b)", re.I)
 #: Where a co-requisite clause starts. Co-requisites are read by
 #: app.domain.corequisites; this module leaves them alone.
 COREQ_MARKER = re.compile(

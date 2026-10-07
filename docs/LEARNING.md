@@ -7943,3 +7943,156 @@ re-verified".
 - Hypothetical reasoning: counterfactual queries against a rule engine
 - Search with unknown edge costs (unknown is not zero)
 - Mutation testing: measuring a test suite by the faults it catches
+
+---
+
+# Lesson 33: Sections Are Facts, Unknowns Are Not Free Time
+
+## What We Built
+
+A schedule engine that takes exact courses for one Rutgers term and returns
+section combinations that fit - every meeting checked, session dates
+respected, required lab records included, restrictions it cannot verify
+flagged instead of assumed - or a structured reason none exist. It never
+changes the course list and never touches registration.
+
+---
+
+## Concepts
+
+### Investigate before you model
+
+The brief assumed one registration index is one complete registration. The
+data agreed for 1,024 lecture-and-recitation sections - and disagreed for
+Physics 01:750:193, whose lab is a separate 0-credit record that a note says
+you must also register for. The brief assumed nothing about dates; Summer
+2026 publishes them on every section, and two M/W 6-10 PM classes in May-July
+and July do not conflict. Both facts came from reading the archive, not the
+specification.
+
+### "No meeting time" means four different things
+
+Asynchronous online work is genuinely free. A lecture with no posted time,
+research by arrangement, and a garbled time (11:30 PM to 12:50 PM) are
+unknowns. Treating them all as free produces schedules that collide on the
+first day; treating them all as conflicts hides real options. The engine
+names each, frees only the first, and ranks the rest last.
+
+### Unknown is a third answer, again
+
+A section open to "MAJ: 694" is not closed to a CS major: the student may
+have a 694 major or minor CoursePilot has never recorded. The honest answer
+is "needs confirmation", and the engine can only say "not satisfied" when it
+knows the student's attributes are complete - which today it never does.
+
+### Structure beats brute force
+
+Five large introductory courses have two billion section combinations.
+Forward checking (drop incompatible sections from later courses as soon as
+one is chosen), grouping identical sections, and a branch-and-bound bound on
+the ranking turned that into 142,816 search steps - and the bound is exact,
+which a brute-force comparison proves.
+
+### A closed section is still evidence
+
+Structural validity (fits, components, restrictions) and availability (open
+in a snapshot) are different questions. Keeping them apart lets a later
+phase say "your saved schedule is valid; one section just opened" without
+rebuilding anything - and stops an old download from posing as live data.
+
+---
+
+## Self-Check
+
+1. Why does choosing one index normally choose a lecture AND a recitation, and when does it not?
+2. Why are unknown session dates treated as overlapping rather than disjoint?
+3. Which meeting kinds are free time, and why is a TBA lecture not?
+4. Why is a restriction to another major UNKNOWN rather than NOT_SATISFIED?
+5. Why can the scheduler prune with the first four ranking components but not with gap minutes?
+6. Two requested courses are cross-listed. What does the engine refuse to do, and what does it leave to degree rules?
+7. Why does an archived open/closed flag not change the ranking?
+
+## Try It Yourself
+
+**A.** Make `dates_may_overlap` always return True and schedule 01:014:386 with 01:202:201 in Summer 2026.
+
+**B.** Remove the companion slot and schedule 01:750:193.
+
+**C.** Run `scripts/benchmark_schedules.py` and compare nodes with the Cartesian product.
+
+**D.** Request 01:830:101 with `"earliest_start": "22:00"` and read the blocker.
+
+## Further Learning
+
+- Constraint satisfaction: backtracking, forward checking, variable ordering
+- Branch and bound with monotone lower bounds
+- Allen's interval algebra and date-aware recurrence overlap
+- Data freshness and provenance labels in user-facing systems
+
+---
+
+# Lesson 34: A Lab Is Three Different Things
+
+## What We Built
+
+Proof, on real Rutgers records, that CoursePilot tells apart a lab that is a
+meeting of the same registration, a lab that is a second registration of the
+same course, and a lab that is a separate course with its own credits - and
+that none of them can be silently dropped from a plan or a schedule.
+
+---
+
+## Concepts
+
+### The same word, three relationships
+
+"Lab" in 01:119:117 is a meeting under one index. "Lab" in 01:750:193 is a
+0-credit second record you must also register for. "Lab" in 01:750:205 is a
+1-credit course that requires 01:750:203 in the same term. Each needs a
+different owner: the meeting model, the Schedule Engine, the eligibility
+engine. Merging any two produces a confident wrong answer.
+
+### Silence is the dangerous failure
+
+The worst bug found was not a wrong rule but a missing one: a co-requisite
+printed on 26 of 28 sections was stored nowhere, so eligibility said
+"satisfied". Errors that raise an alarm get fixed; errors that make the
+system quietly agree do not. The fix was not cleverness - it was refusing to
+turn "some sections say so" into "nobody says so".
+
+### Publishers make typos; parsers must meet them
+
+"CO-REQUSITE", "MU ST ALSO REGISTER", "03:61:103": the source is typed by
+people. A parser can accept an observed misspelling (evidence) without
+guessing at unobserved ones, and anything it still cannot read must become
+UNKNOWN rather than disappear.
+
+### Tests that touch more than one engine find more bugs
+
+The end-to-end test - plan a term, then schedule it - found two bugs that
+neither engine's own tests could: a second course record silently making a
+course unplannable, and a co-requisite partner crashing the planner.
+
+---
+
+## Self-Check
+
+1. Why does a 0-credit LB record never appear in a degree plan, while 01:750:205 does?
+2. A co-requisite appears on some sections only. Why is the course UNKNOWN rather than UNSATISFIED or SATISFIED?
+3. Why must a registration phrase name a course code before it becomes a co-requisite?
+4. Why is a meeting time written only in a section note treated as unverified rather than parsed?
+5. Which failure is worse: a schedule without its required lab, or no schedule at all? Why?
+
+## Try It Yourself
+
+**A.** Run `scripts/inject_component_failures.py C2` and read which test notices the old behaviour.
+
+**B.** Request 01:750:205 alone, then with 01:750:203, and compare `relationships`.
+
+**C.** Schedule Summer 2026 01:160:308 and read `meeting_text_in_notes`.
+
+## Further Learning
+
+- Data provenance and evidence-based modeling
+- Open-world vs closed-world assumptions in rule systems
+- Integration testing across service boundaries

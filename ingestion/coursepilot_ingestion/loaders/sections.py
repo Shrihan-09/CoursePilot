@@ -26,7 +26,7 @@ would invent a Rutgers record, which is exactly what this project forbids.
 
 Sections upsert on their natural key `(term_code, index_number)`.
 
-Child rows (meetings, instructors, cross-listings) are **replaced** rather than
+Child rows (meetings, instructors, cross-listings, restrictions) are **replaced** rather than
 upserted: they are wholly derived from the parent payload, they have no
 source-provided identity beyond their position, and a section's meeting list
 can legitimately shrink between terms. Replacing guarantees the stored set
@@ -47,11 +47,15 @@ from app.models import (
     SectionCrossListing,
     SectionInstructor,
     SectionMeeting,
+    SectionRestriction,
 )
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from coursepilot_ingestion.section_schemas import NormalizedSection, SectionIngestionStats
+from coursepilot_ingestion.section_schemas import (
+    NormalizedSection,
+    SectionIngestionStats,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +81,9 @@ _MUTABLE_SECTION_FIELDS = (
     "special_permission_drop_code",
     "special_permission_drop_description",
     "cross_listed_section_type",
+    "session_dates_raw",
+    "session_start_date",
+    "session_end_date",
 )
 
 
@@ -118,7 +125,8 @@ class SectionLoader:
         # Explicit DELETE rather than relying on cascade-on-orphan: this runs
         # as a single statement per child table instead of loading every
         # existing child into the session first.
-        for model in (SectionMeeting, SectionInstructor, SectionCrossListing):
+        for model in (SectionMeeting, SectionInstructor, SectionCrossListing,
+                      SectionRestriction):
             self.session.execute(delete(model).where(model.section_id == section.id))
 
         for m in normalized.meetings:
@@ -165,6 +173,18 @@ class SectionLoader:
                 )
             )
         stats.cross_listings_written += len(normalized.cross_listings)
+
+        for r in normalized.restrictions:
+            self.session.add(
+                SectionRestriction(
+                    section_id=section.id,
+                    ordinal=r.ordinal,
+                    kind=r.kind,
+                    code=r.code,
+                    unit_code=r.unit_code,
+                )
+            )
+        stats.restrictions_written += len(normalized.restrictions)
 
     # ------------------------------------------------------------------ #
     # sections
@@ -230,6 +250,9 @@ class SectionLoader:
             special_permission_drop_code=normalized.special_permission_drop_code,
             special_permission_drop_description=normalized.special_permission_drop_description,
             cross_listed_section_type=normalized.cross_listed_section_type,
+            session_dates_raw=normalized.session_dates_raw,
+            session_start_date=normalized.session_start_date,
+            session_end_date=normalized.session_end_date,
             source_id=source_id,
         )
         self.session.add(section)

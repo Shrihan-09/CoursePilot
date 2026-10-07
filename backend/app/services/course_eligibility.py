@@ -48,6 +48,7 @@ from app.models import Course, CourseCorequisite, Student
 from app.services.prerequisites import (
     PrerequisiteCheck,
     attempts_by_course,
+    base_record_rows,
     check_many,
     with_projected,
 )
@@ -100,6 +101,14 @@ def _corequisite(rows: list[CourseCorequisite], history, term_code: str,
     expr = from_json(row.expression)
     evidence = evaluate(expr, history, term_code=term_code, proposed=proposed,
                         grade_condition=grade_condition)
+    status, reasons = evidence.status, list(evidence.unknown_reasons)
+    if row.source_field == "sectionNotes:some" and status is PrereqStatus.UNSATISFIED:
+        # Phase 6.6.1: Rutgers publishes this co-requisite on SOME sections
+        # only. Unmet, it binds the student in those sections and not in the
+        # others - which is not "unsatisfied" for the course, and never
+        # "satisfied": UNKNOWN, with the reason.
+        status = PrereqStatus.UNKNOWN
+        reasons.append("corequisite_on_some_sections")
     leaves = []
 
     def walk(e):
@@ -111,10 +120,10 @@ def _corequisite(rows: list[CourseCorequisite], history, term_code: str,
     walk(expr)
     relaxes = bool(leaves) and all(leaf.prior_allowed is True for leaf in leaves) and (
         {leaf.course_key for leaf in leaves} == prerequisite_courses)
-    return CorequisiteCheck(True, evidence.status, raw_text=row.raw_text,
+    return CorequisiteCheck(True, status, raw_text=row.raw_text,
                             source_field=row.source_field, classification=row.classification,
                             canonical_text=row.canonical_text, evidence=evidence,
-                            relaxes_prerequisite=relaxes, reasons=list(evidence.unknown_reasons))
+                            relaxes_prerequisite=relaxes, reasons=reasons)
 
 
 def check_proposal(session: Session, student: Student, course_keys_: list[str], term_code: str,
@@ -145,13 +154,11 @@ def check_proposal(session: Session, student: Student, course_keys_: list[str], 
     prerequisites = check_many(session, student, course_keys_, term_code, projected=projected)
     history = with_projected(attempts_by_course(session, student), projected)
     evaluation_term = as_of_term or term_code
-    coreq_rows: dict[str, list[CourseCorequisite]] = {}
-    for key, row in session.execute(
-        select(Course.course_string, CourseCorequisite)
+    coreq_rows: dict[str, list[CourseCorequisite]] = base_record_rows(session.execute(
+        select(Course.course_string, Course.supplement_code, CourseCorequisite)
         .join(Course, Course.id == CourseCorequisite.course_id)
         .where(Course.course_string.in_(course_keys_), CourseCorequisite.term_code == term_code)
-    ).all():
-        coreq_rows.setdefault(key, []).append(row)
+    ).all())
 
     out: dict[str, EligibilityCheck] = {}
     for key in course_keys_:

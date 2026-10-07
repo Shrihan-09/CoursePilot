@@ -12,12 +12,14 @@ from __future__ import annotations
 import html
 import logging
 import re
+from datetime import date
 
 from coursepilot_ingestion.parsers.sections import ParentCourseRef
 from coursepilot_ingestion.section_schemas import (
     NormalizedCrossListing,
     NormalizedInstructor,
     NormalizedMeeting,
+    NormalizedRestriction,
     NormalizedSection,
     RawSocMeetingTime,
     RawSocSection,
@@ -48,6 +50,59 @@ def _blank_to_none(value: str | None) -> str | None:
     if value is None:
         return None
     return value.strip() or None
+
+
+_SESSION_RE = re.compile(r"^(\d{2})/(\d{2})/(\d{4})\s*-\s*(\d{2})/(\d{2})/(\d{4})$")
+
+
+def parse_session_dates(raw: str | None) -> tuple[date | None, date | None]:
+    """'05/26/2026 - 07/02/2026' -> two dates; anything else -> (None, None).
+
+    The only shape observed (1,698 of 1,698 Summer 2026 sections). A string
+    that does not parse exactly - or whose end precedes its start - yields no
+    dates rather than a guess; the raw text is stored either way.
+    """
+    if not raw:
+        return None, None
+    m = _SESSION_RE.match(raw.strip())
+    if not m:
+        return None, None
+    try:
+        start = date(int(m.group(3)), int(m.group(1)), int(m.group(2)))
+        end = date(int(m.group(6)), int(m.group(4)), int(m.group(5)))
+    except ValueError:
+        return None, None
+    return (start, end) if start <= end else (None, None)
+
+
+def _restrictions(raw: RawSocSection) -> list[NormalizedRestriction]:
+    """SOC's four "open to" lists, in source order.
+
+    `majors` entries carry isUnitCode / isMajorCode: a unit entry ("14")
+    means students of that school (openToText "UNIT: 14 (School of
+    Engineering)"); a major entry is a major code. An entry that is neither,
+    or has no code, is skipped - never guessed.
+    """
+    out: list[NormalizedRestriction] = []
+
+    def add(kind: str, code: object, unit: object = None) -> None:
+        code = str(code or "").strip()
+        if code:
+            out.append(NormalizedRestriction(ordinal=len(out), kind=kind, code=code,
+                                             unit_code=str(unit).strip() if unit else None))
+
+    for m in raw.majors:
+        if m.get("isUnitCode"):
+            add("unit", m.get("code"))
+        elif m.get("isMajorCode"):
+            add("major", m.get("code"))
+    for m in raw.minors:
+        add("minor", m.get("code"))
+    for m in raw.unitMajors:
+        add("unit_major", m.get("majorCode"), m.get("unitCode"))
+    for m in raw.honorPrograms:
+        add("honor_program", m.get("code"))
+    return out
 
 
 class SocSectionNormalizer:
@@ -108,6 +163,8 @@ class SocSectionNormalizer:
                 )
             )
 
+        session_start, session_end = parse_session_dates(raw.sessionDates)
+
         return NormalizedSection(
             term_code=self.term_code,
             index_number=raw.index.strip(),
@@ -141,7 +198,11 @@ class SocSectionNormalizer:
             special_permission_drop_code=_blank_to_none(raw.specialPermissionDropCode),
             special_permission_drop_description=_clean(raw.specialPermissionDropCodeDescription),
             cross_listed_section_type=_blank_to_none(raw.crossListedSectionType),
+            session_dates_raw=_blank_to_none(raw.sessionDates),
+            session_start_date=session_start,
+            session_end_date=session_end,
             meetings=meetings,
             instructors=instructors,
             cross_listings=cross_listings,
+            restrictions=_restrictions(raw),
         )

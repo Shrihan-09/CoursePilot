@@ -7459,3 +7459,206 @@ passed (candidates are evaluated before any same-term pick) and candidate
 pools from other versions (the Degree Engine credits them nowhere). An
 independent oracle in the tests re-checks every placed course with
 `check_proposal` against strictly earlier terms only.
+
+## 41. Deterministic section scheduling (Phase 6.6)
+
+```
+Planning Engine   "which courses, which term?"         app.services.planning    (6.5)
+Schedule Engine   "which sections of THOSE courses?"   app.services.scheduling  (6.6)
+```
+
+`POST /api/v1/student/schedules/generate` takes a term, exact course codes,
+optional preferences and `max_results` (1-25, default 10), and returns ranked
+section combinations - or a structured reason there are none. It never
+chooses, adds, drops or substitutes a course (an architecture test forbids
+it from importing the planning or audit packages), never registers or
+touches WebReg, writes nothing, and calls no LLM.
+
+Investigation and real examples: `docs/investigations/phase-6-6-soc-scheduling-semantics.md`.
+
+### 41.1 Schema (migration `87bec76b788c`)
+
+* `course_section.session_dates_raw / session_start_date / session_end_date`
+  (+ CHECK start <= end) - SOC `sessionDates`, published on all 1,698 Summer
+  2026 sections and on no Fall/Spring section. Dates are NULL unless the
+  text parses exactly.
+* `section_restriction(section_id, ordinal, kind, code, unit_code)` - SOC's
+  structured "open to" lists; `kind` in major / unit / minor / unit_major /
+  honor_program. Previously only the `openToText` prose was kept.
+
+Backfilled by re-running the idempotent section pipeline over the archived
+payloads: 19,033 restriction rows, 1,698 dated sections, no other row changed;
+a second run inserted and updated nothing.
+
+### 41.2 Meetings
+
+| row | kind | conflicts |
+|---|---|---|
+| day + military start/end, end > start | timed | interval overlap |
+| no time, `ONLINE INSTRUCTION(INTERNET)` | asynchronous | never |
+| no time, class mode (LEC/RECIT/LAB...) | tba | unknown |
+| no time, other modes (RSCH-MA, PROJ-IND...) | arranged | unknown |
+| unusable time (07:966:333 `2330-1250`) | malformed | unknown |
+
+Unknown is never free time: such a section makes `time_verified = false`,
+adds `SCHEDULE_TIME_UNKNOWN`, and ranks after verified ones.
+
+Conflict: same weekday, date ranges that may overlap, and
+`start_A < end_B + buffer and start_B < end_A + buffer` over EVERY meeting of
+both sections. Back-to-back (end == start) is not a conflict; `buffer` is the
+student's `minimum_minutes_between_classes` (default 0). Unknown dates are
+assumed to overlap - they can add a conflict, never hide one.
+
+### 41.3 Components, restrictions, availability, cross-listing
+
+* A registration index bundles its lecture and recitation rows. A
+  REQUIRED COMPANION record (same course string, supplement code, 0 credits,
+  and a note saying both are required - 01:750:193/194 "LB") becomes a second
+  slot of the same course; anything less explicit is reported
+  `LINKED_COMPONENT_UNVERIFIED`, never bundled.
+* Restrictions: SATISFIED when the student's declared major, school unit
+  (SAS = "01", as SOC pairs them) or unit/major pair is listed; otherwise
+  UNKNOWN, because CoursePilot records no minors, second majors, honors or
+  class standing. Special permission and uninterpreted eligibility prose are
+  UNKNOWN too. NOT_SATISFIED requires attributes declared complete (none are
+  today) and is a hard exclusion. UNKNOWN is scheduled only with a
+  needs-confirmation issue and ranks after verified sections.
+* Availability is a separate field: open/closed from a SOC download, labelled
+  `archived_snapshot` with its timestamp and source hash. A closed section
+  still proves a schedule exists; an archived snapshot does not reorder
+  options (`closed_sections_if_live` counts only live data, which no source
+  provides yet).
+* A section is never chosen with an index from its own cross-listing
+  (01:013:120 10052 <-> 01:074:120 10053: one class, two codes).
+
+### 41.4 Course eligibility
+
+`check_proposal` (Phase 6.4) is always called for the requested set (a
+same-term proposal, so co-requisites among them count). UNSATISFIED ->
+`COURSE_ELIGIBILITY_FAILED`, no options; UNKNOWN -> needs-confirmation
+issue. No prerequisite logic lives in the scheduler.
+
+### 41.5 Search and ranking
+
+Constraint satisfaction: one slot per requested course (and companion);
+domains filtered by the hard window, avoided days and failed restrictions;
+sections with identical meetings, dates, campus, restriction evidence and
+cross-listing are grouped (searched once, the others listed as
+`equivalent_sections`). Backtracking with forward checking, slots ordered
+most-constrained first, memoized pair compatibility.
+
+Ranking, lexicographic: needs-confirmation sections, unknown-time sections,
+preferred-campus misses (soft), class days, gap minutes, closed sections (live
+only), index numbers. The first four only grow as sections are added, so the
+search keeps the top `max_results` by branch and bound - verified against
+brute force in tests. Limits: 8 courses, 200,000 nodes; a stopped search says
+`SEARCH_LIMIT_REACHED`, never "no schedule".
+
+### 41.6 Unschedulable results
+
+`TERM_SCHEDULE_NOT_PUBLISHED` (no section data - earlier terms are never
+borrowed), `COURSE_NOT_OFFERED` / `COURSE_NOT_IN_PARTIAL_TERM_DATA`,
+`NO_SECTIONS`, `USER_CONSTRAINTS_EXCLUDE_ALL_SECTIONS`,
+`SECTION_RESTRICTION_NOT_SATISFIED`, `ALL_SECTIONS_CONFLICT` (the course pair
+with no compatible sections), `NO_COMPATIBLE_COMBINATION` (3+ courses), and
+`USER_CONSTRAINTS_TOO_STRICT` naming which of the student's own constraints
+block on their own - reported, never relaxed.
+
+### 41.7 Measured (development data, Fall 2026, 15 runs)
+
+`scripts/benchmark_schedules.py`:
+
+| case | sections | Cartesian | nodes | full p50 / p95 | SQL |
+|---|---|---|---|---|---|
+| 3 courses | 2-9 | 108 | 74 | 31 / 41 ms | 13 |
+| 4 courses + lab companion | 2-9 | 8,748 | 1,491 | 34 / 52 ms | 13 |
+| 5 courses | 1-22 | 1,980 | 285 | 28 / 35 ms | 13 |
+| 5 courses, 1-hour break | 1-22 | 1,980 | 65 | 26 / 29 ms | 13 |
+| 5 largest courses (engine) | 59-109 | 2,012,800,104 | 142,816 | load 288 + search 373 ms | 7 |
+
+Statement count is independent of section count (batched loading); every run
+byte-identical. Failure injection (`scripts/inject_schedule_failures.py`):
+16 of 16 faults detected (A-P).
+
+## 42. Labs, recitations, workshops and linked components (Phase 6.6.1)
+
+Evidence: `docs/investigations/phase-6-6-1-linked-component-semantics.md`.
+
+### 42.1 Three relationships, three owners
+
+| relationship | example (real) | owner | what it produces |
+|---|---|---|---|
+| MEETING - "index A has lecture + recitation meetings" | 01:750:203 index 13386: T/F LEC + M RECIT; 01:119:115: LEC + WORKSHOP | section meeting model | one `SectionChoice`, `meeting_components: ["LEC","RECIT"]`; every row conflict-checked |
+| REGISTRATION - "course X requires indexes A + B" | 01:750:193/194/202 + 0-credit `LB` record ("MUST REGISTER [FOR] BOTH ...") | Schedule Engine | a bundle: `primary` + `required_companion` choice, `component_evidence` (verbatim note), relationship `registration_component` |
+| ACADEMIC - "course X requires course Y concurrently" | 01:750:205 -> 01:750:203; 01:750:229 -> 01:750:227; 01:119:117 -> 01:119:116 | Phase 6.4 eligibility (`check_proposal`) | Y must be requested too; relationship `academic_corequisite`; the Planning Engine places X and Y in the same term |
+
+The Planning Engine plans COURSES (01:750:194 once, 4 credits); the
+Schedule Engine expands a course into its registration bundle (lecture +
+LB lab). A 0-credit registration record never becomes a planned course and
+never adds credits; a separate lab course (01:750:205, 1 credit) is a course
+with its own credits.
+
+### 42.2 What changed
+
+* Co-requisite parser v2 (`app.domain.corequisites.normalize_forms`):
+  "X IS A CO-REQUISITE", Rutgers' "CO-REQUSITE", "MUST [ALSO] REGISTER FOR
+  [LAB|LECTURE] <course>" and "AUTO-REGISTERED FOR <course>" are read. A
+  registration phrase must name a course; "MUST REGISTER FOR BOTH REC AND LAB"
+  names none and stays a REGISTRATION fact.
+* A co-requisite on SOME sections (60 offerings - before, nothing was stored
+  and eligibility said SATISFIED) is stored with `source_field =
+  "sectionNotes:some"` and "published on N of M sections" in `parse_detail`.
+  Unmet, it evaluates UNKNOWN (`corequisite_on_some_sections`), never
+  SATISFIED; with Y proposed it is SATISFIED. No schema change.
+* Eligibility reads a course's BASE record (supplement "") when it has one:
+  the LB record's prerequisite row no longer makes the course UNKNOWN.
+* Condition parser v2: "MUST REGISTER [FOR] BOTH" after a restated
+  prerequisite is registration logistics (the Schedule Engine enforces it).
+* Schedule Engine 6.6.1: companion evidence from either record and the
+  observed wordings (still requires same course string + supplement code + 0
+  credits); a section whose note states a meeting time RANGE is
+  `time_verified = false` with `MEETING_TIME_IN_NOTES` (Summer 01:160:308:
+  "RECIT: TWH 8:00-8:50AM" exists only in prose); a note naming a section of
+  another requested course raises `SECTION_NOTE_REFERENCES_REQUESTED_COURSE`;
+  `credits`, `total_credits`, `meeting_components`, `component_evidence`,
+  `meeting_text_in_notes` and result-level `relationships`.
+* Planning Engine: a course whose co-requisite is unknown only because it is
+  partial is tried with its partner; a partner that serves no requirement no
+  longer crashes the planner.
+
+### 42.3 Unknown behaviour
+
+| situation | result |
+|---|---|
+| a second record exists, no explicit "both" statement | not bundled; `LINKED_COMPONENT_UNVERIFIED` + relationship `registration_component_unverified` |
+| verified required component cannot fit | blocker naming both slots (`ALL_SECTIONS_CONFLICT`, `01:750:193#LB`) - never a schedule without it |
+| co-requisite on some sections, partner not requested | course eligibility UNKNOWN, needs confirmation |
+| co-requisite text CoursePilot cannot read (ROTC "... F 8:00AM - 1:00PM", "01:563:1 31") | stored `unsupported`: UNKNOWN |
+| meeting time only in prose | `time_verified = false`, ranked after verified, never "conflict-free" |
+| section pairing only in prose | needs confirmation; no compatibility invented |
+
+No SOC field links one index to another or one course to another; no
+machine-readable lecture/lab pairing and no optional lab exists in the
+archive, so none is modelled.
+
+### 42.4 Live data
+
+The bundle is rebuilt from the current section rows on every request; a
+section, component, meeting or restriction that changes is picked up with no
+engine change. Availability stays a separate field.
+
+### 42.5 Backfill
+
+Re-run the course stage (it carries the prerequisite/co-requisite loader) for
+each archived term, then nothing else - no migration:
+
+```bash
+cd ingestion
+for yt in "2025 9" "2026 1" "2026 7" "2026 9" "2027 0"; do set -- $yt
+  ../backend/.venv/Scripts/python.exe -m coursepilot_ingestion.cli --year $1 --term $2 \
+    --campus NB --all --stage courses --cache-dir ../data/raw --database-url "<url>"
+done
+```
+
+Development data after it: `sectionNotes:some` 73 rows (32 parsed, 41
+unsupported), `sectionNotes:all` 198 (was 171); a second run changed nothing.
