@@ -171,7 +171,9 @@ class CourseCorequisite(Base, TimestampMixin):
 
     # --- what Rutgers published ---
     raw_text: Mapped[str] = mapped_column(Text)
-    source_field: Mapped[str] = mapped_column(String(24))      # courseNotes | sectionNotes:all
+    # courseNotes | sectionNotes:all | sectionNotes:some (Phase 6.6.1: on
+    # SOME sections only - unmet, it is UNKNOWN, never SATISFIED)
+    source_field: Mapped[str] = mapped_column(String(24))
     # --- how CoursePilot interpreted it ---
     classification: Mapped[str] = mapped_column(String(24))
     expression: Mapped[dict | None] = mapped_column(JSON(none_as_null=True))

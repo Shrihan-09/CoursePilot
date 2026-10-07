@@ -41,6 +41,9 @@ is (re-)resolved to a `course` row when one exists.
     offering) from `courseNotes`, or from section notes when EVERY section
     yields the same parsed rule. Re-running is idempotent; a co-requisite that
     disappears is removed.
+  * Phase 6.6.1: a co-requisite on SOME sections only is stored too, as
+    `sectionNotes:some` with "published on N of M sections" in parse_detail
+    (before, nothing was stored and eligibility said SATISFIED).
 """
 
 from __future__ import annotations
@@ -49,7 +52,7 @@ import hashlib
 import logging
 
 from app.domain.conditions import CONDITION_PARSER_VERSION, clean, interpret
-from app.domain.corequisites import COREQUISITE_PARSER_VERSION, parse_note
+from app.domain.corequisites import COREQUISITE_PARSER_VERSION, CoreqParse, parse_note
 from app.domain.prerequisites import (
     PARSER_VERSION,
     COURSE_KEY,
@@ -216,6 +219,7 @@ class PrerequisiteLoader:
                           current, counts) -> None:
         """Upsert / remove the offering's co-requisite (Phase 6.4)."""
         parsed = [(p, "courseNotes", course_note) for p in parse_note(course_note, resolve)]
+        coverage = None
         if not parsed and section_texts:
             per_section = [parse_note(t, resolve) for t in section_texts]
             canon = {tuple((p.classification, p.canonical_text or "") for p in parses)
@@ -223,6 +227,26 @@ class PrerequisiteLoader:
             if len(canon) == 1 and per_section[0]:
                 texts = sorted({clean(t) for t in section_texts if t})
                 parsed = [(p, "sectionNotes:all", " || ".join(texts)) for p in per_section[0]]
+            else:
+                # Phase 6.6.1: a co-requisite published on SOME sections only
+                # (60 offerings across the archive, e.g. 01:750:229 on 26 of
+                # 28 sections) used to store nothing - eligibility then said
+                # SATISFIED. It is stored as "sectionNotes:some": met when the
+                # co-requisite is, UNKNOWN otherwise (never SATISFIED).
+                marked = [(t, ps) for t, ps in zip(section_texts, per_section, strict=True)
+                          if ps]
+                if marked:
+                    coverage = f"published on {len(marked)} of {len(section_texts)} sections"
+                    sigs = {tuple((p.classification, p.canonical_text or "") for p in ps)
+                            for _, ps in marked}
+                    texts = " || ".join(sorted({clean(t) for t, _ in marked}))
+                    if len(sigs) == 1:
+                        parsed = [(p, "sectionNotes:some", texts) for p in marked[0][1]]
+                    else:
+                        first = marked[0][1][0]
+                        parsed = [(CoreqParse(first.kind, "unsupported", None, (),
+                                              "sections publish different co-requisites"),
+                                   "sectionNotes:some", texts)]
         if not parsed:
             if current is not None:
                 self.session.delete(current)
@@ -246,7 +270,8 @@ class PrerequisiteLoader:
             "raw_text": parsed[0][2], "source_field": parsed[0][1],
             "classification": classification,
             "expression": to_json(expr) if expr is not None else None,
-            "canonical_text": canonical, "parse_detail": detail,
+            "canonical_text": canonical,
+            "parse_detail": "; ".join(x for x in (coverage, detail) if x) or None,
             "parser_version": COREQUISITE_PARSER_VERSION, "source_id": source.id,
         }
         if current is None:

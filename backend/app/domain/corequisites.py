@@ -12,6 +12,24 @@ evaluated against completed courses PLUS a proposed term's courses
 | "CO-REQ: 119:116", "COREQ: 640:111 OR 115" | `co` | UNKNOWN - Rutgers does not say whether earlier completion suffices | satisfies |
 | "THIS COURSE MUST BE TAKEN CONCURRENTLY WITH ONE OF THE FOLLOWING COURSES: 07:700:210, 381, 382, OR 384" | `concurrent_only` | does not satisfy ("must be taken concurrently") | satisfies |
 
+Phase 6.6.1 - forms that were silently missed, rewritten to the canonical
+"COREQ: <codes>" before parsing (only inside this module; prerequisite
+condition reading is unchanged):
+
+| published | read as |
+|---|---|
+| "01:750:227 IS A CO-REQUSITE" (Rutgers' spelling, 01:750:229) | `co` |
+| "01:750:203 IS A CO-REQUISITE" (01:750:205) | `co` |
+| "MUST REGISTER FOR LAB 03:691:103", "STUDENTS MU ST ALSO REGISTER FOR 01:078:117" | `co` |
+| "STUDENTS AUTO-REGISTERED FOR 01:160:101:E1 (RECITATION)" | `co`, unsupported |
+
+(The registration rows are same-term registration in ANOTHER course; the
+auto-registration names a section, not a course, so it stays unsupported.)
+
+A registration phrase must name a course code; "MUST REGISTER FOR BOTH REC
+AND LAB SECTION" names none - that is a REGISTRATION component of the same
+course and belongs to the Schedule Engine (app.services.scheduling).
+
 Course lists use OR / commas; a bare number inherits the subject of the code
 before it ("640:111 OR 115"). "OR PERM. OF DEPT." / "INSTRUCTOR PERMISSION"
 become an alternative CoursePilot cannot check (UNKNOWN). Not interpreted, and
@@ -36,7 +54,7 @@ from app.domain.prerequisites import (
     to_text,
 )
 
-COREQUISITE_PARSER_VERSION = "1"
+COREQUISITE_PARSER_VERSION = "2"
 
 _MARKER = COREQ_MARKER
 _ADVICE_BEFORE = re.compile(r"RECOMMENDED(\s+AS)?(\s+AN?)?\s*$", re.I)
@@ -60,9 +78,25 @@ class CoreqParse:
         return None if self.expression is None else to_text(self.expression)
 
 
+_MISSPELLED = re.compile(r"\bCO-?\s?REQUSITES?\b", re.I)
+_IS_A = re.compile(r"((?:\d{2}:)?\d{3}:\d{3})\s+(?:IS|ARE)\s+(?:A\s+)?"
+                   r"CO-?\s?REQ(?:UISITE)?S?\b", re.I)
+_REGISTER = re.compile(r"\b(?:MUST\s+(?:ALSO\s+)?|ALSO\s+|AUTO-?)REG\s?ISTER(?:ED)?\s+"
+                       r"(?:FOR\s+)?(?:(?:THE\s+)?(?:LAB|LECTURE|RECITATION)\s+)?(?=\d)", re.I)
+
+
+def normalize_forms(text: str | None) -> str | None:
+    """Rewrite the Phase 6.6.1 forms to "COREQ: <codes>" (see the module doc)."""
+    if not text:
+        return text
+    text = _MISSPELLED.sub("CO-REQUISITE", text)
+    text = _IS_A.sub(lambda m: f"COREQ: {m.group(1)}", text)
+    return _REGISTER.sub("COREQ: ", text)
+
+
 def find_clauses(text: str | None) -> list[tuple[str, str]]:
     """(kind, body) for every co-requisite marker in a note."""
-    t = clean(text)
+    t = clean(normalize_forms(text))
     if not t or not _MARKER.search(t):
         return []
     out = []
@@ -105,5 +139,5 @@ def parse_note(text: str | None, resolve: Resolve) -> list[CoreqParse]:
     return [parse_clause(kind, body, resolve) for kind, body in find_clauses(text)]
 
 
-__all__ = ["COREQUISITE_PARSER_VERSION", "CoreqParse", "find_clauses", "parse_clause",
-           "parse_note"]
+__all__ = ["COREQUISITE_PARSER_VERSION", "CoreqParse", "find_clauses", "normalize_forms",
+           "parse_clause", "parse_note"]
