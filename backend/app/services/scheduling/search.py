@@ -25,9 +25,10 @@ Depth-first backtracking with forward checking:
 ## Ranked search (branch and bound)
 
 With `keep=K` and a `full_key`, only the K smallest complete assignments
-are kept. The first four ranking components (needs-confirmation sections,
-unknown-time sections, preference misses, class days) can only grow as
-sections are added, so each Candidate carries its contribution and a
+are kept. The leading ranking components (needs-confirmation sections,
+unknown-time sections, closed / unknown-availability sections when
+availability is current, preference misses - then class days) can only grow
+as sections are added, so each Candidate carries its contribution and a
 partial assignment whose prefix is already STRICTLY worse than the K-th
 kept key is pruned - no completion of it could enter the top K. The
 result is exact for the objective; only the node limit can cut it short,
@@ -44,6 +45,7 @@ exists" is never reported when the search was stopped.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from operator import add
 
 from app.domain.schedule import MeetingInterval
 from app.services.scheduling.meetings import sections_conflict
@@ -57,8 +59,9 @@ class Candidate:
     index: str
     meetings: tuple[MeetingInterval, ...]
     cross_listed: frozenset[str] = frozenset()
-    #: Monotone ranking contributions: (needs_confirmation, unknown_time, preference_miss)
-    weight: tuple[int, int, int] = (0, 0, 0)
+    #: Monotone ranking contributions, in objective order (the engine decides
+    #: which; any length) - class days are appended by `prefix`.
+    weight: tuple[int, ...] = (0, 0, 0)
     days: frozenset[str] = frozenset()
 
 
@@ -98,13 +101,11 @@ def order_slots(domains: dict[str, list[Candidate]]) -> list[str]:
     return sorted(domains, key=lambda s: (len(domains[s]), -timed(s), s))
 
 
-def prefix(chosen) -> tuple[int, int, int, int]:
-    days: set[str] = set()
-    a = b = c = 0
-    for x in chosen:
-        a, b, c = a + x.weight[0], b + x.weight[1], c + x.weight[2]
-        days |= x.days
-    return a, b, c, len(days)
+def prefix(chosen) -> tuple[int, ...]:
+    """Element-wise sum of the weights, then the number of class days.
+    (The search keeps these running sums incrementally; this is the definition.)"""
+    sums = tuple(map(sum, zip(*(x.weight for x in chosen), strict=True)))
+    return (*sums, len(set().union(*(x.days for x in chosen))))
 
 
 def search(domains: dict[str, list[Candidate]], *, buffer: int = 0, node_limit: int = 200_000,
@@ -113,7 +114,7 @@ def search(domains: dict[str, list[Candidate]], *, buffer: int = 0, node_limit: 
     """Consistent assignments in deterministic order.
 
     Without `keep`: every one, up to `solution_limit`. With `keep` and
-    `full_key(tuple) -> tuple` (whose first four elements are `prefix`):
+    `full_key(tuple) -> tuple` (whose leading elements are `prefix`):
     the `keep` smallest by that key, found by branch and bound.
     """
     out = SearchOutcome(slot_order=order_slots(domains))
@@ -123,7 +124,8 @@ def search(domains: dict[str, list[Candidate]], *, buffer: int = 0, node_limit: 
     order = out.slot_order
     best: list[tuple[tuple, tuple[Candidate, ...]]] = []
 
-    def dfs(depth: int, chosen: list[Candidate], remaining: dict[str, list[Candidate]]) -> bool:
+    def dfs(depth: int, chosen: list[Candidate], remaining: dict[str, list[Candidate]],
+            sums: tuple[int, ...], days: frozenset[str]) -> bool:
         if depth == len(order):
             out.complete_seen += 1
             if keep is None:
@@ -141,10 +143,13 @@ def search(domains: dict[str, list[Candidate]], *, buffer: int = 0, node_limit: 
             if out.nodes > node_limit:
                 out.limit_reached = True
                 return False
-            if (keep is not None and len(best) == keep
-                    and prefix([*chosen, cand]) > best[-1][0][:4]):
-                out.bound_pruned += 1
-                continue
+            next_sums = tuple(map(add, sums, cand.weight))
+            next_days = days | cand.days
+            if keep is not None and len(best) == keep:
+                bound = (*next_sums, len(next_days))         # == prefix([*chosen, cand])
+                if bound > best[-1][0][:len(bound)]:
+                    out.bound_pruned += 1
+                    continue
             filtered: dict[str, list[Candidate]] = {}
             dead = False
             for later in order[depth + 1:]:
@@ -156,14 +161,27 @@ def search(domains: dict[str, list[Candidate]], *, buffer: int = 0, node_limit: 
             if dead:
                 out.pruned += 1
                 continue
+            if keep is not None and len(best) == keep and filtered:
+                # Lookahead: every remaining slot adds at least its cheapest
+                # still-compatible candidate's weight, component by component.
+                # A component-wise lower bound is a lexicographic one, so the
+                # pruning stays exact.
+                least = next_sums
+                for fits in filtered.values():
+                    least = tuple(map(add, least,
+                                      map(min, zip(*(c.weight for c in fits), strict=True))))
+                if (*least, len(next_days)) > best[-1][0][:len(least) + 1]:
+                    out.bound_pruned += 1
+                    continue
             chosen.append(cand)
-            go_on = dfs(depth + 1, chosen, filtered)
+            go_on = dfs(depth + 1, chosen, filtered, next_sums, next_days)
             chosen.pop()
             if not go_on:
                 return False
         return True
 
-    finished = dfs(0, [], {s: domains[s] for s in order})
+    width = len(domains[order[0]][0].weight) if order else 0
+    finished = dfs(0, [], {s: domains[s] for s in order}, (0,) * width, frozenset())
     if keep is not None:
         out.solutions = [sol for _, sol in best]
     elif not finished and len(out.solutions) >= solution_limit:

@@ -10,9 +10,16 @@ Body, and nothing else:
 { "term": "20269",
   "courses": ["01:198:344", "01:640:300"],
   "preferences": { "earliest_start": "10:00", "latest_end": null, "avoid_days": ["F"],
-                   "minimum_minutes_between_classes": 0, "preferred_campuses": ["BUS"] },
+                   "minimum_minutes_between_classes": 0, "preferred_campuses": ["BUS"],
+                   "availability": "prefer_open" },
   "max_results": 10 }
 ```
+
+`preferences.availability` (Phase 6.7): "prefer_open" (default - closed
+sections are shown and, with current availability, ranked after open ones)
+or "require_open" (only sections open as of a current observation). Each
+option carries `availability` per registration bundle with its state,
+freshness and "as of" time; nothing is fetched from Rutgers per request.
 
 `courses` is exactly what to schedule - one term of a Phase 6.5 plan, or the
 student's own selection; the HTTP layer does not depend on planner objects.
