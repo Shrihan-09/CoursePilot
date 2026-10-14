@@ -8214,3 +8214,135 @@ them gives up exactness:
 - Slowly changing data: snapshots, change logs and event sourcing
 - Cache freshness and HTTP `Cache-Control`
 - Admissible bounds in branch-and-bound search
+
+---
+
+# Lesson 36: Ten Thousand Watchers, One Request
+
+## What We Built
+
+A student can ask CoursePilot to watch a section. The server keeps that
+promise with the browser closed: the one availability refresh per term (6.7)
+records each section that goes from closed to open. A processor then turns
+each such change into one durable event per watcher. The events are stored,
+never sent; sending them is a later phase.
+
+---
+
+## Concepts
+
+### Global polling, not per-user polling
+
+If each watch polled Rutgers, 10,000 students watching sections would mean
+10,000 requests per cycle for the same 96 KB list. Rutgers already publishes
+the whole term in that one list. So CoursePilot asks once and lets the
+database do the fan-out: "which active watches point at a section that just
+opened?" is a join, not a request. User count changes how many rows are
+written, never how many times Rutgers is asked.
+
+### Observations, transitions, watches, events
+
+Four different things, kept in four places:
+
+- **Observation:** "13385 was closed at 02:29."
+- **Transition:** "13385 went from closed to open at 02:31." This is
+  system history, the same for everyone.
+- **Watch:** "Student A wants to know about 13385." This is user intent.
+- **Event:** "Student A's watch saw 13385 open at 02:31." This is a fact
+  for one user.
+
+Merging any two causes trouble. Store events inside availability history,
+and history becomes per-user. Store transitions on watches, and one opening
+gets copied N times before anyone needs it.
+
+### Idempotency, and who enforces it
+
+Processing will run more than once: after crashes, on retries, and
+sometimes with two workers at the same moment. "Check whether the event
+exists, then insert it" fails under concurrency, because both workers check
+before either inserts. A UNIQUE constraint on (watch, change) makes the
+database the referee: the second insert does nothing. Application code only
+has to be correct; the guarantee comes from the database.
+
+### Transactional safety without a message broker
+
+Events and the "this opening is done" marker commit in one transaction. If
+the process dies before that commit, the change rows are still there and
+still unmarked, so the next run finds them. A per-change marker is
+order-independent, unlike a "processed up to time T" cursor, which skips
+anything that commits late. Kafka or Celery would add a second system to keep
+consistent with the database. At these volumes, the database already does the
+job.
+
+### Exactly once, and at least once
+
+"Exactly once" here means one durable logical event per watch and opening.
+Delivering it to a phone will be at-least-once: networks fail after the push
+service accepted a message, so retries can repeat. The event id becomes the
+idempotency key that lets a device show the notification once. The two
+guarantees live in different tables for that reason.
+
+### First observations and unknowns are not openings
+
+The first refresh of a term "changes" about 8,500 sections from nothing to
+open. None of them opened; CoursePilot simply had not looked before. An
+UNKNOWN that becomes OPEN is the same story. Only an observed closed → open
+earns "it opened", because only then did CoursePilot see both sides.
+
+### Term-scoped identity
+
+Rutgers reuses index numbers between terms. A watch that stored only
+"13385" would fire on a different class next semester. A watch points at
+the term's section row and keeps the term and index beside it, so a reused
+index is simply a different row.
+
+### A lab is part of the story, a co-requisite is another story
+
+Watching lecture 13372 tells you when 13372 opens. It also tells you that
+every one of its required LB labs was still closed at that moment, so the
+event never implies "you can register for 01:750:194". An academic
+co-requisite (229 needs 227) is a different course with its own sections and
+its own watches; folding it in would claim knowledge the event does not
+have.
+
+### Credits authorize actions, not polls
+
+When credits arrive, they will pay for creating a watch, checked once before
+the watch exists. Polling is shared infrastructure that usually finds
+nothing new. Charging per poll would bill users for operator tuning and
+outages, and would reward polling less often, which makes every alert
+slower. The watch table therefore carries no price, no balance and no
+payment id. A future ledger references the watch, never the reverse.
+
+### Server-side means nothing waits on a client
+
+A browser tab, a mobile app in the background or a WebSocket can all be
+killed by the operating system at any time. Only the server is reliably
+running. So the server owns monitoring, and the client only reads what the
+server already concluded.
+
+---
+
+## Self-Check
+
+1. Why does adding the 10,001st watcher not add a request to Rutgers?
+2. Two workers process the same opening at the same instant. What stops a duplicate event?
+3. Why is a "processed up to time T" cursor unsafe here, when a per-change marker is safe?
+4. Why is the first refresh of a term not a burst of "your class opened" events?
+5. Lecture 13372 opens while every LB lab is closed. What does the event say, and why is that not "the course is available"?
+6. Why would billing per poll be a bad product decision even if it were technically easy?
+
+## Try It Yourself
+
+**A.** Run `python scripts/inject_monitoring_failures.py G` and see which tests notice when the unique key is removed.
+
+**B.** Run `scripts/benchmark_monitoring.py` and compare the Rutgers request count for 0 and 1,000 watches.
+
+**C.** Watch an open section, then make it close and reopen in a test, and read the events.
+
+## Further Learning
+
+- The transactional outbox pattern
+- Idempotency keys in payment and messaging APIs
+- At-least-once vs exactly-once delivery
+- Fan-out on write vs fan-out on read

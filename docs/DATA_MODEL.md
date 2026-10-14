@@ -7892,8 +7892,330 @@ no "3 seats left" can ever be derived.
   within 10 minutes, not that Rutgers updated it then.
 * A body mislabelled with a correct-looking URL cannot be detected from
   content, because indexes are reused across terms.
-* A cancelled section reads as closed until a `courses.json` download
-  removes it.
+* A cancelled section reads as closed. **Correction (Phase 6.8):** this
+  section first said "until a `courses.json` download removes it". Nothing
+  removes it: section ingestion only inserts and updates. A section missing
+  from a newer download stays in `course_section`, still stamped with the
+  older download, and reads as closed indefinitely. Phase 6.8 detects that
+  case explicitly (`removed_section_ids`, section 44.6).
 * Registration holds, time tickets, special permission numbers and
   per-student caps are not availability data. They remain needs-confirmation
   restrictions (Phase 6.6).
+
+---
+
+## 44. Section monitoring and notification events (Phase 6.8)
+
+A **watch** is a server-side record: a user asks CoursePilot to watch one
+term-scoped section. It is not a subscription and not a payment. When the
+single global availability refresh observes that section going from closed
+to open, a durable **notification event** is created for every active watch
+on it. Delivery to a phone, browser or inbox is a later phase; it will read
+these events.
+
+### 44.1 Four layers, never merged
+
+```
+Rutgers ── ONE request per term per refresh (6.7) ──► availability_refresh
+                                                           │
+                         section_availability_change  (system history; no user data)
+                                                           │ closed -> open only
+                         availability_change_dispatch (system: "turned into events")
+                                                           │
+             section_watch (user intent) ──► notification_event (user fact, one per watch+change)
+                                                           │
+                         [later] notification_delivery (event x channel/endpoint, at-least-once)
+```
+
+| layer | owner | written by | unique key |
+|---|---|---|---|
+| observation (`availability_refresh`) | system | refresh | - |
+| transition (`section_availability_change`) | system | refresh | one row per state change |
+| watch (`section_watch`) | user | watch API | ONE active per (user, term, index) |
+| event (`notification_event`) | user | event processor | (watch_id, change_id) |
+| delivery (later) | user | delivery worker | (event_id, channel, endpoint) |
+
+Availability history is never user-specific. One transition fans out to
+many users' events.
+
+### 44.2 The invariant: watches never add Rutgers requests
+
+The refresh asks Rutgers for a whole term's open list: one request,
+whoever is watching. A watch is a row that CoursePilot *joins against*
+changes the refresh already recorded; it is never a poller. Tests prove the
+request count is the same with 0 and 200 watches (one per refresh), and that
+the event processor's statement count does not grow with the number of
+watchers (one set-based INSERT per batch, never one query per watcher).
+
+### 44.3 What a watch targets, and why the smallest target
+
+| target | meaning | verdict for 6.8 |
+|---|---|---|
+| **A. one term-scoped section** | "tell me when index I of term T is observed open" | **chosen**: exact semantics, every case testable |
+| B. registration bundle | "lecture + required LB lab all open" | later: SOC links no lecture index to a lab index, so the bundle is lecture + *any* lab, and the definition is derived from note text |
+| C. whole course | "any usable section opens" | later: "usable" mixes eligibility (6.4), restrictions (6.6) and schedule fit, the three axes 6.7 keeps apart |
+
+The target is `course_section.id` (term-scoped), with `term_code` and
+`index_number` stored beside it. Rutgers reuses indexes across terms, so the
+index alone never identifies a target, and a reused index next term is a
+different section that an old watch can never match.
+
+### 44.4 Tables
+
+```
+section_watch
+  id, user_account_id -> user_account ON DELETE CASCADE
+  section_id -> course_section ON DELETE SET NULL      (history survives the section)
+  term_code, index_number                              (natural key, kept)
+  created_at, deactivated_at, deactivation_reason
+  CHECK reason IN (user_cancelled, term_ended, target_removed)
+  CHECK (deactivated_at IS NULL) = (deactivation_reason IS NULL)
+  UNIQUE (user_account_id, term_code, index_number) WHERE deactivated_at IS NULL
+  INDEX (section_id) WHERE deactivated_at IS NULL      -- the processor's join
+  INDEX (user_account_id, created_at)                  -- "my watches"
+
+availability_change_dispatch
+  change_id PK -> section_availability_change RESTRICT, events_created, created_at
+
+notification_event
+  id (also the future delivery idempotency key)
+  user_account_id -> user_account CASCADE, watch_id -> section_watch CASCADE
+  change_id -> section_availability_change RESTRICT, refresh_id -> availability_refresh RESTRICT
+  kind CHECK IN (section_opened)
+  section_id -> course_section SET NULL, term_code, index_number,
+  course_string, supplement_code, section_number, from_status, to_status, observed_at
+  required_component_state, required_components_open, required_components_total, context_as_of
+  UNIQUE (watch_id, change_id)
+  INDEX (user_account_id, observed_at)                 -- "my events"
+
+section_availability_change  + INDEX (observed_at, id) WHERE closed -> open
+```
+
+**Why the account, not the student.** Watching needs no academic record,
+and per-user data hangs off `user_account` (Phase 5.4). Deleting the account
+removes its watches and events. Deleting a section never removes a watch: it
+becomes `section_id = NULL` with its natural key intact.
+
+**What is deliberately absent:**
+
+- **On the watch:** no price, credit balance, payment, plan or subscription
+  field, and no device token, email or other delivery address.
+- **On the event:** no delivery status, no read state, and no seat counts
+  (Rutgers publishes none).
+
+### 44.5 Which transitions create an event
+
+| transition | event? | why |
+|---|---|---|
+| closed → open | **yes** | the only observed opening |
+| first observation → open | no | the first refresh of a term records about 8,500 of these. CoursePilot never saw them closed |
+| unknown → open | no | CoursePilot did not know it was closed |
+| open → closed | no | the watch stays active for the next opening |
+| open → open, closed → closed | no | not a transition, so never recorded (6.7) |
+| closed → unknown, open → unknown, unknown → closed | no | not an opening |
+
+Every reopening (open → closed → open) is a new event, because it is a new
+change row. An opening observed *before* a watch was created is not that
+watch's event (`watch.created_at <= change.observed_at`).
+
+An event states what was observed and when ("opened at T"). It never says
+"open now", because it may have closed again by the time anyone reads it. It
+never says "you can register" either: holds, time tickets and special
+permission are not availability.
+
+### 44.6 Watch lifecycle
+
+**Create** (`POST /api/v1/watches`):
+
+- The section must exist in that term (404 otherwise).
+- It must not be *removed*, meaning absent from the term's newest **complete**
+  schedule download (422; see below).
+- Any availability state can be watched:
+  - **CLOSED:** waits for the opening;
+  - **OPEN:** waits for the *next* closed → open, and the response shows it is
+    open now, with its freshness;
+  - **UNKNOWN or stale:** reported as such, never called closed.
+- An identical active watch is returned, not duplicated (`created: false`).
+  The partial unique index, not only the lookup, guarantees this, including
+  under concurrent identical requests.
+- At most 50 active watches per account. That is an abuse bound, not a
+  product tier.
+
+**Deactivate** (`DELETE /api/v1/watches/{id}`): idempotent. Another account's
+watch, and a missing watch, are both 404.
+
+**Term end**: `monitoring_cli expire-term --term T` (an operator decision;
+Rutgers publishes no monitoring end date) marks the term's active watches
+`term_ended`.
+
+**Removed section**: section ingestion never deletes a section that left
+Rutgers' schedule. `removed_section_ids` therefore calls a section removed
+only when the term's newest download is marked complete and the section was
+not in it (its `source_id` is older). After a `--limit` or `--subject` run,
+nothing is called removed. `monitoring_cli reconcile-removed` marks such
+watches, and watches whose section was deleted, as `target_removed`. They are
+never retargeted.
+
+In every case the row stays as history; nothing is physically deleted
+because a term ended.
+
+### 44.7 Exactly one logical event per (watch, opening)
+
+```
+loop:
+  pending = closed->open changes with no dispatch row
+            ORDER BY observed_at, term, index, id   LIMIT 500
+            [PostgreSQL: FOR UPDATE OF change SKIP LOCKED]
+  pairs   = ONE join: pending x active watches of the same section and term,
+            created at or before the change
+  INSERT notification_event (pairs)  ON CONFLICT (watch_id, change_id) DO NOTHING
+  INSERT dispatch (pending)          ON CONFLICT (change_id) DO NOTHING
+  COMMIT                             -- events and markers together
+```
+
+**Crash safety:**
+
+- **After the refresh commits:** the changes are committed and undispatched,
+  so the next run (the refresh's own call, or `monitoring_cli process`) picks
+  them up.
+- **Mid-batch:** nothing commits, and the batch is redone.
+
+**Duplicates:**
+
+- **Two workers:** they take different batches (SKIP LOCKED). If they ever
+  overlap, the unique keys insert nothing twice. PostgreSQL's ON CONFLICT
+  waits for the other transaction, then skips.
+- **A rerun, or a lost marker:** the unique key inserts nothing.
+
+**Why a marker table and not a time cursor.** A refresh that starts earlier
+but commits later, or a replayed archive, writes changes *below* a cursor;
+they would be skipped forever. The marker is per change, so order does not
+matter.
+
+**Two concurrent refreshes of one term** would both read the old snapshot and
+both record the same closed → open: two change rows, two events per watch.
+`apply_refresh` now takes a transaction-scoped PostgreSQL advisory lock per
+term, so the second refresh sees the first one's result and records nothing.
+This was found in this phase's investigation and is tested with 4 concurrent
+refreshes.
+
+"Exactly once" means one durable LOGICAL event. Delivery (APNs, FCM, web
+push, email) will be **at-least-once**. A `notification_delivery` row per
+(event, channel, endpoint) will retry with the event id as its idempotency
+key and collapse id.
+
+### 44.8 Registration components vs academic co-requisites
+
+**A lab is watched as a section.** If a student watches lecture 13372 of
+01:750:194, the event fires when that index opens: that is the true fact
+asked for. Its required LB record is reported beside it, as of the refresh
+used:
+
+- `required_component_state`: open if at least one lab index was open, else
+  closed or unknown;
+- `required_components_open` and `required_components_total` (for example,
+  0 of 8).
+
+So "lecture opened, every lab closed" can never read as a registrable
+course. A watch on a lab reports the lecture record the same way. The
+detection is the Schedule Engine's own (Phase 6.6.1), not a copy.
+
+**An academic co-requisite stays separate.** 01:750:229 requires 01:750:227
+(Phase 6.4). A 229 opening carries NO component context, because 227 is
+another course. "Tell me when I can register for 229 *and* 227" is a later,
+higher-level watch type. 6.8 does not claim it.
+
+### 44.9 Server-side monitoring
+
+Nothing depends on a client being open: no browser timer, no frontend
+polling, no WebSocket, no app background task. The refresh pipeline
+processes openings itself after each accepted commit, in separate
+transactions. Production needs exactly one scheduled job: the 6.7 refresh
+CLI per active term, at the deployment's cadence (60–120 s during
+registration windows was suggested in 6.1, pending sign-off), plus
+`monitoring_cli process` as a periodic safety net. A cron entry, a systemd
+timer or a single scheduled container all satisfy this. No queue or broker
+is needed at the measured volumes (44.11).
+
+### 44.10 The future credit boundary (not built)
+
+```
+user requests a watch
+      ↓
+[later] credit service authorizes and debits the ACTION     (ledger -> watch, idempotent)
+      ↓
+watch service creates/activates the watch                   (unchanged)
+      ↓
+refresh + event processor                                   (never read the ledger)
+```
+
+The watch service does not care where the right came from: free,
+purchased, promotional credits, or an admin grant. The ledger references the
+watch, never the reverse, so replacing the credit system needs no watch
+migration.
+
+Polling is shared infrastructure: one request per term for everyone, at an
+operator-chosen cadence, usually with no change at all. It is never a
+billable unit. Billing per poll would make users pay for outages and tuning,
+and would push the system to poll less often, which makes alerts worse.
+
+No price is proposed here. That belongs to the credit phase, after costs are
+measured.
+
+### 44.11 Measured
+
+`scripts/benchmark_monitoring.py`: full Fall 2026 term on the development
+database. One refresh opens 5 sections (SYNTHETIC). Every case runs in one
+transaction and is rolled back.
+
+| watches | Rutgers requests | events | process time | process SQL | create (p50) | list watches | list events |
+|---|---|---|---|---|---|---|---|
+| 0 | 1 | 0 | 32 ms | 4 | - | 7.5 ms | 7.1 ms |
+| 1 | 1 | 1 | 43 ms | 15 | 40 ms | 1.2 ms | 1.6 ms |
+| 10 | 1 | 10 | 172 ms | 51 | 12 ms | 1.4 ms | 1.3 ms |
+| 100 | 1 | 100 | 250 ms | 51 | 16 ms | 1.3 ms | 1.2 ms |
+| 1,000 | 1 | 1,000 | 943 ms | 51 | 12 ms | 1.3 ms | 1.3 ms |
+
+**Requests and statements.** Rutgers requests stay at 1 per refresh at every
+watch count. Processing statements do not grow with watchers. The constant
+part is the bundle context: one Schedule Engine component load per *opened
+course*, never per watcher. The tests pin a single set-based event INSERT for
+0, 1, 10 or 100 watchers.
+
+**Row sizes.** Measured averages are a watch row of 112 bytes and an event row
+of 208 bytes. With their indexes, assume about 300 and 500 bytes.
+
+**Storage** (assumptions, not measurements):
+
+- 5 active watches per user per term;
+- 3 openings per watched section per term. Watched sections are the popular
+  closed ones; mid-semester, the whole term saw about 1,100 transitions in 36
+  days.
+
+| users | watches/term | events/term | storage/term |
+|---|---|---|---|
+| 1,000 | 5,000 | 15,000 | ~10 MB |
+| 10,000 | 50,000 | 150,000 | ~90 MB |
+| 100,000 | 500,000 | 1,500,000 | ~0.9 GB |
+
+**Capacity.** Even 100,000 users is one PostgreSQL instance's routine
+workload. The hottest case, thousands of watchers on one section, is one
+multi-thousand-row INSERT per opening: about 1 s per 1,000 events measured,
+done once per refresh and never per poll per user. No queue, broker or shard
+is justified by these numbers.
+
+### 44.12 Limitations
+
+* An opening observed while the processor is down is recorded and delivered
+  late, labelled with its observation time. Nothing is lost.
+* A watch created between an opening and its processing does not get that
+  opening, by design (`created_at <= observed_at`).
+* A deactivation that commits *while* a batch is being processed may still
+  get that batch's event. A future delivery step should re-check
+  `deactivated_at`.
+* Removal is provable only after a complete download. After partial loads, a
+  vanished section just never opens.
+* A replayed old archive can record an old closed → open. Only watches that
+  existed at that time match it.
+* Read state ("mark as read") is deliberately absent. It belongs to the
+  in-app delivery phase.
