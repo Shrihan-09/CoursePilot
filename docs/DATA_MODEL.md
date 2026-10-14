@@ -7662,3 +7662,238 @@ done
 
 Development data after it: `sectionNotes:some` 73 rows (32 parsed, 41
 unsupported), `sectionNotes:all` 198 (was 171); a second run changed nothing.
+
+---
+
+## 43. Registration availability (Phase 6.7)
+
+Evidence: `docs/investigations/phase-6-7-live-availability.md`; source
+semantics in DATA_SOURCES section 2.
+
+### 43.1 Three independent axes
+
+| axis | question | owner | can it change between two requests? |
+|---|---|---|---|
+| eligibility | may the student take the COURSE? | Phase 6.4 `check_proposal` | only when the record or rules change |
+| structural validity | do these SECTIONS fit together (meetings, components, restrictions)? | Schedule Engine | only when SOC structure changes |
+| availability | can they REGISTER for these indexes now? | `app.domain.availability` | every few seconds during registration |
+
+They are never merged into one "valid" flag. A closed section is still a
+valid section, and a schedule built from it is still a structurally valid
+schedule. An open section never makes a student eligible.
+
+### 43.2 Stable fact vs volatile observation
+
+`course_section` holds structure written by catalog/SOC ingestion.
+`course_section.open_status` stays where Phase 1 put it: it is what one
+`courses.json` download said, at that download's time. Current availability
+lives in its own tables, written ONLY by the availability refresh, which
+never touches a structural row (tested by table hashes).
+
+```
+availability_refresh          one row per poll (accepted OR rejected, with why)
+  id, term_code, source_url, observed_at, content_sha256, body_bytes,
+  entries, duplicates, matched, ignored, transitions, verdict, detail, archive_path
+  CHECK verdict IN (accepted, rejected_malformed, rejected_empty,
+        rejected_no_overlap_with_term, rejected_implausible_drop,
+        rejected_term_mismatch, rejected_fetch_failed)
+  INDEX (term_code, observed_at)            -- "latest accepted refresh of term T"
+
+section_availability          one row per section: CURRENT state, since when
+  section_id UNIQUE -> course_section ON DELETE CASCADE
+  term_code, index_number   UNIQUE (term_code, index_number)
+  status CHECK IN (open, closed, unknown), since, changed_by_refresh_id -> refresh
+
+section_availability_change   append-only: one row per state TRANSITION
+  section_id -> course_section ON DELETE SET NULL   (history outlives structure)
+  term_code, index_number, from_status (NULL = first observation), to_status,
+  observed_at, refresh_id -> refresh
+  CHECK from_status IS NULL OR from_status <> to_status
+  INDEX (term_code, observed_at)            -- a notifier's "changes since X"
+  INDEX (section_id)
+```
+
+**Why not a column on `course_section` (A)?** Every catalog ingestion would
+overwrite it, and it carries neither refresh identity nor history. **Why not
+one row per section per poll (C)?** 12,012 sections every 2 minutes is ~8.6 M
+rows/day, almost all of them "unchanged". Two real polls 80 s apart differed
+in 0 of 12,001 entries. **Chosen: B plus transitions.** It keeps everything
+C would answer: "still closed at T" is the snapshot plus the refresh log. It
+writes only changes: 0 rows for an unchanged poll, measured.
+
+### 43.3 The refresh
+
+```
+GET openSections.json?year&term&campus      ONE request per term per refresh (~96 KB)
+  -> archive the bytes as received          data/raw/live/openSections_<y>_<t>_<c>_<UTC>.json
+  -> apply_refresh(term, body, observed_at, url)
+       fetch failed                        -> rejected_fetch_failed
+       URL names another term              -> rejected_term_mismatch
+       not an array of 5-digit strings     -> rejected_malformed
+       []                                  -> rejected_empty
+       no index is a section of the term   -> rejected_no_overlap_with_term
+       open count < 10% of the last accepted (when that was >= 100)
+                                           -> rejected_implausible_drop
+       otherwise ACCEPTED: listed -> open, every other section of the term -> closed;
+       a change row + snapshot update ONLY for sections whose state changed
+```
+
+A rejected refresh changes no state, and the last ACCEPTED refresh stays the
+"as of" time. Re-applying a payload records a new refresh with 0
+transitions; the `since` times do not move. Operator entry point:
+`python -m coursepilot_ingestion.availability_cli --year 2026 --term 9`.
+For a replay, add `--file <archive> --observed-at <ISO>`; the archive's own
+file time is never trusted. No loop lives in the code: cadence is a
+deployment decision. `max-age=30` is the floor, and Phase 6.1 suggested
+60-120 s during registration windows, pending sign-off.
+
+### 43.4 States, freshness, resolution
+
+States are only what the evidence supports: `open`, `closed`, `unknown`.
+There is no seat count, waitlist or reason in any Rutgers source, so none is
+modelled.
+
+| freshness | meaning | a client renders |
+|---|---|---|
+| `current` | an ACCEPTED refresh within 10 minutes of the request's `reference_time` | "OPEN, current as of 02:29:51Z" |
+| `stale` | an older observation, or a `courses.json` download (never current) | "CLOSED when last observed 2026-09-08" |
+| `unobserved` | no observation | "UNKNOWN" |
+
+Resolution per section (`resolve`) has three rules:
+
+- **Newest wins.** For example, LB 13378: open on the 2026-09-08 download,
+  closed on the 2026-10-14 refresh → closed, current.
+- **Simultaneous disagreement is UNKNOWN.** Two sources observed within
+  900 s that disagree produce UNKNOWN with
+  `sources_disagree:courses.json=open,openSections.json=closed`. Neither
+  source is silently picked.
+- **A download time is never "now".** A `courses.json` time is an archive
+  file time, which a copy resets. It is labelled
+  `structural_snapshot_not_an_availability_refresh` and never made current.
+
+Freshness is judged against an explicit `reference_time`: the request time,
+or a fixed one in tests. Identical inputs therefore give identical output.
+
+### 43.5 Registration bundles and co-requisites
+
+```
+bundle (one requested course) = primary index + every required companion index
+    OPEN     iff every component is OPEN
+    CLOSED   if ANY component is CLOSED      (lecture open + LB lab closed = CLOSED)
+    UNKNOWN  otherwise                        (lecture open + lab unknown = UNKNOWN)
+option = every requested course's bundle, by the same rule
+```
+
+An academic co-requisite (01:750:229 → 01:750:227) is a second requested
+course with its own bundle. In the real data 229 is OPEN and 227 is CLOSED:
+two `CourseAvailability` entries, an option that is CLOSED overall, and the
+relationship stays `academic_corequisite`. It is never folded into 229's
+components. A required component is never dropped because it is closed: it
+is reported (`REQUIRED_COMPONENT_CLOSED`) or, under `require_open`, the
+course is blocked (`NO_OPEN_SECTION` naming the component).
+
+### 43.6 In the Schedule Engine
+
+`preferences.availability`:
+
+* **`prefer_open`** (default): nothing is excluded. With CURRENT availability,
+  the objective ranks `closed_sections_if_current` and then
+  `unknown_availability_if_current`, after structural verification and
+  before campus/day/gap preferences. Stale availability is reported on every
+  choice but never reorders options.
+* **`require_open`**: a unary hard constraint. Only sections OPEN as of a
+  CURRENT observation are searched. Without current data the result is
+  blocked with `AVAILABILITY_NOT_CURRENT`; it never falls back to old data.
+  `USER_CONSTRAINTS_TOO_STRICT` names `availability` when it alone blocks.
+
+Structurally identical sections (6.6 equivalence) are not split by state.
+The slot order puts open-and-current first, so each group's representative is
+its best-availability member, and the closed twins stay in
+`equivalent_sections` with their own availability. To keep the search exact
+with the longer objective, the bound adds a lookahead: per remaining slot,
+the component-wise minimum weight of its forward-checked domain. A
+component-wise lower bound is also a lexicographic one. This is tested
+against exhaustive search on 30 random weighted cases.
+
+Response fields (so clients never parse prose), per option:
+
+```
+"availability": {
+  "state": "closed", "freshness": "current", "as_of": "2026-10-14T02:29:51+00:00",
+  "all_open_now": false,
+  "courses": [{
+    "course": "01:750:194", "state": "closed", "freshness": "current",
+    "as_of": "2026-10-14T02:29:51+00:00",
+    "components": [
+      {"component": "primary", "index_number": "13370", "state": "closed", ...},
+      {"component": "required_companion", "supplement_code": "LB",
+       "index_number": "13384", "state": "open", ...}],
+    "reasons": ["primary_closed:13370"]}]}
+```
+
+Each choice also carries `availability` with `state`, `freshness`,
+`observed_at`, `source`, `since` and `reasons`. `metadata` carries the term's
+`availability_freshness`, `availability_observed_at`, `availability_source`,
+`availability_refresh_id`, `availability_mode` and
+`availability_current_window_seconds`. Issues:
+
+- `SECTION_CLOSED` and `REQUIRED_COMPONENT_CLOSED` (current only);
+- `AVAILABILITY_UNKNOWN`;
+- `AVAILABILITY_NOT_CURRENT` (a warning under `prefer_open`, a blocker under
+  `require_open`);
+- `NO_OPEN_SECTION`.
+
+The reasons `all_sections_open_current` and
+`all_sections_open_when_last_observed` replace 6.6's
+`all_sections_open_in_snapshot`. `ScheduleOption.closed_sections_in_snapshot`
+and `ScheduleScore.closed_sections_if_live` are replaced by `availability` and
+`closed_sections_if_current` / `unknown_availability_if_current`. The engine
+version is 6.7.0.
+
+### 43.7 Read-only, and the query budget
+
+Generation reads availability in at most 2 extra statements per request:
+
+- the latest accepted refresh;
+- the snapshot rows of the candidate sections, one `IN`.
+
+The download times were already loaded. The count is the same for 1 course
+or 4 with a lab, and there are no per-section queries and no network calls.
+Generation writes nothing, availability tables included, which table-hash
+tests verify across modes and freshness.
+
+Measured on development data (Fall 2026, engine stages only, min of 15 runs,
+alternating processes):
+
+| case | 6.6.1 (main) | 6.7, stale | 6.7, current |
+|---|---|---|---|
+| 5 high-section courses | 286-298 ms, 142,816 nodes | 272-298 ms, 125,976 nodes | ~400 ms, 187,384 nodes (exact, no limit) |
+| component-heavy (2 bundles, 2 co-requisites) | 169-176 ms, 29,298 nodes | 175-189 ms, 29,298 nodes | 36-49 ms, 11,635 nodes |
+| 4 courses with an LB lab | 9.1-9.6 ms, 1,491 nodes | 9.6-10.4 ms, 1,491 nodes | 4.7-5.4 ms, 496 nodes |
+
+With stale availability the ranked options are identical to 6.6.1 on all 10
+benchmark requests.
+
+### 43.8 Later: notifications and prediction (not built)
+
+A CLOSED → OPEN notifier needs exactly
+`section_availability_change WHERE term_code = ? AND observed_at > ? AND
+to_status = 'open'`, which is indexed. A predictor (time-to-close,
+reopen rate, volatility per course) needs the transition history with
+`observed_at`, which is kept, plus the refresh log to know when a state was
+re-confirmed. Measured volume: about 1,100 transitions in 36 days
+mid-semester; even 50× that in a registration window is about 2 MB a month.
+What history CANNOT give is seat counts: Rutgers does not publish them, so
+no "3 seats left" can ever be derived.
+
+### 43.9 Limitations
+
+* Rutgers publishes no timestamp. "Current" means CoursePilot fetched it
+  within 10 minutes, not that Rutgers updated it then.
+* A body mislabelled with a correct-looking URL cannot be detected from
+  content, because indexes are reused across terms.
+* A cancelled section reads as closed until a `courses.json` download
+  removes it.
+* Registration holds, time tickets, special permission numbers and
+  per-student caps are not availability data. They remain needs-confirmation
+  restrictions (Phase 6.6).

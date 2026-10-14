@@ -39,11 +39,20 @@ sections with uninterpreted eligibility prose ("JUNIORS AND SENIORS") are
 UNKNOWN as well. UNKNOWN is never "eligible": it is scheduled only as a
 needs-confirmation option, ranked after verified ones.
 
-## Availability
+## Availability (Phase 6.7)
 
-`open_status` comes from a SOC courses.json DOWNLOAD - an archived snapshot
-with a timestamp (data_source.retrieved_at), never a live signal. Every
-choice carries that provenance; nothing here says "open right now".
+Read from what is already stored, in one batched lookup per term
+(app.services.availability.lookup) - never fetched, never per section:
+
+  * the latest ACCEPTED openSections.json refresh of the term - the only
+    source that can be CURRENT (within CURRENT_WINDOW of `reference_time`);
+  * the courses.json download's `open_status` - evidence with its download
+    time, never current (see app.domain.availability).
+
+Every candidate carries state, freshness, observation time, source and any
+disagreement; the term carries the latest evidence it has. Availability is
+evidence beside the structural facts - it never changes a meeting, a
+component or a restriction.
 """
 
 from __future__ import annotations
@@ -52,14 +61,15 @@ import re
 import uuid
 from collections import defaultdict
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.domain.availability import CURRENT_WINDOW
 from app.domain.schedule import (
     AvailabilityEvidence,
     AvailabilityFreshness,
-    AvailabilityState,
     MeetingInterval,
     RestrictionEntry,
     RestrictionEvidence,
@@ -78,6 +88,12 @@ from app.models import (
     SectionMeeting,
     SectionRestriction,
     Student,
+)
+from app.services.availability import (
+    COURSES_SOURCE,
+    OPEN_SECTIONS_SOURCE,
+    SectionRef,
+    lookup,
 )
 from app.services.scheduling.meetings import normalize, time_verified
 
@@ -207,6 +223,11 @@ class TermData:
     #: (kind, course, related, evidence, source) - see CourseRelationship.
     relationships: list[tuple[str, str, str, str | None, str | None]] = field(
         default_factory=list)
+    #: Term-level availability evidence (Phase 6.7).
+    availability_freshness: AvailabilityFreshness | None = None
+    availability_observed_at: str | None = None
+    availability_source: str | None = None
+    availability_refresh_id: str | None = None
 
 
 def _both_note(records) -> tuple[str, str] | None:
@@ -219,11 +240,22 @@ def _both_note(records) -> tuple[str, str] | None:
     return None
 
 
+def _iso(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    return (value if value.tzinfo else value.replace(tzinfo=UTC)).isoformat()
+
+
 def load_term(session: Session, term_code: str, courses: list[str],
-              attrs: StudentAttributes) -> TermData:
-    """Everything the search needs, in a fixed number of queries."""
+              attrs: StudentAttributes, reference_time: datetime | None = None) -> TermData:
+    """Everything the search needs, in a fixed number of queries.
+
+    `reference_time` is the moment availability freshness is judged against
+    (the request time; tests pass a fixed one)."""
+    reference_time = reference_time or datetime.now(UTC)
     sources = session.execute(
-        select(DataSource.content_hash, DataSource.coverage, DataSource.retrieved_at)
+        select(DataSource.id, DataSource.content_hash, DataSource.coverage,
+               DataSource.retrieved_at)
         .where(DataSource.kind == SOC_KIND, DataSource.term_code == term_code)
         .order_by(DataSource.retrieved_at, DataSource.content_hash)).all()
     published = session.scalar(
@@ -273,8 +305,31 @@ def load_term(session: Session, term_code: str, courses: list[str],
     for course, section in rows:
         records[(course.course_string, course.supplement_code)].append((course, section))
 
-    availability_base = dict(freshness=AvailabilityFreshness.ARCHIVED,
-                             observed_at=data.observed_at, source_hash=data.source_hash)
+    resolved, provenance = lookup(
+        session, term_code,
+        [SectionRef(s.id, s.index_number, s.open_status, s.source_id) for _, s in rows],
+        reference_time, downloads={src.id: src.retrieved_at for src in sources})
+    refreshed = provenance["refresh_observed_at"]
+    if refreshed is not None:
+        data.availability_freshness = (
+            AvailabilityFreshness.CURRENT if reference_time - refreshed <= CURRENT_WINDOW
+            else AvailabilityFreshness.STALE)
+        data.availability_observed_at = _iso(refreshed)
+        data.availability_source = OPEN_SECTIONS_SOURCE
+        data.availability_refresh_id = provenance["refresh_id"]
+    elif latest is not None:
+        data.availability_freshness = AvailabilityFreshness.STALE
+        data.availability_observed_at = _iso(latest.retrieved_at)
+        data.availability_source = COURSES_SOURCE
+    else:
+        data.availability_freshness = AvailabilityFreshness.UNOBSERVED
+
+    def availability_of(index: str) -> AvailabilityEvidence:
+        r = resolved[index]
+        return AvailabilityEvidence(
+            state=r.status, freshness=r.freshness, observed_at=_iso(r.observed_at),
+            source=r.source, source_hash=r.source_hash, since=_iso(r.since),
+            reasons=list(r.reasons))
     for key in sorted(set(courses)):
         variants = sorted(sup for (cs, sup) in records if cs == key)
         if not variants:
@@ -313,9 +368,7 @@ def load_term(session: Session, term_code: str, courses: list[str],
                     supplement_code=sup, title=course.title, section_id=s.id,
                     section_number=s.section_number, index_number=s.index_number,
                     campus_code=s.campus_code, meetings=ms, instructors=instructors[s.id],
-                    availability=AvailabilityEvidence(
-                        state=AvailabilityState.OPEN if s.open_status else AvailabilityState.CLOSED,
-                        **availability_base),
+                    availability=availability_of(s.index_number),
                     restriction=evaluate_restriction(
                         restrictions[s.id], attrs, open_to_text=s.open_to_text,
                         eligibility_text=s.section_eligibility,

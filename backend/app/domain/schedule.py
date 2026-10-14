@@ -19,6 +19,18 @@ Vocabulary is deliberate:
     section can still prove a valid schedule exists;
   * availability is labelled with where it came from and when it was seen;
     an archived snapshot is never presented as live.
+
+Phase 6.7 - three independent axes, never merged into one "valid" flag:
+
+    eligibility           may the student take the COURSE   (Phase 6.4, service)
+    structural validity   do the SECTIONS fit together      (this engine)
+    availability          can they register NOW             (app.domain.availability)
+
+Availability is evaluated per REGISTRATION BUNDLE: a course's primary index
+plus every required companion index (01:750:193 + its LB lab). The bundle
+is OPEN only if every component is OPEN, CLOSED if any is CLOSED, else
+UNKNOWN. An ACADEMIC co-requisite (01:750:229 needs 01:750:227) is a second
+course with its own bundle - never folded into the first.
 """
 
 from __future__ import annotations
@@ -29,8 +41,10 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.domain.availability import AvailabilityStatus, Freshness
+
 #: Bumped whenever the same inputs could produce different options.
-SCHEDULE_ENGINE_VERSION = "6.6.1"
+SCHEDULE_ENGINE_VERSION = "6.7.0"
 
 #: SOC weekday codes (H = Thursday, U = Sunday), in calendar order.
 WEEKDAYS = ("M", "T", "W", "H", "F", "S", "U")
@@ -55,15 +69,27 @@ class RestrictionOutcome(StrEnum):
     UNKNOWN = "unknown"                # CoursePilot cannot tell - never treated as eligible
 
 
-class AvailabilityState(StrEnum):
-    OPEN = "open"
-    CLOSED = "closed"
-    UNKNOWN = "unknown"
+#: open | closed | unknown - see app.domain.availability.
+AvailabilityState = AvailabilityStatus
+#: current (an accepted availability refresh within the current window of the
+#: request) | stale (an older observation, shown with its time, never as
+#: "now") | unobserved. Phase 6.6's "archived_snapshot" is "stale".
+AvailabilityFreshness = Freshness
 
 
-class AvailabilityFreshness(StrEnum):
-    LIVE = "live"                      # observed recently enough to say "right now"
-    ARCHIVED = "archived_snapshot"     # a past SOC download - historical evidence only
+class AvailabilityMode(StrEnum):
+    """How availability affects the options (a student setting).
+
+    prefer_open   (default) never excludes a section: with CURRENT availability,
+                  options whose sections are open rank first; closed and
+                  unknown ones are still shown, labelled.
+    require_open  only sections OPEN as of a CURRENT observation are scheduled;
+                  without current availability nothing can be scheduled, and
+                  the result says so (never a silent fallback to old data).
+    """
+
+    PREFER_OPEN = "prefer_open"
+    REQUIRE_OPEN = "require_open"
 
 
 class ScheduleStatus(StrEnum):
@@ -85,7 +111,8 @@ class Reason(StrEnum):
     ALL_MEETING_TIMES_VERIFIED = "all_meeting_times_verified"
     ALL_HARD_CONSTRAINTS_SATISFIED = "all_hard_constraints_satisfied"
     ALL_RESTRICTIONS_SATISFIED_OR_ABSENT = "all_restrictions_satisfied_or_absent"
-    ALL_SECTIONS_OPEN_IN_SNAPSHOT = "all_sections_open_in_snapshot"
+    ALL_SECTIONS_OPEN_CURRENT = "all_sections_open_current"
+    ALL_SECTIONS_OPEN_WHEN_LAST_OBSERVED = "all_sections_open_when_last_observed"
     REQUIRED_COMPONENTS_INCLUDED = "required_components_included"
     MATCHES_PREFERRED_CAMPUS = "matches_preferred_campus"
 
@@ -104,6 +131,8 @@ class SchedulePreferences(BaseModel):
       earliest_start, latest_end, avoid_days, minimum_minutes_between_classes.
     SOFT preference (only orders the options):
       preferred_campuses.
+    AVAILABILITY (Phase 6.7): `availability` - see AvailabilityMode; a hard
+      constraint only as require_open.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -113,6 +142,7 @@ class SchedulePreferences(BaseModel):
     avoid_days: list[str] = Field(default_factory=list, max_length=7)
     minimum_minutes_between_classes: int = Field(default=0, ge=0, le=120)
     preferred_campuses: list[str] = Field(default_factory=list, max_length=8)
+    availability: AvailabilityMode = AvailabilityMode.PREFER_OPEN
 
     @field_validator("avoid_days")
     @classmethod
@@ -129,6 +159,13 @@ class SchedulePreferences(BaseModel):
 
     def hard_constraints(self) -> list[str]:
         """Names of the hard constraints this request actually sets."""
+        out = self.time_constraints()
+        if self.availability is AvailabilityMode.REQUIRE_OPEN:
+            out.append("availability")
+        return out
+
+    def time_constraints(self) -> list[str]:
+        """The hard constraints about meeting TIMES (checkable only on timed meetings)."""
         out = []
         if self.earliest_start:
             out.append("earliest_start")
@@ -193,11 +230,57 @@ class RestrictionEvidence(BaseModel):
 
 
 class AvailabilityEvidence(BaseModel):
+    """One registration index's availability. Render as
+    "<state>, current as of <observed_at>" only when freshness is current."""
+
     state: AvailabilityState
     freshness: AvailabilityFreshness
-    observed_at: str | None = None           # ISO timestamp of the SOC download
-    source: str = "rutgers_soc_courses_json"
+    observed_at: str | None = None           # ISO time CoursePilot observed it (Rutgers gives none)
+    source: str | None = None                # openSections.json | courses.json
     source_hash: str | None = None
+    since: str | None = None                 # first observation of the current state
+    #: e.g. "sources_disagree:courses.json=closed,openSections.json=open",
+    #: "structural_snapshot_not_an_availability_refresh", "not_observed".
+    reasons: list[str] = Field(default_factory=list)
+
+
+class ComponentAvailability(BaseModel):
+    """One registration index of a bundle."""
+
+    component: str                           # primary | required_companion
+    supplement_code: str = ""
+    index_number: str
+    state: AvailabilityState
+    freshness: AvailabilityFreshness
+    observed_at: str | None = None
+
+
+class CourseAvailability(BaseModel):
+    """A requested course's REGISTRATION BUNDLE (primary + required companions).
+
+    state: open only if every component is open; closed if any is closed;
+    otherwise unknown. `reasons` name the component responsible, e.g.
+    "required_companion_closed:13384" - no prose parsing needed.
+    """
+
+    course: str
+    state: AvailabilityState
+    freshness: AvailabilityFreshness         # the least fresh component
+    as_of: str | None = None                 # the OLDEST component observation
+    components: list[ComponentAvailability]
+    reasons: list[str] = Field(default_factory=list)
+
+
+class OptionAvailability(BaseModel):
+    """The option as a whole: every requested course's bundle (an academic
+    co-requisite is a separate course, so it is a separate bundle here)."""
+
+    state: AvailabilityState
+    freshness: AvailabilityFreshness
+    as_of: str | None = None
+    #: state is open AND freshness is current - "all of these can be registered now".
+    all_open_now: bool = False
+    courses: list[CourseAvailability] = Field(default_factory=list)
 
 
 class EquivalentSection(BaseModel):
@@ -262,7 +345,10 @@ class ScheduleScore(BaseModel):
     preference_misses: int
     class_days: int
     gap_minutes: int
-    closed_sections_if_live: int
+    #: Chosen sections CLOSED / UNKNOWN as of a CURRENT observation. Stale
+    #: availability never reorders options (it is reported, not ranked).
+    closed_sections_if_current: int = 0
+    unknown_availability_if_current: int = 0
 
 
 class ScheduleOption(BaseModel):
@@ -274,7 +360,7 @@ class ScheduleOption(BaseModel):
     reasons: list[Reason] = Field(default_factory=list)
     issues: list[ScheduleIssue] = Field(default_factory=list)
     days: list[str] = Field(default_factory=list)
-    closed_sections_in_snapshot: list[str] = Field(default_factory=list)
+    availability: OptionAvailability
 
 
 class SearchStats(BaseModel):
@@ -297,8 +383,13 @@ class ScheduleMetadata(BaseModel):
     term_code: str
     settings_source: str = "coursepilot_schedule_setting_not_rutgers_policy"
     section_dataset: list[str] = Field(default_factory=list)   # SOC term:hash
+    #: Term-level: the latest availability evidence for the term.
     availability_freshness: AvailabilityFreshness | None = None
     availability_observed_at: str | None = None
+    availability_source: str | None = None
+    availability_refresh_id: str | None = None
+    availability_mode: AvailabilityMode = AvailabilityMode.PREFER_OPEN
+    availability_current_window_seconds: int | None = None
     ranking_objective: list[str] = Field(default_factory=list)
     search: SearchStats
 
@@ -339,7 +430,8 @@ class ScheduleResult(BaseModel):
 __all__ = [
     "DEFAULT_MAX_RESULTS", "MAX_REQUESTED_COURSES", "MAX_RESULTS_LIMIT",
     "SCHEDULE_ENGINE_VERSION", "TIME_UNKNOWN_KINDS", "WEEKDAYS", "AvailabilityEvidence",
-    "AvailabilityFreshness", "AvailabilityState", "CourseRelationship", "EquivalentSection",
+    "AvailabilityFreshness", "AvailabilityMode", "AvailabilityState", "ComponentAvailability",
+    "CourseAvailability", "CourseRelationship", "EquivalentSection", "OptionAvailability",
     "MeetingInterval",
     "MeetingKind", "Reason",
     "RestrictionEntry", "RestrictionEvidence", "RestrictionOutcome", "ScheduleIssue",

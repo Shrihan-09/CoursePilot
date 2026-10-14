@@ -114,13 +114,15 @@ def _verify(result, buffer=0):
         assert len(indexes) == len(set(indexes))
         for i, a in enumerate(option.choices):
             assert a.restriction.outcome is not RestrictionOutcome.NOT_SATISFIED
-            assert a.availability.freshness is AvailabilityFreshness.ARCHIVED
+            # no availability refresh in these worlds: the download's state, never "current"
+            assert a.availability.freshness is AvailabilityFreshness.STALE
             for b in option.choices[i + 1:]:
                 assert b.index_number not in a.cross_listed_indexes
                 for x in a.meetings:
                     for y in b.meetings:
                         assert not _overlap(x, y, buffer), (a.index_number, b.index_number)
         keys = [(o.score.needs_confirmation, o.score.unknown_time_sections,
+                 o.score.closed_sections_if_current, o.score.unknown_availability_if_current,
                  o.score.preference_misses, o.score.class_days, o.score.gap_minutes)
                 for o in result.options]
         assert keys == sorted(keys)
@@ -350,20 +352,24 @@ def test_n_multiple_instructors_are_kept_in_order(world) -> None:
 
 def test_o_p_availability_is_separate_and_archived(world) -> None:
     result = _gen(world, _student(world), ["01:750:193"], max_results=25)
-    closed = [o for o in result.options if o.closed_sections_in_snapshot]
+    closed = [o for o in result.options if o.availability.state is AvailabilityState.CLOSED]
     assert closed, "a closed section can still prove a schedule exists"
     for o in closed:
-        assert Reason.ALL_SECTIONS_OPEN_IN_SNAPSHOT not in o.reasons
-        assert o.score.closed_sections_if_live == 0      # archived: not a ranking signal
+        assert Reason.ALL_SECTIONS_OPEN_CURRENT not in o.reasons
+        assert Reason.ALL_SECTIONS_OPEN_WHEN_LAST_OBSERVED not in o.reasons
+        assert o.score.closed_sections_if_current == 0   # stale: not a ranking signal
+        assert not o.availability.all_open_now
     for o in result.options:
         for c in o.choices:
             section = world.scalar(select(CourseSection).where(
                 CourseSection.index_number == c.index_number, CourseSection.term_code == FALL))
             assert (c.availability.state is AvailabilityState.OPEN) == section.open_status
             assert c.availability.observed_at
-    assert result.metadata.availability_freshness is AvailabilityFreshness.ARCHIVED
+    assert result.metadata.availability_freshness is AvailabilityFreshness.STALE
+    assert any(i.code == "AVAILABILITY_NOT_CURRENT" for i in result.issues)
     opened = _gen(world, _student(world), ["01:920:101"])
-    assert any(Reason.ALL_SECTIONS_OPEN_IN_SNAPSHOT in o.reasons for o in opened.options)
+    assert any(Reason.ALL_SECTIONS_OPEN_WHEN_LAST_OBSERVED in o.reasons for o in opened.options)
+    assert not any(Reason.ALL_SECTIONS_OPEN_CURRENT in o.reasons for o in opened.options)
 
 
 def test_weekend_meetings_are_scheduled(world) -> None:

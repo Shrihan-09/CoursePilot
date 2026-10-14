@@ -200,6 +200,28 @@ def test_branch_and_bound_returns_the_true_top_k(seed) -> None:
     assert bounded.nodes <= search(domains, solution_limit=10**6).nodes
 
 
+@pytest.mark.parametrize("seed", range(10))
+def test_branch_and_bound_with_lookahead_is_exact_for_weighted_objectives(seed) -> None:
+    """Phase 6.7: five weight components (needs confirmation, unknown time,
+    closed / unknown availability, campus miss) drawn at random - the
+    lookahead bound must never cut a true top-K schedule."""
+    rnd = random.Random(1000 + seed)
+    domains = {slot: [Candidate(slot=c.slot, index=c.index, meetings=c.meetings,
+                                cross_listed=c.cross_listed, days=c.days,
+                                weight=tuple(rnd.choice((0, 0, 1)) for _ in range(5)))
+                      for c in cands]
+               for slot, cands in _random_domains(seed, courses=4, sections=7).items()}
+
+    def key(solution):
+        return (*prefix(solution), tuple(sorted(c.index for c in solution)))
+
+    every = search(domains, solution_limit=10**6).solutions
+    for k in (1, 3, 8):
+        expected = sorted(key(s) for s in every)[:k]
+        bounded = search(domains, keep=k, full_key=key)
+        assert [key(s) for s in bounded.solutions] == expected
+
+
 def test_search_order_does_not_depend_on_input_order() -> None:
     domains = _random_domains(3)
     reference = search(domains, solution_limit=10**6).solutions

@@ -35,7 +35,7 @@ async def test_a_student_gets_an_answer_about_their_own_record(world) -> None:  
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "term_schedule_not_published" and payload["options"] == []
-    assert payload["metadata"]["schedule_engine_version"] == "6.6.1"
+    assert payload["metadata"]["schedule_engine_version"] == "6.7.0"
 
 
 @requires_db
@@ -69,12 +69,43 @@ async def test_request_validation(world) -> None:  # noqa: F811
             "pref_field": await ac.post(URL, json={**BODY, "preferences": {"bus_minutes": 5}}),
             "pref_day": await ac.post(URL, json={**BODY, "preferences": {"avoid_days": ["X"]}}),
             "registration": await ac.post(URL, json={**BODY, "register": True}),
+            "availability_mode": await ac.post(
+                URL, json={**BODY, "preferences": {"availability": "only_open_now"}}),
         }
         ok = await ac.post(URL, json={**BODY, "courses": ["01:198:344", "01:198:344"],
                                       "max_results": 25})
     assert {k: r.status_code for k, r in bad.items()} == {k: 422 for k in bad}
     assert ok.status_code == 200
     assert ok.json()["requested_courses"] == ["01:198:344"]
+
+
+@requires_db
+async def test_availability_mode_is_a_preference_and_is_echoed(world) -> None:  # noqa: F811
+    """Phase 6.7: prefer_open (default) / require_open - and nothing is fetched."""
+    from app.main import create_app
+
+    async with _client(create_app(), world["account_a"]) as ac:
+        default = await ac.post(URL, json=BODY)
+        required = await ac.post(URL, json={**BODY,
+                                            "preferences": {"availability": "require_open"}})
+    assert default.status_code == required.status_code == 200
+    assert default.json()["metadata"]["availability_mode"] == "prefer_open"
+    assert required.json()["preferences"]["availability"] == "require_open"
+    assert required.json()["metadata"]["availability_mode"] == "require_open"
+
+
+def test_availability_read_by_scheduling_imports_no_network_client() -> None:
+    """Generation reads stored availability; only the ingestion refresh fetches."""
+    root = SCHEDULING.parents[1]
+    for path in (root / "services" / "availability.py", root / "domain" / "availability.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            names = ([a.name for a in node.names] if isinstance(node, ast.Import)
+                     else [node.module or ""] if isinstance(node, ast.ImportFrom) else [])
+            for name in names:
+                network = ("httpx", "requests", "aiohttp", "socket")
+                assert name.split(".")[0] not in network, (path.name, name)
+                assert name != "urllib.request", (path.name, name)
 
 
 async def test_schedules_require_authentication() -> None:

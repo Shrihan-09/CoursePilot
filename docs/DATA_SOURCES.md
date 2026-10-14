@@ -15,7 +15,7 @@
 | Source | Type | Status | Use |
 |---|---|---|---|
 | SOC `courses.json` | Undocumented JSON | **Verified working** | **Primary source for Phase 1** |
-| SOC `openSections.json` | Undocumented JSON | **Verified working** | Live open/closed status |
+| SOC `openSections.json` | Undocumented JSON | **Verified working; ingested (Phase 6.7)** | Current open/closed status - its own refresh boundary |
 | `classes.rutgers.edu/soc/` | JS SPA | Verified | Human UI; not for ingestion |
 | `catalogs.rutgers.edu` | HTML catalog | Not yet probed | Course descriptions, degree requirements |
 | `api-docs.rutgers.edu` | — | **Does not resolve (DNS)** | Not usable |
@@ -463,7 +463,31 @@ https://classes.rutgers.edu/soc/api/openSections.json?year=2026&term=9&campus=NB
 index strings.
 
 Live registration status. Volatile by nature — a point-in-time observation,
-never a durable fact. Out of scope this phase.
+never a durable fact.
+
+### Phase 6.7 - re-verified and ingested (2026-10-14)
+
+Evidence: `docs/investigations/phase-6-7-live-availability.md`.
+
+| question | answer (measured) |
+|---|---|
+| what it is | a JSON array of 5-digit index strings that are open now: 96,009 B (28,308 B gzip), 12,001 entries, 50-300 ms, `Cache-Control: max-age=30` |
+| absence | a section of the term NOT listed is closed: membership matched `courses.json` `openStatus` on all 12,012 Fall 2026 sections (0 disagreements, including 2,905 special-permission, 5,758 TBA/async and 826 cross-listed sections) |
+| richer state | none: no seats, capacity, waitlist or reason. `openStatusText` is only OPEN/CLOSED |
+| timestamp | none: no `Last-Modified`, and the ETag changes on identical bodies. CoursePilot's fetch time is the only "as of" |
+| `campus` | **ignored**: NK returns NB's bytes. The list is term-wide across campuses (3,488 entries were other campuses' indexes, ignored by joining on the term's sections) |
+| term | **not in the body**, and indexes are reused across terms (Spring 2026 shares 116 open indexes with the Fall fixture), so the request URL's year/term must match |
+| empty | `[]` means an unpublished term (Spring 2027), year 1999 or campus XX alike: ambiguous, never "everything closed" |
+| cancelled section | not distinguishable: it is simply not listed (closed), until a `courses.json` download removes it |
+| linked components | nothing links indexes: a lecture and its LB lab are two independent entries |
+
+**Authority.** `openSections.json` is the availability source: one request
+per term per refresh. `courses.json` stays the structural source; its
+`openStatus` is kept as a second, older observation, and two sources that
+disagree at the same moment make the section UNKNOWN. A refresh is its own
+operation (`python -m coursepilot_ingestion.availability_cli --year Y
+--term T`). It never re-ingests the catalog, and schedule generation never
+fetches. See DATA_MODEL section 43.
 
 ---
 

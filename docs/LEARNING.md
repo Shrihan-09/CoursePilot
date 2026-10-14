@@ -8096,3 +8096,121 @@ course unplannable, and a co-requisite partner crashing the planner.
 - Data provenance and evidence-based modeling
 - Open-world vs closed-world assumptions in rule systems
 - Integration testing across service boundaries
+
+---
+
+# Lesson 35: "Open" Is an Observation, Not a Fact
+
+## What We Built
+
+A separate refresh for Rutgers' open/closed list. It makes one request per
+term, archives every payload, and records why it rejects one. The data lives
+in its own tables: a current state per section and an append-only log of
+state changes. The Schedule Engine reads that data without fetching. It
+treats a lecture and its required lab as one registration bundle and labels
+every state with how fresh it is.
+
+---
+
+## Concepts
+
+### Stable facts and volatile observations need different homes
+
+"Section 13384 meets Tuesday at 10:20" is true all term. "Section 13384 is
+open" was true at 02:29:51 and may be false a minute later. Storing both in
+one row means every catalog reload overwrites the observation, and every
+availability poll touches the catalog. Separate tables give each its own
+writer, its own refresh boundary and its own failure mode.
+
+### Availability is not eligibility, and neither is validity
+
+Three questions sound alike and must never be merged:
+
+- Eligibility: may I take this course?
+- Validity: do these sections fit together?
+- Availability: can I register for them now?
+
+A closed section still proves a schedule exists. An open section does not
+make anyone eligible. Folding them into one "valid" flag would hide the most
+useful message: "this schedule works; the lab is closed".
+
+### Snapshot vs history: store changes, not polls
+
+Two real polls 80 seconds apart differed in 0 of 12,001 entries. Writing a
+row per section per poll stores 8.6 million copies of "still the same" every
+day. Writing a row only when a state changes, plus one row per poll, keeps
+the same information: "still closed at T" is the current state plus the poll
+log. It writes nothing when nothing changed.
+
+### Freshness belongs to the answer, not the database
+
+Rutgers publishes no "last updated" time, so the only "as of" is when
+CoursePilot looked. The same stored state is "current" at 02:30 and "stale"
+at 02:45. That is why freshness is computed against the request's time (an
+explicit `reference_time`) rather than stored. It is also why a file's
+timestamp is not trusted: copying an archive resets it.
+
+### An empty answer is not an answer
+
+`[]` came back for an unpublished term, for year 1999 and for a made-up
+campus. Treating it as "everything is closed" would close 12,000 sections
+because of a typo. A payload can be rejected while its rejection is still
+recorded. The last good observation then stays the "as of" time, and the
+silence is visible in the log.
+
+### Content alone cannot always prove where data came from
+
+Rutgers reuses index numbers across terms: a real Spring payload shares 116
+open indexes with Fall sections. No check on the list itself can tell those
+two terms apart. The request that produced the payload can, so the URL's
+term is checked, and the remaining blind spot is written down.
+
+### A bundle is only as available as its least available part
+
+Lecture open plus required lab closed means you cannot register, so the
+bundle is CLOSED. Lecture open plus lab unknown means UNKNOWN, not OPEN.
+The same rule applied per course keeps an academic co-requisite (229 needs
+227) as two bundles: two courses, two answers.
+
+### Don't fetch per candidate
+
+A schedule search may consider 100,000 combinations. One network call per
+candidate would be slow, rude to Rutgers and nondeterministic, since two
+calls during one request can disagree. The refresh fetches the whole term in
+one 96 KB request. The search reads what was stored, in 2 extra queries
+whatever the number of courses.
+
+### A new ranking signal can change the search, not just the score
+
+Putting "closed sections" ahead of "class days" in the objective changed
+which partial schedules the bound could prune. The large case went from
+finishing to hitting its node limit. Three fixes restored it, and none of
+them gives up exactness:
+
+- try open sections first;
+- don't split identical sections by state;
+- add a lookahead lower bound, proven exact against brute force.
+
+---
+
+## Self-Check
+
+1. Why is `courses.json`'s `openStatus` never labelled "current", even right after a download?
+2. A refresh returns `[]`. What changes in the database, and what does the next schedule request say?
+3. Why does storing only transitions lose nothing that a row per poll would keep?
+4. Lecture OPEN, lab CLOSED: what is the bundle state, and what does `require_open` report?
+5. Why is the same stored state "current" for one request and "stale" for the next?
+
+## Try It Yourself
+
+**A.** Run `python scripts/inject_availability_failures.py H` and read which tests notice an empty payload closing every section.
+
+**B.** Replay the two archived Fall payloads with `scripts/benchmark_availability.py` and count the transitions between them.
+
+**C.** Generate a schedule for 01:750:194 with `"availability": "require_open"` and read which component `NO_OPEN_SECTION` names.
+
+## Further Learning
+
+- Slowly changing data: snapshots, change logs and event sourcing
+- Cache freshness and HTTP `Cache-Control`
+- Admissible bounds in branch-and-bound search

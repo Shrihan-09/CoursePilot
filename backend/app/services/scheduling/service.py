@@ -9,11 +9,17 @@ The scheduler never re-implements a prerequisite; it only reads the verdict:
     UNSATISFIED  -> COURSE_ELIGIBILITY_FAILED, no options (a schedule for a
                     course the student may not take would mislead)
     UNKNOWN      -> options are returned with a needs-confirmation issue
+
+Availability (Phase 6.7) is read from what the availability refresh already
+stored - never fetched here - and judged against `reference_time` (the
+request time unless a caller fixes it). Generation writes nothing, including
+availability history: a refresh is a separate, explicit operation.
 """
 
 from __future__ import annotations
 
 import re
+from datetime import datetime
 
 from sqlalchemy.orm import Session
 
@@ -66,7 +72,8 @@ def normalize_courses(courses: list[str]) -> tuple[list[str], list[str]]:
 
 def generate_schedule(session: Session, student: Student, *, term_code: str,
                       courses: list[str], preferences: SchedulePreferences | None = None,
-                      max_results: int = DEFAULT_MAX_RESULTS) -> ScheduleResult:
+                      max_results: int = DEFAULT_MAX_RESULTS,
+                      reference_time: datetime | None = None) -> ScheduleResult:
     if not TERM_RE.match(term_code or ""):
         raise InvalidScheduleRequest(f"{term_code!r} is not a Rutgers term code (YYYYT).")
     if not 1 <= max_results <= MAX_RESULTS_LIMIT:
@@ -80,7 +87,8 @@ def generate_schedule(session: Session, student: Student, *, term_code: str,
             severity=Severity.WARNING, code="DUPLICATE_COURSE_REQUEST",
             message="Courses requested more than once are scheduled once.", courses=duplicates))
 
-    term = load_term(session, term_code, requested, student_attributes(session, student))
+    term = load_term(session, term_code, requested, student_attributes(session, student),
+                     reference_time)
 
     offered = [c for c in requested if c in term.slots_of]
     failed = False
@@ -125,6 +133,7 @@ def generate_schedule(session: Session, student: Student, *, term_code: str,
             requested_courses=requested, preferences=prefs,
             issues=sorted(issues, key=lambda i: (i.severity.value, i.code, i.courses)),
             metadata=ScheduleMetadata(term_code=term_code, section_dataset=term.dataset,
+                                      availability_mode=prefs.availability,
                                       search=SearchStats(node_limit=NODE_LIMIT,
                                                          solution_limit=SOLUTION_LIMIT)))
     else:
