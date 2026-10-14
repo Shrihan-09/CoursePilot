@@ -85,8 +85,16 @@ from app.models.availability import (
     SectionAvailability,
     SectionAvailabilityChange,
 )
+from app.models.monitoring import (
+    AvailabilityChangeDispatch,
+    NotificationEvent,
+    SectionWatch,
+)
 
 __all__ = [
+    "AvailabilityChangeDispatch",
+    "NotificationEvent",
+    "SectionWatch",
     "AvailabilityRefresh",
     "SectionAvailability",
     "SectionAvailabilityChange",

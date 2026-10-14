@@ -23,7 +23,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from app.domain.availability import (
@@ -69,7 +69,15 @@ def apply_refresh(session: Session, *, term_code: str, body: bytes | None, obser
 
     The caller owns the transaction. Re-applying an identical payload records
     a new refresh (the "as of" time moves) and zero transitions.
+
+    Phase 6.8: refreshes of one term are serialized (a PostgreSQL
+    transaction-scoped advisory lock; SQLite allows one writer anyway).
+    Without it two concurrent refreshes both read the old snapshot and both
+    record the same closed -> open - and every watcher would get two events.
     """
+    if session.get_bind().dialect.name == "postgresql":
+        session.execute(text("SELECT pg_advisory_xact_lock(hashtext(:key))"),
+                        {"key": f"availability_refresh:{term_code}"})
     refresh = AvailabilityRefresh(
         id=uuid.uuid4(), term_code=term_code, source_url=source_url, observed_at=observed_at,
         content_sha256=hashlib.sha256(body).hexdigest() if body is not None else None,

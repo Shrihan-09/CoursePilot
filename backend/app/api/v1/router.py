@@ -18,6 +18,7 @@ from app.api.v1.routes import (
     scenarios,
     schedules,
     student,
+    watches,
 )
 
 api_router = APIRouter()
@@ -29,6 +30,7 @@ api_router.include_router(programs.router)
 api_router.include_router(scenarios.router)
 api_router.include_router(plans.router)
 api_router.include_router(schedules.router)
+api_router.include_router(watches.router)
 api_router.include_router(admin.router)
 
 # Future routers land here as they are implemented:

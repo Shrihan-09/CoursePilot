@@ -478,7 +478,7 @@ Evidence: `docs/investigations/phase-6-7-live-availability.md`.
 | `campus` | **ignored**: NK returns NB's bytes. The list is term-wide across campuses (3,488 entries were other campuses' indexes, ignored by joining on the term's sections) |
 | term | **not in the body**, and indexes are reused across terms (Spring 2026 shares 116 open indexes with the Fall fixture), so the request URL's year/term must match |
 | empty | `[]` means an unpublished term (Spring 2027), year 1999 or campus XX alike: ambiguous, never "everything closed" |
-| cancelled section | not distinguishable: it is simply not listed (closed), until a `courses.json` download removes it |
+| cancelled section | not distinguishable: it is simply not listed (closed). Section ingestion never deletes it either: it stays, stamped with an older download (Phase 6.8 detects that; DATA_MODEL 44.6) |
 | linked components | nothing links indexes: a lecture and its LB lab are two independent entries |
 
 **Authority.** `openSections.json` is the availability source: one request
