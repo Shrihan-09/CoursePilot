@@ -34,6 +34,7 @@ from sqlalchemy import (
     String,
     Text,
     Uuid,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -124,6 +125,10 @@ class SectionAvailabilityChange(Base, TimestampMixin):
         # a future notifier reads "changes of term T since time X"
         Index("ix_availability_change_term_observed", "term_code", "observed_at"),
         Index("ix_availability_change_section", "section_id"),
+        # Phase 6.8: the event processor scans only openings (rare), in order.
+        Index("ix_availability_change_openings", "observed_at", "id",
+              postgresql_where=text("from_status = 'closed' AND to_status = 'open'"),
+              sqlite_where=text("from_status = 'closed' AND to_status = 'open'")),
     )
 
 
