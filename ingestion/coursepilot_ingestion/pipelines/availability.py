@@ -25,6 +25,7 @@ from datetime import UTC, datetime
 import httpx
 from app.models.availability import AvailabilityRefresh
 from app.services.availability import apply_refresh
+from app.services.monitoring import process_openings
 from sqlalchemy.orm import Session
 
 from coursepilot_ingestion.sources.soc import SOC_BASE, USER_AGENT, SocQuery
@@ -79,8 +80,14 @@ class AvailabilityRefreshPipeline:
         return str(path)
 
     def run(self, query: SocQuery, *, fetched: AvailabilityFetch | None = None,
-            commit: bool = True) -> AvailabilityRefresh:
-        """Fetch (or use an already-fetched/archived payload) and apply it."""
+            commit: bool = True, process_events: bool = True) -> AvailabilityRefresh:
+        """Fetch (or use an already-fetched/archived payload) and apply it.
+
+        Phase 6.8: once the refresh is COMMITTED, its closed -> open changes
+        are turned into watch events in separate transactions. A crash in
+        between loses nothing - the changes stay pending for the next run or
+        `monitoring_cli process`. The number of watches never changes the
+        request above: one per term per refresh."""
         fetched = fetched or self.fetch(query)
         refresh = apply_refresh(
             self.session, term_code=query.term_code, body=fetched.body,
@@ -91,6 +98,10 @@ class AvailabilityRefreshPipeline:
         logger.info("availability refresh %s: %s matched=%s ignored=%s transitions=%s",
                     query.term_code, refresh.verdict, refresh.matched, refresh.ignored,
                     refresh.transitions)
+        if commit and process_events and refresh.transitions:
+            stats = process_openings(self.session, now=datetime.now(UTC))
+            logger.info("watch events %s: openings=%s events=%s", query.term_code,
+                        stats.openings, stats.events_created)
         return refresh
 
 
