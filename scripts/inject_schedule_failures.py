@@ -19,6 +19,7 @@ PY = sys.executable
 S = "backend/app/services/scheduling/"
 MEETINGS, SEARCH, CANDS, ENGINE, SERVICE = (S + f for f in (
     "meetings.py", "search.py", "candidates.py", "engine.py", "service.py"))
+AVAIL = "backend/app/services/availability.py"
 TESTS = ["ingestion/tests/test_schedule_engine.py", "backend/tests/test_schedule_domain.py"]
 
 FAULTS = {
@@ -45,32 +46,34 @@ FAULTS = {
     "G": ("UNKNOWN restriction treated as satisfied", [(CANDS,
           "        outcome = RestrictionOutcome.UNKNOWN\n        reasons.append(\"student_attributes_incomplete\")",
           "        outcome = RestrictionOutcome.SATISFIED\n        reasons.append(\"student_attributes_incomplete\")")]),
-    "H": ("closed section treated as open", [(CANDS,
-          "state=AvailabilityState.OPEN if s.open_status else AvailabilityState.CLOSED,",
-          "state=AvailabilityState.OPEN,")]),
-    "I": ("archived availability presented as live", [(CANDS,
-          "    availability_base = dict(freshness=AvailabilityFreshness.ARCHIVED,",
-          "    availability_base = dict(freshness=AvailabilityFreshness.LIVE,")]),
+    # Phase 6.7: availability is resolved in app.services.availability.
+    "H": ("closed section treated as open", [(AVAIL,
+          "                AvailabilityStatus.OPEN if r.open_status else AvailabilityStatus.CLOSED,",
+          "                AvailabilityStatus.OPEN,")]),
+    "I": ("archived availability presented as live", [(AVAIL,
+          "                _aware(retrieved), COURSES_SOURCE, can_be_current=False))",
+          "                _aware(retrieved), COURSES_SOURCE, can_be_current=True))")]),
     "J": ("required linked component dropped", [(CANDS,
-          "                slots.append((sup, \"required_companion\"))",
+          "                slots.append((sup, \"required_companion\", evidence))",
           "                pass")]),
     "K": ("deterministic tie-breaking removed", [(ENGINE,
-          "            score.class_days, score.gap_minutes, score.closed_sections_if_live,\n"
+          "            score.preference_misses, score.class_days, score.gap_minutes,\n"
           "            tuple(c.index_number for c in sorted(choices, key=lambda c: c.slot)))",
-          "            score.class_days, score.gap_minutes, score.closed_sections_if_live)"),
+          "            score.preference_misses, score.class_days, score.gap_minutes)"),
           (ENGINE,
           "        keep.sort(key=lambda c: (c.restriction.outcome is RestrictionOutcome.UNKNOWN,\n"
-          "                                 not c.time_verified, c.index_number))",
+          "                                 not c.time_verified, _availability_weight(c), "
+          "c.index_number))",
           "        import random\n        random.shuffle(keep)\n"
           "        keep.sort(key=lambda c: (c.restriction.outcome is RestrictionOutcome.UNKNOWN,\n"
-          "                                 not c.time_verified))")]),
+          "                                 not c.time_verified, _availability_weight(c)))")]),
     "L": ("a requested course silently dropped from the schedule", [(ENGINE,
           "    if term.not_offered:\n        return result(ScheduleStatus.NO_VALID_SCHEDULE)",
           "    pass")]),
     "M": ("schedule generation mutates the student", [(SERVICE,
-          "    term = load_term(session, term_code, requested, student_attributes(session, student))",
+          "    term = load_term(session, term_code, requested, student_attributes(session, student),",
           "    student.catalog_year = student.catalog_year\n    student.external_ref = 'touched'\n"
-          "    term = load_term(session, term_code, requested, student_attributes(session, student))")]),
+          "    term = load_term(session, term_code, requested, student_attributes(session, student),")]),
     "N": ("sections from the wrong term mixed in", [(CANDS,
           "        .where(Course.course_string.in_(sorted(set(courses))),\n"
           "               CourseSection.term_code == term_code,\n"

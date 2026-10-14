@@ -12,6 +12,10 @@ have prerequisites the development student lacks, so for that case the
 stages are timed directly (load_term + engine.schedule) - the search is what
 is being measured there; the eligibility check is measured in the others.
 
+Phase 6.7: AVAILABILITY_AT=<ISO time> judges availability freshness at that
+moment (e.g. one minute after a replayed refresh) so the CURRENT path -
+availability-ranked search - is measured; unset, it is the request time.
+
 Usage:  DATABASE_URL_SYNC=... python scripts/benchmark_schedules.py [runs]
 """
 
@@ -23,6 +27,7 @@ import pathlib
 import statistics
 import sys
 import time
+from datetime import datetime
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path[:0] = [str(ROOT / "backend")]
@@ -37,6 +42,8 @@ from app.services.scheduling.engine import schedule  # noqa: E402
 from app.services.scheduling.service import generate_schedule  # noqa: E402
 
 RUNS = int(sys.argv[1]) if len(sys.argv) > 1 else 15
+AT = os.environ.get("AVAILABILITY_AT")
+WHEN = {"reference_time": datetime.fromisoformat(AT)} if AT else {}
 TERM = "20269"
 CASES = {
     "3 courses": ["01:198:352", "01:198:334", "01:640:300"],
@@ -79,7 +86,7 @@ def main() -> None:
             for _ in range(RUNS):
                 statements["n"] = 0
                 t0 = time.perf_counter()
-                term = load_term(s, TERM, courses, attrs)
+                term = load_term(s, TERM, courses, attrs, **WHEN)
                 t1 = time.perf_counter()
                 result = schedule(term, sorted(set(courses)), prefs, 10, [])
                 t2 = time.perf_counter()
@@ -89,7 +96,7 @@ def main() -> None:
                     statements["n"] = 0
                     t3 = time.perf_counter()
                     result = generate_schedule(s, student, term_code=TERM, courses=courses,
-                                               preferences=prefs)
+                                               preferences=prefs, **WHEN)
                     full.append((time.perf_counter() - t3) * 1000)
                 counts.append(statements["n"])
                 outputs.add(result.canonical_json())
