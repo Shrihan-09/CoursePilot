@@ -80,8 +80,16 @@ from app.models.sections import (
     SectionInstructor,
     SectionMeeting,
 )
+from app.models.availability import (
+    AvailabilityRefresh,
+    SectionAvailability,
+    SectionAvailabilityChange,
+)
 
 __all__ = [
+    "AvailabilityRefresh",
+    "SectionAvailability",
+    "SectionAvailabilityChange",
     "CREDENTIAL_TYPES",
     "PAGE_CLASSES",
     "CatalogPage",
