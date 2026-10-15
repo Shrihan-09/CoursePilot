@@ -57,5 +57,34 @@ services:
     command: >
       uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
+  # Phase 6.9 - CoursePilot Live: the ONE long-lived worker production needs
+  # (scheduled Rutgers refresh -> monitoring events -> inbox -> push outbox).
+  # Several replicas are safe: a per-term lease keeps Rutgers at one request
+  # per term per interval. Terms to poll are added with
+  #   python -m coursepilot_ingestion.live_cli schedule add --term 20269
+  # Push stays off until PUSH_PROVIDER=apns and the APNS_* settings are set.
+  live-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: coursepilot-live-worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-coursepilot}:${POSTGRES_PASSWORD:-coursepilot}@db:5432/${POSTGRES_DB:-coursepilot}
+      DATABASE_URL_SYNC: postgresql+psycopg://${POSTGRES_USER:-coursepilot}:${POSTGRES_PASSWORD:-coursepilot}@db:5432/${POSTGRES_DB:-coursepilot}
+    volumes:
+      - ./backend:/app
+      - ./ingestion:/ingestion
+      - ./data/raw/live:/data/raw/live
+    depends_on:
+      db:
+        condition: service_healthy
+    # SIGTERM -> the loop stops after its current step (<= one fetch timeout).
+    stop_grace_period: 60s
+    command: >
+      sh -c "pip install --quiet -e /ingestion && python -m coursepilot_ingestion.live_cli run"
+
 volumes:
   pgdata:

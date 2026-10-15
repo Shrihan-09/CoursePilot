@@ -16,6 +16,9 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0.36",
     "alembic>=1.14",
     "python-json-logger>=2.0",
+    # Phase 6.9 push delivery: APNs requires HTTP/2 and ES256-signed JWTs.
+    "httpx[http2]>=0.27",
+    "pyjwt[crypto]>=2.8",
 ]
 
 [project.optional-dependencies]
