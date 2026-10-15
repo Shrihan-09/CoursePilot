@@ -85,6 +85,13 @@ from app.models.availability import (
     SectionAvailability,
     SectionAvailabilityChange,
 )
+from app.models.live import (
+    AvailabilityPollSchedule,
+    DeliveryEndpoint,
+    LiveActivity,
+    Notification,
+    NotificationDelivery,
+)
 from app.models.monitoring import (
     AvailabilityChangeDispatch,
     NotificationEvent,
@@ -92,6 +99,11 @@ from app.models.monitoring import (
 )
 
 __all__ = [
+    "AvailabilityPollSchedule",
+    "DeliveryEndpoint",
+    "LiveActivity",
+    "Notification",
+    "NotificationDelivery",
     "AvailabilityChangeDispatch",
     "NotificationEvent",
     "SectionWatch",
