@@ -40,3 +40,7 @@ def configure_logging(settings: Settings) -> None:
     root.handlers.clear()
     root.addHandler(handler)
     root.setLevel(settings.log_level.upper())
+    # Phase 6.9: HTTP libraries log request URLs at INFO, and an APNs URL
+    # contains the device token. Never below WARNING.
+    for name in ("httpx", "httpcore", "hpack", "h2"):
+        logging.getLogger(name).setLevel(logging.WARNING)

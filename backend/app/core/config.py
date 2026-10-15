@@ -11,7 +11,7 @@ from enum import StrEnum
 from functools import lru_cache
 from typing import Annotated
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
@@ -160,6 +160,20 @@ class Settings(BaseSettings):
     # sixty academic records a minute. It is not a brute-force control -
     # there is no secret to guess - it is a blast-radius control.
     rate_limit_link_operations: int = 10
+    # Phase 6.9: registering push tokens / Live Activities grows rows and
+    # fan-out cost - its own budget per account per window.
+    rate_limit_push_registrations: int = 10
+
+    # --- CoursePilot Live: push delivery (Phase 6.9; DATA_MODEL section 45) ---
+    # none (default: deliveries stay pending and visible) | fake | apns
+    push_provider: str = "none"
+    # Apple credentials live OUTSIDE the repository: an env var holding the
+    # .p8 key text, or a path to it. Never logged (SecretStr masks repr).
+    apns_private_key: SecretStr | None = None
+    apns_key_path: str | None = None
+    apns_key_id: str | None = None
+    apns_team_id: str | None = None
+    apns_bundle_id: str | None = None
 
     # --- Retrieval (not implemented yet) ---
     retrieval_strategy: RetrievalStrategy = RetrievalStrategy.HYBRID
@@ -259,6 +273,17 @@ def audit_production_settings(settings: "Settings") -> list[str]:
         findings.append(
             "explanation_provider is 'openai' but no API key is configured"
         )
+
+    if settings.push_provider == "apns":
+        missing = [n for n, v in (("apns_private_key/apns_key_path",
+                                   settings.apns_private_key or settings.apns_key_path),
+                                  ("apns_key_id", settings.apns_key_id),
+                                  ("apns_team_id", settings.apns_team_id),
+                                  ("apns_bundle_id", settings.apns_bundle_id)) if not v]
+        if missing:
+            findings.append(f"push_provider is 'apns' but not configured: {missing}")
+    if settings.push_provider == "fake":
+        findings.append("push_provider is 'fake': no notification is actually sent")
 
     if settings.database_url_sync.startswith("sqlite"):
         findings.append(

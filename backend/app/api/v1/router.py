@@ -17,6 +17,7 @@ from app.api.v1.routes import (
     programs,
     scenarios,
     schedules,
+    live,
     student,
     watches,
 )
@@ -31,6 +32,8 @@ api_router.include_router(scenarios.router)
 api_router.include_router(plans.router)
 api_router.include_router(schedules.router)
 api_router.include_router(watches.router)
+for _live_router in live.routers:
+    api_router.include_router(_live_router)
 api_router.include_router(admin.router)
 
 # Future routers land here as they are implemented:
