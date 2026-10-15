@@ -8346,3 +8346,137 @@ server already concluded.
 - Idempotency keys in payment and messaging APIs
 - At-least-once vs exactly-once delivery
 - Fan-out on write vs fan-out on read
+
+---
+
+# Lesson 37: From a Fact to a Lock Screen
+
+## What We Built
+
+The rest of the path from "Rutgers listed 13385 as open" to a phone. This
+phase adds:
+
+- a worker that polls each active term on a schedule;
+- an inbox with read state;
+- a durable outbox that retries;
+- a generic table of push endpoints;
+- the server half of Apple Live Activities.
+
+Every step after the observation is idempotent and safe to run on many
+workers. Everything that would leave the building goes through one tested
+boundary, which stops at the HTTP request to Apple.
+
+---
+
+## Concepts
+
+### Lock before the side effect, not after it
+
+Phase 6.8's advisory lock made duplicate *transitions* impossible. But the
+Rutgers request happened before the lock, so two workers still asked Rutgers
+twice. A guard placed after the side effect cannot prevent the side effect.
+The lease is claimed and committed before the fetch, and checked again before
+the result is written.
+
+### A lease is a lock that expires
+
+A worker can die while holding work: a crashed process, a lost network, a
+killed container. Locks tied to a connection vanish with it, but locks tied
+to a process do not. A lease (`lease_until`) admits its own mortality: after
+its time passes, anyone may take over. A **fencing** check means the late
+worker cannot write over the one that took over.
+
+### Facts are immutable; state about facts lives elsewhere
+
+"13385 opened at 02:31" never changes. "I have read that" does. Putting
+`read_at` on the event would make a fact mutable and couple it to one
+surface. The inbox row holds the read state, and the delivery row holds
+the push state. The event stays exactly what was observed.
+
+### The outbox: record first, send later
+
+Sending a push from inside the transaction that records the event fails
+both ways. If the push succeeds but the transaction rolls back, the user was
+told about nothing. If the transaction commits but the push fails, the
+notification is lost. The outbox records "this should be sent" alongside the
+fact. A separate worker sends it and records what happened. A crash anywhere
+leaves a row that is still pending.
+
+### At-least-once, made to look like once
+
+After APNs accepts a push, the worker may die before recording that. The
+safe choice is to send again, so delivery is *at least* once. The duplicate
+is made harmless on the device: the event id is the collapse id, and the
+activity timestamp orders updates. This is the honest version of "exactly
+once" across a network.
+
+### Classify failures by who must act
+
+| Failure | Whose fault | What to do |
+|---|---|---|
+| Token is dead (410) | The device's | Stop using that token forever |
+| Key is wrong (403 provider token) | Ours | Retry; don't punish the device |
+| Payload too big | Our code | Never retry |
+| Apple is busy (429, 503) | Nobody's | Wait, then retry, with a limit |
+
+A retry policy that ignores who is at fault either loses notifications or
+hammers Apple forever.
+
+### Re-check right before acting
+
+A watch can be cancelled after its delivery row was written. The worker
+looks again immediately before sending: is the watch active, the endpoint
+valid, the activity running, the account enabled, the event still fresh?
+"Suppressed: watch_inactive" is a recorded outcome, not a silent skip.
+
+### Secrets leak through side doors
+
+Nobody writes `log(token)`. But the APNs URL contains the device token, and
+the HTTP library logs every URL at INFO and prints it in every exception.
+Guarding secrets means following where *libraries* put them: quiet their
+loggers, translate their exceptions, and never log a traceback near a send.
+
+### Read the platform's rules before designing for it
+
+Apple's documentation changed three decisions here:
+
+- **Targeted updates instead of broadcast channels.** Channels give everyone
+  the same state and no per-device feedback.
+- **No remote start.** Activities that appear unexpectedly feel invasive.
+- **One alert per opening, not two.** The Human Interface Guidelines say not
+  to push alongside a Live Activity for the same update.
+
+Each came from reading the current documentation, not from memory.
+
+### "We built the backend" is not "it works on an iPhone"
+
+No Apple key and no iOS app exist here, so the boundary was tested where
+it ends: the exact request, with headers, JWT and payload, against a mock. The
+report says so plainly. Claiming the last hop without doing it would be the
+kind of unsupported fact this project is built to refuse.
+
+---
+
+## Self-Check
+
+1. Why did the 6.8 advisory lock not stop two workers from both calling Rutgers?
+2. A worker's lease expires while it is still fetching. What stops it from overwriting the other worker's refresh?
+3. Why is `read_at` not a column of `notification_event`?
+4. APNs returns 403 `ExpiredProviderToken`. Should the device's endpoint be revoked? Why not?
+5. Why does a crash after APNs accepted a push lead to a second send, and why is that acceptable?
+6. When a student has a Live Activity for a watch, why does CoursePilot not also send the ordinary push?
+
+## Try It Yourself
+
+**A.** Run `python scripts/inject_live_failures.py M` and see which test catches a token in the logs.
+
+**B.** Run `python -m coursepilot_ingestion.live_cli schedule add --term 20269`, then `live_cli tick`, and read the refresh it recorded.
+
+**C.** Read `opening_state` for 01:750:194 LB and for 01:750:229 and explain why only one has `required_component`.
+
+## Further Learning
+
+- Leases and fencing tokens in distributed systems
+- The transactional outbox pattern
+- Apple: "Starting and updating Live Activities with ActivityKit push notifications"
+- Idempotency keys and collapse identifiers in push services

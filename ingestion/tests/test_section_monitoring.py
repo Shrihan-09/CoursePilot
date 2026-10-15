@@ -559,7 +559,7 @@ def test_processing_cost_does_not_grow_with_watchers(armed, watchers) -> None:
     finally:
         sa_event.remove(engine, "before_cursor_execute", count)
     assert stats.events_created == watchers
-    inserts = [s for s in statements if s.lstrip().upper().startswith("INSERT INTO NOTIFICATION")]
+    inserts = [s for s in statements if s.lstrip().upper().startswith("INSERT INTO NOTIFICATION_EVENT")]
     assert len(inserts) == (1 if watchers else 0)           # one set-based insert, any count
     assert len(statements) <= 20
 

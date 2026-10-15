@@ -210,12 +210,27 @@ def get_link_limiter(settings: Settings | None = None) -> SlidingWindowLimiter:
     return _link_limiter
 
 
+_push_limiter: SlidingWindowLimiter | None = None
+
+
+def get_push_limiter(settings: Settings | None = None) -> SlidingWindowLimiter:
+    global _push_limiter
+    settings = settings or get_settings()
+    if _push_limiter is None:
+        _push_limiter = SlidingWindowLimiter(
+            limit=settings.rate_limit_push_registrations,
+            window_seconds=settings.rate_limit_window_seconds,
+        )
+    return _push_limiter
+
+
 def reset_limiters() -> None:
     """Test hook. Not called by application code."""
-    global _request_limiter, _model_limiter, _link_limiter
+    global _request_limiter, _model_limiter, _link_limiter, _push_limiter
     _request_limiter = None
     _model_limiter = None
     _link_limiter = None
+    _push_limiter = None
 
 
 def _unauthenticated(detail: str) -> HTTPException:
@@ -302,13 +317,26 @@ def enforce_request_rate_limit(
     return principal
 
 
+def enforce_push_registration_limit(
+    principal: Principal = Depends(enforce_request_rate_limit),
+    settings: Settings = Depends(get_settings),
+) -> Principal:
+    """Phase 6.9: registering push tokens / Live Activities has its own,
+    tighter budget on top of the request budget."""
+    if settings.rate_limit_enabled:
+        get_push_limiter(settings).check(f"push:{principal.account_id}")
+    return principal
+
+
 __all__ = [
     "MAX_SUBJECT_CHARS",
     "Principal",
     "RateLimitExceeded",
     "SlidingWindowLimiter",
+    "enforce_push_registration_limit",
     "enforce_request_rate_limit",
     "get_link_limiter",
+    "get_push_limiter",
     "get_model_limiter",
     "get_principal",
     "get_request_limiter",

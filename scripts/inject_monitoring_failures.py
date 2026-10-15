@@ -60,10 +60,12 @@ FAULTS = {
           "            .where(change.id.in_(ids), watch.deactivated_at.is_(None),\n",
           "            .where(change.id.in_(ids),\n")]),
     "G": ("event uniqueness removed (plain INSERT, no unique key)", [(SERVICE,
+          # 6.9 moved the RETURNING list (the helper can return rows); same fault.
           ("    result = session.execute(insert(table).values(rows).on_conflict_do_nothing(\n"
-          "        index_elements=keys).returning(*table.primary_key.columns))"),
+          "        index_elements=keys).returning(*(returning or table.primary_key.columns)))"),
           ("    result = session.execute(insert(table).values(rows)\n"
-          "                             .returning(*table.primary_key.columns))")), (MODELS,
+          "                             .returning(*(returning or table.primary_key.columns)))")),
+          (MODELS,
           ("        UniqueConstraint(\"watch_id\", \"change_id\", "
           "name=\"uq_notification_event_watch_change\"),\n"),
           "")]),
@@ -90,11 +92,18 @@ FAULTS = {
           ("    if False:\n"
           "        session.execute(text(\"SELECT pg_advisory_xact_lock(hashtext(:key))\"),"))]),
     "N": ("one INSERT per watcher (not set-based)", [(SERVICE,
-          ("        inserted = _insert_ignoring_conflicts(session, NotificationEvent.__table__, rows,\n"
-          "                                              [\"watch_id\", \"change_id\"])"),
-          ("        inserted = sum(_insert_ignoring_conflicts(\n"
-          "            session, NotificationEvent.__table__, [r], [\"watch_id\", \"change_id\"])\n"
-          "            for r in rows)"))]),
+          # 6.9: the event insert now also returns rows for the inbox; same fault.
+          ("        created = _insert_ignoring_conflicts(\n"
+          "            session, NotificationEvent.__table__, rows, [\"watch_id\", \"change_id\"],\n"),
+          ("        created = [row for r in rows for row in _insert_ignoring_conflicts(\n"
+          "            session, NotificationEvent.__table__, [r], [\"watch_id\", \"change_id\"],\n"))
+          , (SERVICE,
+          ("            returning=[NotificationEvent.__table__.c.id,\n"
+          "                       NotificationEvent.__table__.c.user_account_id])\n"
+          "        inserted = len(created)"),
+          ("            returning=[NotificationEvent.__table__.c.id,\n"
+          "                       NotificationEvent.__table__.c.user_account_id])]\n"
+          "        inserted = len(created)"))]),
     "O": ("events listed across accounts", [(SERVICE,
           "        select(NotificationEvent).where(NotificationEvent.user_account_id == account_id)",
           "        select(NotificationEvent)")]),
