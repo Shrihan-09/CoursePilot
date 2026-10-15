@@ -55,6 +55,7 @@ from app.models import Course, CourseOffering, CourseSection, DataSource
 from app.models.availability import SectionAvailabilityChange
 from app.models.monitoring import AvailabilityChangeDispatch, NotificationEvent, SectionWatch
 from app.services.availability import SectionRef, lookup
+from app.services.live import create_inbox_items, end_activities_for_watches
 from app.services.scheduling.candidates import StudentAttributes, load_term
 
 
@@ -196,6 +197,7 @@ def deactivate_watch(session: Session, account_id, watch_id, *, now: datetime,
         SectionWatch.id == watch_id, SectionWatch.user_account_id == account_id))
     if watch is not None and watch.deactivated_at is None:
         watch.deactivated_at, watch.deactivation_reason = now, reason.value
+        end_activities_for_watches(session, [watch.id], now=now)       # Phase 6.9
         session.flush()
     return watch
 
@@ -254,10 +256,12 @@ class ProcessStats:
     by_term: dict[str, int] = field(default_factory=dict)
 
 
-def _insert_ignoring_conflicts(session: Session, table, rows: list[dict], keys: list[str]) -> int:
-    """INSERT ... ON CONFLICT (keys) DO NOTHING on PostgreSQL and SQLite."""
+def _insert_ignoring_conflicts(session: Session, table, rows: list[dict], keys: list[str],
+                               returning=None):
+    """INSERT ... ON CONFLICT (keys) DO NOTHING on PostgreSQL and SQLite.
+    The count of rows really inserted - or, with `returning`, those rows."""
     if not rows:
-        return 0
+        return [] if returning is not None else 0
     if session.get_bind().dialect.name == "postgresql":
         from sqlalchemy.dialects.postgresql import insert
     else:
@@ -265,8 +269,8 @@ def _insert_ignoring_conflicts(session: Session, table, rows: list[dict], keys: 
     # RETURNING counts what was really inserted (psycopg reports rowcount -1
     # for a multi-row INSERT ... ON CONFLICT).
     result = session.execute(insert(table).values(rows).on_conflict_do_nothing(
-        index_elements=keys).returning(*table.primary_key.columns))
-    return len(result.all())
+        index_elements=keys).returning(*(returning or table.primary_key.columns)))
+    return result.all() if returning is not None else len(result.all())
 
 
 def _bundle_context(session: Session, term_code: str, course: str, section_id, now: datetime):
@@ -363,8 +367,13 @@ def process_openings(session: Session, *, now: datetime, batch: int = DISPATCH_B
                 "required_component_state": state, "required_components_open": n_open,
                 "required_components_total": total, "context_as_of": as_of,
                 "created_at": now, "updated_at": now})
-        inserted = _insert_ignoring_conflicts(session, NotificationEvent.__table__, rows,
-                                              ["watch_id", "change_id"])
+        created = _insert_ignoring_conflicts(
+            session, NotificationEvent.__table__, rows, ["watch_id", "change_id"],
+            returning=[NotificationEvent.__table__.c.id,
+                       NotificationEvent.__table__.c.user_account_id])
+        inserted = len(created)
+        # Phase 6.9: the inbox item for each NEW event, in the same transaction.
+        create_inbox_items(session, [(e, a) for e, a in created], now)
         per_change = defaultdict(int)
         for _w, _a, cid in pairs:
             per_change[cid] += 1
@@ -400,6 +409,7 @@ def deactivate_removed_targets(session: Session, *, now: datetime) -> int:
             if w.section_id is None or w.section_id in removed:
                 w.deactivated_at = now
                 w.deactivation_reason = DeactivationReason.TARGET_REMOVED.value
+                end_activities_for_watches(session, [w.id], now=now)   # Phase 6.9
                 count += 1
     session.flush()
     return count
@@ -413,6 +423,7 @@ def expire_term(session: Session, term_code: str, *, now: datetime) -> int:
         SectionWatch.term_code == term_code, SectionWatch.deactivated_at.is_(None))).all()
     for w in watches:
         w.deactivated_at, w.deactivation_reason = now, DeactivationReason.TERM_ENDED.value
+    end_activities_for_watches(session, [w.id for w in watches], now=now)  # Phase 6.9
     session.flush()
     return len(watches)
 
