@@ -8219,3 +8219,395 @@ is justified by these numbers.
   existed at that time match it.
 * Read state ("mark as read") is deliberately absent. It belongs to the
   in-app delivery phase.
+
+---
+
+## 45. CoursePilot Live: scheduler, inbox, delivery, Live Activities (Phase 6.9)
+
+> **A CoursePilot opening notification reports an observed Rutgers
+> availability change. It does not guarantee eligibility, schedule
+> compatibility, or successful registration.**
+
+### 45.1 Architecture
+
+```
+Rutgers public openSections.json
+      │  ONE request per ACTIVE term per interval (lease-guarded)
+live_cli run ── LiveWorker.tick ──────────────────────────────────────────────┐
+      │                                                                       │
+availability_refresh / section_availability_change   (6.7, unchanged)         │
+      │  closed -> open only                                                  │
+notification_event (6.8, immutable)  +  notification (inbox item, same txn)   │
+      │  fan_out (set-based; marker = notification.fanned_out_at)             │
+notification_delivery (outbox: event x endpoint x channel)                    │
+      │  claim (lease) -> re-check -> send (no txn open) -> record (fenced)   │
+PushProvider: fake (tests) | apns (alert push, ActivityKit update) ───────────┘
+      │
+[not in this repository] the iOS app: Lock Screen / Dynamic Island
+```
+
+**One trust boundary, unchanged.** The notification engine communicates
+existing factual events and decides nothing about:
+
+- requirements, prerequisites or eligibility;
+- schedule fit;
+- registration.
+
+Payloads are rendered from the event's structured fields by fixed templates
+(`app.domain.live`). They never use AI text or seat counts, and never include
+a component the 6.6.1 model did not record.
+
+### 45.2 Production topology
+
+Two processes against one PostgreSQL database:
+
+```
+uvicorn app.main:app                         the API (unchanged)
+python -m coursepilot_ingestion.live_cli run the Live worker - 1 or more replicas
+```
+
+Nothing else is needed: no Redis, broker, queue or cron. At the measured volumes
+(45.11) PostgreSQL row leases, SKIP LOCKED claims and unique keys do it.
+
+**Setup:**
+
+- **Schedule the terms:** `live_cli schedule add --term 20269 --interval 90` for
+  each Rutgers term to poll, and `schedule deactivate` at term end.
+  CoursePilot has no other notion of an active term.
+- **Choose the push provider:** `PUSH_PROVIDER` is `none` by default
+  (deliveries stay visible and pending), `fake`, or `apns` (45.12).
+
+### 45.3 The scheduler
+
+Table: `availability_poll_schedule`
+
+| column | purpose |
+|---|---|
+| `term_code` | primary key |
+| `active` | whether this term is polled at all |
+| `interval_seconds` | normal cadence; must be ≥ 30, Rutgers' `max-age` |
+| `backoff_cap_seconds` | upper bound on the backoff delay |
+| `lease_owner`, `lease_until` | the per-term lease |
+| `last_started_at`, `last_finished_at`, `last_duration_ms`, `last_outcome` | observability |
+
+One tick, per active term:
+
+1. **claim:** `UPDATE ... SET lease ... WHERE lease free` and COMMIT. Then the
+   due check is repeated from the refresh log; if the term is not due, the
+   lease is released.
+2. **fetch:** GET `openSections.json`, with **no transaction open**.
+3. **fence:** `SELECT ... WHERE lease_owner = me AND lease_until >= now FOR UPDATE`.
+   If the lease is lost, nothing is written (`lease_loss`).
+4. **apply:** `apply_refresh` (6.7; its advisory lock stays as a second guard).
+5. **release:** the lease is freed, with the outcome and duration recorded.
+
+After the terms, every tick runs `process_openings`, `fan_out`, `deliver_due`
+(only when a provider is configured) and `expire_live_activities`.
+
+**The 6.8 advisory lock did not prevent duplicate Rutgers requests,** only
+duplicate transitions. It is taken *inside* the refresh transaction, after the
+fetch. The lease is taken before the fetch.
+
+Tested on PostgreSQL:
+
+- three workers at once make one request;
+- a worker whose lease expired mid-fetch is fenced out.
+
+**When a term is due** comes from the refresh log (`max(observed_at)`), so
+restarts and manual runs never double-poll.
+
+- Consecutive `rejected_fetch_failed` rows back off: `interval × 2^k`, capped
+  at `backoff_cap_seconds`.
+- Other rejections (malformed, empty, implausible, wrong term) are data, not
+  transport. They keep the normal cadence and log a warning.
+
+**Failure handling.** A failing step is logged with its error *type* and
+counted in the tick report, and never stops the other steps. Ticks that keep
+failing back off up to 5 minutes, never hot-looping. The loop stops on SIGINT,
+SIGTERM, or SIGBREAK (Windows), within one fetch timeout.
+
+### 45.4 Inbox
+
+`notification`: one row per event, created **in the same transaction** as the
+event by the 6.8 processor (for existing events, by the migration's backfill).
+
+- **Read state** lives here (`read_at`). Reading never writes the factual
+  event; a test compares the event row's bytes before and after.
+- **Paging** is newest-first, keyset-paged on `(created_at, id)` with an
+  opaque cursor. A late-processed older opening never slides above a page the
+  client already read.
+- **Endpoints:** list, unread count, mark one read (idempotent), mark all read
+  up to a time.
+
+The same API serves web, iOS and Android.
+
+### 45.5 Endpoints and token lifecycle
+
+`delivery_endpoint` has one generic model for every kind:
+
+- `apns_device`: ordinary alerts;
+- `apns_live_activity`: one activity's update token;
+- `apns_push_to_start`: stored only;
+- `fcm` and `web_push`: reserved.
+
+**Storage.** The raw token is kept, because sending needs it. Its sha256 is
+its identity, under a **global** partial unique index over active rows. Logs
+and responses only ever see a 12-character salted fingerprint, and the raw
+token is cleared on revocation.
+
+| event | effect |
+|---|---|
+| same token, same account | `last_seen_at` refreshed (idempotent) |
+| same token, another account | old row revoked `reassigned`: a phone that changed accounts stops receiving the old account's alerts |
+| `replaces_endpoint_id` / `PUT /live-activities/{id}/token` | old row revoked `rotated` and linked to its replacement, pending deliveries to it suppressed. Apple: "invalidate the previous, now-outdated token" |
+| APNs 410 / 400 `BadDeviceToken` / `DeviceTokenNotForTopic` | revoked `provider_invalid`, never retried |
+| user `DELETE` | revoked `user_revoked` |
+| watch stops / activity ends / 8 h | the activity's token is revoked (`activity_ended` / `expired`) |
+| account deleted | cascades |
+
+**Limits:**
+
+- at most 20 active endpoints and 10 active Live Activities per account;
+- a dedicated registration rate limit, `RATE_LIMIT_PUSH_REGISTRATIONS`, which
+  is 10 per minute by default.
+
+### 45.6 The ActivityKit server contract
+
+```
+user taps "Watch Live" (iOS)
+  1. POST /api/v1/watches                 {term, index_number}         -> watch_id
+  2. Activity.request(..., pushType: .token)                           (on device)
+  3. for await token in activity.pushTokenUpdates:
+         POST /api/v1/live-activities    {watch_id, client_activity_id, push_token, environment}
+         (later tokens: PUT /api/v1/live-activities/{id}/token)
+  4. the app may close; the Live worker keeps polling Rutgers
+  5. 13385 observed closed -> open  ->  event -> inbox item -> delivery (apns_live_activity)
+  6. APNs: apns-push-type liveactivity, topic <bundle>.push-type.liveactivity,
+     aps.event "end", content-state = the OPEN state, dismissal-date +30 min
+  7. user ends it early:   POST /api/v1/live-activities/{id}/end
+```
+
+**Ownership.** The watch must be the caller's and active. Attaching to
+another account's watch returns 404, the same as a random id. A Live Activity
+is bounded: `expires_at` is `started_at` + 8 hours (Apple: active at most 8
+hours). It ends when its opening update is accepted, when the watch stops, or
+when the user ends it.
+
+**Payload** (`opening_state`, version 1, identical in both push kinds; the iOS
+`ContentState` mirrors it):
+
+- always present: `v`, `kind`, `event_id`, `watch_id`, `term`, `course`,
+  `section`, `index`, `availability: "open"`, `observed_at` (epoch) and
+  `deep_link`;
+- `supplement` and `required_component {state, open, total, as_of}` **only
+  when the event recorded them**. 01:750:229 gets neither; 01:750:194's LB lab
+  gets its lecture record.
+
+Alerts are localization keys (`CP_SECTION_OPENED_TITLE/BODY` plus arguments)
+that the app owns. No English is on the wire. Payloads stay under 4 KB, and
+the size is checked before sending.
+
+### 45.7 Decisions
+
+**Targeted per-activity updates, not broadcast channels.** Apple's broadcast
+push is iOS 18+ only, and gives every subscriber the same `content-state`.
+
+- It is capped at 10,000 channels per app.
+- It gives no per-device feedback (410s).
+- It cannot end one student's activity.
+- Apple itself recommends targeted updates "when Live Activity updates impact
+  only one person".
+
+Ownership, revocation and per-student context make targeted updates right.
+The fan-out writes one row per (event, endpoint, channel), so a later
+`liveactivity_channel` endpoint kind can be added beside it without touching
+monitoring.
+
+**No push-to-start (remote start) initially.** It needs iOS 17.2+ and an
+alert. Apple warns that unexpected Live Activities "can be surprising or even
+unwanted", and a push-to-start token is per device and attributes type, not
+per watch. The student starts the activity by tapping "Watch Live". The
+`apns_push_to_start` kind is accepted and stored as the extension point.
+
+**Normal push and Live Activity together.** Apple's HIG: "don't use push
+notifications alongside Live Activities for the same updates."
+
+- When the watch has an active Live Activity, its `end` update carries the
+  alert. The ordinary push row is still created, as `suppressed:
+  live_activity_alerted`.
+- Without one, the normal push is sent.
+
+This keeps the brief's "normal push remains useful when no Live Activity is
+active" without double-alerting.
+
+### 45.8 Delivery semantics
+
+```
+pending|retry (due) --claim--> claimed (lease 90 s, attempt counted)
+claimed --re-check fails--> suppressed (watch_inactive | endpoint_revoked | activity_ended |
+                                         account_disabled | event_expired)
+claimed --200--> delivered (APNs accepted; NOT proof a person saw it)
+claimed --410/BadDeviceToken--> failed_permanent + endpoint revoked
+claimed --400/403 config/413--> failed_permanent (endpoint kept)
+claimed --429/5xx/network/timeout/403 provider auth--> retry (backoff 30 s x 2^n,
+                     jitter, Retry-After honoured, cap 15 min) | failed_permanent
+                     (max 5 attempts) | suppressed (would pass the 60-minute event TTL)
+claimed --lease expired--> reclaimed by any worker; recorded results are fenced
+                           on the claim token, so a stale worker writes nothing
+```
+
+**At-least-once.** A crash after APNs accepted but before the result was
+recorded re-sends after the lease expires. `apns-collapse-id` = event id (for
+alerts) and `aps.timestamp` (for Live Activities) make the device show it
+once.
+
+**Exactly one logical delivery** comes from `UNIQUE(event_id, endpoint_id,
+channel)`.
+
+**The watch-cancellation race** (6.8 §44.12) is closed. Deliveries re-check
+the watch, endpoint, activity, account and TTL immediately before sending, and
+record `suppressed` rather than send. Tested on PostgreSQL with the
+cancellation committed from another connection.
+
+### 45.9 Security and privacy
+
+**Ownership comes only from the credential.** Every body is `extra="forbid"`,
+so `account_id`, `user_account_id`, `student_id`, `user_id`, `principal` and
+`owner` are all a 422. Another account's endpoint, activity or inbox item is a
+404.
+
+**Tokens never appear in:**
+
+- responses or error text;
+- `repr` (`PushRequest.token` has `repr=False`);
+- logs.
+
+The APNs URL path contains the token, and httpx logs request URLs at INFO and
+puts them in exception text. So the `httpx`, `httpcore`, `hpack` and `h2`
+loggers are held at WARNING, every httpx error becomes a classified result
+without its message, and no traceback is logged around a send or a
+registration.
+
+**Apple credentials:**
+
+- **Settings only:** `APNS_PRIVATE_KEY` (SecretStr) or `APNS_KEY_PATH`, plus
+  `APNS_KEY_ID`, `APNS_TEAM_ID` and `APNS_BUNDLE_ID`.
+- **Kept out of git:** `*.p8` is ignored.
+- **Audited:** `audit_production_settings` flags an incomplete APNs
+  configuration.
+
+### 45.10 Observability
+
+`GET /api/v1/admin/live/health` (administrators) is computed from the
+database, so it sees every worker process. It reports:
+
+- **Per term:** last outcome, last finish, duration, last accepted refresh,
+  consecutive fetch failures, lease held, and healthy (finished within 3 ×
+  backoff cap, not an error).
+- **Scheduler health.**
+- **Backlogs:** pending openings and pending fan-out.
+- **Outbox:** deliveries by status, invalidated endpoints and active Live
+  Activities.
+
+Each refresh, failure and tick also logs as a structured line (`live_tick`,
+`availability_refresh`, `live_step_failed`) carrying counts and error types,
+never tokens or academic content.
+
+### 45.11 Measured
+
+`scripts/benchmark_live.py`: the FULL real Fall 2026 term (11,992 sections,
+loaded through the production pipelines into the disposable `*_test`
+database). The real 2026-10-14 payload is the first observation; N watchers of
+one section each have an APNs device endpoint; one SYNTHETIC opening;
+FakeProvider (no request leaves the machine).
+
+| watchers | Rutgers requests | refresh SQL | events SQL | fan-out SQL | deliver SQL (run 1 / run 2) |
+|---|---|---|---|---|---|
+| 1 | 2 | 15 | 16 | 7 | 11 / 8 |
+| 10 | 2 | 15 | 16 | 7 | 65 / 35 |
+| 100 | 2 | 15 | 16 | 7 | 605 / 305 |
+| 1,000 | 2 | 15 | 16 | 13 | 6,032 / 3,032 |
+
+**Rutgers requests:** 2 at every scale (the first observation plus the opening
+poll). An idle tick (term not due) makes 0 requests, in 6 statements.
+
+**Events and fan-out are set-based.** Their statement counts do not grow with
+watchers. Fan-out grows from 7 to 13 statements at 1,000 only because a second
+500-row batch is needed.
+
+**Delivery is inherently one provider call per endpoint.** Run 1 also re-checked
+with five reads per delivery (about 6 statements each). Run 2 does one joined
+re-check *immediately before each send*, about 3 statements per delivery. The
+re-check is deliberately never batched ahead of the send, so a watch cancelled
+a moment ago still suppresses.
+
+Wall-clock times on this development laptop were noisy. The same 11,992-section
+load took 151–221 s in run 1 and 171–373 s in run 2:
+
+| run 1 (before the re-check change) | 1 | 10 | 100 | 1,000 |
+|---|---|---|---|---|
+| refresh (poll + apply) | 172 ms | 209 ms | 181 ms | 188 ms |
+| refresh -> events | 36 ms | 36 ms | 177 ms | 500 ms |
+| events -> deliveries (fan-out) | 15 ms | 19 ms | 115 ms | 787 ms |
+| deliveries / s (one worker, FakeProvider) | 21 | 68 | 83 | 87 |
+
+| run 2 (one-query re-check; the machine was ~2x slower) | 1 | 10 | 100 | 1,000 |
+|---|---|---|---|---|
+| refresh (poll + apply) | 394 ms | 564 ms | 296 ms | 823 ms |
+| refresh -> events | 126 ms | 79 ms | 190 ms | 2,118 ms |
+| events -> deliveries (fan-out) | 57 ms | 68 ms | 163 ms | 1,858 ms |
+| deliveries / s (one worker, FakeProvider) | 22 | 36 | 45 | 37 |
+
+**Inbox:** listing (20 items) takes 0.9–4.1 ms p50, and the unread count
+0.7–3.2 ms. Each delivery commits twice: once to release the database before
+the send, once to record the result. One worker's throughput is therefore
+bounded by commit latency.
+
+**Hot sections.** Workers scale horizontally, since claims use SKIP LOCKED and
+are proven duplicate-free with 2 and 4 workers. A real APNs round-trip, about
+tens of milliseconds over a reused HTTP/2 connection, would dominate.
+
+**Not measured:** real APNs latency, because there are no credentials. The
+numbers make no claim about Apple-side throughput.
+
+### 45.12 External Apple setup still required (not done; no device was tested)
+
+1. An Apple Developer account, the app's bundle id, and the Push Notifications
+   capability.
+2. An APNs auth key (`.p8`), its Key ID and the Team ID. Keys are now
+   environment-scoped; keep them outside the repository (`APNS_KEY_PATH`).
+3. `PUSH_PROVIDER=apns` plus the settings above. Install `httpx[http2]`, which
+   is declared. APNs requires HTTP/2, and `h2` is not installed in this
+   development environment.
+4. **The iOS app:**
+   - an ActivityKit widget extension whose `ContentState` mirrors
+     `opening_state` v1, decoded with default JSON encoding;
+   - `Localizable.strings` for `CP_SECTION_OPENED_*`;
+   - the token-registration calls in 45.6.
+5. A sandbox end-to-end run on a real device. **Until then, nothing in this
+   phase has reached an iPhone.** The tested boundary is the exact HTTP
+   request CoursePilot sends (path, headers, ES256 JWT, payload), checked
+   against a mock transport.
+6. To confirm in that run (Apple does not document them):
+   - the hourly Live Activity budget;
+   - whether an ended activity's token returns 410.
+
+### 45.13 Credits and My Day
+
+**No credit is spent on infrastructure.** Polling, event processing, fan-out,
+Live Activity updates and retries are shared infrastructure; no table holds a
+price, balance or plan. A future ledger authorizes *creating a watch* (or
+starting "Watch Live"), before the watch exists (§44.10).
+
+**My Day (future, not built).** The same pieces are enough:
+
+- **The activity:** a `live_activity` row with a different attributes type,
+  bounded to one day: started in the morning, ended after the last class,
+  well under 8 hours of active time per segment.
+- **Its content:** the next class, the current class, time remaining and
+  where. This comes from the student's deterministic Schedule Engine result,
+  never AI.
+- **How it updates:** the same outbox, with updates scheduled at class
+  boundaries instead of on openings. Priority 5 updates do not count against
+  Apple's budget.
+- **What it must not be:** a permanent, semester-long activity.
