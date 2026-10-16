@@ -19,6 +19,9 @@ dependencies = [
     # Phase 6.9 push delivery: APNs requires HTTP/2 and ES256-signed JWTs.
     "httpx[http2]>=0.27",
     "pyjwt[crypto]>=2.8",
+    # Phase 7.0 transcript import: pure-Python PDF text extraction, run in a
+    # killable child process (app.services.transcripts.extract).
+    "pypdf>=6.20,<7",
 ]
 
 [project.optional-dependencies]

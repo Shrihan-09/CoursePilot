@@ -28,6 +28,10 @@ Implemented so far:
     * Student               minimal academic record (no auth, no PII)
     * StudentCourse         completed / in-progress / planned courses
 
+  Phase 7.0 - self-service onboarding
+    * TranscriptImport      one uploaded transcript and its review lifecycle
+    * TranscriptImportRow   one staged course line (never read by an engine)
+
 Not yet modeled: prerequisites as structure, equivalencies, substitutions,
 section restriction lists, cross-program double-counting policy.
 """
@@ -65,6 +69,7 @@ from app.models.requirements import (
     SharingPolicy,
 )
 from app.models.identity import (
+    LINK_ACTION_CREATED,
     LINK_ACTION_LINKED,
     LINK_ACTION_UNLINKED,
     PROVIDER_DEV,
@@ -97,6 +102,7 @@ from app.models.monitoring import (
     NotificationEvent,
     SectionWatch,
 )
+from app.models.onboarding import TranscriptImport, TranscriptImportRow
 
 __all__ = [
     "AvailabilityPollSchedule",
@@ -153,4 +159,7 @@ __all__ = [
     "UserAccount",
     "StudentCourse",
     "Subject",
+    "TranscriptImport",
+    "TranscriptImportRow",
+    "LINK_ACTION_CREATED",
 ]

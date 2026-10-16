@@ -18,6 +18,7 @@ from app.api.v1.routes import (
     scenarios,
     schedules,
     live,
+    onboarding,
     student,
     watches,
 )
@@ -27,6 +28,7 @@ api_router.include_router(health.router)
 api_router.include_router(meta.router)
 api_router.include_router(explanations.router)
 api_router.include_router(student.router)
+api_router.include_router(onboarding.router)
 api_router.include_router(programs.router)
 api_router.include_router(scenarios.router)
 api_router.include_router(plans.router)

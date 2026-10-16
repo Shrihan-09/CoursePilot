@@ -147,7 +147,9 @@ class StudentContextResponse(BaseModel):
 
 
 def _unlinked() -> HTTPException:
-    """The established Phase 5.4/5.5 semantics, unchanged.
+    """The established Phase 5.4/5.5 semantics. Phase 7.0 changed only the
+    second sentence: a record can now be created by its owner (self-service
+    onboarding); claiming an EXISTING record still needs an administrator.
 
     Not 404 - that would tell a student their own record is missing. Not 403
     - that would imply they were refused. 409 says the account is real and
@@ -157,7 +159,7 @@ def _unlinked() -> HTTPException:
         status_code=status.HTTP_409_CONFLICT,
         detail=(
             "No academic record is linked to this account. "
-            "Linking requires verification and cannot be self-served."
+            "Create one with POST /api/v1/student/profile."
         ),
     )
 

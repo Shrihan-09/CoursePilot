@@ -28,6 +28,11 @@ class SourceKind(StrEnum):
     RUTGERS_DEPARTMENT_PAGE = "rutgers_department_page"
     RUTGERS_PDF = "rutgers_pdf"
     STUDENT_SELF_REPORTED = "student_self_reported"
+    #: Phase 7.0: a row the student confirmed from their own uploaded
+    #: UNOFFICIAL transcript. Student-provided evidence - ranked with
+    #: self-reported data, never with Rutgers sources (it is not RUTGERS_PDF:
+    #: CoursePilot cannot verify the document).
+    STUDENT_UPLOADED_TRANSCRIPT = "student_uploaded_transcript"
     MANUAL_CURATION = "manual_curation"
     DERIVED = "derived"  # computed by CoursePilot from other sourced records
 

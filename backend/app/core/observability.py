@@ -127,7 +127,7 @@ ERROR_MESSAGES: dict[ErrorCode, str] = {
     ErrorCode.AUTHORIZATION_ERROR: "Not authorized.",
     ErrorCode.UNLINKED_ACCOUNT: (
         "No academic record is linked to this account. "
-        "Linking requires verification and cannot be self-served."
+        "Create one with POST /api/v1/student/profile."
     ),
     ErrorCode.RATE_LIMITED: "Too many requests.",
     ErrorCode.NOT_FOUND: "Not found.",

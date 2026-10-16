@@ -44,6 +44,8 @@ desktop.ini
 # truth; they are reproducible artifacts. Keep them out of git.
 data/raw/
 data/interim/
+# Phase 7.0: uploaded transcripts exist only while being read; never commit one.
+**/data/uploads/
 *.sqlite
 *.db
 pgdata/
