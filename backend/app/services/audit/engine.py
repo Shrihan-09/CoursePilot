@@ -1006,6 +1006,24 @@ class DegreeAuditEngine:
                 )
             )
 
+        # Phase 7.0: the review state of the RULES is part of every audit, the
+        # student's own program included. Only a published version has been
+        # verified by a person against the Rutgers prose; anything else is
+        # Claude-encoded or awaiting re-review, and the audit says so.
+        if version.lifecycle_state != "published":
+            findings.append(
+                AuditFinding(
+                    severity=Severity.WARNING,
+                    code="program_pending_review",
+                    message=(
+                        "This program's requirements have not been verified by a person "
+                        "against the official Rutgers prose; treat this audit as "
+                        "provisional."
+                    ),
+                    remediation="Confirm requirements with an academic advisor.",
+                )
+            )
+
         requirements = self._load_requirements(version.id)
         if not requirements:
             return DegreeAuditResult(
