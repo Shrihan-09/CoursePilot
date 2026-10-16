@@ -74,6 +74,16 @@ def _run_engine(session: Session, student: Student) -> DegreeAuditResult:
     return result
 
 
+def _key_still_holds(session: Session, student: Student, key: AuditCacheKey) -> bool:
+    try:
+        session.refresh(student, ["program_version_id", "catalog_year"])
+        return AuditCacheKey.compute(session, student) == key
+    except Exception:
+        logger.warning("audit_cache_recheck_failed", exc_info=True)
+        _safe_rollback(session)
+        return False
+
+
 def audit_with_cache(
     session: Session, student: Student, *, use_cache: bool = True
 ) -> tuple[DegreeAuditResult, bool]:
@@ -130,9 +140,20 @@ def audit_with_cache(
     metrics.increment(AUDIT_CACHE_MISSES)
     logger.info("audit_cache_miss")
     result = _run_engine(session, student)
-    # A failed write is logged inside and changes nothing for this caller:
-    # they already hold a correct, freshly computed audit.
-    write_cached_audit(session, student, key, result)
+    # Phase 7.0: the key was computed BEFORE the engine ran, from rows the
+    # student can now change at any moment. If a write committed in between,
+    # `result` may come from the new rows while `key` describes the old ones;
+    # storing that pair would serve a wrong audit the next time the record
+    # returns to the old state (A -> B -> A: an undone edit). So the key is
+    # recomputed - from a fresh read of the student row as well - and the
+    # result is stored only if nothing moved. The caller still gets `result`:
+    # it was computed from committed data and is no worse than a cache miss.
+    if _key_still_holds(session, student, key):
+        # A failed write is logged inside and changes nothing for this
+        # caller: they already hold a correct, freshly computed audit.
+        write_cached_audit(session, student, key, result)
+    else:
+        logger.info("audit_cache_write_skipped_inputs_changed")
     metrics.observe(AUDIT_DURATION, (time.perf_counter() - started) * 1000)
     return result, False
 
