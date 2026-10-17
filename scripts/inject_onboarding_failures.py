@@ -145,6 +145,18 @@ FAULTS = {
            "        raise EntryInvalid([_duplicate_issue()])\n"
            "    count ="),
           "    count =")]),
+    # T is expected to be MISSED: the (student, course, term) UNIQUE constraint
+    # is the real guard and returns the same DUPLICATE_ENTRY. T2 removes the
+    # mapping of that constraint too, proving the layering is what holds.
+    "T2": ("manual duplicate: app check removed AND constraint error unmapped", [(HISTORY,
+           ("    if _duplicate(session, student.id, match.course.id, entry.term_code) is not None:\n"
+            "        raise EntryInvalid([_duplicate_issue()])\n"
+            "    count ="),
+           "    count ="), (HISTORY,
+           ("    session.add(row)\n    try:\n        with session.begin_nested():\n"
+            "            session.flush()\n    except IntegrityError:"),
+           ("    session.add(row)\n    try:\n        with session.begin_nested():\n"
+            "            session.flush()\n    except ZeroDivisionError:"))]),
     # --- hostile input ----------------------------------------------------------
     "U": ("file type trusted without magic bytes", [(EXTRACT,
           "    if PDF_MAGIC not in data[:1024]:\n        raise ExtractionFailed(\"FILE_NOT_PDF\")",

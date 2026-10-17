@@ -263,3 +263,35 @@ def test_local_storage_uses_generated_keys_and_never_escapes(tmp_path) -> None:
     k = mem.put(b"x")
     mem.delete(k)
     assert mem.stored_keys() == []
+
+
+async def test_an_upload_body_is_never_read_past_the_limit() -> None:
+    """The size cap holds WHILE reading: a body with no (or a lying)
+    Content-Length is abandoned at the limit, not buffered whole."""
+    from app.api.v1.routes.onboarding import _read_body
+
+    consumed = []
+
+    class Endless:
+        headers = {"content-length": "10"}         # lies
+
+        async def stream(self):
+            for _ in range(10_000):
+                consumed.append(1)
+                yield b"x" * 1024
+
+    with pytest.raises(ExtractionFailed) as exc:
+        await _read_body(Endless(), 8 * 1024)
+    assert exc.value.code == "FILE_TOO_LARGE" and len(consumed) <= 9
+
+    class Declared:
+        headers = {"content-length": str(10**9)}
+
+        async def stream(self):
+            consumed.append("read")
+            yield b""
+
+    consumed.clear()
+    with pytest.raises(ExtractionFailed):
+        await _read_body(Declared(), 8 * 1024)
+    assert consumed == []                          # refused before reading a byte
