@@ -151,7 +151,9 @@ logger = logging.getLogger(__name__)
 #: 7.0.0: every audit of a non-published program version carries the
 #: `program_pending_review` finding, and eligibility queries no longer admit
 #: graduate-level courses - both change serialized audits.
-AUDIT_ENGINE_VERSION = "7.0.0"
+#: 7.0.1: completed attempts that earn no credit (F, NC, W, U, XF) no longer
+#: add to credits_completed / credits_applicable_to_degree.
+AUDIT_ENGINE_VERSION = "7.0.1"
 
 #: StudentCourse columns that are NOT audit inputs, and so are deliberately
 #: absent from `academic_fingerprint`. Every other column must be in it -

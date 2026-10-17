@@ -142,3 +142,24 @@ def test_every_student_course_column_is_fingerprinted_or_declared_non_audit() ->
             continue
         assert f"StudentCourse.{column.name}" in source, (
             f"student_course.{column.name} is neither fingerprinted nor declared non-audit")
+
+
+@requires_db
+async def test_failed_and_withdrawn_courses_add_no_credit(grad_world) -> None:
+    """Found on a real Rutgers transcript: a failed 4-credit course was counted
+    in credits_completed and credits_applicable_to_degree."""
+    from app.main import create_app
+
+    c = grad_world["code"]
+    async with _client(create_app(), grad_world["account"]) as ac:
+        await ac.post("/api/v1/student/profile", json={"program_key": grad_world["keys"]["pub"],
+                                                       "catalog_year": grad_world["year"]})
+        for code, grade in ((c["A"], "B"), (c["B"], "F"), (c["C"], "W"), (c["D"], "NC")):
+            r = await ac.post("/api/v1/student/courses", json={
+                "course_code": code, "term_code": "20249", "status": "completed",
+                "grade": grade, "credits_earned": "3"})
+            assert r.status_code == 201, r.text
+        audit = (await ac.get("/api/v1/student/audit")).json()
+    assert decimal.Decimal(audit["credits_completed"]) == decimal.Decimal("3.0")
+    assert decimal.Decimal(audit["credits_applicable_to_degree"]) == decimal.Decimal("3.0")
+    assert {"non_passing_grade"} <= {f["code"] for f in audit["findings"]}

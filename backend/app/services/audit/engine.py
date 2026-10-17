@@ -1158,7 +1158,14 @@ class DegreeAuditEngine:
                     )
                 continue
 
-            if sc.status == EnrollmentStatus.COMPLETED.value:
+            # Phase 7.0 (found on a real transcript): an attempt that earns no
+            # credit - F, NC, W, U, XF - adds nothing to the credit totals. They
+            # were added before the non-passing check below, so one failed
+            # 4-credit course overstated credits applicable to the degree by 4
+            # (Rutgers' own "DEGREE CREDITS EARNED" excludes it).
+            earns_nothing = (sc.status == EnrollmentStatus.COMPLETED.value and earns_credit(
+                outcome(sc.status, sc.grade, sc.credit_origin)) is Tri.NO)
+            if sc.status == EnrollmentStatus.COMPLETED.value and not earns_nothing:
                 credits_completed += credits or Decimal(0)
                 # The distinction this phase exists to make: completed credits
                 # are not the same as credits that count toward THIS degree.
