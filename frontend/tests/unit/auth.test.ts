@@ -44,6 +44,15 @@ describe("configuration fails closed", () => {
     expect(authConfig({ NODE_ENV: "production" }).mode).toBe("disabled");    // nothing set
   });
 
+  it.each(["OIDC_ISSUER", "OIDC_CLIENT_ID", "APP_URL", "SESSION_SECRET"])(
+    "fails closed when only %s is missing (no half-configured sign-in)",
+    (name) => {
+      const env: Record<string, string | undefined> = { ...oidcEnv(idp) };
+      delete env[name];
+      expect(authConfig(env).mode).toBe("disabled");
+    },
+  );
+
   it("requires an https issuer in production", () => {
     const cfg = authConfig({ ...oidcEnv(idp), NODE_ENV: "production" });
     expect(cfg.mode).toBe("disabled");
