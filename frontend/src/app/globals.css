@@ -2,32 +2,206 @@
 @tailwind components;
 @tailwind utilities;
 
-/* shadcn/ui design tokens. Components reference these semantic names
-   (bg-background, text-muted-foreground) rather than raw colors, so themes
-   swap by redefining variables instead of editing components. */
+/*
+ * CoursePilot design tokens (Phase 7.1) - see docs/DESIGN_SYSTEM.md.
+ *
+ * Neutral first, CoursePilot blue for emphasis. Components use SEMANTIC names
+ * (bg-surface, text-secondary, bg-primary) and never literal colours, so the
+ * themes - and later native clients - swap by redefining these variables.
+ *
+ * Values are RGB channel triples so Tailwind alpha modifiers work
+ * (bg-primary/10). The blue family is sampled from the supplied logo:
+ *   highlight #3CC8FD  bright #0E93FC  core #016DF4  deep #0154E0  shadow #0049D3
+ * #016DF4 carries white text at 4.67:1 (WCAG AA), so primary actions use the
+ * mark's own core blue in both themes.
+ */
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
-    --border: 214 32% 91%;
-    --primary: 222 47% 11%;
-    --primary-foreground: 210 40% 98%;
-    --radius: 0.5rem;
+  :root,
+  .theme-light {
+    color-scheme: light;
+    --font-sans: var(--font-geist-sans);
+    --font-mono: var(--font-geist-mono);
+    --background: 255 255 255;          /* #FFFFFF */
+    --surface: 247 248 250;             /* #F7F8FA  quiet panels, page sections */
+    --surface-elevated: 255 255 255;    /* #FFFFFF  cards, menus, dialogs (with border) */
+    --surface-hover: 240 242 245;       /* #F0F2F5 */
+    --text-primary: 11 13 18;           /* #0B0D12 */
+    --text-secondary: 74 81 98;         /* #4A5162 */
+    --text-muted: 102 110 124;          /* #666E7C  4.9:1 on white */
+    --border: 227 230 235;              /* #E3E6EB */
+    --border-strong: 201 206 214;       /* #C9CED6 */
+    --primary: 1 109 244;               /* #016DF4  logo core blue */
+    --primary-hover: 1 84 224;          /* #0154E0  logo deep blue */
+    --primary-foreground: 255 255 255;
+    --primary-subtle: 234 243 255;      /* #EAF3FF */
+    --primary-text: 1 84 224;           /* links / blue text: 6.3:1 on white */
+    --focus: 1 109 244;
+    --success: 18 128 92;               /* #12805C */
+    --success-subtle: 231 246 239;
+    --warning: 154 88 0;                /* #9A5800  text-grade amber */
+    --warning-subtle: 255 246 229;
+    --danger: 199 41 47;                /* #C7292F */
+    --danger-subtle: 253 236 236;
+    --overlay: 11 13 18;
+    --radius-sm: 6px;
+    --radius: 8px;
+    --radius-lg: 12px;
+    --shadow-elevated: 0 1px 2px rgb(11 13 18 / 0.06), 0 4px 16px rgb(11 13 18 / 0.06);
   }
 
-  .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
-    --muted: 217 33% 17%;
-    --muted-foreground: 215 20% 65%;
-    --border: 217 33% 17%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222 47% 11%;
+  /*
+   * Dark is DESIGNED, not inverted: near-black canvas, charcoal elevation
+   * steps (each surface lighter, never shadow-dependent), softened text so
+   * white does not glare, and the SAME logo blue for fills - with a lighter
+   * blue only where blue is TEXT on dark.
+   */
+  :root.dark,
+  .theme-dark {
+    color-scheme: dark;
+    --background: 10 11 13;             /* #0A0B0D */
+    --surface: 17 19 23;                /* #111317 */
+    --surface-elevated: 23 26 31;       /* #171A1F */
+    --surface-hover: 30 34 40;          /* #1E2228 */
+    --text-primary: 243 245 248;        /* #F3F5F8 */
+    --text-secondary: 180 186 197;      /* #B4BAC5 */
+    --text-muted: 138 146 160;          /* #8A92A0  6.1:1 on background */
+    --border: 38 42 49;                 /* #262A31 */
+    --border-strong: 53 58 67;          /* #353A43 */
+    --primary: 1 109 244;               /* same core blue as light */
+    --primary-hover: 14 147 252;        /* logo bright blue */
+    --primary-foreground: 255 255 255;
+    --primary-subtle: 13 36 71;         /* #0D2447 */
+    --primary-text: 90 169 255;         /* #5AA9FF  blue as text on dark */
+    --focus: 77 159 255;
+    --success: 63 182 139;              /* #3FB68B */
+    --success-subtle: 14 43 33;
+    --warning: 240 176 74;              /* #F0B04A */
+    --warning-subtle: 45 33 12;
+    --danger: 242 109 109;              /* #F26D6D */
+    --danger-subtle: 52 20 22;
+    --overlay: 0 0 0;
+    --shadow-elevated: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
   }
 
   * {
     @apply border-border;
   }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-background text-fg antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--focus));
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  /* Numbers that line up: credits, GPA, counts, times. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  /* Course codes (01:198:111), section numbers, term codes. */
+  .code {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+}
+
+/*
+ * Generation animation (components/brand/generation.tsx). Pure CSS: no motion
+ * library. Geometry from the source logo: the arrow runs from its tail at the
+ * lower-left (~22%, 86%) to its tip at the upper-right (~84%, 24%) of the mark,
+ * so the sheet's flight vector is (+, -): up and out to the right.
+ */
+.cp-gen {
+  --cp-gen-size: clamp(9rem, 42vw, 15rem);
+  position: relative;
+  width: var(--cp-gen-size);
+  height: var(--cp-gen-size);
+}
+.cp-gen__mark {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+.cp-gen__sheet {
+  position: absolute;
+  z-index: 1;                         /* BEHIND the cap until it emerges */
+  left: 32%;
+  top: 34%;
+  width: 36%;
+  height: 26%;
+  opacity: 0;
+  filter: drop-shadow(0 6px 14px rgb(var(--overlay) / 0.18));
+  animation: cp-gen-flight 2.6s cubic-bezier(0.45, 0, 0.2, 1) infinite;
+}
+.cp-gen__trail {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: visible;
+}
+.cp-gen__trail path {
+  fill: none;
+  stroke: rgb(var(--primary));
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-dasharray: 90;
+  stroke-dashoffset: 90;
+  opacity: 0.55;
+  vector-effect: non-scaling-stroke;
+  animation: cp-gen-trail 2.6s ease-in-out infinite;
+}
+@keyframes cp-gen-flight {
+  0%   { opacity: 0; transform: translate(0, 18%) scale(0.6); }
+  18%  { opacity: 1; transform: translate(0, 4%) scale(0.72); }   /* emerging, still behind */
+  42%  { opacity: 1; transform: translate(0, -58%) scale(0.86); z-index: 3; } /* out from behind */
+  78%  { opacity: 1; transform: translate(70%, -150%) scale(0.94); z-index: 3; } /* along the arrow */
+  100% { opacity: 0; transform: translate(120%, -210%) scale(1); z-index: 3; }   /* sent onward */
+}
+@keyframes cp-gen-trail {
+  0%, 25% { stroke-dashoffset: 90; opacity: 0; }
+  60%     { stroke-dashoffset: 0; opacity: 0.55; }
+  100%    { stroke-dashoffset: -90; opacity: 0; }
+}
+/* Complete: the sheet comes forward and resolves into the result. */
+.cp-gen--resolve .cp-gen__sheet {
+  animation: cp-gen-resolve 0.65s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+.cp-gen--resolve .cp-gen__trail path { animation: none; opacity: 0; }
+.cp-gen--resolve .cp-gen__mark { transition: opacity 0.4s ease, transform 0.5s ease;
+  opacity: 0.35; transform: scale(0.92); }
+@keyframes cp-gen-resolve {
+  0%   { opacity: 1; transform: translate(0, -58%) scale(0.86); z-index: 3; }
+  100% { opacity: 1; transform: translate(0, -20%) scale(2.3); z-index: 3; }
+}
+/* Reduced motion: no flight at all; the static mark only. */
+.cp-gen--static .cp-gen__sheet,
+.cp-gen--static .cp-gen__trail { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .cp-gen__sheet, .cp-gen__trail { display: none; }
+}
+
+@keyframes cp-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(300%); }
 }
