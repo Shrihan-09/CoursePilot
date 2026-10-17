@@ -200,11 +200,34 @@ def _row_blocks(row: TranscriptImportRow) -> bool:
 
 
 _EXTERNAL = {Section.TRANSFER: "transfer", Section.EXAM: "exam_credit"}
+#: Parse-level codes -> (field, severity, message). NEEDS_REVIEW ones block
+#: until the student edits the row (which is them having looked at it).
 _PARSE_PROBLEMS = {
-    "UNPARSED_TRAILING_TEXT": ("raw_text", "The line has text after the credits and grade "
-                                           "that could not be read."),
-    "MULTIPLE_COURSE_CODES": ("course_code", "The line names more than one course code."),
-    "GRADE_COLUMN_UNREADABLE": ("grade", "The grade column could not be read."),
+    "UNPARSED_TRAILING_TEXT": ("raw_text", IssueSeverity.NEEDS_REVIEW,
+                               "The line has text after the credits and grade that could "
+                               "not be read."),
+    "MULTIPLE_COURSE_CODES": ("course_code", IssueSeverity.NEEDS_REVIEW,
+                              "The line holds more than one course record (two columns read "
+                              "as one line?); check this row's term and values."),
+    "GRADE_COLUMN_UNREADABLE": ("grade", IssueSeverity.NEEDS_REVIEW,
+                                "The grade column could not be read."),
+    "SECTION_NOT_FOUND": ("raw_text", IssueSeverity.NEEDS_REVIEW,
+                          "The section column could not be read; check the row."),
+    "TERM_TOTAL_MISMATCH": ("term_code", IssueSeverity.NEEDS_REVIEW,
+                            "The credits read under this term do not add up to the term's "
+                            "TOTAL CREDITS ATTEMPTED - a row may have been read into the wrong "
+                            "term. Check every row of this term."),
+    "READING_ORDER_UNRELIABLE": ("term_code", IssueSeverity.NEEDS_REVIEW,
+                                 "Parts of this document were read out of order (its columns "
+                                 "ran together), so no row's term can be trusted. Check this "
+                                 "row's term, credits and grade against your transcript."),
+    "COURSE_LINE_UNREADABLE": ("raw_text", IssueSeverity.NEEDS_REVIEW,
+                               "A course code was found but the rest of its line could not "
+                               "be read. Enter its term, credits and grade, or exclude it."),
+    # Informational: never blocks.
+    "TERM_NOT_YET_GRADED": ("status", IssueSeverity.INFO,
+                            "The transcript shows no average for this term yet; the course "
+                            "is probably in progress. Confirm its status."),
 }
 
 
@@ -213,6 +236,8 @@ def _seed_normalized(row: TranscriptImportRow, extracted: ExtractedRow) -> None:
     said. No status, term or grade is invented when the document is silent."""
     origin = _EXTERNAL.get(extracted.section, "rutgers")
     row.course_code = extracted.course_code
+    # A SUP column value ("LB") names the registration record; usually blank.
+    row.supplement_code = extracted.supplement
     row.term_code = extracted.term_code
     row.credit_origin = origin
     credits, _ = parse_credits(extracted.credits)
@@ -239,9 +264,9 @@ def normalize_row(session: Session, row: TranscriptImportRow, student_id: uuid.U
     # until the student has corrected the row, which is that look.
     if not row.edited:
         for code in row.extraction_problems or []:
-            fieldname, message = _PARSE_PROBLEMS.get(
-                code, (None, "Part of this line could not be read."))
-            issues.append(Issue(code, fieldname, IssueSeverity.NEEDS_REVIEW, message))
+            fieldname, severity, message = _PARSE_PROBLEMS.get(
+                code, (None, IssueSeverity.NEEDS_REVIEW, "Part of this line could not be read."))
+            issues.append(Issue(code, fieldname, severity, message))
 
     entry = validate_entry(term_code=row.term_code, status=row.status, grade=row.grade,
                            credits_earned=row.credits_earned, credit_origin=row.credit_origin,
@@ -437,6 +462,7 @@ def upload_transcript(session: Session, account_id: uuid.UUID, data: bytes, *,
     imp.parser_version = parsed.parser_version
     imp.transcript_reported_gpa = parsed.reported_cumulative_gpa
     imp.warnings = list(parsed.warnings)
+    imp.term_summaries = [_term_summary(t) for t in parsed.terms]
     for extracted in parsed.rows:
         row = TranscriptImportRow(
             import_id=imp.id, row_index=extracted.row_index,
@@ -447,8 +473,12 @@ def upload_transcript(session: Session, account_id: uuid.UUID, data: bytes, *,
             extracted_term=extracted.term_label, extracted_credits=extracted.credits,
             extracted_credit_prefix=extracted.credit_prefix,
             extracted_grade=(extracted.grade or None) and extracted.grade[:8],
+            extracted_class_section=(extracted.class_section or None)
+            and extracted.class_section[:8],
+            extracted_supplement=(extracted.supplement or None) and extracted.supplement[:4],
             excluded=False, edited=False, issues=[], state=RowState.NEEDS_REVIEW,
-            extraction_problems=[p for p in extracted.problems if p in _PARSE_PROBLEMS])
+            extraction_problems=[p for p in [*extracted.problems, *extracted.hints]
+                                 if p in _PARSE_PROBLEMS])
         _seed_normalized(row, extracted)
         imp.rows.append(row)
     session.flush()
@@ -464,6 +494,17 @@ def upload_transcript(session: Session, account_id: uuid.UUID, data: bytes, *,
                 extra={"import": redact_id(import_id), "rows": len(imp.rows),
                        "pages": imp.page_count})
     return imp, True
+
+
+def _term_summary(t) -> dict:
+    """A term block's own statements, as strings - review evidence only."""
+    def s(v):
+        return None if v is None else str(v)
+
+    return {"term_code": t.term_code, "term_label": t.term_label,
+            "credits_attempted": s(t.credits_attempted), "rows_credit_sum": s(t.rows_credit_sum),
+            "consistent": t.consistent, "term_average": s(t.term_average),
+            "cumulative_average": s(t.cumulative_average)}
 
 
 def _retire(imp: TranscriptImport, now: datetime) -> None:

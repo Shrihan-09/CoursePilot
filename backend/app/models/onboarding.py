@@ -118,6 +118,9 @@ class TranscriptImport(Base, TimestampMixin):
     transcript_reported_gpa: Mapped[Decimal | None] = mapped_column(Numeric(4, 3))
     #: Document-level issue codes, e.g. ["NO_TERM_HEADINGS"].
     warnings: Mapped[list] = mapped_column(JSON, default=list)
+    #: Per term, what the document STATED (credits attempted, averages) and
+    #: whether the rows read under it add up - review evidence, never an input.
+    term_summaries: Mapped[list] = mapped_column(JSON, default=list)
     extracted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -159,6 +162,8 @@ class TranscriptImportRow(Base, TimestampMixin):
     extracted_credits: Mapped[str | None] = mapped_column(String(8))
     extracted_credit_prefix: Mapped[str | None] = mapped_column(String(1))
     extracted_grade: Mapped[str | None] = mapped_column(String(8))
+    extracted_class_section: Mapped[str | None] = mapped_column(String(8))   # SEC column
+    extracted_supplement: Mapped[str | None] = mapped_column(String(4))      # SUP column
     #: Parse-level problem codes for this line (e.g. MULTIPLE_COURSE_CODES).
     extraction_problems: Mapped[list] = mapped_column(JSON, default=list)
 

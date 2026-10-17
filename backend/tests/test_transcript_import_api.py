@@ -111,7 +111,7 @@ async def test_upload_stages_review_confirms_and_only_then_writes(ob, storage) -
         await _profile(ac, ob)
         imp = await _upload(ac, _doc(ob))
         assert imp["state"] == "extracted" and imp["layout_verified"] is False
-        assert "unverified" in imp["parser_version"]
+        assert imp["parser_version"].startswith("rutgers-nb-unofficial/2")
         assert imp["transcript_reported_gpa"] == "3.412"
         rows = _rows(imp)
         a, b, c = (rows[ob["code"][n]] for n in "ABC")
@@ -536,3 +536,74 @@ async def test_uploads_have_their_own_rate_limit(ob, storage) -> None:
                           ).status_code for i in range(6)]
     assert statuses_seen[:5] == [201, 201, 201, 422, 422]   # 3 open imports max, then capped
     assert statuses_seen[5] == 429 and len(calls) == 3
+
+
+# --------------------------------------------------------------------------
+# the REAL Rutgers layout (sanitized fixture: tests/support/rutgers_layout.py)
+# --------------------------------------------------------------------------
+
+
+@requires_db
+async def test_the_real_rutgers_layout_end_to_end(ob, storage) -> None:
+    """Sanitized two-column, permissions-encrypted document through the
+    PRODUCTION child-process extractor, staging, review and confirmation."""
+    from .support.rutgers_layout import (
+        FAKE_NAME,
+        FAKE_STUDENT_NUMBER,
+        build_rutgers_pdf,
+        standard_fixture,
+    )
+
+    fx = standard_fixture({k: ob["code"][k] for k in "ABCDE"})
+    pdf = build_rutgers_pdf(fx["left"], fx["right"], fx["page2"])
+    async with _client(_app(storage, extractor=None), ob["account"]) as ac:
+        await _profile(ac, ob)
+        imp = await _upload(ac, pdf)
+        assert imp["state"] == "extracted" and imp["warnings"] == []
+        assert imp["transcript_reported_gpa"] == fx["reported_cumulative"]
+        assert [(t["term_code"], t["consistent"]) for t in imp["terms"]] == [
+            ("20279", True), ("20281", True), ("20289", True), ("20291", True)]
+        rows = imp["rows"]
+        assert [(r["normalized"]["term_code"], r["extracted"]["course_code"],
+                 r["extracted"]["section"], r["extracted"]["credits"], r["extracted"]["grade"])
+                for r in rows] == fx["expected"]
+        graded = [r for r in rows if r["extracted"]["grade"]]
+        ungraded = [r for r in rows if not r["extracted"]["grade"]]
+        assert {r["state"] for r in graded} == {"matched"}
+        assert all(r["state"] == "needs_review" and {i["code"] for i in r["issues"]} >= {
+            "STATUS_MISSING", "TERM_NOT_YET_GRADED"} for r in ungraded)
+        for token in (*FAKE_NAME.split(), FAKE_STUDENT_NUMBER):
+            assert token not in str(imp), token          # identity never staged or returned
+
+        version = imp["version"]
+        for r in ungraded:
+            resp = await ac.patch(f"{URL}/{imp['import_id']}/rows/{r['row_id']}",
+                                  json={"expected_version": version, "status": "in_progress"})
+            version = resp.json()["version"]
+        done = await ac.post(f"{URL}/{imp['import_id']}/confirm",
+                             json={"expected_version": version})
+        assert done.status_code == 200 and done.json()["rows_inserted"] == len(fx["expected"])
+        audit = (await ac.get("/api/v1/student/audit")).json()
+        # C: F in Spring 2028, B on the retake - the retake is what counts.
+        assert statuses(audit)["REQ_A"] == "satisfied"
+        assert "repeated_course" in {f["code"] for f in audit["findings"]}
+
+
+@requires_db
+async def test_an_interleaved_two_column_document_cannot_be_confirmed_unreviewed(
+        ob, storage) -> None:
+    from .support.rutgers_layout import build_rutgers_pdf, standard_fixture
+
+    fx = standard_fixture({k: ob["code"][k] for k in "ABCDE"})
+    pdf = build_rutgers_pdf(fx["left"], fx["right"], fx["page2"], order="interleaved")
+    async with _client(_app(storage), ob["account"]) as ac:
+        await _profile(ac, ob)
+        imp = await _upload(ac, pdf)
+        assert "READING_ORDER_UNRELIABLE" in imp["warnings"]
+        assert len(imp["rows"]) == len(fx["expected"])            # nothing dropped
+        assert {r["state"] for r in imp["rows"]} == {"needs_review"}
+        assert imp["ready"] is False
+        r = await ac.post(f"{URL}/{imp['import_id']}/confirm",
+                          json={"expected_version": imp["version"]})
+        assert r.status_code == 422
+    assert _record(ob["account"]) == []

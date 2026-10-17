@@ -263,9 +263,24 @@ class ExtractedValues(BaseModel):
     course_code: str | None
     title: str | None
     term: str | None
+    section: str | None            # SEC column
+    supplement: str | None         # SUP column (usually blank)
     credits: str | None
     credit_prefix: str | None
     grade: str | None
+
+
+class TermSummaryView(BaseModel):
+    """What one term block of the document STATED, and whether the rows read
+    under it add up (`consistent`). Review evidence only - never an input."""
+
+    term_code: str
+    term_label: str
+    credits_attempted: str | None
+    rows_credit_sum: str | None
+    consistent: bool | None
+    term_average: str | None
+    cumulative_average: str | None
 
 
 class NormalizedValues(BaseModel):
@@ -298,6 +313,7 @@ class RowView(BaseModel):
 
 
 class ImportDetail(ImportSummary):
+    terms: list[TermSummaryView]
     rows: list[RowView]
 
 
@@ -371,7 +387,9 @@ def _detail(session, imp, now) -> ImportDetail:
         line_number=r.line_number, section=r.section,
         extracted=ExtractedValues(
             raw_text=r.raw_text, course_code=r.extracted_course_code,
-            title=r.extracted_title, term=r.extracted_term, credits=r.extracted_credits,
+            title=r.extracted_title, term=r.extracted_term,
+            section=r.extracted_class_section, supplement=r.extracted_supplement,
+            credits=r.extracted_credits,
             credit_prefix=r.extracted_credit_prefix, grade=r.extracted_grade),
         normalized=NormalizedValues(
             course_code=r.course_code, supplement_code=r.supplement_code,
@@ -381,7 +399,9 @@ def _detail(session, imp, now) -> ImportDetail:
         excluded=r.excluded, edited=r.edited, resolution=r.resolution,
         conflicts_with_entry_id=r.existing_record_id, outcome=r.outcome,
         entry_id=r.student_course_id) for r in imp.rows]
-    return ImportDetail(**_summary(imp, now), rows=rows)
+    return ImportDetail(**_summary(imp, now),
+                        terms=[TermSummaryView(**t) for t in (imp.term_summaries or [])],
+                        rows=rows)
 
 
 # --------------------------------------------------------------------------

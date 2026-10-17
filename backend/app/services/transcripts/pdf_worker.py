@@ -40,8 +40,17 @@ def _extract(data: bytes, max_pages: int, max_chars: int) -> tuple:
     except Exception:
         return ("error", "PDF_UNREADABLE")
     if reader.is_encrypted:
-        # Never attempted with a blank or guessed password.
-        return ("error", "PDF_ENCRYPTED")
+        # Real Rutgers transcripts (iText-generated) are "encrypted" with an
+        # EMPTY user password: permissions-only protection that every viewer
+        # opens without a prompt. That is the PDF standard's way of saying "no
+        # password", so it is opened the same way. A document that needs an
+        # actual password is refused - no password is ever guessed or asked for.
+        try:
+            opened = reader.decrypt("")
+        except Exception:
+            return ("error", "PDF_ENCRYPTED")
+        if not opened:
+            return ("error", "PDF_ENCRYPTED")
     try:
         count = len(reader.pages)
     except Exception:

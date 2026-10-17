@@ -26,6 +26,13 @@ from app.services.transcripts.storage import (
 from .support.synthetic_transcript import build_pdf, transcript_lines
 
 
+def _password_protected() -> bytes:
+    """A document that needs a REAL user password: refused, never guessed."""
+    from .support.rutgers_layout import _permissions_only
+
+    return _permissions_only(build_pdf([["secret"]]), user_password="s3cret-pw")
+
+
 def _codes(entry):
     return {i.code: i.severity for i in entry.issues}
 
@@ -108,7 +115,7 @@ def test_terms_courses_credits_grades_and_reported_gpa_are_read() -> None:
         "FALL 2024": ["01:198:111 INTRO COMPUTER SCI 4.0 A",
                       "01:640:151 CALC MATH/PHYS I E4.0 B+"],
         "SPRING 2025": ["01:198:112 DATA STRUCTURES 4.0"]})])
-    assert parsed.parser_version == PARSER_VERSION and "unverified" in PARSER_VERSION
+    assert parsed.parser_version == PARSER_VERSION and "1-real-transcript" in PARSER_VERSION
     got = [(r.course_code, r.title, r.term_code, r.term_label, r.credits, r.credit_prefix,
             r.grade, r.section) for r in parsed.rows]
     assert got == [
@@ -150,7 +157,9 @@ def test_every_course_line_is_kept_even_when_unreadable() -> None:
 
 def test_no_term_heading_is_reported_and_rows_have_no_term() -> None:
     parsed = parse_transcript(["01:198:111 INTRO COMPUTER SCI 4.0 A"])
-    assert parsed.warnings == ["NO_TERM_HEADINGS"] and parsed.rows[0].term_code is None
+    # ...and no end marker: a page may be missing.
+    assert parsed.warnings == ["NO_TERM_HEADINGS", "TRANSCRIPT_END_NOT_FOUND"]
+    assert parsed.rows[0].term_code is None
 
 
 def test_row_count_is_bounded() -> None:
@@ -204,6 +213,7 @@ def test_the_real_extractor_reads_a_text_pdf_in_a_child_process(extractor) -> No
     (build_pdf([["x" * 90] * 70]), "PDF_TEXT_TOO_LARGE"),
     (build_pdf([[]]), "PDF_NO_TEXT_LAYER"),
     (build_pdf([["secret"]], encrypt_marker=True), "PDF_ENCRYPTED"),
+    (_password_protected(), "PDF_ENCRYPTED"),
     (b"%PDF-1.4\n" + b"\x00garbage" * 50, "PDF_UNREADABLE"),
 ])
 def test_hostile_or_unusable_pdfs_fail_with_a_fixed_code(extractor, data, code) -> None:
