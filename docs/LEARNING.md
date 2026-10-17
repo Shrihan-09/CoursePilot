@@ -8480,3 +8480,124 @@ kind of unsupported fact this project is built to refuse.
 - The transactional outbox pattern
 - Apple: "Starting and updating Live Activities with ActivityKit push notifications"
 - Idempotency keys and collapse identifiers in push services
+
+---
+
+# Lesson 38: Evidence Is Not History
+
+## What We Built
+
+Before this phase, a real student could not use CoursePilot alone: an
+administrator had to create and link their record. Phase 7.0 adds the front
+door. Students can now:
+
+- create their own academic profile;
+- choose their program and catalog year;
+- type their courses in one at a time;
+- import their unofficial transcript.
+
+The transcript path is built around one rule: **a document is evidence, and
+it becomes history only when the student says so**.
+
+---
+
+## Concepts
+
+### Creating is not claiming
+
+The admin-only rule from Phase 5.5 exists because an account claiming an
+*existing* record is an unverifiable statement: anyone could type a student
+number. Creating a *new* record claims nothing. The server writes
+`user_id = me` in the same INSERT, and no field anywhere names someone else's
+record. The two operations differ in kind, so allowing one does not weaken
+the other.
+
+### The database decides races; the application only asks politely
+
+Two first-time requests can both see "no profile yet" and both insert. The
+application cannot prevent that by checking first, because each check sees the
+same empty table. The `UNIQUE (user_id)` index lets only one insert land. The
+loser catches the error, rolls back, and returns the winner's row, so both
+callers get the same answer.
+
+### A staging table is a quarantine
+
+The parser's output sits in a table no engine reads. It can be wrong in any
+way the parser is wrong, and nothing downstream is affected. The audit, the
+planner and the prerequisite checks keep seeing only what the student
+confirmed.
+
+That one boundary is what makes an unverified parser acceptable to ship: being
+wrong costs the student a correction, not a false degree audit.
+
+### Never guess what the document did not say
+
+A course line without a grade could mean "in progress", "dropped" or "the
+parser missed a column". The parser does not choose. It leaves the status
+empty and asks the student.
+
+The same applies elsewhere. A missing term heading leaves the term empty, and
+a "T" grade is a temporary grade, not transfer credit. An honest unknown is
+worth more than a confident guess, because the guess would flow silently into
+every requirement the course touches.
+
+### Keep the evidence beside the correction
+
+Each staged row stores what the document said and, separately, what will be
+written. A correction changes only the second. After confirmation the student
+can still see that the transcript said `A-`, which is not a Rutgers grade, and
+that they recorded `B+`.
+
+### Confirm the version you saw
+
+A review page can go stale: the student edits a row in another tab, or adds a
+course by hand after reviewing. Confirmation therefore carries the version the
+student reviewed, and checks every row again against the record as it is *now*.
+If anything moved, nothing is written and the refreshed rows come back. Without
+this, "I confirmed what I saw" would not be true.
+
+### Lock the parent, and every writer agrees on the order
+
+Manual edits, review edits, confirmations and program changes all touch one
+student's record. If each locked something different, two of them could
+interleave or deadlock. All of them lock the `student` row first, and only then
+anything else. One lock, always in the same order, makes them take turns.
+
+### A cache key is a claim about a moment
+
+The audit cache stores "the inputs looked like X, so the answer is Y". It
+computed X before running the engine and stored Y after.
+
+Once students could edit their own records, a write could land in between and
+produce "X, therefore Y-from-different-inputs". That stays wrong only until
+the record changes again. But if the student *undoes* the edit, the record
+returns to X, and the stale Y is served as correct.
+
+The fix is to check the claim before writing it: recompute X after the engine
+runs, and store Y only if X still holds.
+
+---
+
+## Self-Check
+
+1. Why is a self-created record not an exception to "linking is admin-only"?
+2. A transcript line reads `01:198:112 DATA STRUCTURES 4.0`. Why is its status empty rather than "in progress"?
+3. What stops a review edit and a confirmation from producing a record that is half old rows and half new?
+4. Why does confirmation re-normalize every row, when they were normalized at upload?
+5. The audit cache key is a fingerprint of the current rows. Why could it still serve a wrong audit, and what closes that gap?
+6. Why was the graduate-course fix made in `query_matches` rather than by editing the CS program JSON?
+
+## Try It Yourself
+
+**A.** Run `python scripts/inject_onboarding_failures.py A` (the staging bypass) and read which test fails first.
+
+**B.** Build a synthetic transcript with `tests/support/synthetic_transcript.build_pdf` that puts two course codes on one line, upload it, and read the row's issues.
+
+**C.** For each program, count the rows its eligibility rule implies with and without `"include_graduate": true` (`app.services.eligibility.desired_pairs`).
+
+## Further Learning
+
+- Insert-or-select under concurrency, and why "check, then insert" is a race
+- Optimistic concurrency control: version numbers on editable resources
+- Human-in-the-loop data extraction pipelines (extract → review → commit)
+- PDF as an attack surface: decompression bombs and parser isolation
