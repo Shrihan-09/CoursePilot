@@ -100,6 +100,11 @@ class UserAccount(Base, TimestampMixin):
 
     #: Which identity system asserted this subject.
     identity_provider: Mapped[str] = mapped_column(String(32))
+    #: Phase 7.1: the token ISSUER. A `sub` is unique only within its issuer, so
+    #: accounts are keyed (provider, issuer, subject): adding or changing an
+    #: OIDC provider later can never map another provider's user onto an
+    #: existing account. '' only for rows created before 7.1 (see migration).
+    identity_issuer: Mapped[str] = mapped_column(String(255), default="", server_default="")
     #: The provider's `sub` claim. Opaque on purpose - it is a key, not a
     #: name, and nothing in CoursePilot should parse it.
     external_subject: Mapped[str] = mapped_column(String(255))
@@ -132,9 +137,11 @@ class UserAccount(Base, TimestampMixin):
         # first-logins for the same subject. An application-level
         # "if not exists: create" cannot provide this.
         UniqueConstraint(
-            "identity_provider", "external_subject", name="uq_user_account_identity"
+            "identity_provider", "identity_issuer", "external_subject",
+            name="uq_user_account_identity"
         ),
-        Index("ix_user_account_identity", "identity_provider", "external_subject"),
+        Index("ix_user_account_identity", "identity_provider", "identity_issuer",
+              "external_subject"),
     )
 
     @property

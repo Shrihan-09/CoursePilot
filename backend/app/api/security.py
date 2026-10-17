@@ -105,6 +105,8 @@ class Principal:
     subject: str
     issuer: str
     provider: str
+    #: Phase 7.1: app.api.auth.InstitutionStatus, decided from signed claims.
+    institution: str = "not_configured"
 
     def redacted(self) -> str:
         """Stable, non-reversible handle for logs.
@@ -295,6 +297,17 @@ def get_principal(
     except AuthenticationError:
         raise _unauthenticated("Invalid credential.") from None
 
+    # Phase 7.1: institution membership, from signed claims only. Refused
+    # BEFORE account resolution, so a non-member never gets an account.
+    from app.api.auth import InstitutionStatus, institution_status
+
+    institution = institution_status(authenticated.claims, settings)
+    if settings.auth_require_institution and institution != InstitutionStatus.VERIFIED:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This sign-in is limited to accepted institution accounts.",
+        )
+
     from app.db.session import get_sync_sessionmaker
     from app.services.accounts import AccountDisabled, resolve_account
 
@@ -306,6 +319,7 @@ def get_principal(
                 subject=authenticated.subject,
                 issuer=authenticated.issuer,
                 provider=authenticated.provider,
+                institution=institution,
             )
             session.commit()
             return principal
