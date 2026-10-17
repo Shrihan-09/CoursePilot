@@ -32,7 +32,8 @@ CACHED = "backend/app/services/audit/cached_audit.py"
 ENGINE = "backend/app/services/audit/engine.py"
 SCEN = "backend/app/services/scenarios.py"
 ELIG = "backend/app/services/eligibility.py"
-TESTS = ["backend/tests/test_onboarding_domain.py", "backend/tests/test_onboarding_api.py",
+TESTS = ["backend/tests/test_onboarding_domain.py", "backend/tests/test_rutgers_layout.py",
+         "backend/tests/test_onboarding_api.py",
          "backend/tests/test_transcript_import_api.py",
          "backend/tests/test_onboarding_postgres.py",
          "backend/tests/test_onboarding_correctness.py",
@@ -138,8 +139,8 @@ FAULTS = {
           "    _mark_in_import_duplicates(list(imp.rows))\n    imp.state = ImportState.EXTRACTED",
           "    imp.state = ImportState.EXTRACTED")]),
     "S": ("a line with two course codes is not flagged", [(PARSER,
-          "            if len(codes) > 1:\n                problems.append(\"MULTIPLE_COURSE_CODES\")",
-          "            if False:\n                problems.append(\"MULTIPLE_COURSE_CODES\")")]),
+          "            if colon and len(colon) > 1:",
+          "            if False:")]),
     "T": ("manual entry: same (course, term) duplicate not refused", [(HISTORY,
           ("    if _duplicate(session, student.id, match.course.id, entry.term_code) is not None:\n"
            "        raise EntryInvalid([_duplicate_issue()])\n"
@@ -216,6 +217,37 @@ FAULTS = {
     "AG": ("a pending-review program selected without its warnings", [(ONBOARD,
            "    if info.support_status is SupportStatus.PENDING_REVIEW:",
            "    if False:")]),
+    # --- found by the REAL Rutgers transcript (sanitized fixture tests) ---------
+    "AI": ("permissions-only encryption refused (every real transcript rejected)", [(WORKER,
+           "        try:\n            opened = reader.decrypt(\"\")\n",
+           "        return (\"error\", \"PDF_ENCRYPTED\")\n        try:\n"
+           "            opened = reader.decrypt(\"\")\n")]),
+    "AJ": ("a document needing a real password is opened anyway", [(WORKER,
+           "        if not opened:\n            return (\"error\", \"PDF_ENCRYPTED\")",
+           "        if False:\n            return (\"error\", \"PDF_ENCRYPTED\")")]),
+    "AK": ("the columnar course rendering is not read (colon form only)", [(PARSER,
+           "            records = [_parse_colon(text, colon[0])] if colon else _parse_columnar(text)",
+           "            records = [_parse_colon(text, colon[0])] if colon else []")]),
+    "AL": ("merged two-column lines not detected (rows silently in the wrong term)", [(PARSER,
+           "    if merged_lines:\n", "    if False:\n")]),
+    "AM": ("a course on an unreadable merged line is dropped", [(PARSER,
+           "                    records.append({\"course_code\": code, \"title\": None, \"credits\": None,",
+           "                    (lambda **_: None)(**{\"course_code\": code, \"title\": None, \"credits\": None,"),
+           (PARSER, "                                    \"problems\": [\"COURSE_LINE_UNREADABLE\"]})",
+            "                                    \"problems\": [\"COURSE_LINE_UNREADABLE\"]})")]),
+    "AN": ("a summary line swallows a course merged onto it", [(PARSER,
+           "            if current is not None and section == Section.TERM and course_free:",
+           "            if current is not None and section == Section.TERM:")]),
+    "AO": ("term credit totals not checked", [(PARSER,
+           "            current.consistent = current.rows_credit_sum == current.credits_attempted",
+           "            current.consistent = True")]),
+    "AP": ("a term without grades yet: status guessed as in progress", [(IMPORTS,
+           "        row.status = \"completed\" if extracted.grade else None",
+           ("        row.status = \"completed\" if extracted.grade else (\n"
+            "            \"in_progress\" if \"TERM_NOT_YET_GRADED\" in extracted.hints else None)"))]),
+    "AQ": ("failed / withdrawn credits counted toward the degree", [(ENGINE,
+           "            if sc.status == EnrollmentStatus.COMPLETED.value and not earns_nothing:",
+           "            if sc.status == EnrollmentStatus.COMPLETED.value:")]),
     "AH": ("an unavailable catalog year silently replaced by the latest", [(SCEN,
            "    version = next((v for v in program.versions if v.catalog_year == wanted), None)",
            ("    version = next((v for v in program.versions if v.catalog_year == wanted), None) \\\n"
