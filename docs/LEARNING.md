@@ -8634,3 +8634,116 @@ mark every affected row for review and say why.
 - Optimistic concurrency control: version numbers on editable resources
 - Human-in-the-loop data extraction pipelines (extract → review → commit)
 - PDF as an attack surface: decompression bombs and parser isolation
+
+---
+
+# Lesson 39: Signing In Is Not Permission
+
+## What We Built
+
+CoursePilot became a product a student can open:
+
+- **sign-in** through a real identity provider;
+- **a guided onboarding flow** that turns a transcript into a reviewed record;
+- **a responsive shell**, with a design system built on the logo.
+
+The work was about two kinds of trust:
+
+- trusting *who* someone is, without trusting them with more than that;
+- making a calm interface that still shows every uncertainty.
+
+---
+
+## Concepts
+
+### Identity, data and authority are three different things
+
+"Continue with Google" answers one question: who is this? It does not mean
+"CoursePilot may read your Rutgers records", and it does not mean "CoursePilot
+may act for you at Rutgers".
+
+- **Who you are** comes from the identity provider.
+- **What you studied** comes only from what you upload and confirm.
+- **Acting at Rutgers** would need an official integration that doesn't exist.
+
+Keeping the three apart in code is what lets each one change safely: a new
+provider, a new import path, or one day an official integration.
+
+### Ask for the least you need, and test that you did
+
+The sign-in requests `openid email` and nothing else, and a test asserts that
+exact list. Adding `profile` "just in case" would make the consent screen ask
+for more, and would quietly make CoursePilot hold more personal data. Failure
+injection proves the test catches it.
+
+### A subject is only unique within its issuer
+
+`sub = 12345` from Google and `sub = 12345` from another provider are two
+different people. Keying accounts by subject alone works until the day a
+second provider is added; on that day it silently merges strangers. The issuer
+belongs in the key.
+
+### An email domain is not evidence
+
+Anyone can have an address on any domain, and an address can be unverified.
+Google's signed `hd` claim is evidence; the text after the `@` is not. Even `hd`
+proves less than it seems: Rutgers alumni keep ScarletMail, so it shows
+affiliation, not enrollment. The UI must not claim more than the evidence.
+
+### Keep the token where script can't reach it
+
+If page JavaScript can read a token, any injected script can steal it. So the
+token lives in an encrypted, httpOnly cookie, and the server adds it to API
+calls through a proxy that ignores any credential the page tries to send.
+
+### Look at what you built
+
+The automated checks found:
+
+- an unreadable badge;
+- a header that overflowed phones;
+- an invalid list structure.
+
+Only *looking* found two problems:
+
+- the plan sheet in the animation flew in front of the cap instead of out from
+  behind it;
+- arrows on rows that weren't links.
+
+A frame-by-frame capture showed the cause: `z-index` was being animated, and an
+animated `z-index` passes through every value in between, including the cap's
+own layer.
+
+### Design the dark theme, don't invert it
+
+Inverting a light theme produces grey mud and glaring white. A designed dark
+theme has its own elevation steps (each surface a little lighter), softer text,
+and the same brand blue for fills, but a lighter blue where blue is text, so it
+stays readable.
+
+---
+
+## Self-Check
+
+1. A student signs in with their ScarletMail account. What does CoursePilot now know about their academic record?
+2. Why must the account key include the issuer?
+3. Why is the email's domain not used to decide Rutgers membership?
+4. Why does the browser never see the ID token?
+5. When should the branded generation animation appear, and when should a skeleton appear instead?
+6. Why was animating `z-index` the bug?
+
+## Try It Yourself
+
+**A.** Run `python scripts/inject_auth_failures.py A` and read which test notices the extra scope.
+
+**B.** Open `/design` with your OS set to reduced motion and compare the generation animation.
+
+**C.** Run `node tests/visual/qa.mjs <out> <fixtures>` against the local stack and open the narrow-width review screenshots.
+
+## Further Learning
+
+- OAuth 2.0 for Browser-Based Apps ("backend for frontend")
+- OpenID Connect Core: ID token validation, `nonce`, `iat`
+- RFC 7636: PKCE
+- WCAG 2.2 contrast and target-size criteria
+- `prefers-reduced-motion` and motion as information
