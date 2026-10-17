@@ -36,7 +36,7 @@
     --primary-subtle: 234 243 255;      /* #EAF3FF */
     --primary-text: 1 84 224;           /* links / blue text: 6.3:1 on white */
     --focus: 1 109 244;
-    --success: 18 128 92;               /* #12805C */
+    --success: 11 107 76;               /* #0B6B4C  4.5+:1 on success-subtle */
     --success-subtle: 231 246 239;
     --warning: 154 88 0;                /* #9A5800  text-grade amber */
     --warning-subtle: 255 246 229;
@@ -171,12 +171,15 @@
   vector-effect: non-scaling-stroke;
   animation: cp-gen-trail 2.6s ease-in-out infinite;
 }
+/* z-index is NEVER animated (it would interpolate through the cap's layer and
+   put the sheet in FRONT of the cap early): the sheet stays behind the cap and
+   becomes visible only as it rises past the cap's top edge. */
 @keyframes cp-gen-flight {
-  0%   { opacity: 0; transform: translate(0, 18%) scale(0.6); }
-  18%  { opacity: 1; transform: translate(0, 4%) scale(0.72); }   /* emerging, still behind */
-  42%  { opacity: 1; transform: translate(0, -58%) scale(0.86); z-index: 3; } /* out from behind */
-  78%  { opacity: 1; transform: translate(70%, -150%) scale(0.94); z-index: 3; } /* along the arrow */
-  100% { opacity: 0; transform: translate(120%, -210%) scale(1); z-index: 3; }   /* sent onward */
+  0%   { opacity: 0; transform: translate(0, 30%) scale(0.62); }   /* hidden behind the cap */
+  20%  { opacity: 1; transform: translate(0, 10%) scale(0.7); }    /* still behind */
+  46%  { opacity: 1; transform: translate(0, -95%) scale(0.84); }  /* out over the top edge */
+  80%  { opacity: 1; transform: translate(62%, -140%) scale(0.92); } /* along the arrow */
+  100% { opacity: 0; transform: translate(98%, -170%) scale(0.96); } /* sent onward */
 }
 @keyframes cp-gen-trail {
   0%, 25% { stroke-dashoffset: 90; opacity: 0; }
@@ -190,9 +193,10 @@
 .cp-gen--resolve .cp-gen__trail path { animation: none; opacity: 0; }
 .cp-gen--resolve .cp-gen__mark { transition: opacity 0.4s ease, transform 0.5s ease;
   opacity: 0.35; transform: scale(0.92); }
+.cp-gen--resolve .cp-gen__sheet { z-index: 3; }   /* in front only once it resolves */
 @keyframes cp-gen-resolve {
-  0%   { opacity: 1; transform: translate(0, -58%) scale(0.86); z-index: 3; }
-  100% { opacity: 1; transform: translate(0, -20%) scale(2.3); z-index: 3; }
+  0%   { opacity: 1; transform: translate(0, -95%) scale(0.84); }
+  100% { opacity: 1; transform: translate(0, -20%) scale(2.3); }
 }
 /* Reduced motion: no flight at all; the static mark only. */
 .cp-gen--static .cp-gen__sheet,

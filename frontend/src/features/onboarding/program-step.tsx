@@ -83,7 +83,7 @@ export function ProgramStep({ onCreated }: { onCreated: () => void }) {
         <p className="py-6 text-center text-sm text-fg-muted">No program matches “{query}”.</p>
       )}
 
-      <ul className="space-y-2" role="radiogroup" aria-label="Programs">
+      <div className="space-y-2" role="radiogroup" aria-label="Programs">
         {list.map((p) => (
           <ProgramOption
             key={p.program_key}
@@ -92,10 +92,10 @@ export function ProgramStep({ onCreated }: { onCreated: () => void }) {
             onSelect={(year) => setSelected({ key: p.program_key, year })}
           />
         ))}
-      </ul>
+      </div>
 
       {chosen && selected && (
-        <div className="sticky bottom-20 z-10 space-y-3 rounded-lg border border-border bg-surface-elevated p-4 shadow-elevated sm:bottom-4">
+        <div className="sticky bottom-3 z-10 space-y-3 rounded-lg border border-border bg-surface-elevated p-4 shadow-elevated sm:bottom-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-fg">{chosen.name}</p>
@@ -148,7 +148,7 @@ function ProgramOption({
   if (!latest) return null;
   const supported = versions.every((v) => v.support_status === "supported");
   return (
-    <li>
+    <div>
       <button
         type="button"
         role="radio"
@@ -186,6 +186,6 @@ function ProgramOption({
           <StatusBadge tone="warning" icon={Clock3} label="Pending review" className="shrink-0" />
         )}
       </button>
-    </li>
+    </div>
   );
 }

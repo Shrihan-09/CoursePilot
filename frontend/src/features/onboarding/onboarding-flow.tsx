@@ -70,7 +70,7 @@ export function OnboardingFlow() {
 
         <main className="mx-auto max-w-3xl space-y-6 px-4 pb-32 pt-6 sm:px-6 sm:pt-10">
           {view && view !== "welcome" && (
-            <ol aria-label="Setup steps" className="flex items-center gap-2 text-xs">
+            <ol aria-label="Setup steps" className="flex flex-wrap items-center gap-1.5 text-xs sm:gap-2">
               {steps.map((s, i) => (
                 <li key={s.label} className="flex items-center gap-2">
                   <span
@@ -83,7 +83,7 @@ export function OnboardingFlow() {
                     )}
                   >
                     {i < stepIndex ? <Check aria-hidden className="size-3.5" /> : <span className="tabular">{i + 1}</span>}
-                    {s.label}
+                    <span className={cn(i !== stepIndex && "sr-only sm:not-sr-only")}>{s.label}</span>
                   </span>
                   {i < steps.length - 1 && <span aria-hidden className="h-px w-3 bg-border-strong sm:w-6" />}
                 </li>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, BadgeCheck, CalendarDays, Clock3, GraduationCap, Map } from "lucide-react";
+import { BadgeCheck, CalendarDays, Clock3, GraduationCap, Map } from "lucide-react";
 import Link from "next/link";
 
 import { buttonVariants } from "@/components/ui/button";
@@ -89,7 +89,9 @@ export default function HomePage() {
       </section>
 
       <section aria-labelledby="next-heading" className="space-y-3">
-        <h2 id="next-heading" className="text-sm font-semibold text-fg">Coming to CoursePilot</h2>
+        <h2 id="next-heading" className="text-sm font-semibold text-fg">
+          Coming to CoursePilot <span className="font-normal text-fg-muted">- in later releases</span>
+        </h2>
         <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface-elevated">
           {[
             [GraduationCap, "Degree progress", "Requirement-by-requirement progress, with the reasoning behind each answer."],
@@ -104,7 +106,6 @@ export default function HomePage() {
                   <p className="text-sm font-medium text-fg">{title as string}</p>
                   <p className="text-sm text-fg-muted">{body as string}</p>
                 </div>
-                <ArrowRight aria-hidden className="mt-1 size-4 text-fg-muted/50" />
               </li>
             );
           })}

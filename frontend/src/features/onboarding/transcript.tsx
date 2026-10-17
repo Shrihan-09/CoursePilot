@@ -63,7 +63,9 @@ export function TranscriptUpload({ onUploaded }: { onUploaded: (id: string) => v
           ref={input}
           type="file"
           accept="application/pdf,.pdf"
-          className="sr-only"
+          aria-label="Transcript PDF"
+          tabIndex={-1}
+          className="hidden"
           id="transcript-file"
           onChange={(e) => choose(e.target.files)}
         />
@@ -311,7 +313,7 @@ export function TranscriptReview({
         </div>
       )}
 
-      <div className="sticky bottom-20 z-10 space-y-3 rounded-lg border border-border bg-surface-elevated p-4 shadow-elevated sm:bottom-4">
+      <div className="sticky bottom-3 z-10 space-y-3 rounded-lg border border-border bg-surface-elevated p-3 shadow-elevated sm:bottom-4 sm:p-4">
         <p className="text-sm text-fg-secondary">
           {data.ready ? (
             <>
@@ -328,12 +330,12 @@ export function TranscriptReview({
             </>
           )}
         </p>
-        <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <div className="flex gap-2 sm:justify-end">
           <Button variant="ghost" onClick={() => discard.mutate()} loading={discard.isPending}>
             Discard upload
           </Button>
           <Button variant="primary" disabled={!data.ready} loading={confirm.isPending}
-                  onClick={() => confirm.mutate()}>
+                  className="flex-1 sm:flex-none" onClick={() => confirm.mutate()}>
             Confirm and save
           </Button>
         </div>
