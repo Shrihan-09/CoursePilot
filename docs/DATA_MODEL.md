@@ -8981,3 +8981,26 @@ script in the child, which ends in `PDF_EXTRACTION_TIMEOUT`.
   RLIMIT_CPU apply on POSIX only.
 - **Rate limits are per process** (5 uploads per window). The per-student cap of
   3 open imports in the database is the hard bound.
+
+### 46.15 Migration verification: never on a persistent database
+
+**What happened.** While verifying this phase's migration, a chained command ran
+`alembic downgrade -1` after `upgrade head` had *failed*. The development
+database was still at `e26b2e81f400`, so the downgrade reverted **Phase 6.9**
+and dropped its five tables. They were re-created by upgrading again (the
+schema is identical to the test database's, verified by `pg_dump --schema-only`
+diff), but any rows in them were lost.
+
+**The procedure now:**
+
+- `alembic downgrade` refuses to run unless the database name ends in `_test`
+  or `_disposable` (`app/db/migration_guard.py`, called from `env.py` before
+  anything connects).
+- A specific persistent database can be confirmed deliberately with
+  `COURSEPILOT_ALLOW_DOWNGRADE=<that database name>`. Values such as `1`,
+  `true` or `*` are refused.
+- Upgrade → downgrade → re-upgrade checks run on a throwaway database:
+  `python scripts/verify_migration_roundtrip.py` creates
+  `coursepilot_migcheck_<hex>_disposable`, runs the cycle (the downgrade target
+  is named explicitly, never `-1`) plus `alembic check`, and drops the
+  database whatever happens.
