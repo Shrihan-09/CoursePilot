@@ -8745,8 +8745,12 @@ name or RUID. The checks run in this order:
    `processing`, so a crash leaves a visible import, which reads as `failed`
    after 10 minutes.
 6. **Extract.** Extraction runs **in a child process** with a 20 s timeout
-   (pypdf, 20-page and 200,000-character limits). It refuses encrypted PDFs,
-   documents with no text layer, and unreadable ones. Each failure has a fixed
+   (pypdf, 20-page and 200,000-character limits). Real Rutgers transcripts
+   are iText PDFs with **permissions-only encryption** (an empty user
+   password); they are opened exactly as any viewer opens them. A PDF that
+   needs an actual password is refused (`PDF_ENCRYPTED`): no password is ever
+   asked for or guessed. Documents with no text layer and unreadable ones are
+   refused too. Each failure has a fixed
    code; no exception text crosses the process boundary.
 7. **Delete.** The raw document is deleted whatever happened.
    `sweep_orphaned_documents` removes leftovers from a crash.
@@ -8757,42 +8761,104 @@ name or RUID. The checks run in this order:
 are checked to stay inside the base directory. **Documents are not retained**;
 only the staged rows are.
 
-### 46.6 Extraction: what is parsed, and the UNVERIFIED layout
+### 46.6 Extraction: the real Rutgers layout
 
-A Rutgers NB unofficial transcript is a my.rutgers page that the student prints
-to PDF. **No public sample of its exact layout exists**, and none was available
-for this phase. `PARSER_VERSION = "rutgers-nb-unofficial/1-unverified-layout"`
-appears on every import, and the API returns `layout_verified: false`.
+The first version assumed `SS:DDD:CCC` course codes and a browser-printed page,
+because no sample existed. Checked against **one real Rutgers NB unofficial
+transcript**, both assumptions were wrong. That check was local verification
+only; the document was never committed (see 46.16).
 
-What the parser does rely on is grounded:
+What the real document is:
 
-- course codes `SS:DDD:CCC`;
-- the published grade vocabulary: no minus grades; P/NC, W, NG, H, S/U, XF, TZ
-  and T + letter;
-- credit prefixes E/J/K/N/R;
-- season + year term headings.
+- **An iText-generated PDF with permissions-only encryption** (an empty user
+  password). The first version refused it outright as `PDF_ENCRYPTED`.
+- **A monospaced fixed-width table** in which the course code is three
+  columns:
 
-How it reads a document:
+```
+          TITLE             SCH  DEPT CRS  SUP SEC  CRED  PR GRADE
+Fall   2027 SCHOOL OF EXAMPLE STUDIES
+MAJOR: ...
+CLASS: ...
+  EXAMPLE COURSE A          98  263  101       01   3.0       A
+    SUB TOPIC: ...
+  TOTAL CREDITS ATTEMPTED:                               3.0
+DEGREE CREDITS EARNED: 3.0   TERM AVG: 4.000  CUMULATIVE AVG: 4.000
+...
+Last Term Information / LAST TERM ... IN GPA: ...
+*** END OF TRANSCRIPT ***
+```
 
-- It works line by line and anchors on the course code. Credits (with an
-  optional prefix) and then at most one grade token are read from the **end**
-  of the line, and the title is whatever lies between.
-- It is NFKC-normalized, because browsers emit full-width digits and
-  non-breaking spaces.
-- Transfer and exam rows are recognized **only** under an explicit section
-  heading. A `T` grade is a temporary grade, never transfer credit.
-- Every line that carries a course code becomes a row, including unreadable
-  ones, which keep their raw text and a problem code
-  (`MULTIPLE_COURSE_CODES`, `UNPARSED_TRAILING_TEXT`, `GRADE_COLUMN_UNREADABLE`).
-- Nothing missing is inferred:
-  - no grade → no status;
-  - no term heading → no term;
-  - no credits → NULL.
+  The values above are fabricated; the real document's are never reproduced.
+
+- **Two columns on page 1**, with terms side by side under a diagonal
+  watermark ("UNOFFICIAL COPY OF" plus the student's name). The transcript
+  continues onto page 2.
+
+The parser version is
+`PARSER_VERSION = "rutgers-nb-unofficial/2-checked-against-1-real-transcript"`.
+The API's `layout_verified` stays `false`: one document is evidence, not
+coverage (46.14).
+
+**What the parser reads.**
+
+- **Course records in the columnar rendering:** code, title, SUP and SEC (two
+  code tokens are SUP then SEC), credits, PR and GRADE.
+  - A credit-prefix letter (E/J/K/N/R) is never a grade symbol, so a single
+    token after the credits is unambiguous.
+  - The `SS:DDD:CCC` rendering is still accepted.
+- **Term headings, with their school.**
+  - `MAJOR:` and `CLASS:` lines are recognised and ignored.
+  - A `SUB TOPIC:` line is attached to the course above it, in its raw text.
+- **Per-term summaries:** TOTAL CREDITS ATTEMPTED, TERM AVG and CUMULATIVE AVG,
+  stored in `transcript_import.term_summaries`. The reported GPA is the last
+  stated CUMULATIVE AVG.
+- **The end marker.** Without it the import warns `TRANSCRIPT_END_NOT_FOUND`,
+  because page 1 of a two-page transcript ends "CONTINUED ON NEXT PAGE".
+- **Never identity.** The name, student number and record-date lines, and the
+  watermark, are never course lines, so no staged row carries them (tested).
+
+**Reading order: the highest-risk defect.** In the real document the content
+stream draws the left column, then the right, so default text extraction
+follows the terms in order. That is a property of the generator, not a
+guarantee.
+
+- A test PDF that draws both columns line by line makes pypdf glue them into
+  shared lines (`... 3.0Spring 2028 SCHOOL ...`).
+- On that PDF, the first real-layout parser **silently dropped half the
+  courses** and assigned others to the wrong term.
+
+Three self-checks now prevent any silent error:
+
+| check | on failure |
+|---|---|
+| Every structural element (heading, MAJOR, CLASS, course, totals) owns its line. Two on one line proves the columns were merged. | `READING_ORDER_UNRELIABLE` on the document and on **every** row (needs review) |
+| The credits of a term's rows add up to its TOTAL CREDITS ATTEMPTED. | `TERM_TOTAL_MISMATCH` on every row of that term |
+| Every course-code triple becomes a row. | An unreadable one is marked `COURSE_LINE_UNREADABLE`, never dropped |
+
+**Still never inferred.**
+
+- No grade means no status. A term with no average yet adds the INFO hint
+  `TERM_NOT_YET_GRADED` ("probably in progress; confirm"), but the student
+  states the status.
+- Transfer and exam rows are recognised only under an explicit heading.
 - At most 400 rows.
 
-All test documents are SYNTHETIC (`tests/support/synthetic_transcript.py`,
-written by hand as minimal valid PDFs). **Support for real Rutgers transcripts
-is claimed only once a real, redacted sample has been checked**; see 46.13.
+**Not yet seen in a real document, so still unverified:**
+
+- transfer-credit and exam-credit sections;
+- supplement codes;
+- credit prefixes;
+- repeats.
+
+The sanitized fixture covers a repeat, and SUP and PR columns in the order the
+header gives them.
+
+**Tests.** `tests/test_rutgers_layout.py` and the real-layout API tests run
+against `tests/support/rutgers_layout.py`, in both stream orders. That
+generator reproduces the real structure: two columns, permissions-only
+encryption, the watermark, the page break and the end marker. Its identity,
+student number, courses, grades and averages are **entirely fabricated**.
 
 ### 46.7 Normalization and row states
 
@@ -8903,6 +8969,19 @@ Before and after, on the development database, measured with
 | CS (198 BA) | 60 (CS_ELECTIVES) | 0 |
 | every other program | 0 (their queries set offering unit 01) | 0 |
 
+**Failed and withdrawn attempts in the credit totals.** This was found by
+running the real transcript end to end, and has existed since 6.4.
+
+- **The bug:** completed attempts were added to `credits_completed` and
+  `credits_applicable_to_degree` *before* the non-passing check.
+- **The effect:** a failed 4-credit course made the audit report 38.0 where the
+  transcript's own "DEGREE CREDITS EARNED" says 34.0, so credits remaining were
+  understated by 4.
+- **The fix:** attempts that earn no credit (`grades.earns_credit` is NO: F, NC,
+  W, U, XF) now add nothing. On the real document the audit then agrees with
+  the transcript exactly (34.0).
+- `AUDIT_ENGINE_VERSION` is now 7.0.1.
+
 The "non-undergraduate eligible rows" shown in review packets for Economics (2)
 and Mathematics (1) are the named courses above, not query leaks.
 
@@ -8960,10 +9039,13 @@ script in the child, which ends in `PDF_EXTRACTION_TIMEOUT`.
 
 ### 46.14 Limitations and future work
 
-- **The real transcript layout is unverified.** The next step is one real,
-  consented, redacted unofficial transcript. That would let the line anchors
-  and section headings be checked, with the result recorded as a fixture plus a
-  provenance note. Until then, imports say `layout_verified: false`.
+- **The layout is checked against ONE real transcript** (SAS, four terms,
+  graded and in-progress courses).
+  - Not yet seen in a real document: transfer and AP sections, supplement
+    codes, credit prefixes and repeats.
+  - Other schools' transcripts, and older ones, may differ.
+  - More real samples, verified locally only, would extend the coverage. Until
+    then `layout_verified` stays `false`.
 - **Image-only PDFs, scans and photos are refused** (`PDF_NO_TEXT_LAYER`).
   There is no OCR.
 - **Transfer credit with no Rutgers equivalent cannot be stored**, because
@@ -9004,3 +9086,34 @@ diff), but any rows in them were lost.
   `coursepilot_migcheck_<hex>_disposable`, runs the cycle (the downgrade target
   is named explicitly, never `-1`) plus `alembic check`, and drops the
   database whatever happens.
+
+### 46.16 Verification against a real Rutgers transcript
+
+One real Rutgers NB unofficial transcript was used as LOCAL, sensitive test
+input:
+
+- it was never copied into the repository and never committed;
+- nothing identifying went into logs, tests or documentation.
+
+Ground truth was read from the RENDERED page, not from extracted text, and then
+compared with what the implemented pipeline produced.
+
+| | first version | after the fixes |
+|---|---|---|
+| extraction | refused: `PDF_ENCRYPTED` | 2 pages extracted |
+| course rows (16 expected) | 0 (`NO_COURSE_ROWS`) | 16; 0 missing, 0 false positives |
+| course code / term / section / credits / grade | 0/16 each | 16/16 each |
+| term totals reconciled | - | 4/4 |
+| term and cumulative averages, reported GPA | not read | all match |
+| in-progress rows | - | 5/5 `needs_review` (status not guessed), with the `TERM_NOT_YET_GRADED` hint |
+| catalog match (dev catalog) | - | 16/16 |
+| identity in any staged row | - | none |
+| audit credits after confirmation | 38.0 (F counted) | 34.0, the transcript's own figure |
+
+The full pipeline ran inside an outer transaction that was rolled back, so
+nothing from the document persisted. It covered:
+
+- the real child-process extractor;
+- staging and normalization against the dev catalog;
+- review and confirmation;
+- the audit.

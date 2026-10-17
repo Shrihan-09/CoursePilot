@@ -132,10 +132,15 @@ authenticated account's own record; no request can name another student.
   There is one catalog year (2026-2027) and one program per student: no
   double majors, minors, or school-wide core outside the two programs that
   include it.
-- **Verified transcript layout.** The parser is built for Rutgers' published
-  grade and course-code conventions and tested only on synthetic documents.
-  Real-transcript support is unverified until a real, redacted sample is
-  checked. Scanned or photographed transcripts (no text layer) are refused.
+- **Broad transcript coverage.**
+  - The parser reads the real Rutgers unofficial-transcript layout, and was
+    checked against one real transcript (16/16 courses).
+  - Transfer and AP sections, credit prefixes and other schools' or older
+    transcripts have not been seen in a real document yet.
+  - Two-column reading-order problems are detected and sent to review, never
+    guessed.
+  - Scanned or photographed transcripts (no text layer) are refused.
+  - See [DATA_MODEL.md §46.6](docs/DATA_MODEL.md).
 - **Production deployment.** Hosting, real OIDC configuration and Apple push
   credentials.
 - **Registration.** By design: CoursePilot never logs in to Rutgers systems

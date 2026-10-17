@@ -8576,6 +8576,37 @@ returns to X, and the stale Y is served as correct.
 The fix is to check the claim before writing it: recompute X after the engine
 runs, and store Y only if X still holds.
 
+### One real document beats a hundred synthetic ones
+
+The parser passed every synthetic test. The first real Rutgers transcript
+broke it twice before parsing even started:
+
+- **It was "encrypted"**, with an empty password that every viewer ignores, so
+  the upload was refused.
+- **Its course codes were three columns (`01 198 111`)**, not the colon form
+  every synthetic document used.
+
+Running it all the way through the engine found a third problem nothing
+synthetic had exercised: a failed course was being counted in the degree
+credits.
+
+The synthetic tests were not wrong; they only tested the *assumptions*. One
+real document tested reality. The lesson for evidence you cannot share: use it
+locally, measure against what the page *shows* rather than against the tool
+you are testing, then encode what it taught in a fabricated fixture with the
+same structure.
+
+### A document can check itself
+
+A two-column page read in the wrong order produces rows that look perfectly
+valid, just in the wrong term. No single row can reveal that. The document can,
+because it states its own totals: a term's courses must add up to its "TOTAL
+CREDITS ATTEMPTED". And in a well-read document every heading or course owns
+its whole line; two on one line means the columns were merged.
+
+When a self-check fails, the honest response is not a cleverer guess. It is to
+mark every affected row for review and say why.
+
 ---
 
 ## Self-Check
@@ -8586,6 +8617,8 @@ runs, and store Y only if X still holds.
 4. Why does confirmation re-normalize every row, when they were normalized at upload?
 5. The audit cache key is a fingerprint of the current rows. Why could it still serve a wrong audit, and what closes that gap?
 6. Why was the graduate-course fix made in `query_matches` rather than by editing the CS program JSON?
+7. A two-column transcript is read in the wrong order and every row still parses cleanly. Which two facts in the document itself reveal the problem?
+8. Why is opening a PDF with an empty user password not "guessing a password"?
 
 ## Try It Yourself
 
