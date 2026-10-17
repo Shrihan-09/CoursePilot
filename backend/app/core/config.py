@@ -163,6 +163,18 @@ class Settings(BaseSettings):
     # Phase 6.9: registering push tokens / Live Activities grows rows and
     # fan-out cost - its own budget per account per window.
     rate_limit_push_registrations: int = 10
+    # Phase 7.0: transcript uploads spawn a parser process each - their own,
+    # small budget per account per window.
+    rate_limit_transcript_uploads: int = 5
+
+    # --- Transcript import (Phase 7.0; DATA_MODEL section 46) ---
+    # Where an upload sits WHILE it is extracted (deleted right after).
+    transcript_storage_dir: str = "data/uploads/transcripts"
+    # A text PDF of a multi-page transcript is well under 1 MB.
+    transcript_max_bytes: int = 5 * 1024 * 1024
+    transcript_max_pages: int = 20
+    transcript_max_text_chars: int = 200_000
+    transcript_extraction_timeout_seconds: float = 20.0
 
     # --- CoursePilot Live: push delivery (Phase 6.9; DATA_MODEL section 45) ---
     # none (default: deliveries stay pending and visible) | fake | apns

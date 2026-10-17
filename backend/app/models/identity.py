@@ -149,7 +149,11 @@ class UserAccount(Base, TimestampMixin):
 #: useful if its vocabulary is fixed.
 LINK_ACTION_LINKED = "linked"
 LINK_ACTION_UNLINKED = "unlinked"
-LINK_ACTIONS = (LINK_ACTION_LINKED, LINK_ACTION_UNLINKED)
+#: Phase 7.0: the account created this record for itself (self-service
+#: onboarding). Distinct from "linked", which records an administrator's
+#: verification that an EXISTING record belongs to an account.
+LINK_ACTION_CREATED = "created"
+LINK_ACTIONS = (LINK_ACTION_LINKED, LINK_ACTION_UNLINKED, LINK_ACTION_CREATED)
 
 
 class StudentLinkEvent(Base, TimestampMixin):
@@ -212,7 +216,7 @@ class StudentLinkEvent(Base, TimestampMixin):
             # ck_<table>_. Passing an already-prefixed name produces
             # ck_student_link_event_student_link_event_... - the doubling
             # bug this project has hit in three previous migrations.
-            "action IN ('linked','unlinked')", name="action_known"
+            "action IN ('linked','unlinked','created')", name="action_known"
         ),
         Index("ix_student_link_event_student_time", "student_id", "created_at"),
     )
@@ -234,6 +238,7 @@ def student_owner_column() -> Mapped[uuid.UUID | None]:
 
 __all__ = [
     "LINK_ACTIONS",
+    "LINK_ACTION_CREATED",
     "LINK_ACTION_LINKED",
     "LINK_ACTION_UNLINKED",
     "PROVIDER_DEV",

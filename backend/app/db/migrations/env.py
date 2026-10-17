@@ -28,6 +28,21 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
+def _refuse_destructive_commands() -> None:
+    """A downgrade against a persistent database is refused BEFORE anything
+    connects (app.db.migration_guard; Phase 7.0 incident)."""
+    from app.db.migration_guard import check_downgrade_allowed
+
+    # `alembic.context` is a module proxy; the live EnvironmentContext - and
+    # the command function alembic passed it - is `context._proxy`.
+    fn = context._proxy.context_opts.get("fn")
+    if getattr(fn, "__name__", "") == "downgrade":
+        check_downgrade_allowed(config.get_main_option("sqlalchemy.url"))
+
+
+_refuse_destructive_commands()
+
+
 def run_migrations_offline() -> None:
     context.configure(
         url=config.get_main_option("sqlalchemy.url"),

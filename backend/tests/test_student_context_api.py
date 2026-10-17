@@ -416,15 +416,34 @@ async def test_no_path_parameterised_student_route_exists(app) -> None:
     # see tests/test_multi_program.py. Phase 6.5 added plans/generate on the
     # same terms - see tests/test_planning_api.py - and Phase 6.6
     # schedules/generate - see tests/test_schedule_api.py.
+    #
+    # Phase 7.0 added onboarding (profile, program, courses, transcripts). Its
+    # path parameters name an ENTRY, IMPORT or ROW, always looked up inside
+    # the caller's own record (another account's id is a 404 identical to a
+    # missing one) - see tests/test_onboarding_api.py and
+    # tests/test_transcript_import_api.py. None names a student or account.
     assert sorted(student_self_service) == [
         "/api/v1/student/audit",
         "/api/v1/student/context",
+        "/api/v1/student/courses",
+        "/api/v1/student/courses/{entry_id}",
+        "/api/v1/student/onboarding",
+        "/api/v1/student/onboarding/complete",
         "/api/v1/student/plans/generate",
+        "/api/v1/student/profile",
+        "/api/v1/student/program",
         "/api/v1/student/scenarios/audit",
         "/api/v1/student/scenarios/compare",
         "/api/v1/student/schedules/generate",
+        "/api/v1/student/transcripts",
+        "/api/v1/student/transcripts/{import_id}",
+        "/api/v1/student/transcripts/{import_id}/confirm",
+        "/api/v1/student/transcripts/{import_id}/rows/{row_id}",
     ]
-    assert not any("{" in p for p in student_self_service)
+    import re
+
+    params = {m for p in student_self_service for m in re.findall(r"\{(\w+)\}", p)}
+    assert params == {"entry_id", "import_id", "row_id"}
     # The only parameterised student path in the API is the ADMIN linking one,
     # which Phase 5.5 gates on is_admin.
     assert all(

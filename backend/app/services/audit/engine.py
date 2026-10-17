@@ -1006,6 +1006,24 @@ class DegreeAuditEngine:
                 )
             )
 
+        # Phase 7.0: the review state of the RULES is part of every audit, the
+        # student's own program included. Only a published version has been
+        # verified by a person against the Rutgers prose; anything else is
+        # Claude-encoded or awaiting re-review, and the audit says so.
+        if version.lifecycle_state != "published":
+            findings.append(
+                AuditFinding(
+                    severity=Severity.WARNING,
+                    code="program_pending_review",
+                    message=(
+                        "This program's requirements have not been verified by a person "
+                        "against the official Rutgers prose; treat this audit as "
+                        "provisional."
+                    ),
+                    remediation="Confirm requirements with an academic advisor.",
+                )
+            )
+
         requirements = self._load_requirements(version.id)
         if not requirements:
             return DegreeAuditResult(
@@ -1140,7 +1158,14 @@ class DegreeAuditEngine:
                     )
                 continue
 
-            if sc.status == EnrollmentStatus.COMPLETED.value:
+            # Phase 7.0 (found on a real transcript): an attempt that earns no
+            # credit - F, NC, W, U, XF - adds nothing to the credit totals. They
+            # were added before the non-passing check below, so one failed
+            # 4-credit course overstated credits applicable to the degree by 4
+            # (Rutgers' own "DEGREE CREDITS EARNED" excludes it).
+            earns_nothing = (sc.status == EnrollmentStatus.COMPLETED.value and earns_credit(
+                outcome(sc.status, sc.grade, sc.credit_origin)) is Tri.NO)
+            if sc.status == EnrollmentStatus.COMPLETED.value and not earns_nothing:
                 credits_completed += credits or Decimal(0)
                 # The distinction this phase exists to make: completed credits
                 # are not the same as credits that count toward THIS degree.

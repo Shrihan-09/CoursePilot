@@ -40,7 +40,7 @@ from __future__ import annotations
 import logging
 import time
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -72,10 +72,15 @@ logger = logging.getLogger(__name__)
 #: by existing routes. Keeps Phase 5.4-5.6 status semantics exactly as they
 #: were while giving each one a stable machine-readable code.
 _STATUS_TO_CODE: dict[int, ErrorCode] = {
+    # Phase 7.0: a malformed request body that never reached validation
+    # (400) and an oversized upload (413) are client input errors, not
+    # internal ones.
+    400: ErrorCode.VALIDATION_ERROR,
     401: ErrorCode.AUTHENTICATION_ERROR,
     403: ErrorCode.AUTHORIZATION_ERROR,
     404: ErrorCode.NOT_FOUND,
     409: ErrorCode.UNLINKED_ACCOUNT,
+    413: ErrorCode.VALIDATION_ERROR,
     422: ErrorCode.VALIDATION_ERROR,
     429: ErrorCode.RATE_LIMITED,
 }
@@ -87,6 +92,20 @@ _CODE_COUNTERS: dict[ErrorCode, str] = {
     ErrorCode.UNLINKED_ACCOUNT: UNLINKED_ACCOUNT_TOTAL,
     ErrorCode.RATE_LIMITED: RATE_LIMITED_TOTAL,
 }
+
+
+class IssueHTTPException(HTTPException):
+    """An HTTPException that also carries STRUCTURED issues (Phase 7.0).
+
+    `issues` is a list of `{"code", "field", "severity", "message"}` dicts the
+    application built itself - codes from a closed vocabulary and messages it
+    wrote - so a client can say "the grade is not a Rutgers grade" without
+    parsing prose. Never exception text, never echoed input.
+    """
+
+    def __init__(self, status_code: int, detail: str, issues: list[dict]) -> None:
+        super().__init__(status_code=status_code, detail=detail)
+        self.issues = issues
 
 
 def error_payload(code: ErrorCode, request_id: str, message: str | None = None) -> dict:
@@ -184,6 +203,9 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     # `exc.detail` here is a sentence the application chose, never an
     # exception message - the routes construct these explicitly.
     payload = error_payload(code, request_id, message=str(exc.detail))
+    issues = getattr(exc, "issues", None)
+    if issues:
+        payload["error"]["issues"] = issues
     response = JSONResponse(status_code=exc.status_code, content=payload,
                             headers=dict(exc.headers or {}))
     response.headers[REQUEST_ID_HEADER] = request_id
@@ -222,6 +244,7 @@ def install(app: FastAPI) -> None:
 
 
 __all__ = [
+    "IssueHTTPException",
     "RequestContextMiddleware",
     "error_payload",
     "http_exception_handler",

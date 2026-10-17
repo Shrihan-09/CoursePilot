@@ -312,6 +312,8 @@ inter-campus travel times.
 
 ## 8. Student data
 
+> **As built (Phase 7.0):** this section is the original design sketch. The implemented model is narrower: `student` binds ONE `program_version_id` + `catalog_year` (no `student_program` table yet), and completed / in-progress / planned courses share `student_course` (`status`, `grade`, `credits_earned`, `credit_origin`, `source_kind`, `transcript_import_id`). Self-service creation, history entry and transcript import: section 46. The audit cache is `student_audit_cache` (section 29).
+
 ### `student`
 `id`, `external_ref` (nullable), `expected_graduation_term`, `created_at`.
 
@@ -8611,3 +8613,507 @@ starting "Watch Live"), before the watch exists (§44.10).
   boundaries instead of on openings. Priority 5 updates do not count against
   Apple's budget.
 - **What it must not be:** a permanent, semester-long activity.
+
+## 46. Student onboarding: profile, history, transcript import (Phase 7.0)
+
+> **A transcript import is student-provided evidence.** CoursePilot reads the
+> student's own unofficial transcript, and it becomes academic history only
+> when the student reviews the extracted rows and confirms them. CoursePilot
+> never fetches anything from Rutgers on the student's behalf, never asks for a
+> Rutgers password, and no model decides what a transcript says.
+
+### 46.1 The flow
+
+```
+welcome ──► GET  /student/onboarding                  state: needs_profile
+program ──► GET  /programs                            (support status per catalog year)
+        ──► POST /student/profile {program_key, catalog_year}
+history ──► POST /student/transcripts  (PDF body)     ──┐   or   POST /student/courses (one by one)
+review  ──► GET  /student/transcripts/{id}             │
+        ──► PATCH /student/transcripts/{id}/rows/{row}  │  correct / exclude / resolve
+confirm ──► POST /student/transcripts/{id}/confirm {expected_version}
+complete──► POST /student/onboarding/complete
+dashboard─► GET  /student/context, /student/audit, /student/plans/generate, ...
+```
+
+The onboarding state is derived on each request, never stored:
+`needs_profile → needs_academic_history | reviewing_transcript →
+ready_to_complete → complete`. The one exception is
+`student.onboarding_completed_at`, which records the student's own statement
+that they are done. An empty history may complete onboarding, because an
+incoming first-year has none. An open transcript import may not: it has to be
+confirmed or discarded first.
+
+### 46.2 The self-service profile
+
+`POST /student/profile` creates a new `student` row. The server sets `user_id`
+to the caller's account inside the INSERT itself:
+
+- **Nothing is claimed.** No lookup uses `external_ref`, and no body field names
+  a record (`extra="forbid"`). Linking an existing record to an account is
+  still `POST /admin/students/{id}/link`, unchanged since 5.5.
+- **Duplicates are blocked by the database.** The `student.user_id` UNIQUE index
+  decides between concurrent first creates. The loser rolls back and returns the
+  winner's row (verified with 8 threads on PostgreSQL).
+- **Idempotent.** The first call returns 201. Any later call returns 200 with
+  `created: false` and the record unchanged, even if it names a different
+  program. Changing program is its own explicit call (`PUT /student/program`),
+  never a side effect of a retried request.
+- **Audited.** A `student_link_event` row with the new action `created` is
+  written in the same transaction (the CHECK now reads
+  `linked | unlinked | created`).
+
+A profile cannot exist without a program: `program_version_id` and
+`catalog_year` are NOT NULL, and roughly eight engine paths depend on that.
+Creating a profile is therefore choosing a program.
+
+### 46.3 Program selection
+
+Selection is validated with `scenarios.resolve_version`, the same resolver that
+scenario targets use:
+
+| case | response |
+|---|---|
+| unknown program | 404, `PROGRAM_NOT_FOUND` |
+| catalog year the program lacks | 404, `CATALOG_YEAR_UNAVAILABLE`, listing the available years. Never "the latest". |
+| key that names only variants | 422, `PROGRAM_VARIANT_REQUIRED`, listing the variants |
+| nothing evaluable | 422, `PROGRAM_NOT_EVALUABLE` |
+| pending review (validated or needs re-review) | **accepted**, with warnings |
+
+A pending-review program may be the student's real major, so refusing it would
+be wrong. Presenting it as verified would be wrong too. Every profile and
+selection response carries its warnings:
+
+- `requirements_pending_review`
+- `school_requirements_not_included`, when the version has no core-system nodes.
+  Today that is every major except 198 BA and 640 BA.
+- `rules_not_evaluable`
+
+Every audit of a non-published version carries the `program_pending_review`
+finding; see 46.10.
+
+Program and catalog year are always written together: the engine reports a
+mismatch between them as BLOCKING. A program change leaves courses untouched
+and drops the cached audit in the same transaction.
+
+### 46.4 Manual history
+
+`GET/POST /student/courses`, `PATCH/DELETE /student/courses/{entry_id}` handle
+one `student_course` row at a time, for the owner only. Validation lives in
+`app.domain.history.validate_entry`, which transcript confirmation also uses:
+
+| rule | why |
+|---|---|
+| term is `YYYYT`, T ∈ {0,1,7,9} | repeat ordering, co-requisite timing and plan start all order by it |
+| completed Rutgers course has a grade that `grades.outcome` recognizes | an unrecognized symbol would make every later audit provisional |
+| planned / in-progress rows carry no grade | there is no grade yet |
+| transfer and exam credit carry no grade, and are completed | Rutgers posts no grade for them; storing one would fabricate a Rutgers grade |
+| credits are NULL or 0–999.9 with one decimal place | NULL means the catalog credits apply |
+| course code resolves to ONE catalog course, preferring the base record | the audit (course id) and prerequisites (course string) must agree |
+| (course, term) is unique | a retake is the same course in a different term; both rows are kept |
+
+Grades are stored stripped and upper-case. A failed check is a 422 with
+structured issues: `{"code","field","severity","message"}` in `error.issues`.
+`source_kind` is always set by the server: `student_self_reported` for typed
+or corrected entries, `student_uploaded_transcript` for confirmed import rows.
+
+### 46.5 Transcript import: staging and the invariant
+
+```
+upload ─► extraction ─► normalization ─► validation ─► STAGING (transcript_import_row)
+       ─► student review ─► explicit confirmation ─► student_course ─► cache drop ─► engines
+```
+
+Staged rows live in `transcript_import_row`, which no engine reads. Only
+`confirm_import` writes history. A failure-injection fault that writes at
+upload time is caught by `test_upload_stages_review_confirms_and_only_then_writes`.
+
+**Upload.** The PDF is the request body (`application/pdf`), not multipart, so
+there is no file name to store, log or echo. File names are often a student's
+name or RUID. The checks run in this order:
+
+1. **Size.** Refused above 5 MB while the body is read: a declared
+   Content-Length is checked first, but the byte count is what is enforced.
+2. **Type.** `%PDF-` must appear within the first 1024 bytes. The extension and
+   Content-Type are never consulted.
+3. **Lock and dedupe.** The student row is locked. The same bytes, still open,
+   return the existing import, so nothing is parsed twice. Uniqueness is backed
+   by the partial index `(student_id, content_sha256) WHERE state IN
+   ('processing','extracted')`.
+4. **Cap.** At most 3 open imports per student.
+5. **Store and commit.** The document is stored and the import committed as
+   `processing`, so a crash leaves a visible import, which reads as `failed`
+   after 10 minutes.
+6. **Extract.** Extraction runs **in a child process** with a 20 s timeout
+   (pypdf, 20-page and 200,000-character limits). Real Rutgers transcripts
+   are iText PDFs with **permissions-only encryption** (an empty user
+   password); they are opened exactly as any viewer opens them. A PDF that
+   needs an actual password is refused (`PDF_ENCRYPTED`): no password is ever
+   asked for or guessed. Documents with no text layer and unreadable ones are
+   refused too. Each failure has a fixed
+   code; no exception text crosses the process boundary.
+7. **Delete.** The raw document is deleted whatever happened.
+   `sweep_orphaned_documents` removes leftovers from a crash.
+
+**Storage** is a `TranscriptStorage` protocol: `LocalTranscriptStorage` in
+`data/uploads/transcripts/` (git-ignored), or memory for tests. Keys are server
+`uuid4().hex`, files are created with `O_EXCL` and mode 0600, and resolved paths
+are checked to stay inside the base directory. **Documents are not retained**;
+only the staged rows are.
+
+### 46.6 Extraction: the real Rutgers layout
+
+The first version assumed `SS:DDD:CCC` course codes and a browser-printed page,
+because no sample existed. Checked against **one real Rutgers NB unofficial
+transcript**, both assumptions were wrong. That check was local verification
+only; the document was never committed (see 46.16).
+
+What the real document is:
+
+- **An iText-generated PDF with permissions-only encryption** (an empty user
+  password). The first version refused it outright as `PDF_ENCRYPTED`.
+- **A monospaced fixed-width table** in which the course code is three
+  columns:
+
+```
+          TITLE             SCH  DEPT CRS  SUP SEC  CRED  PR GRADE
+Fall   2027 SCHOOL OF EXAMPLE STUDIES
+MAJOR: ...
+CLASS: ...
+  EXAMPLE COURSE A          98  263  101       01   3.0       A
+    SUB TOPIC: ...
+  TOTAL CREDITS ATTEMPTED:                               3.0
+DEGREE CREDITS EARNED: 3.0   TERM AVG: 4.000  CUMULATIVE AVG: 4.000
+...
+Last Term Information / LAST TERM ... IN GPA: ...
+*** END OF TRANSCRIPT ***
+```
+
+  The values above are fabricated; the real document's are never reproduced.
+
+- **Two columns on page 1**, with terms side by side under a diagonal
+  watermark ("UNOFFICIAL COPY OF" plus the student's name). The transcript
+  continues onto page 2.
+
+The parser version is
+`PARSER_VERSION = "rutgers-nb-unofficial/2-checked-against-1-real-transcript"`.
+The API's `layout_verified` stays `false`: one document is evidence, not
+coverage (46.14).
+
+**What the parser reads.**
+
+- **Course records in the columnar rendering:** code, title, SUP and SEC (two
+  code tokens are SUP then SEC), credits, PR and GRADE.
+  - A credit-prefix letter (E/J/K/N/R) is never a grade symbol, so a single
+    token after the credits is unambiguous.
+  - The `SS:DDD:CCC` rendering is still accepted.
+- **Term headings, with their school.**
+  - `MAJOR:` and `CLASS:` lines are recognised and ignored.
+  - A `SUB TOPIC:` line is attached to the course above it, in its raw text.
+- **Per-term summaries:** TOTAL CREDITS ATTEMPTED, TERM AVG and CUMULATIVE AVG,
+  stored in `transcript_import.term_summaries`. The reported GPA is the last
+  stated CUMULATIVE AVG.
+- **The end marker.** Without it the import warns `TRANSCRIPT_END_NOT_FOUND`,
+  because page 1 of a two-page transcript ends "CONTINUED ON NEXT PAGE".
+- **Never identity.** The name, student number and record-date lines, and the
+  watermark, are never course lines, so no staged row carries them (tested).
+
+**Reading order: the highest-risk defect.** In the real document the content
+stream draws the left column, then the right, so default text extraction
+follows the terms in order. That is a property of the generator, not a
+guarantee.
+
+- A test PDF that draws both columns line by line makes pypdf glue them into
+  shared lines (`... 3.0Spring 2028 SCHOOL ...`).
+- On that PDF, the first real-layout parser **silently dropped half the
+  courses** and assigned others to the wrong term.
+
+Three self-checks now prevent any silent error:
+
+| check | on failure |
+|---|---|
+| Every structural element (heading, MAJOR, CLASS, course, totals) owns its line. Two on one line proves the columns were merged. | `READING_ORDER_UNRELIABLE` on the document and on **every** row (needs review) |
+| The credits of a term's rows add up to its TOTAL CREDITS ATTEMPTED. | `TERM_TOTAL_MISMATCH` on every row of that term |
+| Every course-code triple becomes a row. | An unreadable one is marked `COURSE_LINE_UNREADABLE`, never dropped |
+
+**Still never inferred.**
+
+- No grade means no status. A term with no average yet adds the INFO hint
+  `TERM_NOT_YET_GRADED` ("probably in progress; confirm"), but the student
+  states the status.
+- Transfer and exam rows are recognised only under an explicit heading.
+- At most 400 rows.
+
+**Not yet seen in a real document, so still unverified:**
+
+- transfer-credit and exam-credit sections;
+- supplement codes;
+- credit prefixes;
+- repeats.
+
+The sanitized fixture covers a repeat, and SUP and PR columns in the order the
+header gives them.
+
+**Tests.** `tests/test_rutgers_layout.py` and the real-layout API tests run
+against `tests/support/rutgers_layout.py`, in both stream orders. That
+generator reproduces the real structure: two columns, permissions-only
+encryption, the watermark, the page break and the end marker. Its identity,
+student number, courses, grades and averages are **entirely fabricated**.
+
+### 46.7 Normalization and row states
+
+Each staged row keeps its **extracted** values (raw line, page, line number,
+code, title, term label, credits, prefix, grade), which are never overwritten.
+Separately it holds **normalized** values, which the student may correct.
+`normalize_row` recomputes the course match, the issues and the state from the
+normalized values and the current record:
+
+| state | meaning | blocks confirmation |
+|---|---|---|
+| matched | storable as is | no |
+| needs_review | the document did not say (status, term) or a grade is not a Rutgers symbol | until corrected or excluded |
+| unrecognized | no catalog course has the code (`COURSE_NOT_FOUND`; external credit: `EXTERNAL_CREDIT_NO_EQUIVALENT`) | until corrected or excluded |
+| conflict | disagrees with an existing entry for the same (course, term) | until resolved: `keep_existing` or `replace_existing` |
+| invalid | cannot be stored as is | until corrected or excluded |
+
+`ALREADY_RECORDED` (identical to an existing entry) is a matched row that
+confirmation skips. `DUPLICATE_IN_IMPORT` flags the same (course, term) twice in
+one document. INFO issues, which never block: `EXTERNAL_GRADE_NOT_RECORDED`,
+`CREDIT_PREFIX_NOT_RECORDED`, `CREDITS_NOT_EXTRACTED`.
+
+### 46.8 Coexistence with manual history
+
+Manual entries and transcript entries are ordinary `student_course` rows that
+differ only in `source_kind` and `transcript_import_id`. The rules are fixed:
+
+- **An import never deletes an entry.**
+- An import overwrites an entry only through an explicit, per-row
+  `replace_existing` resolution.
+- An identical row is skipped.
+- Editing an imported entry makes it `student_self_reported`. The provenance
+  column `transcript_import_id` is kept.
+
+### 46.9 Confirmation
+
+`POST /student/transcripts/{id}/confirm {expected_version}` runs as one
+transaction:
+
+1. **Lock.** `SELECT student FOR UPDATE`, then `SELECT import FOR UPDATE`. Every
+   7.0 writer locks the student row first, so edits, manual entries,
+   confirmations and program changes on one record serialize, with no lock
+   cycle.
+2. **Already confirmed.** The stored outcome is returned and **nothing is
+   written**. This makes confirmation idempotent; 6 concurrent confirmations
+   produce 1 write and 5 replays.
+3. **Expired or not open.** 422 (`IMPORT_EXPIRED` after 7 days, or
+   `IMPORT_NOT_CONFIRMABLE`).
+4. **Stale version.** A `version` that is not the current one is a 422
+   (`IMPORT_VERSION_STALE`). Every review edit bumps the version, so a student
+   can confirm only rows they have seen.
+5. **Re-normalize against the record as it is now.** The record may have
+   changed since review. If the re-check changed any row, the new states are
+   committed, the version is bumped, and the response is a 422
+   (`RECORD_CHANGED_SINCE_REVIEW`). Any blocking row also gives a 422
+   (`ROWS_NEED_ATTENTION`).
+6. **Write.** Rows are inserted, replaced or skipped, and each staged row
+   records its outcome and its `student_course` id.
+7. **Finish.** The import is marked confirmed with its counts, the cached audit
+   is dropped, and the transaction commits.
+
+Any exception rolls the whole transaction back. In the injected
+"failure on the 2nd insert" test, nothing was written, the import stayed
+`extracted`, and a retry succeeded.
+
+### 46.10 Derived state
+
+The audit cache key is a fingerprint of the current rows (5.7), so any write
+misses automatically. Phase 7.0 adds three things:
+
+- **Dropping the row in the same transaction** (`onboarding.invalidate_audit`),
+  inside a SAVEPOINT. An invalidation failure is logged, and the academic write
+  still commits; this was tested by making the cache table unreachable.
+- **A key re-check after the engine runs** (`cached_audit._key_still_holds`).
+  The key used to be computed before the engine ran, and the result stored
+  after. Once students can edit their own records, a write committing in
+  between would store `(old key, new result)`. Undoing that write (A → B → A)
+  would then serve a wrong audit. Now the result is stored only if the key,
+  including a fresh read of the student row, still holds. The ABA scenario is
+  tested deterministically.
+- **`STUDENT_COURSE_NON_AUDIT_COLUMNS`** plus a test: every `student_course`
+  column is either fingerprinted or declared non-audit, so a column added later
+  fails a test rather than serving stale audits.
+
+`AUDIT_ENGINE_VERSION` is now 7.0.0. Nothing else caches by student: the
+planner, eligibility, schedules, explanations and scenario targets are all
+computed per request, and plans are never stored.
+
+### 46.11 Correctness fixes
+
+**Graduate courses in query pools.** `eligibility.query_matches` now admits
+only level-`U` courses, unless the query says `"include_graduate": true`.
+
+- The cause: the curated CS electives query `{198, ≥ 300}` named no offering
+  unit and admitted 60 graduate 16:198 courses (86 rows instead of 26) into the
+  audit pools and planner candidates.
+- **Named** courses are never filtered. Economics names 33:010:272/275 and
+  Mathematics names 14:332:252 on purpose.
+- The fix lives in code rather than in the published CS JSON. Editing the JSON
+  would change its `definition_sha256` and move the only published program to
+  `needs_rereview`.
+
+Before and after, on the development database, measured with
+`reconcile()` / `query_matches`:
+
+| program | query-admitted non-U rows before | after |
+|---|---|---|
+| CS (198 BA) | 60 (CS_ELECTIVES) | 0 |
+| every other program | 0 (their queries set offering unit 01) | 0 |
+
+**Failed and withdrawn attempts in the credit totals.** This was found by
+running the real transcript end to end, and has existed since 6.4.
+
+- **The bug:** completed attempts were added to `credits_completed` and
+  `credits_applicable_to_degree` *before* the non-passing check.
+- **The effect:** a failed 4-credit course made the audit report 38.0 where the
+  transcript's own "DEGREE CREDITS EARNED" says 34.0, so credits remaining were
+  understated by 4.
+- **The fix:** attempts that earn no credit (`grades.earns_credit` is NO: F, NC,
+  W, U, XF) now add nothing. On the real document the audit then agrees with
+  the transcript exactly (34.0).
+- `AUDIT_ENGINE_VERSION` is now 7.0.1.
+
+The "non-undergraduate eligible rows" shown in review packets for Economics (2)
+and Mathematics (1) are the named courses above, not query leaks.
+
+**Lifecycle warning on the student's own program.** Before, a student whose
+declared major was pending review saw no warning at all:
+
+- `scenarios._assumptions` returned early for the current program, before its
+  pending-review check;
+- `GET /student/audit` carried no lifecycle information.
+
+Now:
+
+- the scenario check runs first;
+- `DegreeAuditEngine.audit` adds a `program_pending_review` WARNING to **every**
+  audit of a non-published version. That covers the student audit, scenario
+  audits, explanations and the planner's baseline. The planner keeps its own
+  `PROGRAM_PENDING_REVIEW` issue.
+
+### 46.12 GPA
+
+| value | source | authority |
+|---|---|---|
+| `transcript_reported_gpa` | the LAST cumulative-GPA line of a confirmed import, as written | what the document said; never overwritten by anything computed |
+| computed GPA (`domain/gpa.py`) | recorded attempts, inside the `min_gpa` rule only | partial: UNKNOWN whenever a repeat's E-prefix is unknowable or a grade is non-final, and NOT_EVALUABLE in `min_gpa` because no record is asserted complete |
+
+Neither value is presented as more authoritative than the other. Credit
+prefixes are read and shown in staging (`CREDIT_PREFIX_NOT_RECORDED`) but **not
+stored** on `student_course`. Storing them would let `gpa.py` resolve repeats,
+and is deferred, because adding an audit-input column is an engine change.
+
+### 46.13 Measured
+
+Local Windows development machine, PostgreSQL 16 in Docker, SYNTHETIC 2-page
+PDF with 60 course rows (`scripts/benchmark_onboarding.py`; 5 extractions per run, two runs):
+
+| step | time |
+|---|---|
+| extraction in the child process (spawn + pypdf) | median 1.8–2.5 s across two runs (1.77–3.16 s) |
+| the same extraction in-process | 9–17 ms |
+| staging: parse + normalize + 2 commits | 0.71–0.73 s |
+| confirmation of 60 rows | 0.54–0.57 s |
+
+The isolation costs about 2 s per upload, almost all of it process start-up.
+That is accepted: an upload happens once per student, and the alternative is
+running an untrusted-PDF parser inside the API worker. Normalization and
+confirmation resolve each course with one query (N+1). That is fine at
+transcript size (≤ 400 rows) and would be the first thing to batch if it
+mattered.
+
+**Operational note.** The extractor uses `multiprocessing` with the `spawn`
+start method, which re-imports the parent's `__main__`. uvicorn, gunicorn and
+pytest are safe. A custom entry-point script that calls the extractor must
+guard its body with `if __name__ == "__main__":`, or every upload re-runs the
+script in the child, which ends in `PDF_EXTRACTION_TIMEOUT`.
+
+### 46.14 Limitations and future work
+
+- **The layout is checked against ONE real transcript** (SAS, four terms,
+  graded and in-progress courses).
+  - Not yet seen in a real document: transfer and AP sections, supplement
+    codes, credit prefixes and repeats.
+  - Other schools' transcripts, and older ones, may differ.
+  - More real samples, verified locally only, would extend the coverage. Until
+    then `layout_verified` stays `false`.
+- **Image-only PDFs, scans and photos are refused** (`PDF_NO_TEXT_LAYER`).
+  There is no OCR.
+- **Transfer credit with no Rutgers equivalent cannot be stored**, because
+  `student_course.course_id` is NOT NULL. It stays reviewable and must be mapped
+  to an equivalent or excluded. A future `external_credit` table could hold it.
+- **One program per student.** Double majors, minors, and school-wide
+  requirements as their own version are not modeled. SAS Core is grafted into
+  198 BA and 640 BA only, and that is warned about at selection. The shape for
+  later is a `student_program` table (student, program_version, role,
+  is_primary), with `student.program_version_id` kept as the primary.
+- **Only catalog year 2026-2027 exists.**
+- **The same course twice in one term** (for example a variable-topics course)
+  cannot be recorded.
+- **Resource limits.** The parser timeout applies everywhere. RLIMIT_AS and
+  RLIMIT_CPU apply on POSIX only.
+- **Rate limits are per process** (5 uploads per window). The per-student cap of
+  3 open imports in the database is the hard bound.
+
+### 46.15 Migration verification: never on a persistent database
+
+**What happened.** While verifying this phase's migration, a chained command ran
+`alembic downgrade -1` after `upgrade head` had *failed*. The development
+database was still at `e26b2e81f400`, so the downgrade reverted **Phase 6.9**
+and dropped its five tables. They were re-created by upgrading again (the
+schema is identical to the test database's, verified by `pg_dump --schema-only`
+diff), but any rows in them were lost.
+
+**The procedure now:**
+
+- `alembic downgrade` refuses to run unless the database name ends in `_test`
+  or `_disposable` (`app/db/migration_guard.py`, called from `env.py` before
+  anything connects).
+- A specific persistent database can be confirmed deliberately with
+  `COURSEPILOT_ALLOW_DOWNGRADE=<that database name>`. Values such as `1`,
+  `true` or `*` are refused.
+- Upgrade → downgrade → re-upgrade checks run on a throwaway database:
+  `python scripts/verify_migration_roundtrip.py` creates
+  `coursepilot_migcheck_<hex>_disposable`, runs the cycle (the downgrade target
+  is named explicitly, never `-1`) plus `alembic check`, and drops the
+  database whatever happens.
+
+### 46.16 Verification against a real Rutgers transcript
+
+One real Rutgers NB unofficial transcript was used as LOCAL, sensitive test
+input:
+
+- it was never copied into the repository and never committed;
+- nothing identifying went into logs, tests or documentation.
+
+Ground truth was read from the RENDERED page, not from extracted text, and then
+compared with what the implemented pipeline produced.
+
+| | first version | after the fixes |
+|---|---|---|
+| extraction | refused: `PDF_ENCRYPTED` | 2 pages extracted |
+| course rows (16 expected) | 0 (`NO_COURSE_ROWS`) | 16; 0 missing, 0 false positives |
+| course code / term / section / credits / grade | 0/16 each | 16/16 each |
+| term totals reconciled | - | 4/4 |
+| term and cumulative averages, reported GPA | not read | all match |
+| in-progress rows | - | 5/5 `needs_review` (status not guessed), with the `TERM_NOT_YET_GRADED` hint |
+| catalog match (dev catalog) | - | 16/16 |
+| identity in any staged row | - | none |
+| audit credits after confirmation | 38.0 (F counted) | 34.0, the transcript's own figure |
+
+The full pipeline ran inside an outer transaction that was rolled back, so
+nothing from the document persisted. It covered:
+
+- the real child-process extractor;
+- staging and normalization against the dev catalog;
+- review and confirmation;
+- the audit.

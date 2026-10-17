@@ -1,9 +1,12 @@
 """Minimal student academic record.
 
 Scope is deliberately tiny: enough to run a degree audit, nothing more. No
-authentication, no accounts, no profile, no PII beyond an opaque external
-reference. Student data is a liability; this phase needs only a fixture
-student to prove the audit engine works.
+PII beyond an opaque external reference. Student data is a liability.
+
+Phase 7.0: an account may create its OWN record (self-service onboarding,
+`app.services.onboarding`) and edit its own course entries
+(`app.services.history`); transcript imports are staged elsewhere
+(`app.models.onboarding`) and reach `student_course` only on confirmation.
 
 `StudentCourse` covers completed, in-progress, and planned courses in one
 table because they differ only by status and by whether a grade exists -
@@ -13,11 +16,13 @@ splitting them into three tables would triple the query surface for no gain.
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 
 from sqlalchemy import (
     CheckConstraint,
+    DateTime,
     ForeignKey,
     Index,
     Numeric,
@@ -98,6 +103,10 @@ class Student(Base, TimestampMixin):
         ForeignKey("program_version.id"), index=True
     )
 
+    # Phase 7.0: the student's own "onboarding is done". The one onboarding
+    # fact that is stated, not derived; read by no academic engine.
+    onboarding_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
     courses: Mapped[list[StudentCourse]] = relationship(
         back_populates="student", cascade="all, delete-orphan"
     )
@@ -142,6 +151,11 @@ class StudentCourse(Base, TimestampMixin):
     # Phase 6.4: Rutgers coursework, transfer equivalency, or exam credit.
     credit_origin: Mapped[str] = mapped_column(
         String(16), default=CreditOrigin.RUTGERS.value, server_default=CreditOrigin.RUTGERS.value)
+    # Phase 7.0 provenance: the confirmed transcript import that wrote (or last
+    # replaced) this entry; NULL for entries typed by the student. Not an
+    # audit input - see app.services.audit.cache.STUDENT_COURSE_NON_AUDIT_COLUMNS.
+    transcript_import_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("transcript_import.id", ondelete="SET NULL"), index=True)
 
     student: Mapped[Student] = relationship(back_populates="courses")
 

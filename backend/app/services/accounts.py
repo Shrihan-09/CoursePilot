@@ -25,6 +25,12 @@ It exists, and it owns nothing. The API reports that state explicitly rather
 than inventing a record or returning an empty audit that looks like "no
 progress". `AccountNotLinked` is a normal outcome, not an error condition.
 
+Phase 7.0: the account may then CREATE its own record
+(`app.services.onboarding.create_profile`) - a new row it owns from the
+INSERT onward, recorded as a `created` link event. That claims nothing that
+already exists, so the rule below is unchanged: linking an EXISTING record
+(e.g. one an import created) to an account is still an administrator act.
+
 ## Who may link? (Phase 5.5)
 
 **An administrator, and nobody else.** The mechanisms were weighed against

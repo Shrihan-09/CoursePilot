@@ -264,7 +264,7 @@ async def explain_recommendation(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=(
                     "No academic record is linked to this account. "
-                    "Linking requires verification and cannot be self-served."
+                    "Create one with POST /api/v1/student/profile."
                 ),
             )
         raise HTTPException(

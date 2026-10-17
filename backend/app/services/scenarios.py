@@ -116,19 +116,22 @@ class ScenarioWouldWrite(RuntimeError):
 # --------------------------------------------------------------------------
 
 
-def resolve_target(
-    session: Session, student: Student, key: str, catalog_year: str | None
-) -> tuple[ProgramVersion, ScenarioTarget]:
+def resolve_version(session: Session, key: str, wanted: str):
+    """(version, info) for a program key and catalog year - or a ScenarioError.
+
+    Phase 7.0: shared with program SELECTION (`app.services.onboarding`), so
+    "this program, this catalog year" resolves identically whether a student
+    is exploring it or declaring it.
+    """
     try:
         found = find_program(session, key)
     except ProgramVariantRequired as exc:
         raise ProgramChoiceRequired(str(exc), exc.variants) from None
     if found is None:
         raise ProgramNotFound(f"No program {key!r} is known to CoursePilot.")
-    program, school = found
+    program, _school = found
 
     available = sorted((v.catalog_year for v in program.versions), reverse=True)
-    wanted = catalog_year or student.catalog_year
     version = next((v for v in program.versions if v.catalog_year == wanted), None)
     if version is None:
         # Never the latest, never the closest: choosing a catalog year is an
@@ -145,7 +148,15 @@ def resolve_target(
             f"{program.name} ({program.degree_type}) {wanted} has no curated "
             "requirements CoursePilot can evaluate."
         )
+    return version, info
 
+
+def resolve_target(
+    session: Session, student: Student, key: str, catalog_year: str | None
+) -> tuple[ProgramVersion, ScenarioTarget]:
+    version, info = resolve_version(session, key, catalog_year or student.catalog_year)
+    program = version.program
+    school = program.school
     return version, ScenarioTarget(
         program_key=program_key(school.code, program.code, program.degree_type,
                                 program.variant),
@@ -172,6 +183,19 @@ def _assumptions(
             ),
         )
     ]
+    # Phase 7.0: stated for the student's OWN program too. Before, the early
+    # return below skipped it, so a student whose declared major was still
+    # pending review saw the caveat on every program except their own.
+    if target.support_status == SupportStatus.PENDING_REVIEW.value:
+        out.append(
+            ScenarioAssumption(
+                code="requirements_pending_review",
+                message=(
+                    "Some of this program's requirements have not yet been verified "
+                    "by a person against the official Rutgers prose."
+                ),
+            )
+        )
     if target.is_current_program:
         return out
 
@@ -208,16 +232,6 @@ def _assumptions(
                     f"Evaluated under the {target.catalog_year} catalog; your record "
                     f"is bound to {student.catalog_year}. Which catalog year would "
                     "apply after a change of program is not modeled."
-                ),
-            )
-        )
-    if target.support_status == SupportStatus.PENDING_REVIEW.value:
-        out.append(
-            ScenarioAssumption(
-                code="requirements_pending_review",
-                message=(
-                    "Some of this program's requirements have not yet been verified "
-                    "by a person against the official Rutgers prose."
                 ),
             )
         )
@@ -395,5 +409,6 @@ __all__ = [
     "compare_audits",
     "compare_with_current",
     "resolve_target",
+    "resolve_version",
     "run_scenario_audit",
 ]

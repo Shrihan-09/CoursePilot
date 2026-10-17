@@ -34,6 +34,23 @@ is one: it comes from SOC `coreCodes` certifications, a different source
 with its own loader, and a reconciler that did not understand it must not
 delete it.
 
+## Graduate courses (Phase 7.0)
+
+A QUERY admits undergraduate courses only: a course whose Schedule of
+Classes `level` is anything but `U` (graduate-school records such as
+16:198:5xx are level `G`) is excluded unless the query opts in with
+`"include_graduate": true`. The defect this closes: the curated CS
+electives query `{subject 198, number >= 300}` named no offering unit and
+silently admitted 60 graduate 16:198 courses - into the audit's eligible
+pools and the planner's candidates alike. Generic, not a list of
+excluded courses, and decided by the course's own identity data.
+
+Courses NAMED by a rule (`courses`, `course_categories`) are never
+filtered: naming a course is the curator's explicit decision
+(e.g. Economics names 33:010:272, Mathematics names 14:332:252).
+A course whose level is unknown (NULL) is not excluded - no real course
+lacks one - so the rule cannot hide a course on missing data either.
+
 ## What "current course table" means
 
 Course IDENTITIES across every loaded SOC term - not the courses offered in
@@ -61,7 +78,7 @@ from app.models import Course, Requirement, RequirementCourseOption
 #: ignored key (an exclusion, say) would make an excluded course eligible.
 QUERY_KEYS = frozenset({
     "subject_code", "offering_unit_code", "min_course_number",
-    "max_course_number", "exclude_course_numbers",
+    "max_course_number", "exclude_course_numbers", "include_graduate",
 })
 
 
@@ -90,6 +107,8 @@ def query_matches(course: Course, query: dict) -> bool:
     if "offering_unit_code" in query and course.offering_unit_code != query["offering_unit_code"]:
         return False
     if course.supplement_code != "":
+        return False
+    if not query.get("include_graduate", False) and course.level not in (None, "U"):
         return False
     bounded = "min_course_number" in query or "max_course_number" in query
     if bounded and not course.course_number.isdigit():

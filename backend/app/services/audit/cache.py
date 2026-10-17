@@ -148,7 +148,22 @@ logger = logging.getLogger(__name__)
 #: 6.4.0: grade semantics - minimum grades, grade quotas scoped to allocated
 #: courses, sequence categories, the SAS repeated-course policy for degree
 #: credit, and credit origin; most records with grades audit differently.
-AUDIT_ENGINE_VERSION = "6.4.0"
+#: 7.0.0: every audit of a non-published program version carries the
+#: `program_pending_review` finding, and eligibility queries no longer admit
+#: graduate-level courses - both change serialized audits.
+#: 7.0.1: completed attempts that earn no credit (F, NC, W, U, XF) no longer
+#: add to credits_completed / credits_applicable_to_degree.
+AUDIT_ENGINE_VERSION = "7.0.1"
+
+#: StudentCourse columns that are NOT audit inputs, and so are deliberately
+#: absent from `academic_fingerprint`. Every other column must be in it -
+#: enforced by tests/test_onboarding_cache.py, so a column added later fails
+#: a test instead of silently serving stale audits.
+STUDENT_COURSE_NON_AUDIT_COLUMNS = frozenset({
+    "id", "student_id", "created_at", "updated_at",
+    # Phase 7.0 provenance: which confirmed import wrote the entry.
+    "transcript_import_id",
+})
 
 #: Columns whose value changes without the meaning changing.
 _IGNORED_COLUMNS = frozenset({"created_at", "updated_at"})
@@ -540,6 +555,7 @@ def invalidate_student_audit(session: Session, student_id: uuid.UUID) -> bool:
 
 __all__ = [
     "AUDIT_ENGINE_VERSION",
+    "STUDENT_COURSE_NON_AUDIT_COLUMNS",
     "AuditCacheKey",
     "academic_fingerprint",
     "decode_result",

@@ -107,23 +107,47 @@ def test_a_course_removed_from_a_curated_list_stops_being_eligible(session, tmp_
     assert _eligible(session, "MATH_UPPER", category="ANALYSIS") == {"01:640:311", "01:640:312"}
 
 
-def test_a_query_narrowed_by_offering_unit_drops_graduate_courses(session, tmp_path) -> None:
-    """The query supports an offering unit, so "undergraduate CS 300+" can
-    exclude 16:198 graduate courses - a real defect in the current CS data."""
+def test_a_query_never_admits_graduate_courses_unless_it_opts_in(session, tmp_path) -> None:
+    """Phase 7.0. Before: the curated CS query {198, >= 300} named no offering
+    unit and admitted 16:198 GRADUATE courses (60 on the development
+    database). Now a query admits only level-U courses unless it says
+    `include_graduate` - generic, decided by the course's SOC level, with no
+    list of excluded courses anywhere."""
     records = json.loads(CS_SOC.read_bytes())
     grad = copy.deepcopy(next(r for r in records if r["courseString"] == "01:198:336"))
-    grad.update(courseString="16:198:536", offeringUnitCode="16", courseNumber="536")
+    grad.update(courseString="16:198:536", offeringUnitCode="16", courseNumber="536",
+                level="G")
     _write(tmp_path, FALL_26, [*records, grad])
     CourseIngestionPipeline(session, tmp_path).run(FALL_26)
 
     definition = json.loads(CS_REQUIREMENTS.read_bytes())
     electives = next(r for r in definition["requirements"] if r["code"] == "CS_ELECTIVES")
-    RequirementLoader(session).load(definition, json.dumps(definition).encode())
-    session.commit()
-    assert "16:198:536" in _eligible(session, "CS_ELECTIVES")       # as curated today
-
-    electives["eligible_course_query"]["offering_unit_code"] = "01"
+    assert "offering_unit_code" not in electives["eligible_course_query"]   # as curated
     RequirementLoader(session).load(definition, json.dumps(definition).encode())
     session.commit()
     assert "16:198:536" not in _eligible(session, "CS_ELECTIVES")
     assert "01:198:336" in _eligible(session, "CS_ELECTIVES")
+
+    # An explicit opt-in is the only way in.
+    electives["eligible_course_query"]["include_graduate"] = True
+    RequirementLoader(session).load(definition, json.dumps(definition).encode())
+    session.commit()
+    assert "16:198:536" in _eligible(session, "CS_ELECTIVES")
+
+
+def test_a_graduate_course_named_by_the_curator_is_still_eligible(session, tmp_path) -> None:
+    """The level gate applies to QUERIES. A course a definition names
+    explicitly is the curator's decision and is never filtered."""
+    records = json.loads(CS_SOC.read_bytes())
+    grad = copy.deepcopy(next(r for r in records if r["courseString"] == "01:198:336"))
+    grad.update(courseString="16:198:536", offeringUnitCode="16", courseNumber="536",
+                level="G")
+    _write(tmp_path, FALL_26, [*records, grad])
+    CourseIngestionPipeline(session, tmp_path).run(FALL_26)
+
+    definition = json.loads(CS_REQUIREMENTS.read_bytes())
+    electives = next(r for r in definition["requirements"] if r["code"] == "CS_ELECTIVES")
+    electives["courses"] = [*electives.get("courses", []), "16:198:536"]
+    RequirementLoader(session).load(definition, json.dumps(definition).encode())
+    session.commit()
+    assert "16:198:536" in _eligible(session, "CS_ELECTIVES")
