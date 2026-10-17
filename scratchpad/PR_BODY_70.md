@@ -36,10 +36,72 @@ tries it is caught.
   - a cache-invalidation failure;
   - the A→B→A cache race;
   - every new constraint.
-- **Transcript layout: UNVERIFIED.** Every test document is SYNTHETIC. No real
-  Rutgers unofficial transcript sample was available, and there is no public
-  one. Imports report `layout_verified: false` and
-  `parser_version = rutgers-nb-unofficial/1-unverified-layout`.
+- **Transcript layout: checked against ONE real Rutgers transcript.**
+  - The check ran locally; the document was never committed. See "Real
+    transcript verification" below.
+  - Every committed test document is SYNTHETIC or SANITIZED, with fabricated
+    content.
+  - Imports report `layout_verified: false` (one document is evidence, not
+    coverage) and `parser_version = rutgers-nb-unofficial/2-checked-against-1-real-transcript`.
+
+## Real transcript verification (pre-merge)
+
+The real document was used as local, sensitive input only. Ground truth came
+from the **rendered page**, and was compared with what the **implemented**
+pipeline produced:
+
+| | as first built | after the fixes in this PR |
+|---|---|---|
+| extraction | **refused** (`PDF_ENCRYPTED`) | 2 pages |
+| course rows (16 expected) | **0** (`NO_COURSE_ROWS`) | 16; 0 missing, 0 false positives |
+| code / term / section / credits / grade | 0/16 | **16/16 each** |
+| term credit totals reconciled | - | 4/4 |
+| term and cumulative averages, reported GPA | not read | all match |
+| in-progress rows | - | 5/5 `needs_review` (status not guessed) |
+| identity in any staged row | - | none |
+| audit credits after confirmation | 38.0 | **34.0**, the transcript's own figure |
+
+**What was wrong, and the general fixes:**
+
+1. **The PDF wasn't actually locked.** Real transcripts are iText PDFs with
+   *permissions-only* encryption: an empty user password. They are now opened
+   exactly as any viewer opens them. A document that needs a real password is
+   still refused.
+2. **The course-code format was wrong.** Course codes are **columns**
+   (`SCH DEPT CRS SUP SEC CRED PR GRADE`), never `01:198:111`. The parser now
+   reads the real fixed-width table: term headings with their school,
+   SUB TOPIC continuations, per-term TOTAL CREDITS / TERM AVG / CUMULATIVE AVG,
+   and the end marker.
+3. **Reading order, the highest risk.** Page 1 is two columns. In the real
+   document the stream order is column by column, so it reads correctly. A
+   synthetic **interleaved** variant, however, made the parser silently drop
+   half the courses and misassign terms. Three self-checks now prevent that:
+   - merged-line detection (`READING_ORDER_UNRELIABLE` on every row);
+   - per-term credit totals (`TERM_TOTAL_MISMATCH`);
+   - no course is ever dropped (`COURSE_LINE_UNREADABLE`).
+4. **Failed credits counted toward the degree.** This was a pre-existing
+   audit-engine defect, exposed end to end. A failed course's credits counted
+   toward `credits_applicable_to_degree` and understated credits remaining.
+   Attempts that earn no credit (F/NC/W/U/XF) no longer add to the totals.
+   `AUDIT_ENGINE_VERSION` 7.0.1.
+
+**Sanitized fixture:** `tests/support/rutgers_layout.py` generates the same
+structure with **entirely fabricated** identity, student number, courses,
+grades and averages:
+- permissions-only encryption;
+- a two-column page, in both stream orders;
+- the watermark;
+- the page break and end marker.
+
+A sweep of the repository found no identity token, average or course/section
+combination from the source document.
+
+**Migration-testing guard:**
+- Phase 7.0 migration testing had accidentally reverted 6.9 on the dev DB.
+  Schema recovery is verified, and identical to the test DB's.
+- `alembic downgrade` now refuses to run on persistent databases.
+- `scripts/verify_migration_roundtrip.py` runs the full cycle on a throwaway
+  database.
 
 ## Design (reconciled from six read-only investigations)
 
@@ -115,32 +177,38 @@ tries it is caught.
   that commits mid-audit can no longer store (old key, new result) to be
   served after an undo.
 
-## Schema (migration `548d1b0329ef`)
+## Schema (migrations `548d1b0329ef`, `db81fecc6434`)
 
 - New tables: `transcript_import` and `transcript_import_row` (staging; no
   engine reads them).
 - New nullable columns: `student.onboarding_completed_at` and
   `student_course.transcript_import_id`.
 - `student_link_event` CHECK gains `created`.
+- `db81fecc6434` (additive):
+  - staged rows keep SEC/SUP as evidence;
+  - imports keep per-term summaries.
 - Verification:
-  - upgrade, downgrade and re-upgrade verified;
-  - `alembic check` is clean;
-  - the downgrade refuses, rather than delete audit history, if `created`
-    events exist.
+  - upgrade, downgrade and re-upgrade run on a **throwaway database**
+    (`scripts/verify_migration_roundtrip.py`), and `alembic check` is clean;
+  - the 7.0 downgrade refuses, rather than delete audit history, if
+    `created` events exist.
 
 ## Tests
 
 | suite | result |
 |---|---|
-| `test_onboarding_domain.py` (validator, parser, real child-process extractor, hung/crashing parser, storage, streaming size cap) | 21 passed |
+| `test_onboarding_domain.py` (validator, parser, real child-process extractor, hung/crashing parser, encryption, storage, streaming size cap) | 22 passed |
+| `test_rutgers_layout.py` (sanitized real layout: both stream orders, totals, end marker, SUP/PR, permissions-only and real-password PDFs) | 11 passed |
 | `test_onboarding_api.py` (PG) | 13 passed |
-| `test_transcript_import_api.py` (PG) | 15 passed |
+| `test_transcript_import_api.py` (PG, incl. real layout end to end and interleaved) | 17 passed |
 | `test_onboarding_postgres.py` (PG concurrency and constraints) | 9 passed |
-| `test_onboarding_correctness.py` (PG: graduate gate in audit and planner, lifecycle warning, fingerprint coverage) | 4 passed |
+| `test_onboarding_correctness.py` (PG: graduate gate, lifecycle warning, fingerprint coverage, failed credits) | 5 passed |
+| `test_migration_guard.py` | 8 passed |
 | `ingestion/tests/test_eligibility_reconciliation.py` | 4 passed |
 
-**Failure injection** (`scripts/inject_onboarding_failures.py`, 35 faults):
-34 DETECTED, 1 MISSED.
+**Failure injection** (`scripts/inject_onboarding_failures.py`, 44 faults,
+including 9 for the real layout and the credit totals): **43 DETECTED,
+1 MISSED.**
 
 - **T, MISSED and benign by design.** Removing the app-level duplicate check
   changes nothing, because the UNIQUE constraint answers with the same
@@ -151,12 +219,12 @@ tries it is caught.
   unnoticed, because the service's own check still returned 413 after
   buffering the whole body. A test now proves reading stops at the limit.
 
-**Final regression** (HEAD `cf2c81a`; `*_test` PostgreSQL 16; full logs kept):
+**Final regression** (HEAD `17f99ed`; `*_test` PostgreSQL 16; full logs kept):
 
 | suite | before (main `8689a88`) | after |
 |---|---|---|
-| root (PG) | 1765 passed, 5 skipped | **1828 passed, 5 skipped** |
-| backend (PG) | 835 passed, 4 skipped, 1 error* | **898 passed, 4 skipped** |
+| root (PG) | 1765 passed, 5 skipped | **1851 passed, 5 skipped** |
+| backend (PG) | 835 passed, 4 skipped, 1 error* | **921 passed, 4 skipped** |
 | ingestion (PG) | 929 passed, 1 skipped | **930 passed, 1 skipped** |
 | retrieval | 46 passed | **46 passed** |
 | ingestion (SQLite) | 849 passed, 81 skipped | **850 passed, 81 skipped** |
@@ -167,8 +235,12 @@ tries it is caught.
 
 ## Limitations (see DATA_MODEL §46.14)
 
-- **The real transcript layout is unverified.** One real, consented, redacted
-  sample is the next step.
+- **The layout is checked against one real transcript** (SAS, four terms,
+  graded and in-progress).
+  - No real document has yet shown: transfer/AP sections, supplement codes,
+    credit prefixes or repeats.
+  - Other schools' or older transcripts may differ.
+  - Anything unreadable goes to review.
 - **No OCR.** Scans and photos are refused.
 - **Transfer credit with no Rutgers equivalent cannot be stored**, because
   `course_id` is NOT NULL. It stays reviewable and must be mapped or excluded.
