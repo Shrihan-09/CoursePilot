@@ -77,17 +77,20 @@ FAULTS = {
           "    row = session.scalar(select(StudentPlan).where(StudentPlan.student_id == student.id))",
           "def current_plan(session: Session, student: Student) -> SavedPlan | None:\n"
           "    row = session.scalar(select(StudentPlan).order_by(StudentPlan.updated_at.desc()).limit(1))")]),
+    # 7.2.1 moved the end of stale_reasons; the fault follows the code.
     "K": ("freshness never reported (stale plan presented as current)", API, [(SAVED,
-          '        reasons.append("start_term_passed")\n    return reasons',
-          '        reasons.append("start_term_passed")\n    return []')]),
+          "    return reasons\n\n\ndef _view(",
+          "    return []\n\n\ndef _view(")]),
     "L": ("academic record changes not detected", API, [(SAVED,
           "    elif academic_fingerprint(session, student) != row.academic_fingerprint:",
           "    elif False:")]),
+    # 7.2.1: the save body is the start term only (load settings come from
+    # the confirmed profile).
     "M": ("save body tolerates extra fields (program, status, a client plan)", API, [(PLANS_ROUTE,
-          '    constraints: PlanningConstraints = Field(default_factory=PlanningConstraints)\n\n'
-          '    model_config = {"extra": "forbid"}\n\n\ndef _saved_view',
-          '    constraints: PlanningConstraints = Field(default_factory=PlanningConstraints)\n\n'
-          '    model_config = {"extra": "ignore"}\n\n\ndef _saved_view')]),
+          '    start_term: str | None = Field(default=None, pattern=r"^\\d{4}[0179]$")\n\n'
+          '    model_config = {"extra": "forbid"}',
+          '    start_term: str | None = Field(default=None, pattern=r"^\\d{4}[0179]$")\n\n'
+          '    model_config = {"extra": "ignore"}')]),
     "N": ("blocked course loses the original Rutgers condition", API, [(SAVED,
           "            item.prerequisite_text = _plain(raw)",
           "            item.prerequisite_text = None")]),
@@ -127,6 +130,31 @@ def _apply(letter: str) -> dict:
     return originals
 
 
+def _git_clean(rels) -> None:
+    """Refuse to inject into a file that already differs from git: a fault
+    left behind by an earlier run would otherwise become the 'original'."""
+    out = subprocess.run(["git", "diff", "--name-only", "--", *sorted(set(rels))], cwd=ROOT,
+                         capture_output=True, text=True, check=False).stdout.strip()
+    if out:
+        raise RuntimeError(f"refusing to inject: working tree already modified: {out}")
+
+
+def _restore(originals: dict) -> None:
+    """Write the originals back AND read them back. On this machine the repo
+    lives under OneDrive, whose sync once raced a restore and left an injected
+    fault on disk (Phase 7.2.1 regression). Verify, retry, else stop the run."""
+    import time
+
+    for path, text in originals.items():
+        for attempt in range(6):
+            path.write_text(text, encoding="utf-8", newline="")
+            if path.read_text(encoding="utf-8", newline="") == text:
+                break
+            time.sleep(0.5 * (attempt + 1))
+        else:
+            raise SystemExit(f"RESTORE FAILED for {path} - stop and run `git checkout -- {path}`")
+
+
 def _run(cmd: list[str], cwd: pathlib.Path, env: dict) -> tuple[bool, str]:
     proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, encoding="utf-8",
                           errors="replace", env=env, check=False,
@@ -141,6 +169,7 @@ def _run(cmd: list[str], cwd: pathlib.Path, env: dict) -> tuple[bool, str]:
 
 
 def run(letter: str) -> tuple[bool, str]:
+    _git_clean([rel for rel, _, _ in FAULTS[letter][-1]])
     try:
         originals = _apply(letter)
     except LookupError as exc:
@@ -160,8 +189,7 @@ def run(letter: str) -> tuple[bool, str]:
                 break
         return detected, " | ".join(details)
     finally:
-        for path, text in originals.items():
-            path.write_text(text, encoding="utf-8", newline="")
+        _restore(originals)
 
 
 def main() -> None:
