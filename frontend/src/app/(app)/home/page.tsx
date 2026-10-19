@@ -9,6 +9,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Alert, ErrorState, PageHeader, Skeleton, StatusBadge } from "@/components/ui/feedback";
 import { api } from "@/lib/api";
 import { AUDIT_STATUS, PLAN_STATUS, termLabel } from "@/lib/academic/vocabulary";
+import type { ReadinessState } from "@/types/personalization";
 import type { SavedPlan } from "@/types/plan";
 
 /**
@@ -18,9 +19,12 @@ import type { SavedPlan } from "@/types/plan";
  * the next step is chosen from those states only (set up -> plan -> schedule).
  */
 
-function nextStep(state: string, plan: SavedPlan | null | undefined): { title: string; body: string; href: string; cta: string } {
+function nextStep(state: string, readiness: ReadinessState | undefined, plan: SavedPlan | null | undefined): { title: string; body: string; href: string; cta: string } {
   if (state !== "complete") {
     return { title: "Finish setting up", body: "Add your courses so CoursePilot can show your progress.", href: "/onboarding", cta: "Continue setup" };
+  }
+  if (readiness === "needs_planning_profile") {
+    return { title: "Personalize your plan", body: "Tell CoursePilot your pace and how many credits to aim for. It takes about a minute.", href: "/plan/personalize", cta: "Personalize" };
   }
   if (!plan) {
     return { title: "Build your semester plan", body: "Lay out the courses that complete your remaining requirements.", href: "/plan", cta: "Build a plan" };
@@ -39,6 +43,7 @@ export default function HomePage() {
   const status = useQuery({ queryKey: ["onboarding"], queryFn: api.onboarding });
   const audit = useQuery({ queryKey: ["audit"], queryFn: api.audit, staleTime: 0 });
   const plan = useQuery({ queryKey: ["plan"], queryFn: api.currentPlan, staleTime: 0 });
+  const readiness = useQuery({ queryKey: ["readiness"], queryFn: api.readiness, staleTime: 0 });
 
   if (status.isPending) {
     return (
@@ -55,7 +60,7 @@ export default function HomePage() {
   const { profile, history_counts: c, state } = status.data;
   const program = profile.program;
   const saved = plan.data?.plan;
-  const step = nextStep(state, plan.isSuccess ? saved : undefined);
+  const step = nextStep(state, readiness.data?.state, plan.isSuccess ? saved : undefined);
 
   return (
     <div className="space-y-8">
@@ -106,7 +111,7 @@ export default function HomePage() {
               {audit.data.credits_required_min !== null && (
                 <p className="text-sm text-fg-secondary">
                   <span className="tabular font-semibold text-fg">{audit.data.credits_applicable_to_degree}</span> of{" "}
-                  <span className="tabular">{audit.data.credits_required_min}</span> degree credits counted
+                  <span className="tabular">{audit.data.credits_required_min}</span> program credits counted
                   {Number(audit.data.credits_in_progress) > 0 && <>, <span className="tabular">{audit.data.credits_in_progress}</span> in progress</>}
                 </p>
               )}

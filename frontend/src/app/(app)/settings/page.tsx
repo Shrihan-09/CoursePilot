@@ -4,8 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Monitor, Moon, Sun } from "lucide-react";
 
 import { useAppearance } from "@/components/theme/theme-provider";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+
+import { Button, buttonVariants } from "@/components/ui/button";
 import { PageHeader, Skeleton } from "@/components/ui/feedback";
+import { ProfileSummary } from "@/features/planning/profile-summary";
 import { api } from "@/lib/api";
 import type { Appearance } from "@/lib/theme";
 import { cn } from "@/lib/utils";
@@ -26,6 +29,7 @@ export default function SettingsPage() {
   const { appearance, setAppearance } = useAppearance();
   const me = useQuery({ queryKey: ["me"], queryFn: api.me });
   const profile = useQuery({ queryKey: ["profile"], queryFn: api.profile });
+  const planning = useQuery({ queryKey: ["planning-profile"], queryFn: api.planningProfile, staleTime: 0 });
 
   return (
     <div className="space-y-8">
@@ -92,6 +96,24 @@ export default function SettingsPage() {
           ) : null}
           <Row label="Source">Only what you uploaded or entered and confirmed.</Row>
         </div>
+      </section>
+
+      <section aria-labelledby="planning" className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <h2 id="planning" className="text-sm font-semibold text-fg">Planning preferences</h2>
+          <Link href="/plan/personalize" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+            {planning.data?.profile ? "Edit" : "Set up"}
+          </Link>
+        </div>
+        {planning.isPending ? (
+          <Skeleton className="h-24" />
+        ) : planning.data?.profile ? (
+          <ProfileSummary profile={planning.data.profile} />
+        ) : (
+          <p className="rounded-lg border border-dashed border-border-strong p-4 text-sm text-fg-muted">
+            Not set yet. CoursePilot asks before building your first plan.
+          </p>
+        )}
       </section>
 
       <form action="/auth/logout" method="post">

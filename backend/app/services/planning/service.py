@@ -33,14 +33,24 @@ def _current_key(session: Session, student: Student) -> str:
     return program_key(school.code, program.code, program.degree_type, program.variant)
 
 
+def latest_history_term(session: Session, student: Student) -> str | None:
+    """The latest term of COMPLETED or IN-PROGRESS coursework.
+
+    Phase 7.2.1: planned rows no longer count. A course the student only
+    intends to take is not history - counting it pushed the plan's start past
+    terms the student has not taken (persona audit, finding N3)."""
+    return session.scalar(select(StudentCourse.term_code)
+                          .where(StudentCourse.student_id == student.id,
+                                 StudentCourse.status.in_(("completed", "in_progress")))
+                          .order_by(StudentCourse.term_code.desc()).limit(1))
+
+
 def generate_plan(session: Session, student: Student, *, start_term: str,
                   program_key_: str | None = None, catalog_year: str | None = None,
                   constraints: PlanningConstraints | None = None) -> PlanResult:
     if not is_term(start_term) or start_term[4] not in "0179":
         raise InvalidStartTerm(f"{start_term!r} is not a Rutgers term code (YYYYT, T in 0/1/7/9).")
-    last = session.scalar(select(StudentCourse.term_code)
-                          .where(StudentCourse.student_id == student.id)
-                          .order_by(StudentCourse.term_code.desc()).limit(1))
+    last = latest_history_term(session, student)
     if last is not None and start_term <= last:
         raise InvalidStartTerm(
             f"The plan must start after your latest recorded term ({last}); "
@@ -64,4 +74,4 @@ def generate_plan(session: Session, student: Student, *, start_term: str,
     return result
 
 
-__all__ = ["InvalidStartTerm", "generate_plan"]
+__all__ = ["InvalidStartTerm", "generate_plan", "latest_history_term"]

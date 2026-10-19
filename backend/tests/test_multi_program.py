@@ -99,7 +99,10 @@ def _source(session):
 
 
 def _course(session, source, title):
-    subject_code = uuid.uuid4().hex[:6]
+    # 8 hex characters (the column's full width): with 6, a run eventually
+    # collided with a subject left by an earlier run in the shared test
+    # database (uq_subject_unit_code) - seen in the Phase 7.2.1 regression.
+    subject_code = uuid.uuid4().hex[:8]
     number = f"{uuid.uuid4().int % 900 + 100}"
     subject = Subject(code=subject_code, offering_unit_code="01",
                       description="MP Subject", source_id=source.id)

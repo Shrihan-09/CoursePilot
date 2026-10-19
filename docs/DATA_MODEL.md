@@ -9381,3 +9381,296 @@ and audit queries refetch on every view.
   (`details.count` holds the total).
 - **Course search, Notifications and the assistant** remain "later" in the
   navigation.
+
+## 49. Student context and personalized planning (Phase 7.2.1)
+
+The first real use of Degree → Plan → Schedule, plus a 24-persona audit run
+on fabricated students against the real engines, exposed assumptions that the
+engine tests had not covered. This section records the model that replaced
+them.
+
+### 49.1 Academic Context vs Planning Profile
+
+| | Academic Context: what is TRUE | Planning Profile: what is WANTED |
+|---|---|---|
+| Contents | confirmed history (completed / in-progress), grades, credits, transfer / AP, reported GPA, program, catalog year, Degree Engine and eligibility results, UNKNOWN conditions | pace, target and maximum load, course cap, horizon, summer / winter, class-time defaults, additional programs being explored |
+| Source | transcript import or manual entry, confirmed by the student; the engines | `PUT /student/planning-profile`: the student confirming |
+| Stored in | `student`, `student_course`, … | `student_planning_profile` (one per student, `version` bumps on each confirmation) |
+| Used by | every engine | the planner, only through `to_constraints(profile)` |
+
+The two never mix:
+
+- the profile body is `extra="forbid"`, so a course or grade sent as a
+  "preference" is a 422;
+- confirming a profile changes no academic table (tested by table snapshot);
+- an exploratory goal is never treated as a declared program.
+
+A future assistant may PROPOSE a profile in the same structure. It is stored
+only after the student confirms it (`source` records the origin), and the
+planner reads the profile, never a conversation.
+
+### 49.2 Planning readiness (server-owned)
+
+`GET /student/planning-readiness` returns one of:
+
+| State | Meaning |
+|---|---|
+| `needs_program` | No academic profile (program and catalog year) yet |
+| `needs_academic_history` | Onboarding is not finished, or a transcript import is still open |
+| `needs_planning_profile` | No confirmed preferences |
+| `ready_with_warnings` | Ready; something is worth knowing |
+| `ready` | Ready |
+
+Each check is `done`, `missing`, `warning` or `info`, so a client never
+decides readiness itself.
+
+- **An empty history counts as confirmed history:** a student just
+  starting out is a legitimate state.
+- **Warnings never block,** and UNKNOWN is never reported as failure. They
+  cover:
+  - a pending-review program;
+  - no courses recorded for the current term;
+  - in-progress outcomes;
+  - "planned" entries the planner does not use;
+  - additional programs that are not planned for.
+- **`POST /student/plans` refuses (409)** unless the state is `ready` or
+  `ready_with_warnings`.
+
+### 49.3 Start terms: never in the past
+
+`services/planning/calendar.py`:
+
+```
+default start = the later of
+    the first Fall/Spring term after the CURRENT term, and
+    the first Fall/Spring term after the latest COMPLETED or IN-PROGRESS term
+```
+
+- **"Current term"** comes from the date, using approximate season
+  boundaries: spring from 1/20, summer from 5/16, fall from 9/1, winter from
+  12/23. It only chooses where plans start; it never touches eligibility,
+  requirements or schedules. `ACADEMIC_TODAY` pins the date for tests and QA.
+- **Planned rows no longer move the floor.** They are intentions, not
+  history, and they had pushed starts past untaken terms.
+- **The API refuses** any start before the floor, meaning in the past or
+  inside the record.
+- **`GET /student/plans/context`** returns the history start, the
+  record-through term, the current term, the default start and every
+  accepted start, in the seasons the student plans in. The frontend no longer
+  computes terms.
+- **A saved plan becomes stale** (`start_term_passed`) when its first
+  semester is now on the record or has begun.
+
+| Persona | Before (7.2) | After (7.2.1) |
+|---|---|---|
+| Record ends Fall 2021; "today" is October 2026 | Spring 2022, and an empty plan | Spring 2027 |
+| Behind; record ends Spring 2025 | Fall 2025 | Spring 2027 |
+| Record ends Spring 2026, Fall 2026 not entered | Spring 2026, with a warning missing | Spring 2027, plus the warning "no courses for Fall 2026" |
+
+### 49.4 Credit load, pace, and what the planner optimizes
+
+`PlanningConstraints` (planning engine **6.6.0**) gains:
+
+- **`target_credits_per_term`**: SOFT, what to aim for, never a minimum;
+- **`pace`**.
+
+`max_credits_per_term` remains the HARD maximum, which no pace exceeds.
+
+| Pace | Term fill | Levelling |
+|---|---|---|
+| `balanced` (default) | Stops at the target. Goes past it only when that lands closer to it (14 + 4 against 15 is refused) | Compresses a stranded last term (at most half the target) using up to the maximum, then levels |
+| `lighter` | Never above the target | Levels only; more terms are fine (default horizon 12) |
+| `finish_earlier` | Fills toward the maximum | Compresses repeatedly, then levels |
+| `None` (unpersonalized request) | Phase 6.5 greedy, unchanged | None |
+
+**What the planner optimizes, in order:**
+
+1. academic validity;
+2. modelled requirements;
+3. UNKNOWN conservatism;
+4. the hard maximum;
+5. no stranded semester;
+6. nearness to the target;
+7. even loads.
+
+The 6.5 greedy fill already minimized the number of terms; levelling only
+moves courses within the plan's span.
+
+**Every levelling move is the engine's own validity check:**
+
+- placeable offering evidence for the new term;
+- the prerequisite state re-evaluated FOR that term (`rules_term` can
+  differ by season);
+- planned prerequisites strictly earlier and dependents strictly later;
+- co-requisite groups never move;
+- the hard caps hold.
+
+After all moves, one projected audit must show the same progress and the
+same requirement allocation, or every move is reverted. UNKNOWN cannot pass
+the move check, so balancing never uses it as filler. The independent
+order oracle (`_verify_order`) passes on every paced plan.
+
+**Diagnostics** (`scripts/plan_quality.py`, fabricated students, rolled back):
+
+| Student | 6.5 greedy (max 15) | Balanced 15/18 | Lighter 12/12 | Finish earlier 15/18 |
+|---|---|---|---|---|
+| third-year | 15 / 14 / 15 / **3** | 16 / 16 / 15 | 12 / 11 / 12 / 12 | 16 / 14.5 / 15 |
+| second-year | 15 / 15 / 15 / 12 | 16 / 16 / 15 / 12 | 5 terms, ≤ 12 | 16 / 16 / 12 / 13.5 |
+| first-year (current only) | 6 terms, last 9 | 6 terms, ~12–16 | 8 terms, ≤ 12 | 5 terms |
+
+Plan time stays at about 1–4 s against 6.5's 1–3 s. The exception is
+"Lighter, empty record" (11 terms, ~11.8 s): more terms mean more
+projected audits.
+
+### 49.5 Early completion: capability, never intent
+
+When a BALANCED or LIGHTER plan covers every modelled requirement and the
+same courses fit in fewer terms at the student's hard maximum (simulated with
+the same validated moves, then confirmed by an audit), the plan carries the
+observation `earlier_completion_possible`:
+
+> "Taking up to 16 credits in some semesters could complete the currently
+> modeled requirements by Spring 2028 instead of Spring 2029. This is not a
+> graduation date, and your plan has not been changed: choose "Finish
+> earlier" if that is what you want."
+
+The pace never changes by itself. Being ahead on credits does not switch a
+student to `finish_earlier`. `light_term` observations explain a semester
+below 60% of the target:
+
+- `final_requirements`: only that much remains;
+- `prerequisite_chain`: every course there needs a course from the
+  previous term;
+- `constrained`: no valid move could fill it.
+
+### 49.6 Current coursework and "My current schedule"
+
+**In-progress semantics** (verified unchanged): in-progress courses are
+provisional in the Degree Engine and conditional for eligibility (assumed
+passed only in the labelled hypothesis). They are never re-planned and never
+treated as completed. Injection fault E, which treats them as passed, is
+detected.
+
+**Sections are never inferred.** A course on the record does not identify a
+section:
+
+- a transcript carries at most a section NUMBER, kept only in import
+  staging;
+- manual entry has none;
+- a course can have dozens of sections.
+
+`student_current_section` (migration `b491ce3a2784`) holds a section only
+after the student PICKS it from the term's Rutgers list, with one row per
+course and component:
+
+| Column | Purpose |
+|---|---|
+| `student_course_id` | CASCADE |
+| `section_id` | SET NULL |
+| `term_code`, `index_number` | the natural key |
+| `confirmed_at`, `source=student_confirmed` | provenance |
+
+Endpoints:
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /student/current-schedule` | in-progress courses with confirmed sections, unavailable confirmations, and how many sections Rutgers lists |
+| `GET /student/current-schedule/sections?course=` | the real sections of one course |
+| `PUT /student/current-schedule/sections` | confirm `{course, index_number}`: 422 if that index is not a section of that course in that term, 404 if the course is not in progress |
+| `DELETE /student/current-schedule/sections?course=` | forget a confirmation |
+
+- **The transcript's section number** may only MARK a matching section
+  ("matches your transcript"). The picker preselects nothing.
+- **A confirmed section that disappears** from the term's data is reported,
+  never retargeted (the section-watch precedent, §44).
+- **Current vs planned:** the current schedule is DESCRIPTIVE (what you're
+  taking); planned schedules are PRESCRIPTIVE (generated options). They are
+  separate tabs and separate APIs.
+
+### 49.7 Schedule preferences
+
+The profile's class-time defaults (earliest start, latest end, days off)
+pre-fill the Schedule page. They are the Schedule Engine's existing HARD
+limits, and the page says so. When nothing fits, the engine reports
+`USER_CONSTRAINTS_TOO_STRICT` and its siblings; options are never filtered
+out silently. The ranking already prefers fewer campus days and smaller gaps.
+New SOFT preferences such as "prefer later starts" would need a Schedule
+Engine ranking change and are deferred.
+
+### 49.8 Additional programs: design only
+
+**Implemented now:** the profile records the INTENT, e.g. `{kind:
+second_major | minor | certificate, program_key?, label, status:
+"exploring"}`.
+
+- Readiness says it is not included in the plan.
+- What-if (§36) can compare one other major against the record.
+- Nothing combines requirements, and no plan claims a double major.
+
+**Not implemented: the multi-program architecture**, designed here:
+
+- **Data:**
+  - a `student_program` table `(student, program_version, role ∈
+    {primary_major, second_major, minor, certificate})`;
+  - SAS Core extracted into its own requirement set instead of being copied
+    into each major version (it is attached per version today;
+    `requirement_system='core'`);
+  - a curated `sharing_rule` table (pairwise caps, with "forbidden" as the
+    fail-safe default) and its source prose.
+- **Degree Engine:** one allocation across the union of requirement sets,
+  with per-pair sharing capacities. This is a flow or optimizer extension of
+  today's per-system matching, keeping the proven-optimal-or-fallback
+  contract. It produces per-set results plus a cross-set allocation record.
+- **Planner:** the union of unmet leaves; courses serving several sets
+  are ranked higher only where sharing is allowed.
+- **Fingerprints:** the academic fingerprint hashes the sorted
+  (role, version) set; the rules token covers all versions plus sharing
+  rules; `student_plan` stores the program set.
+- **Phasing:**
+  - A: `student_program` and separate Core, with no cross-program sharing;
+  - B: curated sharing rules and the global optimizer;
+  - C: the planner union, and curated minors with review packets.
+- **Future agent contract:** "I want to double major in CS and Math" →
+  resolve program identities → call the deterministic multi-program
+  scenario → explain its result. If the combination is unsupported, say so.
+  The agent never builds a combined requirement set.
+
+### 49.9 Saved-plan staleness (complete list)
+
+Reasons:
+
+- `program_changed`
+- `academic_record_changed`
+- `program_rules_changed`
+- `rutgers_data_changed`
+- `engine_updated` (6.5 → 6.6 marks every older saved plan)
+- `start_term_passed` (record or calendar)
+- `planning_preferences_changed`: the confirmed profile's constraints differ
+  from the plan's.
+
+A stale plan is shown with its reasons and never relabelled current.
+
+### 49.10 Personalization UI and the AI boundary
+
+`/plan/personalize` is a deterministic guided form, and the page does not
+present it as AI:
+
+- it asks only what the record cannot know;
+- it shows "Here's how CoursePilot will plan for you";
+- nothing is saved until the student confirms.
+
+It can be edited any time from Plan and from Settings → Planning preferences.
+An adaptive LLM interview is deferred to the assistant phase. The audit found
+the provider adapters lack native structured output, a distributed rate
+limiter and a token budget. The contract it will use is this profile
+structure, validated by the server exactly like the form.
+
+### 49.11 Remaining limitations
+
+- Multi-program planning is design-only (49.8).
+- AP and transfer credit still require a term code (an audit P3).
+- Season boundaries are approximate; they affect only the default start.
+- Soft schedule preferences are deferred (49.7).
+- Plans still cannot be hand-edited; there are no pins or exclusions.
+- "Lighter" on an empty record takes ~12 s.
+- Spring 2027 sections remain unpublished in local data.

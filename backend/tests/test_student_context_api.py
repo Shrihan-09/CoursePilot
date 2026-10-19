@@ -426,13 +426,22 @@ async def test_no_path_parameterised_student_route_exists(app) -> None:
     # Phase 7.2 added the saved plan (plans, plans/current) and the planning
     # context - parameterless, owner-resolved, and the save body accepts only
     # a start term and constraints - see tests/test_saved_plan_api.py.
+    #
+    # Phase 7.2.1 added the planning profile, planning readiness and the
+    # current schedule (with section confirmation by course QUERY/BODY, never
+    # a path id) - parameterless, owner-resolved, extra="forbid" bodies; see
+    # tests/test_personalization_api.py.
     assert sorted(student_self_service) == [
         "/api/v1/student/audit",
         "/api/v1/student/context",
         "/api/v1/student/courses",
         "/api/v1/student/courses/{entry_id}",
+        "/api/v1/student/current-schedule",
+        "/api/v1/student/current-schedule/sections",
         "/api/v1/student/onboarding",
         "/api/v1/student/onboarding/complete",
+        "/api/v1/student/planning-profile",
+        "/api/v1/student/planning-readiness",
         "/api/v1/student/plans",
         "/api/v1/student/plans/context",
         "/api/v1/student/plans/current",

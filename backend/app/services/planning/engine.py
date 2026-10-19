@@ -63,8 +63,10 @@ from app.domain.planning import (
     EligibilityState,
     OfferingEvidence,
     OfferingEvidenceKind,
+    Pace,
     PlanMetadata,
     PlannedCourse,
+    PlanObservation,
     PlanningConstraints,
     PlanningIssue,
     PlanResult,
@@ -447,6 +449,8 @@ class PlanningEngine:
                     break
 
         final = self._prune(student, version, plan_terms, planned, info, current)
+        if c.pace is not None and plan_terms:
+            final = self._level(student, version, terms, plan_terms, planned, info, final)
         self._finalize_courses(plan_terms, final, info, planned)
         remaining = active_leaves(final.requirements)
         issues += self._diagnose(remaining, needs_confirmation, unplaceable, cycles,
@@ -484,6 +488,9 @@ class PlanningEngine:
             issues=sorted(issues, key=lambda i: (i.severity.value, i.code,
                                                  i.requirement_code or "", i.course or "")),
             requirements=projections, assumptions=assumptions,
+            observations=self._observations(
+                student, version, terms, plan_terms, planned, info, final,
+                complete=status is PlanStatus.COVERS_ALL_REQUIREMENTS) if c.pace is not None else [],
             metadata=PlanMetadata(
                 audit_engine_version=AUDIT_ENGINE_VERSION, start_term=start_term, constraints=c,
                 academic_fingerprint=academic_fingerprint(self.session, student),
@@ -628,11 +635,12 @@ class PlanningEngine:
         order = sorted(ready | coreq_pending, key=rank)
         credits = Decimal(0)
         count = 0
+        stop_at, hard_cap = self._caps()
         latest = current
         score = progress(current, self.requirements)
         open_codes = {leaf.requirement_code for leaf in active_leaves(current.requirements)}
         for key in order:
-            if count >= c.max_courses_per_term or credits >= c.max_credits_per_term:
+            if count >= c.max_courses_per_term or credits >= stop_at:
                 break
             if key in planned:
                 continue
@@ -655,8 +663,14 @@ class PlanningEngine:
                 states[key] = self._state(*evaluated[key][:2])
             group_credits = sum((self.course_info[g].credits for g in group), Decimal(0))
             if count + len(group) > c.max_courses_per_term or \
-                    credits + group_credits > c.max_credits_per_term:
+                    credits + group_credits > hard_cap:
                 continue
+            if c.pace is Pace.BALANCED and c.target_credits_per_term is not None and count:
+                # "Aim for the target": go past it only when that lands CLOSER
+                # to it (14 + 4 = 18 against 15 is refused; 12 + 4 = 16 is not).
+                aim, after_add = c.target_credits_per_term, credits + group_credits
+                if after_add > aim and after_add - aim >= aim - credits:
+                    continue
             trial = {**planned, **{g: term for g in group}}
             if serves.get(key) or not is_dep:
                 result = self._audit(student, version, trial)
@@ -784,6 +798,239 @@ class PlanningEngine:
             reasons=reasons, prerequisite=pre, offering=ev, corequisite_group=facts["group"],
             unlocks=sorted(set(facts["dependency_for"]) | set(facts["corequisite_for"])),
             interchangeable_alternatives=facts["alternatives"])
+
+    # ---- Phase 7.2.1: pace, target load, levelling -----------------------
+
+    def _caps(self) -> tuple[Decimal, Decimal]:
+        """(where a term STOPS taking courses, the HARD credit cap).
+
+        No pace (unpersonalized request): the Phase 6.5 behaviour - fill to the
+        maximum. BALANCED and LIGHTER stop at the target; only LIGHTER refuses to
+        go past it. FINISH_EARLIER fills toward the maximum. The maximum is never
+        exceeded by any pace."""
+        c = self.constraints
+        target = c.target_credits_per_term
+        if c.pace in (Pace.BALANCED, Pace.LIGHTER) and target is not None:
+            hard = target if c.pace is Pace.LIGHTER else c.max_credits_per_term
+            return target, hard
+        return c.max_credits_per_term, c.max_credits_per_term
+
+    def _move_check(self, student, key: str, term: str, planned: dict[str, str], info,
+                    cap: Decimal) -> tuple | None:
+        """Would `key` be validly placed in `term` instead? None if not.
+
+        Validity is the engine's own: offering evidence for THAT term must be
+        placeable, the prerequisite state must still be met or conditional when
+        re-evaluated FOR THAT TERM against the plan with the move applied, every
+        planned prerequisite stays strictly earlier and every planned dependent
+        strictly later, co-requisite groups never move, and the hard caps hold.
+        UNKNOWN can never pass this check, so levelling cannot place one."""
+        facts = info[key]
+        credits = self.course_info[key].credits
+        if facts["group"] or credits is None:
+            return None
+        before = {d.course for d in facts["prereq"].conditional_on
+                  if d.source == "planned" and d.course in planned}
+        if any(planned[p] >= term for p in before):
+            return None
+        for other, other_term in planned.items():
+            if other != key and other_term <= term and key in {
+                    d.course for d in info[other]["prereq"].conditional_on if d.source == "planned"}:
+                return None
+        load = sum((self.course_info[k].credits for k, t in planned.items() if t == term and k != key),
+                   Decimal(0))
+        count = sum(1 for k, t in planned.items() if t == term and k != key)
+        if load + credits > cap or count + 1 > self.constraints.max_courses_per_term:
+            return None
+        if self.offerings.evidence(key, term).kind not in PLACEABLE:
+            return None
+        trial = {**planned, key: term}
+        # Eligibility in `term` depends only on what is planned BEFORE it
+        # (the hypothesis) - so that is the cache key.
+        memo_key = (key, term, frozenset((k, t) for k, t in planned.items()
+                                         if t < term and k != key))
+        memo = self.__dict__.setdefault("_move_memo", {})
+        if memo_key not in memo:
+            memo[memo_key] = self._evaluate(student, [key], term, trial)[key]
+        checked = memo[memo_key]
+        if self._state(checked[0], checked[1]) not in (EligibilityState.SATISFIED_BY_HISTORY,
+                                                       EligibilityState.CONDITIONAL_ON_PLAN):
+            return None
+        return checked
+
+    @staticmethod
+    def _loads(planned: dict[str, str], span: list[str], course_info) -> dict[str, Decimal]:
+        out = {t: Decimal(0) for t in span}
+        for k, t in planned.items():
+            out[t] = out.get(t, Decimal(0)) + course_info[k].credits
+        return out
+
+    def _compress(self, student, span, planned, info, cap, repeat: bool) -> list[str]:
+        """Move every course of the LAST term earlier, or none of them; returns
+        the span actually used. One term at a time; `repeat` keeps going."""
+        span = list(span)
+        while len(span) > 1:
+            last = max(t for t in planned.values())
+            moving = sorted((k for k, t in planned.items() if t == last),
+                            key=lambda k: (-self.course_info[k].credits, k))
+            trial = dict(planned)
+            for key in moving:
+                loads = self._loads(trial, span, self.course_info)
+                targets = sorted((t for t in span if t < last), key=lambda t: (loads[t], t))
+                placed = next((t for t in targets
+                               if self._move_check(student, key, t, trial, info, cap)), None)
+                if placed is None:
+                    return span
+                trial[key] = placed
+            planned.clear()
+            planned.update(trial)
+            span = [t for t in span if t < last]
+            if not repeat:
+                break
+        return span
+
+    def _level(self, student, version, terms, plan_terms, planned, info,
+               final: DegreeAuditResult) -> DegreeAuditResult:
+        """Deterministic, bounded improvement of an already-valid plan.
+
+        1. Compression (BALANCED when the last term is stranded - at most half
+           the target; FINISH_EARLIER always): move the last term's courses
+           into earlier terms within the hard maximum, all or nothing.
+        2. Levelling: repeatedly make the single valid move that most reduces
+           the spread of term loads (a move from term D to R helps only when
+           load(D) - load(R) > the course's credits). Never extends the plan.
+        3. Verification: every moved course and every dependent is re-evaluated
+           for its new term, then ONE projected audit must show the same
+           progress and the same requirement allocation as before. Otherwise
+           every move is reverted and the greedy plan stands.
+        """
+        c = self.constraints
+        _, hard = self._caps()
+        original = dict(planned)
+        snapshot = {k: dict(v) for k, v in info.items()}
+        first, last = plan_terms[0].term_code, plan_terms[-1].term_code
+        span = [t for t in terms if first <= t <= last]
+        loads = self._loads(planned, span, self.course_info)
+        target = c.target_credits_per_term
+        if c.pace is Pace.FINISH_EARLIER or (
+                c.pace is Pace.BALANCED and target is not None and loads[last] * 2 <= target):
+            span = self._compress(student, span, planned, info, c.max_credits_per_term,
+                                  repeat=c.pace is Pace.FINISH_EARLIER)
+        for _ in range(40):
+            loads = self._loads(planned, span, self.course_info)
+            moves = sorted(
+                (loads[planned[k]] - loads[r] - self.course_info[k].credits, planned[k], k, r)
+                for k in planned for r in span
+                if r != planned[k] and loads[planned[k]] - loads[r] > self.course_info[k].credits)
+            moved = False
+            # Best improvement first; at most 25 candidates checked per step.
+            for _gain, _donor, key, receiver in list(reversed(moves))[:25]:
+                if self._move_check(student, key, receiver, planned, info, hard):
+                    planned[key] = receiver
+                    moved = True
+                    break
+            if not moved:
+                break
+        if planned == original:
+            return final
+
+        def revert() -> DegreeAuditResult:
+            planned.clear()
+            planned.update(original)
+            info.clear()
+            info.update(snapshot)
+            return final
+
+        changed = {k for k in planned if planned[k] != original[k]}
+        affected = changed | {o for o in planned if any(
+            d.course in changed for d in info[o]["prereq"].conditional_on if d.source == "planned")}
+        for key in sorted(affected):
+            term = planned[key]
+            ga, gb, gev = self._evaluate(student, [key], term, planned,
+                                         frozenset(set(info[key]["group"]) - {key}))[key]
+            state = self._state(ga, gb)
+            if state not in (EligibilityState.SATISFIED_BY_HISTORY,
+                             EligibilityState.CONDITIONAL_ON_PLAN) or gev.kind not in PLACEABLE:
+                return revert()
+            info[key] = {**info[key], "term": term, "evidence": gev,
+                         "prereq": self._prereq_evidence(ga, gb, state, planned, term)}
+
+        def allocation(result):
+            out: dict[str, list[str]] = defaultdict(list)
+            for a in result.allocation:
+                out[a.course.course_string].append(a.requirement_code)
+            return {k: sorted(v) for k, v in out.items()}
+
+        result = self._audit(student, version, planned)
+        if progress(result, self.requirements) != progress(final, self.requirements) or \
+                allocation(result) != allocation(final):
+            return revert()
+        by_term: dict[str, list[str]] = defaultdict(list)
+        for key, term in planned.items():
+            by_term[term].append(key)
+        plan_terms[:] = []
+        for term in sorted(by_term):
+            pt = PlanTerm(term_code=term, label=label(term))
+            for key in sorted(by_term[term]):
+                pt.courses.append(self._planned_course(key, info[key]))
+                pt.credits += self.course_info[key].credits
+            plan_terms.append(pt)
+        return result
+
+    def _observations(self, student, version, terms, plan_terms, planned, info,
+                      final: DegreeAuditResult, *, complete: bool) -> list[PlanObservation]:
+        c = self.constraints
+        out: list[PlanObservation] = []
+        target = c.target_credits_per_term
+        if target is not None:
+            for i, term in enumerate(plan_terms):
+                if term.credits * 10 >= target * 6:
+                    continue
+                n = len(term.courses)
+                if i == len(plan_terms) - 1:
+                    reason = "final_requirements"
+                    msg = (f"{term.label} is the last semester of this plan: only {n} "
+                           f"course{'s' if n != 1 else ''} remain{'s' if n == 1 else ''} for the "
+                           "currently modeled requirements.")
+                else:
+                    prev = plan_terms[i - 1].term_code if i else None
+                    chained = prev is not None and all(any(
+                        d.source == "planned" and d.term_code == prev
+                        for d in pc.prerequisite.conditional_on) for pc in term.courses)
+                    reason = "prerequisite_chain" if chained else "constrained"
+                    msg = (f"{term.label} is lighter than your target because each course here "
+                           f"needs a course from {label(prev)} first." if chained else
+                           f"{term.label} is lighter than your target: CoursePilot couldn't move "
+                           "more courses here without breaking a prerequisite order or Rutgers' "
+                           "known offering seasons.")
+                out.append(PlanObservation(code="light_term", term_code=term.term_code,
+                                           message=msg, details={"reason": reason,
+                                                                 "credits": str(term.credits)}))
+        # Capability, never intent: say that fewer terms are possible, and leave
+        # the objective alone unless the student chooses FINISH_EARLIER.
+        if complete and c.pace in (Pace.BALANCED, Pace.LIGHTER) and len(plan_terms) > 1:
+            first, last = plan_terms[0].term_code, plan_terms[-1].term_code
+            span = [t for t in terms if first <= t <= last]
+            trial = dict(planned)
+            shorter = self._compress(student, span, trial, info, c.max_credits_per_term,
+                                     repeat=True)
+            if trial != planned:
+                end = max(trial.values())
+                result = self._audit(student, version, trial)
+                if progress(result, self.requirements) == progress(final, self.requirements) \
+                        and end < last:
+                    out.append(PlanObservation(
+                        code="earlier_completion_possible", term_code=end,
+                        message=(f"Taking up to {c.max_credits_per_term} credits in some "
+                                 f"semesters could complete the currently modeled requirements "
+                                 f"by {label(end)} instead of {label(last)}. This is not a "
+                                 "graduation date, and your plan has not been changed: choose "
+                                 "\"Finish earlier\" if that is what you want."),
+                        details={"planned_last_term": last, "possible_last_term": end,
+                                 "terms_planned": len(plan_terms),
+                                 "terms_possible": len({t for t in trial.values()}),
+                                 "max_credits_per_term": str(c.max_credits_per_term)}))
+        return out
 
     def _prune(self, student, version, plan_terms, planned, info, final) -> DegreeAuditResult:
         """Drop planned courses the final allocation credits nowhere.

@@ -8857,3 +8857,104 @@ None of these is visible in source code.
 - "Make illegal states unrepresentable" (typed enums at an API boundary)
 - WAI-ARIA disclosure (`<details>`) and tabs patterns
 - WCAG 2.2: 1.4.3 contrast, 2.5.8 target size
+
+---
+
+# Lesson 41: What Is True, and What Is Wanted
+
+## What We Built
+
+The first real use of the product showed several problems:
+
+- a semester holding a single course;
+- a "first semester" field that read like the student's first semester of
+  college;
+- a credit setting that could only express a ceiling.
+
+Instead of patching labels, we separated two kinds of student information that
+had been mixed together:
+
+- **what is true** about the student: the confirmed record and the engines'
+  results;
+- **what the student wants**: their pace, their target load and their limits.
+
+Then we made the planner and the screens respect that line.
+
+---
+
+## Concepts
+
+### Truth and intent live in different places
+
+A transcript says what happened. A preference says what someone would like.
+If the same form or table holds both, the line between them blurs. A
+"preference" could quietly carry a course, or a planner could treat a wish as
+a fact. So the Planning Profile has its own table, accepts only preference
+fields, and the server rejects anything else.
+
+### Capability is not intent
+
+A student ahead on credits COULD finish earlier. That does not mean they WANT
+to. The planner may say what is possible, but it changes the plan's goal only
+when the student chooses to. The message is careful too: it talks about the
+requirements CoursePilot models, never about a graduation date.
+
+### A target is not a limit, and a limit is not a target
+
+"Around 16, never more than 18" is two numbers with two meanings. Folding them
+into one "max credits" field forces the planner to treat the ceiling as the
+goal, which is how a plan ends up front-loaded with a nearly empty last
+semester.
+
+### Improve a valid answer without breaking it
+
+The levelling pass never invents a plan. It moves courses in an existing,
+valid plan, and only when the engine's own checks agree:
+
+- the course is offered in the new term;
+- its prerequisites are still met for that term;
+- the prerequisite order still holds.
+
+Then one audit must reproduce the same result, or every move is undone.
+Cleverness on top of a correct answer is safe only if the correct answer's
+own checks guard it.
+
+### "Now" is an input, and an injectable one
+
+A planner that never reads a clock can't tell that Spring 2022 is in the
+past. Reading the clock directly makes tests drift. The answer is a single
+calendar function with an override (`ACADEMIC_TODAY`), used only to choose
+where plans start.
+
+### Never guess what you can ask
+
+A course on the record is not a section. Rather than picking the "likely"
+one, CoursePilot lists the real sections and lets the student choose. A guess
+that is right most of the time is still wrong for someone, and here it would
+be shown as fact.
+
+---
+
+## Self-Check
+
+1. Why does the Planning Profile reject a request that contains `completed_courses`?
+2. A student is two semesters ahead. What does the plan do by default, and what does it say?
+3. What is the difference between a target of 16 and a maximum of 18, for each pace?
+4. What three checks must a levelling move pass, and what happens if the final audit differs?
+5. Why is "the term after the record" the wrong start for a returning student?
+6. What may a transcript's section number do in "My current schedule", and what may it not do?
+
+## Try It Yourself
+
+**A.** Run `python scripts/plan_quality.py` and compare the third-year student under "6.5 greedy" and "balanced".
+
+**B.** Run `python scripts/inject_personalization_failures.py A E F` and read which tests catch each fault.
+
+**C.** Set `ACADEMIC_TODAY=2027-03-01` and call `GET /student/plans/context` for a student whose record ends in Fall 2025.
+
+## Further Learning
+
+- Separating facts from preferences in data models
+- Local search with a validity oracle (move-and-verify)
+- Lexicographic objectives in planning and scheduling
+- Test seams for time ("clock injection")

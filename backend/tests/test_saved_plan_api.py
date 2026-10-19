@@ -54,6 +54,36 @@ def _app():
     return create_app()
 
 
+@pytest.fixture(autouse=True)
+def _ready(request):
+    """Phase 7.2.1: a saved plan needs CONFIRMED history and a CONFIRMED
+    Planning Profile. The world's students get both (a default profile), unless
+    a test asks for the unready state with @pytest.mark.unready."""
+    if "world" not in request.fixturenames or request.node.get_closest_marker("unready"):
+        return
+    world = request.getfixturevalue("world")
+    from app.domain.planning_profile import PlanningProfileInput
+    from app.services.planning.profile import confirm_profile
+
+    now = dt.datetime.now(dt.UTC)
+    with _session() as session:
+        for key in ("a", "b"):
+            student = session.get(Student, world[key])
+            student.onboarding_completed_at = now
+            confirm_profile(session, student, PlanningProfileInput(), now)
+        session.commit()
+
+
+def _profile(world, **fields):
+    from app.domain.planning_profile import PlanningProfileInput
+    from app.services.planning.profile import confirm_profile
+
+    with _session() as session:
+        confirm_profile(session, session.get(Student, world["a"]),
+                        PlanningProfileInput(**fields), dt.datetime.now(dt.UTC))
+        session.commit()
+
+
 def _plan_rows(student_id) -> int:
     with _session() as session:
         return session.scalar(select(func.count()).select_from(StudentPlan)
@@ -90,22 +120,26 @@ async def test_a_saved_plan_belongs_to_its_owner_only(world) -> None:  # noqa: F
 async def test_the_saved_plan_is_the_engines_exact_output(world) -> None:  # noqa: F811
     from app.services.planning.service import generate_plan
 
+    from app.domain.planning_profile import PlanningProfileInput, to_constraints
+
+    _profile(world, max_terms=3)
     async with _client(_app(), world["account_a"]) as ac:
-        body = (await ac.post(PLANS, json={"start_term": "20261",
-                                           "constraints": {"max_terms": 3}})).json()
+        body = (await ac.post(PLANS, json={"start_term": "20261"})).json()
     with _session() as session:
         fresh = generate_plan(session, session.get(Student, world["a"]), start_term="20261",
-                              constraints=PlanningConstraints(max_terms=3))
+                              constraints=to_constraints(PlanningProfileInput(max_terms=3)))
     assert body["result"] == fresh.model_dump(mode="json")
+    # The plan used the CONFIRMED profile: target, maximum and pace included.
     assert body["constraints"]["max_terms"] == 3
+    assert body["constraints"]["pace"] == "balanced"
+    assert body["constraints"]["target_credits_per_term"] == "15"
 
 
 @requires_db
 async def test_regenerating_replaces_and_never_accumulates(world) -> None:  # noqa: F811
     async with _client(_app(), world["account_a"]) as ac:
         first = (await ac.post(PLANS, json={"start_term": "20261"})).json()
-        second = (await ac.post(PLANS, json={"start_term": "20269",
-                                             "constraints": {"max_terms": 2}})).json()
+        second = (await ac.post(PLANS, json={"start_term": "20269"})).json()
     assert _plan_rows(world["a"]) == 1
     assert second["start_term"] == "20269" and first["start_term"] == "20261"
 
@@ -115,10 +149,12 @@ async def test_regenerating_replaces_and_never_accumulates(world) -> None:  # no
     ("student_id", "x"), ("account_id", "x"), ("program_key", "sas-198-ba"),
     ("catalog_year", "2025-2026"), ("status", "covers_all_requirements"),
     ("result", {}), ("terms", []), ("freshness", "current"),
+    ("constraints", {"max_terms": 2}), ("pace", "finish_earlier"),
 ])
-async def test_the_save_body_accepts_only_a_start_term_and_constraints(
+async def test_the_save_body_accepts_only_a_start_term(
         world, field, value) -> None:  # noqa: F811
-    """No identity, no what-if program, no status, no client-made plan."""
+    """No identity, no what-if program, no status, no client-made plan - and
+    no load settings: those come only from the confirmed profile (7.2.1)."""
     async with _client(_app(), world["account_a"]) as ac:
         response = await ac.post(PLANS, json={"start_term": "20261", field: value})
     assert response.status_code == 422
@@ -310,7 +346,7 @@ async def test_unlinked_accounts_get_409_and_anonymous_401(world) -> None:  # no
 async def test_save_reports_the_engines_start_term_refusal(world) -> None:  # noqa: F811
     async with _client(_app(), world["account_a"]) as ac:
         past = await ac.post(PLANS, json={"start_term": "20259"})
-    assert past.status_code == 422 and "20259" in past.json()["detail"]
+    assert past.status_code == 422 and "future term" in past.json()["detail"]
     assert _plan_rows(world["a"]) == 0
 
 
@@ -373,3 +409,89 @@ def test_blocked_courses_carry_title_and_rutgers_text(world) -> None:  # noqa: F
     assert by_course[unknown].title
     assert by_course[offering].reasons == ["no_offering_evidence"]
     assert by_course[offering].prerequisite_text is None
+
+
+# --------------------------------------------------------------------------
+# Phase 7.2.1: readiness gate, start-term policy, preference staleness
+# --------------------------------------------------------------------------
+
+
+@requires_db
+@pytest.mark.unready
+async def test_no_saved_plan_without_confirmed_history_or_profile(world) -> None:  # noqa: F811
+    async with _client(_app(), world["account_a"]) as ac:
+        no_history = await ac.post(PLANS, json={})
+    assert no_history.status_code == 409 and "academic history" in no_history.json()["detail"]
+    with _session() as session:
+        session.get(Student, world["a"]).onboarding_completed_at = dt.datetime.now(dt.UTC)
+        session.commit()
+    async with _client(_app(), world["account_a"]) as ac:
+        no_profile = await ac.post(PLANS, json={})
+    assert no_profile.status_code == 409 and "planned" in no_profile.json()["detail"]
+    assert _plan_rows(world["a"]) == 0
+
+
+@requires_db
+async def test_the_start_defaults_to_the_server_choice(world) -> None:  # noqa: F811
+    async with _client(_app(), world["account_a"]) as ac:
+        ctx = (await ac.get(CONTEXT)).json()
+        saved = (await ac.post(PLANS, json={})).json()
+    assert saved["start_term"] == ctx["earliest_start_term"] == "20261"
+    assert ctx["current_term"] == "20259"                      # ACADEMIC_TODAY 2025-12-01
+    assert [o["term_code"] for o in ctx["start_options"]][:3] == ["20261", "20269", "20271"]
+
+
+@requires_db
+async def test_a_returning_student_never_starts_in_the_past(world, monkeypatch) -> None:  # noqa: F811
+    """Record ends Fall 2025; 'today' is March 2027: the plan starts Fall 2027,
+    not the term after the record (Spring 2026)."""
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("ACADEMIC_TODAY", "2027-03-01")
+    get_settings.cache_clear()
+    try:
+        async with _client(_app(), world["account_a"]) as ac:
+            ctx = (await ac.get(CONTEXT)).json()
+            past = await ac.post(PLANS, json={"start_term": "20261"})
+        assert ctx["latest_recorded_term"] == "20259"
+        assert ctx["current_term"] == "20271"
+        assert ctx["earliest_start_term"] == "20279"
+        assert past.status_code == 422 and _plan_rows(world["a"]) == 0
+    finally:
+        monkeypatch.delenv("ACADEMIC_TODAY")
+        get_settings.cache_clear()
+
+
+@requires_db
+async def test_planned_rows_do_not_move_the_start(world) -> None:  # noqa: F811
+    with _session() as session:
+        course = session.scalar(select(Course).where(Course.course_string == world["courses"]["Z"]))
+        session.add(StudentCourse(student_id=world["a"], course_id=course.id, term_code="20279",
+                                  status="planned"))
+        session.commit()
+    async with _client(_app(), world["account_a"]) as ac:
+        ctx = (await ac.get(CONTEXT)).json()
+    assert ctx["latest_recorded_term"] == "20259"
+    assert ctx["earliest_start_term"] == "20261"
+
+
+@requires_db
+async def test_changing_preferences_makes_the_plan_stale(world) -> None:  # noqa: F811
+    await _save(world)
+    _profile(world, target_credits_per_term="12", max_credits_per_term="12")
+    assert await _freshness(world) == {"state": "stale",
+                                       "reasons": ["planning_preferences_changed"]}
+
+
+@requires_db
+async def test_time_passing_makes_the_plan_stale(world, monkeypatch) -> None:  # noqa: F811
+    from app.core.config import get_settings
+
+    await _save(world)
+    monkeypatch.setenv("ACADEMIC_TODAY", "2026-02-15")       # Spring 2026 is now under way
+    get_settings.cache_clear()
+    try:
+        assert "start_term_passed" in (await _freshness(world))["reasons"]
+    finally:
+        monkeypatch.delenv("ACADEMIC_TODAY")
+        get_settings.cache_clear()

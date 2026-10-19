@@ -11,11 +11,13 @@ Rutgers degree-planning and schedule-optimization platform.
 >   (Phase 7.2):
 >   - **Degree:** requirement-by-requirement progress, with reasons, and
 >     what-if comparisons;
->   - **Plan:** a saved deterministic semester plan that knows when it is out
->     of date;
+>   - **Plan:** a saved deterministic semester plan, built from the student's
+>     confirmed planning preferences (pace, target and maximum load), that knows
+>     when it is out of date;
 >   - **Schedule:** real Rutgers sections, conflict-free options, a weekly
 >     view, and index numbers to register with yourself.
-> - **Not yet in the web app:** course search, notifications, the assistant.
+> - **Not yet in the web app:** course search, notifications, the assistant,
+>   and planning for more than one program at a time.
 > - **Programs:** one is published (human-reviewed); seven more are encoded and
 >   pending review.
 >
@@ -47,7 +49,7 @@ engine produced.
 | Document | Contents |
 |---|---|
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, layers, and every major decision with its tradeoffs |
-| [DATA_MODEL.md](docs/DATA_MODEL.md) | Schema and semantics, phase by phase (sections 12–48 describe what is built) |
+| [DATA_MODEL.md](docs/DATA_MODEL.md) | Schema and semantics, phase by phase (sections 12–49 describe what is built) |
 | [AUTHENTICATION.md](docs/AUTHENTICATION.md) | Sign-in, and the three trust boundaries: identity, academic data, institutional authorization |
 | [DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) | Tokens, components, responsive shell, motion language, accessibility |
 | [AGENT_ARCHITECTURE.md](docs/AGENT_ARCHITECTURE.md) | Agent flow and the anti-hallucination safeguards |
@@ -157,8 +159,16 @@ history without the student's confirmation. See
 - **Unknowns are labelled.** Conditions CoursePilot cannot evaluate are
   labelled as such, never as failures.
 - **Live availability.** It is shown apart from schedule validity.
+- **Phase 7.2.1:**
+  - **Planning preferences:** pace (Balanced by default; finishing earlier
+    is never assumed), a target load and a hard maximum.
+  - **Server-owned planning readiness.**
+  - **Plans never start in the past.**
+  - **Levelled semesters** with no stranded one-course final term, every move
+    re-validated by the engine.
+  - **"My current schedule"** shows only sections the student confirms.
 
-See [DATA_MODEL.md §48](docs/DATA_MODEL.md).
+See [DATA_MODEL.md §48–49](docs/DATA_MODEL.md).
 
 **API.** Under `/api/v1`, all of the above. The student is always the
 authenticated account's own record; no request can name another student.
@@ -167,6 +177,9 @@ authenticated account's own record; no request can name another student.
 
 - **Some student-facing screens.** Course search, Notifications and the
   assistant are in the navigation as "Later".
+  - Additional majors and minors can be recorded as goals being explored, but
+    plans cover one program (design only:
+    [DATA_MODEL.md §49.8](docs/DATA_MODEL.md)).
   - Plans cannot be edited by hand; you regenerate them with different
     settings.
   - Spring 2027 sections are not loaded yet, because Rutgers had not

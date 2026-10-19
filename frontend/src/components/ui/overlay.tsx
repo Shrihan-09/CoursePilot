@@ -66,7 +66,7 @@ export function Dialog({
               </p>
             )}
           </div>
-          <IconButton label="Close" onClick={onClose} className="-mr-2 -mt-2">
+          <IconButton label="Close" onClick={onClose} className="-mr-2 -mt-2 shrink-0">
             <X className="size-4" />
           </IconButton>
         </div>

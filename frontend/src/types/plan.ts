@@ -31,12 +31,24 @@ export type PlanReason =
 
 export type PlanStatus = "covers_all_requirements" | "partial" | "nothing_to_plan";
 
+export type Pace = "balanced" | "lighter" | "finish_earlier";
+
 export interface PlanningConstraints {
   max_credits_per_term: string | number;
   max_courses_per_term: number;
   max_terms: number;
   include_summer: boolean;
   include_winter: boolean;
+  /** SOFT: what to aim for - never a minimum (7.2.1). */
+  target_credits_per_term?: string | number | null;
+  pace?: Pace | null;
+}
+
+export interface PlanObservation {
+  code: "earlier_completion_possible" | "light_term" | string;
+  message: string;
+  term_code: string | null;
+  details: Record<string, unknown>;
 }
 
 export interface OfferingEvidence {
@@ -122,6 +134,7 @@ export interface PlanResult {
   issues: PlanningIssue[];
   requirements: RequirementProjection[];
   assumptions: ScenarioAssumption[];
+  observations: PlanObservation[];
   metadata: PlanMetadata;
 }
 
@@ -131,7 +144,8 @@ export type StaleReason =
   | "program_rules_changed"
   | "rutgers_data_changed"
   | "engine_updated"
-  | "start_term_passed";
+  | "start_term_passed"
+  | "planning_preferences_changed";
 
 export interface BlockedCourse {
   course: string;
@@ -162,9 +176,15 @@ export interface LoadedTerm {
 }
 
 export interface PlanningContext {
+  /** "History starts" / "record through": completed or in-progress terms only. */
+  earliest_recorded_term: string | null;
   latest_recorded_term: string | null;
-  earliest_start_term: string | null;
-  earliest_start_label: string | null;
+  current_term: string;
+  current_term_label: string;
+  /** The default PLAN STARTING SEMESTER - always a future term. */
+  earliest_start_term: string;
+  earliest_start_label: string;
+  start_options: { term_code: string; label: string }[];
   loaded_terms: LoadedTerm[];
   default_constraints: PlanningConstraints;
   constraints_source: string;

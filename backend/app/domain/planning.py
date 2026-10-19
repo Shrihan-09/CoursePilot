@@ -26,12 +26,12 @@ from __future__ import annotations
 from decimal import Decimal
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.domain.scenario import ScenarioAssumption, ScenarioTarget
 
 #: Bumped whenever the same inputs could produce a different plan.
-PLANNING_ENGINE_VERSION = "6.5.0"
+PLANNING_ENGINE_VERSION = "6.6.0"   # 7.2.1: pace, target load, validated levelling
 
 
 class EligibilityState(StrEnum):
@@ -77,6 +77,19 @@ class PlanStatus(StrEnum):
     NOTHING_TO_PLAN = "nothing_to_plan"                   # no requirement remains
 
 
+class Pace(StrEnum):
+    """How the student wants the plan shaped (Phase 7.2.1).
+
+    BALANCED is the default. Nothing - not a transcript that puts a student
+    ahead, not spare capacity - switches a plan to FINISH_EARLIER except the
+    student choosing it.
+    """
+
+    BALANCED = "balanced"              # aim for the target; even terms; no stranded last term
+    LIGHTER = "lighter"                # never above the target; extra terms are fine
+    FINISH_EARLIER = "finish_earlier"  # fill toward the hard maximum to finish sooner
+
+
 class PlanningConstraints(BaseModel):
     """Course-load PREFERENCES - CoursePilot planning defaults, NOT Rutgers rules.
 
@@ -84,6 +97,15 @@ class PlanningConstraints(BaseModel):
     them, so these numbers are planner settings a student may change and are
     reported as such (`PlanMetadata.constraints_source`, set by the server -
     a client cannot relabel its own numbers as policy).
+
+    Phase 7.2.1:
+      * `max_credits_per_term` is a HARD maximum - never exceeded.
+      * `target_credits_per_term` is SOFT - what to aim for. It is never a
+        minimum: a term may be lighter when prerequisites, offerings or the
+        remaining requirements leave less to take.
+      * `pace` selects the planner's objective (see Pace). None keeps the
+        Phase 6.5 behaviour (fill each term toward the maximum, no levelling)
+        for unpersonalized, stateless requests.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -93,6 +115,15 @@ class PlanningConstraints(BaseModel):
     max_terms: int = Field(default=8, ge=1, le=12)
     include_summer: bool = False
     include_winter: bool = False
+    target_credits_per_term: Decimal | None = Field(default=None, ge=1, le=24)
+    pace: Pace | None = None
+
+    @model_validator(mode="after")
+    def _target_within_max(self) -> "PlanningConstraints":
+        if self.target_credits_per_term is not None and \
+                self.target_credits_per_term > self.max_credits_per_term:
+            raise ValueError("target_credits_per_term cannot exceed max_credits_per_term")
+        return self
 
 
 CONSTRAINTS_SOURCE = "coursepilot_planning_setting_not_rutgers_policy"
@@ -179,6 +210,24 @@ class RequirementProjection(BaseModel):
     status_after: str
 
 
+class PlanObservation(BaseModel):
+    """A deterministic statement ABOUT the plan, never a change to it (7.2.1).
+
+    `earlier_completion_possible` - the same courses, moved only by moves the
+    engine validated, fit in fewer terms at the student's hard maximum. It is
+    offered, never applied: only the student's FINISH_EARLIER choice changes
+    the objective. It speaks of the CURRENTLY MODELED requirements, not of
+    graduation.
+    `light_term` - why a term carries less than the target (the final remaining
+    requirement, a prerequisite chain, or offering evidence).
+    """
+
+    code: str
+    message: str
+    term_code: str | None = None
+    details: dict = Field(default_factory=dict)
+
+
 class PlanMetadata(BaseModel):
     planning_engine_version: str = PLANNING_ENGINE_VERSION
     audit_engine_version: str
@@ -199,6 +248,7 @@ class PlanResult(BaseModel):
     issues: list[PlanningIssue] = Field(default_factory=list)
     requirements: list[RequirementProjection] = Field(default_factory=list)
     assumptions: list[ScenarioAssumption] = Field(default_factory=list)
+    observations: list[PlanObservation] = Field(default_factory=list)
     metadata: PlanMetadata
 
     def canonical_json(self) -> str:
@@ -209,6 +259,6 @@ class PlanResult(BaseModel):
 __all__ = ["CONSTRAINTS_SOURCE", "PLANNING_ENGINE_VERSION",
            "ConditionalDependency", "EligibilityState",
            "OfferingEvidence", "OfferingEvidenceKind", "PlanMetadata", "PlanResult", "PlanStatus",
-           "PlanTerm", "PlannedCourse", "PlanningConstraints", "PlanningIssue",
+           "Pace", "PlanObservation", "PlanTerm", "PlannedCourse", "PlanningConstraints", "PlanningIssue",
            "PrerequisiteEvidence", "Reason", "RequirementContribution", "RequirementProjection",
            "Severity"]
