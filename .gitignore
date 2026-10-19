@@ -38,6 +38,7 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 desktop.ini
+/Microsoft/Windows/PowerShell/ModuleAnalysisCache
 
 # ---------- Local data ----------
 # Raw scraped/ingested Rutgers payloads are large and are NOT the source of
