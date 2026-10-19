@@ -222,9 +222,27 @@ still reported as "Section not chosen", a stale expiry line, a duplicated word,
 and undersized inputs. Imported registrations are shown in My current schedule,
 labelled as imported; they never write a section confirmation or academic history.
 
-**Real WebReg compatibility** - validated only with fabricated positioned PDFs so
-far. To check a real schedule locally, keep the PDF OUTSIDE the repository and run
-`python scripts/validate_webreg_local.py <path> [--match]`. It prints the outcome,
-a closed error code and counts only, never document content. A refusal such as
-`UNSUPPORTED_LAYOUT` is correct fail-closed behaviour; it means the layout needs
-a new fabricated fixture, not a parser relaxation.
+**Real WebReg compatibility** - two real View / Print Schedule PDFs were checked
+locally, outside the repository; only aggregate structure was inspected or recorded.
+
+1. Saved through "Microsoft Print To PDF": every glyph is a vector outline - no
+   font, no text object, no image, ~19k path segments. There is no character
+   data; reading it would be OCR, which this architecture deliberately does not
+   do. `UNSUPPORTED_LAYOUT` is correct. The upload error now tells students to
+   use the browser's own "Save as PDF". Fabricated fixture:
+   `build_schedule_pdf(outlined=True)`.
+2. Saved with the browser's own "Save as PDF": a normal text layer (4 fonts, 96
+   text objects). Header, term, five weekday labels on one baseline and the
+   by-arrangement heading were all recognised; the refusal came from the grid
+   identity pattern. Real grid cells print `course:section:index` with a COLON
+   before the index; the first fixtures had assumed a hyphen. `GRID_ID` now
+   accepts exactly one `:` or `-` before exactly five digits; nothing else was
+   relaxed (`webreg-layout-3`). Result: recognised, 5 registration candidates,
+   all with an exact index, one term; matched against the archived public SOC
+   data in a throwaway database: 5 EXACT_MATCH, 0 MULTIPLE_MATCHES, 0 NO_MATCH,
+   0 NEEDS_CONFIRMATION. Fabricated colon-form tests failed at the
+   same parser line before the fix; injection fault S guards it.
+
+To check another real schedule, keep the PDF outside the repository and run
+`python scripts/validate_webreg_local.py <path> [--match] [--diagnose]`; it prints
+the outcome, closed codes, counts and the PDF representation, never content.
