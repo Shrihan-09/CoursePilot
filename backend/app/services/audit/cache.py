@@ -42,7 +42,7 @@ Read out of `DegreeAuditEngine.audit()` rather than assumed:
 
 | input | why it can change the result |
 |---|---|
-| `Student.catalog_year`, `program_version_id` | selects the ruleset; a mismatch is a blocking finding |
+| Student catalog year/program version | selects rules; mismatches block |
 | `StudentCourse` rows | status, term, grade, credits - the facts themselves |
 | joined `Course` rows | course_string drives tie-breaking; credits drive credit rules |
 | `ProgramVersion` | catalog year, credit range, sharing policy, curation status |
@@ -105,7 +105,6 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.domain.audit import DegreeAuditResult
 from app.core.metrics import (
     AUDIT_CACHE_INVALIDATIONS,
     AUDIT_CACHE_LOOKUP_DURATION,
@@ -119,6 +118,7 @@ from app.core.metrics import (
     AUDIT_CACHE_WRITE_FAILURES,
     get_metrics,
 )
+from app.domain.audit import DegreeAuditResult
 from app.models import (
     Course,
     Program,
@@ -153,7 +153,7 @@ logger = logging.getLogger(__name__)
 #: graduate-level courses - both change serialized audits.
 #: 7.0.1: completed attempts that earn no credit (F, NC, W, U, XF) no longer
 #: add to credits_completed / credits_applicable_to_degree.
-AUDIT_ENGINE_VERSION = "7.0.1"
+AUDIT_ENGINE_VERSION = "7.2.2"
 
 #: StudentCourse columns that are NOT audit inputs, and so are deliberately
 #: absent from `academic_fingerprint`. Every other column must be in it -
@@ -258,6 +258,9 @@ def academic_fingerprint(session: Session, student: Student) -> str:
         )
     ).all()
     _hash_tuples(hasher, rows)
+    from app.services.academic_context import academic_evidence
+    for claim in academic_evidence(session, student):
+        _hash_entity(hasher, claim)
     return hasher.hexdigest()
 
 
@@ -288,11 +291,12 @@ def rules_fingerprint(session: Session, program_version_id: uuid.UUID) -> str:
     if program is not None:
         _hash_entity(hasher, program)
 
-    for requirement in session.scalars(
-        select(Requirement)
-        .where(Requirement.program_version_id == program_version_id)
-        .order_by(Requirement.code)
-    ):
+    from app.services.academic_context import composed_requirements, school_requirement_sets
+    requirements = composed_requirements(session, version)
+    requirement_ids = [r.id for r in requirements]
+    for school_set in school_requirement_sets(session, version):
+        _hash_entity(hasher, school_set)
+    for requirement in requirements:
         _hash_entity(hasher, requirement)
 
     # Eligibility, scoped through Requirement so it covers exactly the rows
@@ -309,7 +313,7 @@ def rules_fingerprint(session: Session, program_version_id: uuid.UUID) -> str:
                 Requirement,
                 Requirement.id == RequirementCourseOption.requirement_id,
             )
-            .where(Requirement.program_version_id == program_version_id)
+            .where(Requirement.id.in_(requirement_ids))
             .order_by(
                 Requirement.code,
                 RequirementCourseOption.course_id,

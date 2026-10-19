@@ -34,6 +34,7 @@ class CoreDefinitionParseResult:
     requirements: list[dict] = field(default_factory=list)
     target_program: dict = field(default_factory=dict)
     program_version: dict = field(default_factory=dict)
+    requirement_set: dict = field(default_factory=dict)
     school: dict = field(default_factory=dict)
     source: dict = field(default_factory=dict)
     known_conflicts: list[dict] = field(default_factory=list)
@@ -71,14 +72,15 @@ class CoreDefinitionParser:
             raise ValueError(
                 f"expected the core definition to be an object, got {type(data).__name__}"
             )
-        for required in ("source", "target_program", "program_version", "goals", "requirements"):
+        for required in ("source", "school", "goals", "requirements"):
             if required not in data:
                 raise ValueError(f"core definition is missing required key {required!r}")
 
         result = CoreDefinitionParseResult(
             requirements=data["requirements"],
-            target_program=data["target_program"],
-            program_version=data["program_version"],
+            target_program=data.get("target_program", {}),
+            program_version=data.get("program_version", {}),
+            requirement_set=data.get("requirement_set", {}),
             school=data.get("school", {}),
             source=data["source"],
             known_conflicts=data.get("known_conflicts", []),

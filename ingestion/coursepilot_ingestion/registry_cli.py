@@ -29,6 +29,7 @@ from collections import Counter
 
 from app.models import CatalogPage, Program, ProgramCandidate, ProgramVersion, School
 from app.services import program_lifecycle
+from app.services.program_coverage import coverage_report
 from app.services.programs import find_program
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
@@ -142,6 +143,10 @@ def cmd_status(s: Session, a) -> None:
               f"{v.lifecycle_state:15} basis={v.publication_basis} curated_by={v.curated_by!r}")
 
 
+def cmd_coverage(s: Session, a) -> None:
+    print(json.dumps(coverage_report(s), indent=2, sort_keys=True))
+
+
 def cmd_packets(s: Session, a) -> None:
     files = curated_files()
     out = files[0].parent / "review"
@@ -185,7 +190,7 @@ def build_parser() -> argparse.ArgumentParser:
     f.add_argument("--subject", nargs="*")
     f.add_argument("--network", action="store_true", help="allow live public-catalog fetches")
     f.add_argument("--max-pages", type=int, default=12)
-    for name in ("load", "link", "validate", "check-sources", "status", "packets"):
+    for name in ("load", "link", "validate", "check-sources", "status", "packets", "coverage"):
         sub.add_parser(name)
     for name in ("review", "publish"):
         r = sub.add_parser(name)
@@ -200,7 +205,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 COMMANDS = {"discover": cmd_discover, "fetch": cmd_fetch, "load": cmd_load, "link": cmd_link,
             "validate": cmd_validate, "check-sources": cmd_check, "status": cmd_status,
-            "packets": cmd_packets, "review": cmd_review, "publish": cmd_publish}
+            "packets": cmd_packets, "coverage": cmd_coverage, "review": cmd_review, "publish": cmd_publish}
 
 
 def main(argv: list[str] | None = None) -> int:

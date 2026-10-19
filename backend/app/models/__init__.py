@@ -69,6 +69,8 @@ from app.models.requirements import (
     RequirementSystem,
     RequirementType,
     School,
+    SchoolRequirementSetVersion,
+    StudentAcademicEvidence,
     SharingPolicy,
 )
 from app.models.identity import (
@@ -165,7 +167,11 @@ __all__ = [
     "UserAccount",
     "StudentCourse",
     "Subject",
+    "ScheduleImport",
+    "StudentRegistration",
     "TranscriptImport",
     "TranscriptImportRow",
     "LINK_ACTION_CREATED",
 ]
+
+from app.models.schedule_import import ScheduleImport, StudentRegistration

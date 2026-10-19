@@ -40,17 +40,25 @@ from app.domain.audit import (
     RuleResult,
     Severity,
 )
+from app.domain.grades import LETTERS, POLICY_SOURCES, Tri, at_most, earns_credit, outcome
 from app.models import (
     Course,
     EnrollmentStatus,
     ProgramRule,
     ProgramVersion,
-    SharingPolicy,
     Requirement,
     RequirementCourseOption,
     RequirementType,
+    SharingPolicy,
     Student,
     StudentCourse,
+)
+from app.services.academic_context import (
+    academic_evidence,
+    allocation_scope,
+    attempt_eligibility,
+    requirement_exemptions,
+    school_requirement_sets,
 )
 from app.services.audit.allocation import (
     AllocationPlan,
@@ -60,6 +68,12 @@ from app.services.audit.allocation import (
     allocate_credits,
     max_distinct_categories,
 )
+from app.services.audit.categories import (
+    DEFAULT_STRATEGY,
+    CategoryAllocationStrategy,
+    CategoryCandidate,
+    CategoryRequest,
+)
 from app.services.audit.optimizer import (
     DEFAULT_OBJECTIVE,
     AllocationProblem,
@@ -67,13 +81,6 @@ from app.services.audit.optimizer import (
     ObjectiveContext,
     RequirementSpec,
 )
-from app.services.audit.categories import (
-    DEFAULT_STRATEGY,
-    CategoryAllocationStrategy,
-    CategoryCandidate,
-    CategoryRequest,
-)
-from app.domain.grades import LETTERS, POLICY_SOURCES, Tri, at_most, earns_credit, outcome
 from app.services.audit.rules import (
     RuleContext,
     StudentCourseView,
@@ -159,7 +166,7 @@ class DegreeAuditEngine:
         self,
         session: Session,
         category_strategy: CategoryAllocationStrategy | None = None,
-        objective: "GlobalAllocationObjective | None" = None,
+        objective: GlobalAllocationObjective | None = None,
     ) -> None:
         self.session = session
         # Internal seam, not a user-facing setting: it exists so the two
@@ -182,13 +189,9 @@ class DegreeAuditEngine:
     # ------------------------------------------------------------------ #
 
     def _load_requirements(self, version_id) -> list[Requirement]:
-        return list(
-            self.session.scalars(
-                select(Requirement)
-                .where(Requirement.program_version_id == version_id)
-                .order_by(Requirement.sort_order, Requirement.code)
-            ).all()
-        )
+        from app.services.academic_context import composed_requirements
+        version = self.session.get(ProgramVersion, version_id)
+        return composed_requirements(self.session, version) if version else []
 
     def _load_rules(self, version_id) -> list[ProgramRule]:
         return list(
@@ -342,7 +345,7 @@ class DegreeAuditEngine:
             specs.append(
                 RequirementSpec(
                     code=req.code,
-                    system=req.requirement_system if share else "*",
+                    system=allocation_scope(req) if share else "*",
                     needed_count=needed,
                     needed_categories=req.min_distinct_categories or 0,
                     categories=cats,
@@ -380,7 +383,7 @@ class DegreeAuditEngine:
 
         plan = AllocationPlan()
         per_requirement: dict[str, int] = defaultdict(int)
-        system_of = {r.code: r.requirement_system for r in requirements}
+        system_of = {r.code: allocation_scope(r) for r in requirements}
         for assignment in sorted(
             result.allocation.assignments,
             key=lambda a: (a.requirement_code, a.course_key),
@@ -467,7 +470,7 @@ class DegreeAuditEngine:
                     continue
                 claimed_systems = plan.systems_for_course(candidate.course_key)
                 if candidate.course_key not in held and (
-                    req.requirement_system in claimed_systems
+                    allocation_scope(req) in claimed_systems
                 ):
                     # Held by a different requirement in this system.
                     continue
@@ -501,8 +504,59 @@ class DegreeAuditEngine:
             plan.release(req.code)
             for index, (course_key, category) in enumerate(chosen.assignments):
                 plan.assign(
-                    req.code, index, course_key, req.requirement_system, category
+                    req.code, index, course_key, allocation_scope(req), category
                 )
+
+    @staticmethod
+    def _apply_credit_constraints(requirements, plan, candidates, course_by_key, option_categories):
+        """Bounded local feasible selection for simultaneous count/credit rules.
+
+        Never steals another obligation's allocation. If the bound is reached,
+        evaluation remains conservative; no global optimality is claimed.
+        """
+        from itertools import combinations, islice
+        for req in sorted(requirements, key=lambda r: (r.sort_order, r.code)):
+            if req.requirement_type != "choose_n" or req.min_credits is None:
+                continue
+            held = set(plan.courses_for(req.code))
+            pool = sorted((c.course_key for c in candidates
+                if req.code in c.eligible_requirements and
+                (c.course_key in held or allocation_scope(req) not in
+                 plan.systems_for_course(c.course_key))),
+                key=lambda k: (-float(course_by_key[k]["credits"] or 0),
+                               course_by_key[k]["ref"].course_string, k))
+            selected = None
+            budget = 10000
+            confirmed = [k for k in pool if course_by_key[k]["status"] == "completed"
+                         and not course_by_key[k].get("provisional")
+                         and req.code not in course_by_key[k].get("grade_pending", ())]
+            # Protect earned satisfaction: a higher-credit provisional option
+            # must not displace an available completed feasible selection.
+            for search_pool in (confirmed, pool):
+                for size in range(req.min_count or 0, len(search_pool) + 1):
+                    for keys in islice(combinations(search_pool, size), budget):
+                        budget -= 1
+                        entries = [course_by_key[k] for k in keys]
+                        credits = sum((e["credits"] or Decimal(0) for e in entries),
+                                      Decimal(0))
+                        if credits < req.min_credits or _constraint_checks(req, entries):
+                            continue
+                        if req.min_distinct_categories:
+                            categories = {k: frozenset(option_categories.get(
+                                (course_by_key[k]["ref"].course_id, req.code), set())) for k in keys}
+                            count, _ = max_distinct_categories(categories)
+                            if count < req.min_distinct_categories:
+                                continue
+                        selected = keys
+                        break
+                    if selected is not None or budget <= 0:
+                        break
+                if selected is not None or budget <= 0:
+                    break
+            if selected is not None:
+                plan.release(req.code)
+                for index, key in enumerate(selected):
+                    plan.assign(req.code, index, key, allocation_scope(req))
 
     # ------------------------------------------------------------------ #
     # sequence categories (Phase 6.4)
@@ -545,7 +599,7 @@ class DegreeAuditEngine:
                     if not missing or not all(c in key_of for c in seq):
                         continue
                     free = [key_of[c] for c in missing
-                            if req.requirement_system not in plan.systems_for_course(key_of[c])]
+                            if allocation_scope(req) not in plan.systems_for_course(key_of[c])]
                     if len(free) != len(missing):
                         continue
                     protected = {key_of[c] for s2 in req.category_sequences.values()
@@ -557,9 +611,9 @@ class DegreeAuditEngine:
                         key=lambda slot: plan.by_slot[slot], reverse=True)
                     if len(spare) < len(free):
                         continue
-                    for slot, course_key in zip(spare, free):
+                    for slot, course_key in zip(spare, free, strict=False):
                         plan.release_slot(slot)
-                        plan.assign(req.code, slot[1], course_key, req.requirement_system)
+                        plan.assign(req.code, slot[1], course_key, allocation_scope(req))
                     break
 
     # ------------------------------------------------------------------ #
@@ -605,7 +659,7 @@ class DegreeAuditEngine:
                     c.course_key for c in candidates
                     if req.code in c.eligible_requirements
                     and c.course_key not in held
-                    and req.requirement_system not in plan.systems_for_course(c.course_key)
+                    and allocation_scope(req) not in plan.systems_for_course(c.course_key)
                     and low(c.course_key) is Tri.NO
                 )
                 slot_of = {plan.by_slot[k]: k for k in plan.by_slot if k[0] == req.code}
@@ -617,7 +671,7 @@ class DegreeAuditEngine:
                         continue
                     replacement = free.pop(0)
                     plan.release_slot(slot)
-                    plan.assign(req.code, slot[1], replacement, req.requirement_system)
+                    plan.assign(req.code, slot[1], replacement, allocation_scope(req))
                     bad.remove(course_key)
                 held = [k for k in plan.courses_for(req.code) if k in course_by_key]
 
@@ -702,7 +756,9 @@ class DegreeAuditEngine:
 
         for entry in allocated:
             shared_systems = plan.systems_for_course(entry["key"])
-            also_in = [sys for sys in shared_systems if sys != req.requirement_system]
+            display = getattr(self, "_display_system_by_scope", {})
+            also_in = sorted({display.get(scope, scope) for scope in shared_systems
+                              if display.get(scope, scope) != req.requirement_system})
             reason = (
                 f"Course {entry['ref'].course_string} is eligible for "
                 f"'{req.name}' and was allocated to it."
@@ -740,6 +796,12 @@ class DegreeAuditEngine:
             curation_status=req.curation_status,
         )
 
+        if req.code in getattr(self, "_exempt_requirement_codes", set()):
+            result.status = RequirementStatus.SATISFIED
+            result.reason = "Requirement exempted by explicitly verified academic evidence."
+            result.needed_count = req.min_count
+            result.satisfied_count = req.min_count
+            return result
         if rtype == RequirementType.ALL_OF.value:
             self._eval_all_of(result, child_results)
         elif rtype == RequirementType.ANY_OF.value:
@@ -788,11 +850,12 @@ class DegreeAuditEngine:
             result.status = RequirementStatus.PROVISIONALLY_SATISFIED
             result.reason = (
                 f"All {len(children)} sub-requirements are satisfied, but "
-                f"{len(prov)} rely on in-progress coursework."
+                f"{len(prov)} rely on provisional coursework or unverified evidence."
             )
         elif done or prov:
             result.status = RequirementStatus.PARTIALLY_SATISFIED
-            result.reason = f"{len(done) + len(prov)} of {len(children)} sub-requirements satisfied."
+            result.reason = (
+                f"{len(done) + len(prov)} of {len(children)} sub-requirements satisfied.")
         else:
             result.reason = f"None of the {len(children)} sub-requirements are satisfied yet."
 
@@ -831,7 +894,8 @@ class DegreeAuditEngine:
             result.reason = f"Completed {refs[0].course_string}."
         elif refs:
             result.status = RequirementStatus.PROVISIONALLY_SATISFIED
-            result.reason = f"{refs[0].course_string} is in progress."
+            result.reason = (
+                f"{refs[0].course_string} has a provisional outcome or eligibility evidence.")
         else:
             result.reason = "Required course not completed."
 
@@ -851,6 +915,13 @@ class DegreeAuditEngine:
         result.satisfied_count = got
 
         violations = self._constraint_violations(req, allocated)
+        if req.min_credits is not None:
+            result.needed_credits = req.min_credits
+            result.satisfied_credits = sum((e["credits"] or Decimal(0)
+                                           for e in allocated), Decimal(0))
+            if result.satisfied_credits < req.min_credits:
+                violations.append(f"at least {req.min_credits} credits required "
+                                  f"(found {result.satisfied_credits})")
         if quota and quota["violation"]:
             violations.append(quota["violation"])
 
@@ -894,7 +965,8 @@ class DegreeAuditEngine:
                 )
 
         if violations:
-            result.status = RequirementStatus.PARTIALLY_SATISFIED
+            result.status = (RequirementStatus.PARTIALLY_SATISFIED if got
+                             else RequirementStatus.UNSATISFIED)
             result.reason = f"{got} of {need} selected, but: " + "; ".join(violations)
             return
 
@@ -903,7 +975,9 @@ class DegreeAuditEngine:
             result.reason = f"{got} of {need} courses completed."
         elif got >= need:
             result.status = RequirementStatus.PROVISIONALLY_SATISFIED
-            result.reason = f"{got} of {need} courses, some in progress."
+            result.reason = (
+                f"{got} of {need} courses; some outcomes or eligibility evidence "
+                "remain provisional.")
         elif got:
             result.status = RequirementStatus.PARTIALLY_SATISFIED
             result.reason = f"{got} of {need} courses completed."
@@ -1006,6 +1080,13 @@ class DegreeAuditEngine:
                 )
             )
 
+        if version.publication_basis == "legacy_curated":
+            findings.append(AuditFinding(severity=Severity.WARNING,
+                code="program_legacy_curated",
+                message=("This program is published from legacy curation "
+                         "without a recorded human review."),
+                remediation="Confirm requirements with an academic advisor."))
+
         # Phase 7.0: the review state of the RULES is part of every audit, the
         # student's own program included. Only a published version has been
         # verified by a person against the Rutgers prose; anything else is
@@ -1024,6 +1105,12 @@ class DegreeAuditEngine:
                 )
             )
 
+        for school_set in school_requirement_sets(self.session, version):
+            if school_set.lifecycle_state != "published":
+                findings.append(AuditFinding(severity=Severity.WARNING,
+                    code="school_requirements_pending_review",
+                    message=f"{school_set.name} is a modeled definition awaiting human review.",
+                    remediation="Confirm requirements with an academic advisor."))
         requirements = self._load_requirements(version.id)
         if not requirements:
             return DegreeAuditResult(
@@ -1043,6 +1130,10 @@ class DegreeAuditEngine:
                 disclaimers=[DISCLAIMER],
             )
 
+        evidence = academic_evidence(self.session, student)
+        self._exempt_requirement_codes = requirement_exemptions(requirements, evidence)
+        self._display_system_by_scope = {allocation_scope(r): r.requirement_system
+                                         for r in requirements}
         by_code = {r.code: r for r in requirements}
         children_by_parent: dict = defaultdict(list)
         roots = []
@@ -1229,6 +1320,16 @@ class DegreeAuditEngine:
             eligible = set(eligibility.get(str(course.id), set()))
             grade_pending: set[str] = set()
             for code in sorted(eligible):
+                policy, reason = attempt_eligibility(by_code[code], sc, course, evidence)
+                if policy is Tri.NO:
+                    eligible.discard(code)
+                    continue
+                if policy is Tri.UNKNOWN:
+                    grade_pending.add(code)
+                    findings.append(AuditFinding(severity=Severity.WARNING,
+                        code="requirement_eligibility_unknown", requirement_code=code,
+                        message=f"{course.course_string}: {code}: {reason}",
+                        remediation="Provide verified academic evidence or consult an advisor."))
                 minimum = min_grade_for.get(code)
                 if not minimum:
                     continue
@@ -1275,7 +1376,7 @@ class DegreeAuditEngine:
         # only one course can satisfy must be filled before a large pool that
         # the same course could also serve.
         options_per_requirement: dict[str, int] = defaultdict(int)
-        for course_id, codes in eligibility.items():
+        for _course_id, codes in eligibility.items():
             for code in codes:
                 options_per_requirement[code] += 1
 
@@ -1296,13 +1397,15 @@ class DegreeAuditEngine:
                         slot_index=i,
                         sort_key=(r.sort_order, r.code),
                         option_count=options_per_requirement.get(r.code, 0),
-                        system=r.requirement_system,
+                        system=allocation_scope(r),
                     )
                 )
 
         # EXCLUSIVE is the default, so a program that has not stated a
         # sharing rule behaves exactly as it did before Phase 3.75.
-        share = version.sharing_policy == SharingPolicy.SHARE_ACROSS_SYSTEMS.value
+        share = (version.sharing_policy == SharingPolicy.SHARE_ACROSS_SYSTEMS.value
+                 or any(v.sharing_policy == SharingPolicy.SHARE_ACROSS_SYSTEMS.value
+                        for v in school_requirement_sets(self.session, version)))
 
         # --- global allocation (Phase 4.5) ---
         # The matching below maximizes FILLED SLOTS, which is not the same as
@@ -1337,11 +1440,13 @@ class DegreeAuditEngine:
             requirements, plan, candidates, option_categories, self.category_strategy
         )
 
+        self._apply_credit_constraints(requirements, plan, candidates, course_by_key,
+                                       option_categories)
+
         # --- credit requirements, settled AFTER the matching ---
         # Count requirements have already claimed what they need, so a credit
         # requirement takes only from what is left in its own system - and
         # only until its minimum is met.
-        by_code_all = {r.code: r for r in requirements}
         for req in sorted(requirements, key=lambda r: (r.sort_order, r.code)):
             if req.requirement_type != RequirementType.CREDITS.value:
                 continue
@@ -1353,7 +1458,7 @@ class DegreeAuditEngine:
             for key, entry in course_by_key.items():
                 if req.code not in effective_eligibility.get(entry["ref"].course_id, set()):
                     continue
-                if req.requirement_system in plan.systems_for_course(key):
+                if allocation_scope(req) in plan.systems_for_course(key):
                     continue
                 # The course string is the tie-break: a natural key, so the
                 # choice survives a re-ingest that changes surrogate ids.
@@ -1364,7 +1469,7 @@ class DegreeAuditEngine:
             for i, course_key in enumerate(
                 allocate_credits(req.code, needed, available)
             ):
-                plan.assign(req.code, i, course_key, req.requirement_system)
+                plan.assign(req.code, i, course_key, allocation_scope(req))
 
         # --- sequence categories, then grade quotas (Phase 6.4) ---
         self._apply_sequence_categories(requirements, plan, candidates, course_by_key)
@@ -1479,7 +1584,8 @@ class DegreeAuditEngine:
         ):
             status = AuditStatus.INDETERMINATE
 
-        if any(f.severity is Severity.BLOCKING and f.code == "catalog_year_mismatch" for f in findings):
+        if any(f.severity is Severity.BLOCKING and f.code == "catalog_year_mismatch"
+               for f in findings):
             status = AuditStatus.INSUFFICIENT_DATA
 
         # Remaining is measured against APPLICABLE credits, not completed ones.
@@ -1504,7 +1610,8 @@ class DegreeAuditEngine:
             requirements=results,
             rules=rule_results,
             allocation=allocations,
-            sharing_policy=version.sharing_policy,
+            sharing_policy=(SharingPolicy.SHARE_ACROSS_SYSTEMS.value if share
+                            else version.sharing_policy),
             findings=findings,
             excluded_courses=excluded_refs,
             grade_evaluations=grade_evaluations,

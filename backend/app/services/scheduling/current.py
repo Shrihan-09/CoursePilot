@@ -60,6 +60,7 @@ class CurrentCourse:
     #: Confirmations whose section is no longer in the term's data.
     unavailable: list[dict] = field(default_factory=list)
     sections_available: int = 0
+    confirmed_identities: list[dict] = field(default_factory=list)
 
 
 @dataclass
@@ -76,20 +77,24 @@ def _in_progress(session: Session, student: Student):
         select(StudentCourse, Course)
         .join(Course, Course.id == StudentCourse.course_id)
         .where(StudentCourse.student_id == student.id, StudentCourse.status == "in_progress")
-        .order_by(StudentCourse.term_code, Course.course_string)).all()
+        .order_by(StudentCourse.term_code, Course.course_string)
+    ).all()
 
 
 def _hint(session: Session, student_course_id) -> str | None:
-    value = session.scalar(select(TranscriptImportRow.extracted_class_section)
-                           .where(TranscriptImportRow.student_course_id == student_course_id)
-                           .limit(1))
+    value = session.scalar(
+        select(TranscriptImportRow.extracted_class_section)
+        .where(TranscriptImportRow.student_course_id == student_course_id)
+        .order_by(TranscriptImportRow.created_at.desc(), TranscriptImportRow.id)
+        .limit(1)
+    )
     return value or None
 
 
 def _candidates(session: Session, student: Student, term: str, courses: list[str]):
     data = load_term(session, term, courses, student_attributes(session, student))
     by_course: dict[str, list] = {}
-    for slot, cands in data.candidates.items():
+    for cands in data.candidates.values():
         for c in cands:
             by_course.setdefault(c.course, []).append(c)
     return data, by_course
@@ -98,35 +103,70 @@ def _candidates(session: Session, student: Student, term: str, courses: list[str
 def current_schedule(session: Session, student: Student) -> CurrentSchedule:
     rows = _in_progress(session, student)
     if not rows:
-        return CurrentSchedule(term_code=None, other_in_progress_terms=[], term_published=False,
-                               courses=[])
+        return CurrentSchedule(
+            term_code=None, other_in_progress_terms=[], term_published=False, courses=[]
+        )
     terms = sorted({sc.term_code for sc, _ in rows})
     term = terms[-1]
     current = [(sc, c) for sc, c in rows if sc.term_code == term]
     keys = sorted({c.course_string for _, c in current})
     data, by_course = _candidates(session, student, term, keys)
     confirmations = {}
-    for row in session.scalars(select(StudentCurrentSection).where(
-            StudentCurrentSection.student_id == student.id,
-            StudentCurrentSection.term_code == term)):
+    for row in session.scalars(
+        select(StudentCurrentSection).where(
+            StudentCurrentSection.student_id == student.id, StudentCurrentSection.term_code == term
+        )
+    ):
         confirmations.setdefault(row.student_course_id, []).append(row)
     out = []
     for sc, course in current:
         cands = by_course.get(course.course_string, [])
-        item = CurrentCourse(course=course.course_string, title=course.title, term_code=term,
-                             transcript_section=_hint(session, sc.id),
-                             sections_available=len({c.index_number for c in cands}))
-        for row in sorted(confirmations.get(sc.id, []), key=lambda r: r.component):
-            match = next((c for c in cands if c.index_number == row.index_number
-                          and row.section_id is not None and c.section_id == row.section_id), None)
+        item = CurrentCourse(
+            course=course.course_string,
+            title=course.title,
+            term_code=term,
+            transcript_section=_hint(session, sc.id),
+            sections_available=len({c.index_number for c in cands}),
+        )
+        for row in sorted(
+            confirmations.get(sc.id, []), key=lambda r: (r.component, r.supplement_code)
+        ):
+            item.confirmed_identities.append(
+                {
+                    "term_code": row.term_code,
+                    "course_string": row.course_string,
+                    "section_number": row.section_number,
+                    "index_number": row.index_number,
+                    "supplement_code": row.supplement_code,
+                    "source": row.source,
+                    "confirmed_at": row.confirmed_at,
+                }
+            )
+            match = next(
+                (
+                    c
+                    for c in cands
+                    if c.index_number == row.index_number
+                    and row.section_id is not None
+                    and c.section_id == row.section_id
+                    and (row.section_number is None or c.section_number == row.section_number)
+                    and c.supplement_code == row.supplement_code
+                ),
+                None,
+            )
             if match is None:
-                item.unavailable.append({"index_number": row.index_number,
-                                         "component": row.component})
+                item.unavailable.append(
+                    {"index_number": row.index_number, "component": row.component}
+                )
             else:
                 item.confirmed.append(_choice(match, []))
         out.append(item)
-    return CurrentSchedule(term_code=term, other_in_progress_terms=terms[:-1],
-                           term_published=data.published, courses=out)
+    return CurrentSchedule(
+        term_code=term,
+        other_in_progress_terms=terms[:-1],
+        term_published=data.published,
+        courses=out,
+    )
 
 
 def _current_row(session: Session, student: Student, course: str):
@@ -144,28 +184,38 @@ def sections_for(session: Session, student: Student, course: str):
     """The Rutgers sections of an in-progress course, for the student to choose from."""
     sc, _, term = _current_row(session, student, course)
     data, by_course = _candidates(session, student, term, [course])
-    cands = sorted(by_course.get(course, []), key=lambda c: (c.component != "primary",
-                                                             c.index_number))
+    cands = sorted(
+        by_course.get(course, []), key=lambda c: (c.component != "primary", c.index_number)
+    )
     return term, data.published, [_choice(c, []) for c in cands], _hint(session, sc.id)
 
 
-def confirm_section(session: Session, student: Student, course: str, index_number: str,
-                    now: datetime) -> StudentCurrentSection:
+def confirm_section(
+    session: Session, student: Student, course: str, index_number: str, now: datetime
+) -> StudentCurrentSection:
     sc, _, term = _current_row(session, student, course)
     _, by_course = _candidates(session, student, term, [course])
     match = next((c for c in by_course.get(course, []) if c.index_number == index_number), None)
     if match is None:
         raise SectionNotAvailable(
-            f"Index {index_number} is not a {course} section in this term's Rutgers data.")
-    row = session.scalar(select(StudentCurrentSection).where(
-        StudentCurrentSection.student_course_id == sc.id,
-        StudentCurrentSection.component == match.component))
+            f"Index {index_number} is not a {course} section in this term's Rutgers data."
+        )
+    row = session.scalar(
+        select(StudentCurrentSection).where(
+            StudentCurrentSection.student_course_id == sc.id,
+            StudentCurrentSection.component == match.component,
+            StudentCurrentSection.supplement_code == match.supplement_code,
+        )
+    )
     if row is None:
-        row = StudentCurrentSection(student_id=student.id, student_course_id=sc.id,
-                                    component=match.component)
+        row = StudentCurrentSection(
+            student_id=student.id, student_course_id=sc.id, component=match.component
+        )
         session.add(row)
     row.term_code = term
     row.course_string = course
+    row.section_number = match.section_number
+    row.supplement_code = match.supplement_code
     row.index_number = match.index_number
     row.section_id = match.section_id
     row.source = "student_confirmed"
@@ -176,14 +226,25 @@ def confirm_section(session: Session, student: Student, course: str, index_numbe
 
 def remove_confirmations(session: Session, student: Student, course: str) -> int:
     sc, _, _ = _current_row(session, student, course)
-    rows = list(session.scalars(select(StudentCurrentSection).where(
-        StudentCurrentSection.student_course_id == sc.id)))
+    rows = list(
+        session.scalars(
+            select(StudentCurrentSection).where(StudentCurrentSection.student_course_id == sc.id)
+        )
+    )
     for row in rows:
         session.delete(row)
     session.flush()
     return len(rows)
 
 
-__all__ = ["CurrentCourse", "CurrentSchedule", "CurrentScheduleError", "NotInProgress",
-           "SectionNotAvailable", "confirm_section", "current_schedule", "remove_confirmations",
-           "sections_for"]
+__all__ = [
+    "CurrentCourse",
+    "CurrentSchedule",
+    "CurrentScheduleError",
+    "NotInProgress",
+    "SectionNotAvailable",
+    "confirm_section",
+    "current_schedule",
+    "remove_confirmations",
+    "sections_for",
+]

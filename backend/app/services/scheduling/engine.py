@@ -64,6 +64,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from app.domain.availability import CURRENT_WINDOW, bundle_status, oldest, weakest
+from app.domain.modality import CourseModalityOptions, Modality
 from app.domain.schedule import (
     TIME_UNKNOWN_KINDS,
     WEEKDAYS,
@@ -91,6 +92,7 @@ from app.domain.schedule import (
 )
 from app.services.scheduling.candidates import SectionCandidate, TermData
 from app.services.scheduling.meetings import hhmm, violates_window
+from app.services.scheduling.modality import aggregate, classify_meetings
 from app.services.scheduling.search import Candidate, incompatible_pairs, search
 
 RANKING_OBJECTIVE = ["needs_confirmation", "unknown_time_sections",
@@ -256,7 +258,10 @@ def _option_availability(choices: list[SectionCandidate]) -> OptionAvailability:
         as_of = oldest(_when(x.observed_at) for x in comps)
         courses.append(CourseAvailability(
             course=course, state=bundle_status(x.state for x in comps), freshness=fresh,
-            as_of=as_of.isoformat() if as_of else None, components=comps, reasons=reasons))
+            as_of=as_of.isoformat() if as_of else None, components=comps, reasons=reasons,
+            modality=aggregate(classify_meetings(
+                c.meetings, index=c.index_number,
+                unstructured_meetings=bool(c.meeting_text_in_notes)) for c in parts)))
     state = bundle_status(c.state for c in courses)
     fresh = weakest(c.freshness for c in courses)
     as_of = oldest(_when(c.as_of) for c in courses)
@@ -275,6 +280,8 @@ def _choice(c: SectionCandidate, equivalents: list[SectionCandidate]) -> Section
         course=c.course, component=c.component, course_string=c.course_string,
         supplement_code=c.supplement_code, title=c.title, section_number=c.section_number,
         index_number=c.index_number, campus_code=c.campus_code, meetings=c.meetings,
+        modality=classify_meetings(c.meetings, index=c.index_number,
+                                  unstructured_meetings=bool(c.meeting_text_in_notes)),
         instructors=c.instructors, availability=c.availability, restriction=c.restriction,
         cross_listed_indexes=c.cross_listed, time_verified=c.time_verified, notes=c.notes,
         credits=c.credits, meeting_components=c.meeting_components,
@@ -430,7 +437,19 @@ def schedule(term: TermData, courses: list[str], prefs: SchedulePreferences, max
                 ranking_objective=RANKING_OBJECTIVE)
 
     def result(status, options=(), stats=None):
+        options = list(options)
+        modality_options = []
+        for course in sorted(courses):
+            bundles = [bundle.modality for option in options
+                       for bundle in option.availability.courses if bundle.course == course]
+            if bundles:
+                modality_options.append(CourseModalityOptions(
+                    course=course, term_code=term.term_code,
+                    modes=sorted({b.classification for b in bundles
+                                  if b.classification is not Modality.UNKNOWN}),
+                    unknown_bundle_count=sum(not b.complete for b in bundles)))
         return ScheduleResult(
+            modality_options=modality_options,
             term_code=term.term_code, status=status, requested_courses=courses,
             preferences=prefs, options=list(options), relationships=links,
             issues=sorted(issues, key=lambda i: (i.severity.value, i.code, i.courses, i.indexes)),

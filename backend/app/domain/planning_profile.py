@@ -20,6 +20,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.domain.modality import ModalityPreferences
 from app.domain.planning import Pace, PlanningConstraints
 
 _HHMM = r"^([01][0-9]|2[0-3]):[0-5][0-9]$"
@@ -37,6 +38,8 @@ class ScheduleDefaults(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    modality: ModalityPreferences = Field(default_factory=ModalityPreferences,
+        description="Proposal-only foundation; not applied by planning or scheduling yet.")
     earliest_start: str | None = Field(default=None, pattern=_HHMM)
     latest_end: str | None = Field(default=None, pattern=_HHMM)
     avoid_days: list[Literal["M", "T", "W", "H", "F", "S", "U"]] = Field(default_factory=list,

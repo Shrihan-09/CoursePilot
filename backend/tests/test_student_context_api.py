@@ -431,6 +431,11 @@ async def test_no_path_parameterised_student_route_exists(app) -> None:
     # current schedule (with section confirmation by course QUERY/BODY, never
     # a path id) - parameterless, owner-resolved, extra="forbid" bodies; see
     # tests/test_personalization_api.py.
+    #
+    # Phase 7.2.2 added modeled progress and registrations (parameterless,
+    # owner-resolved) and staged WebReg schedule imports, whose {import_id} /
+    # {row_id} name an IMPORT or ROW looked up inside the caller's own record
+    # (another account's id is a 404) - see tests/test_schedule_import_api.py.
     assert sorted(student_self_service) == [
         "/api/v1/student/audit",
         "/api/v1/student/context",
@@ -448,8 +453,14 @@ async def test_no_path_parameterised_student_route_exists(app) -> None:
         "/api/v1/student/plans/generate",
         "/api/v1/student/profile",
         "/api/v1/student/program",
+        "/api/v1/student/progress",
+        "/api/v1/student/registrations",
         "/api/v1/student/scenarios/audit",
         "/api/v1/student/scenarios/compare",
+        "/api/v1/student/schedule-imports",
+        "/api/v1/student/schedule-imports/{import_id}",
+        "/api/v1/student/schedule-imports/{import_id}/confirm",
+        "/api/v1/student/schedule-imports/{import_id}/rows/{row_id}",
         "/api/v1/student/schedules/generate",
         "/api/v1/student/transcripts",
         "/api/v1/student/transcripts/{import_id}",

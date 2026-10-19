@@ -201,6 +201,7 @@ _UPDATABLE_COLUMN = {
     "requirement": "curation_status",
     "requirement_course_option": "category",
     "program_rule": "curation_status",
+    "school_requirement_set_version": "lifecycle_state",
 }
 
 

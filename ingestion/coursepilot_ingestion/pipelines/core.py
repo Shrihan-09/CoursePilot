@@ -27,7 +27,10 @@ from coursepilot_ingestion.core_schemas import (
 )
 from coursepilot_ingestion.loaders.core import CoreLoader
 from coursepilot_ingestion.normalizers.core import CoreNormalizer
-from coursepilot_ingestion.parsers.core import CoreDefinitionParser, CoreEligibilityParser
+from coursepilot_ingestion.parsers.core import (
+    CoreDefinitionParser,
+    CoreEligibilityParser,
+)
 from coursepilot_ingestion.validators.core import CoreValidator
 
 logger = logging.getLogger(__name__)
@@ -54,13 +57,9 @@ class CoreIngestionPipeline:
     ) -> CoreIngestionStats:
         """Load SAS Core into one existing program version.
 
-        `target_program` ({school_code, program_code, degree_type}) overrides
-        the definition's own target. SAS Core binds every SAS major, so WHICH
-        major's version it joins is a decision made at load time - not a fact
-        of the Core source. Before Phase 6.0 the only way to say that was the
-        target baked into the JSON, which named Computer Science; loading Core
-        for a second major needs the same source pointed somewhere else, not a
-        second copy of the definition.
+        `target_program` is a legacy compatibility argument, validated but
+        no longer used to clone school rules into a major. School and catalog
+        applicability come from the independently sourced definition.
         """
         raw_definition = definition_path.read_bytes()
         definition = self.definition_parser.parse(raw_definition)
@@ -68,6 +67,9 @@ class CoreIngestionPipeline:
             missing = {"school_code", "program_code", "degree_type"} - set(target_program)
             if missing:
                 raise ValueError(f"target_program is missing {sorted(missing)}")
+            if target_program["school_code"] != definition.school["code"]:
+                raise ValueError("target_program cannot override the source school applicability")
+            # Legacy compatibility: matching majors now share one school set.
             definition.target_program = dict(target_program)
         catalog_year = definition.source["catalog_year"]
 

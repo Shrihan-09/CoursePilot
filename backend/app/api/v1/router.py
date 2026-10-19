@@ -18,10 +18,12 @@ from app.api.v1.routes import (
     programs,
     scenarios,
     schedules,
+    schedule_imports,
     live,
     onboarding,
     personalization,
     student,
+    progress,
     watches,
 )
 
@@ -31,12 +33,14 @@ api_router.include_router(meta.router)
 api_router.include_router(explanations.router)
 api_router.include_router(account.router)
 api_router.include_router(student.router)
+api_router.include_router(progress.router)
 api_router.include_router(onboarding.router)
 api_router.include_router(programs.router)
 api_router.include_router(scenarios.router)
 api_router.include_router(plans.router)
 api_router.include_router(personalization.router)
 api_router.include_router(schedules.router)
+api_router.include_router(schedule_imports.router)
 api_router.include_router(watches.router)
 for _live_router in live.routers:
     api_router.include_router(_live_router)
@@ -45,3 +49,4 @@ api_router.include_router(admin.router)
 # Future routers land here as they are implemented:
 #   courses.router      — course search / lookup
 #   students.router     — profile, completed courses
+

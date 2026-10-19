@@ -47,7 +47,6 @@ from app.core.observability import redact_id
 from app.models import (
     LINK_ACTION_CREATED,
     ProgramVersion,
-    Requirement,
     Student,
     StudentCourse,
     StudentLinkEvent,
@@ -116,10 +115,11 @@ def lifecycle_warnings(session: Session, version: ProgramVersion) -> list[Select
             "requirements_pending_review", "warning",
             f"This program's requirement encoding {detail}. Audits and plans for it "
             "are provisional."))
-    has_core = session.scalar(
-        select(func.count()).select_from(Requirement).where(
-            Requirement.program_version_id == version.id,
-            Requirement.requirement_system == "core")) or 0
+    from app.services.academic_context import composed_requirements
+    has_core = any(r.requirement_system == "core" for r in composed_requirements(session, version))
+    if version.publication_basis == "legacy_curated":
+        out.append(SelectionWarning("legacy_curated_requirements", "warning",
+            "This program is published from legacy curation without a recorded human review."))
     if not has_core:
         out.append(SelectionWarning(
             "school_requirements_not_included", "warning",

@@ -1,52 +1,25 @@
 {
   "_README": [
-    "SAS Core Curriculum, catalog year 2026-2027.",
-    "",
-    "TWO AUTHORITATIVE SOURCES, each for a different fact:",
-    "",
-    "  1. GOAL DEFINITIONS + REQUIREMENT STRUCTURE (this file, curated):",
-    "     sasoue.rutgers.edu/core/core-learning-goals - the SAS Office of",
-    "     Undergraduate Education publishes the goals, their official codes,",
-    "     their wording, the area groupings, and the credit/course counts.",
-    "     Published as prose, so this structure is a HUMAN DERIVATION and every",
-    "     node carries the sentence it came from.",
-    "",
-    "  2. COURSE -> GOAL ELIGIBILITY (NOT in this file):",
-    "     Rutgers SOC `coreCodes`, which publishes certification as structured",
-    "     data. Eligibility is ingested from the SOC archive, never curated by",
-    "     hand - a hand-maintained course list would be stale within a term.",
-    "",
-    "CODES NOT INCLUDED, and why:",
-    "  SOEHS  School of Engineering humanities/social science - not SAS Core",
-    "  GVT    'SEBS Core: Government/Regulatory Analysis' - SEBS, not SAS",
-    "  ECN    'SEBS Core: Economic Analysis' - SEBS, not SAS",
-    "  CE     description literally reads 'Non-Core: Community Engagement'",
-    "  ITR    'Information Technology and Research' - certified on 34 courses in",
-    "         SOC but NOT listed as a current goal by either official SAS page.",
-    "         Recorded as a SOURCE CONFLICT rather than guessed at.",
-    "  WC     'Writing and Communication 01:355:101' - 3 courses in SOC, not",
-    "         listed as a current goal. Also a source conflict.",
-    "",
-    "CASE NOTE: the official page writes WCR/WCD; SOC writes WCr/WCd. Same",
-    "goals. Matching is case-insensitive on the code - see the normalizer."
+    "SAS Core, independently versioned by school/catalog year; composed with any matching major.",
+    "Course-to-goal certifications remain SOC-sourced. Structure and scoped sharing are curated from the linked official sources.",
+    "WC is confirmed by the current official writing page; obsolete WC conflict removed.",
+    "Credit headings coexist with certified low-credit writing courses. Do not invent three-credit child minima; count graded credit-bearing courses.",
+    "AP English exemption requires verified evidence. Missing evidence never silently waives WC.",
+    "WCr requires Rutgers-New Brunswick attendance; generic Rutgers credit origin alone is insufficient proof."
   ],
   "source": {
     "url": "https://sasoue.rutgers.edu/core/core-learning-goals",
-    "secondary_url": "https://sasundergrad.rutgers.edu/degree-requirements/core",
+    "secondary_url": "https://sasundergrad.rutgers.edu/majors-and-core-curriculum/core/cognitive-skills-and-processes-writing-and-communication",
     "catalog_year": "2026-2027",
     "retrieved_at": "2026-09-18",
     "kind": "rutgers_department_page",
-    "curation_status": "curated_from_prose"
+    "curation_status": "curated_from_prose",
+    "sharing_url": "https://sasundergrad.rutgers.edu/resources/faq/faq-detail/how-can-i-check-and-see-what-courses-are-being-offered-2"
   },
   "school": {
     "code": "SAS",
     "name": "School of Arts and Sciences",
     "campus_code": "NB"
-  },
-  "program_version": {
-    "_why": "Applied to the TARGET version. Core is the reason it must share.",
-    "sharing_policy": "share_across_systems",
-    "source_prose": "A course used to meet core goals may also be used to fulfill a major or minor requirement."
   },
   "requirement_system": "core",
   "goals": [
@@ -114,6 +87,11 @@
       "code": "QR",
       "name": "Mathematical or Formal Reasoning",
       "description": "Apply effective and efficient mathematical or other formal processes to reason and to solve problems."
+    },
+    {
+      "code": "WC",
+      "name": "College Writing",
+      "description": "College Writing 01:355:101 or certified equivalent (01:355:103/104). Verified AP English composition/literature score of 4 or higher exempts this obligation."
     }
   ],
   "requirements": [
@@ -123,7 +101,8 @@
       "requirement_type": "all_of",
       "sort_order": 0,
       "parent": null,
-      "source_prose": "Students generally will complete the core in 10 to 14 courses of 3 or 4 credits each."
+      "source_prose": "Students generally will complete the core in 10 to 14 courses of 3 or 4 credits each.",
+      "graded_only": true
     },
     {
       "code": "CORE_CC",
@@ -131,7 +110,8 @@
       "requirement_type": "all_of",
       "sort_order": 0,
       "parent": "SAS_CORE",
-      "source_prose": "Contemporary Challenges (2 courses required; 1 from each category)"
+      "source_prose": "Contemporary Challenges (2 courses required; 1 from each category)",
+      "graded_only": true
     },
     {
       "code": "CORE_CCD",
@@ -141,7 +121,9 @@
       "parent": "CORE_CC",
       "min_count": 1,
       "goal": "CCD",
-      "source_prose": "2 courses required; 1 from each category"
+      "source_prose": "2 courses required; 1 from each category",
+      "graded_only": true,
+      "allocation_scope": "core:contemporary"
     },
     {
       "code": "CORE_CCO",
@@ -151,7 +133,9 @@
       "parent": "CORE_CC",
       "min_count": 1,
       "goal": "CCO",
-      "source_prose": "2 courses required; 1 from each category"
+      "source_prose": "2 courses required; 1 from each category",
+      "graded_only": true,
+      "allocation_scope": "core:contemporary"
     },
     {
       "code": "CORE_AOI",
@@ -159,7 +143,8 @@
       "requirement_type": "all_of",
       "sort_order": 1,
       "parent": "SAS_CORE",
-      "source_prose": "Areas of Inquiry"
+      "source_prose": "Areas of Inquiry",
+      "graded_only": true
     },
     {
       "code": "CORE_NS",
@@ -170,7 +155,9 @@
       "min_credits": 6,
       "goal": "NS",
       "notes": "The source states credits (6) but no course count for NS, so this is modeled as a credit requirement rather than inventing a number of courses.",
-      "source_prose": "Natural Sciences [NS] (6 credits)"
+      "source_prose": "Natural Sciences [NS] (6 credits)",
+      "graded_only": true,
+      "allocation_scope": "core:natural-sciences"
     },
     {
       "code": "CORE_HSA",
@@ -178,7 +165,8 @@
       "requirement_type": "all_of",
       "sort_order": 1,
       "parent": "CORE_AOI",
-      "source_prose": "Historical and Social Analysis (6 credits; 2 courses required)"
+      "source_prose": "Historical and Social Analysis (6 credits; 2 courses required)",
+      "graded_only": true
     },
     {
       "code": "CORE_HST",
@@ -188,7 +176,10 @@
       "parent": "CORE_HSA",
       "min_count": 1,
       "goal": "HST",
-      "source_prose": "Historical Analysis [HST] (3 credits)"
+      "source_prose": "Historical Analysis [HST] (3 credits)",
+      "graded_only": true,
+      "allocation_scope": "core:historical-social",
+      "min_credits": 3
     },
     {
       "code": "CORE_SCL",
@@ -198,7 +189,10 @@
       "parent": "CORE_HSA",
       "min_count": 1,
       "goal": "SCL",
-      "source_prose": "Social Analysis [SCL] (3 credits)"
+      "source_prose": "Social Analysis [SCL] (3 credits)",
+      "graded_only": true,
+      "allocation_scope": "core:historical-social",
+      "min_credits": 3
     },
     {
       "code": "CORE_AH",
@@ -215,7 +209,10 @@
       ],
       "notes": "Two INDEPENDENT conditions: min_count=2 courses AND min_distinct_categories=2 goals. A single course certified for two AH goals therefore cannot satisfy the area on its own - it is one course.",
       "source_prose": "Arts and the Humanities [AH] (6 credits) Students must take two degree credit-bearing courses and meet at least two of these goals.",
-      "min_distinct_categories": 2
+      "min_distinct_categories": 2,
+      "graded_only": true,
+      "allocation_scope": "core:arts-humanities",
+      "min_credits": 6
     },
     {
       "code": "CORE_CSP",
@@ -223,33 +220,104 @@
       "requirement_type": "all_of",
       "sort_order": 2,
       "parent": "SAS_CORE",
-      "source_prose": "Cognitive Skills and Processes"
+      "source_prose": "Cognitive Skills and Processes",
+      "graded_only": true
     },
     {
       "code": "CORE_WC",
       "name": "Writing and Communication",
-      "requirement_type": "choose_n",
+      "requirement_type": "all_of",
       "sort_order": 0,
       "parent": "CORE_CSP",
-      "min_count": 3,
-      "goals": [
-        "WCr",
-        "WCd"
-      ],
-      "source_prose": "Writing and Communication (9 credits; 3 courses required)"
+      "source_prose": "College Writing or equivalent, plus separate WCr and WCd credit-bearing courses; verified AP English score >=4 exempts College Writing.",
+      "graded_only": true
     },
     {
       "code": "CORE_QFR",
       "name": "Quantitative and Formal Reasoning",
-      "requirement_type": "choose_n",
+      "requirement_type": "all_of",
       "sort_order": 1,
       "parent": "CORE_CSP",
-      "min_count": 2,
-      "goals": [
-        "QQ",
-        "QR"
+      "source_prose": "Two degree credit-bearing courses meeting both QQ and QR; separate courses required.",
+      "graded_only": true
+    },
+    {
+      "code": "CORE_COLLEGE_WRITING",
+      "name": "College Writing",
+      "requirement_type": "choose_n",
+      "min_count": 1,
+      "parent": "CORE_WC",
+      "sort_order": 0,
+      "goal": "WC",
+      "graded_only": true,
+      "allocation_scope": "core:writing",
+      "source_prose": "Separate credit-bearing course certified for WC.",
+      "exemption_rule": {
+        "evidence_kind": "exam_score",
+        "keys": [
+          "ap_english_language",
+          "ap_english_literature"
+        ],
+        "minimum_score": 4,
+        "allowed_scores": [
+          4,
+          5
+        ]
+      }
+    },
+    {
+      "code": "CORE_WCR",
+      "name": "Revision-Based Writing",
+      "requirement_type": "choose_n",
+      "min_count": 1,
+      "parent": "CORE_WC",
+      "sort_order": 1,
+      "goal": "WCr",
+      "graded_only": true,
+      "allocation_scope": "core:writing",
+      "source_prose": "Separate credit-bearing course certified for WCr.",
+      "eligible_origins": [
+        "rutgers"
       ],
-      "source_prose": "Quantitative and Formal Reasoning (6 credits; 2 courses required)"
+      "required_campus": "NB"
+    },
+    {
+      "code": "CORE_WCD",
+      "name": "Discipline-Based Writing",
+      "requirement_type": "choose_n",
+      "min_count": 1,
+      "parent": "CORE_WC",
+      "sort_order": 2,
+      "goal": "WCd",
+      "graded_only": true,
+      "allocation_scope": "core:writing",
+      "source_prose": "Separate credit-bearing course certified for WCd."
+    },
+    {
+      "code": "CORE_QQ",
+      "name": "Quantitative Information",
+      "requirement_type": "choose_n",
+      "min_count": 1,
+      "parent": "CORE_QFR",
+      "sort_order": 0,
+      "goal": "QQ",
+      "graded_only": true,
+      "allocation_scope": "core:quantitative",
+      "source_prose": "Separate credit-bearing course certified for QQ.",
+      "min_credits": 3
+    },
+    {
+      "code": "CORE_QR",
+      "name": "Mathematical or Formal Reasoning",
+      "requirement_type": "choose_n",
+      "min_count": 1,
+      "parent": "CORE_QFR",
+      "sort_order": 1,
+      "goal": "QR",
+      "graded_only": true,
+      "allocation_scope": "core:quantitative",
+      "source_prose": "Separate credit-bearing course certified for QR.",
+      "min_credits": 3
     }
   ],
   "known_conflicts": [
@@ -258,19 +326,13 @@
       "soc_description": "Information Technology and Research",
       "issue": "Certified on courses in SOC but not listed as a current goal by sasoue.rutgers.edu or sasundergrad.rutgers.edu.",
       "resolution": "No requirement node created. Eligibility rows are reported as unmapped rather than dropped or invented."
-    },
-    {
-      "code": "WC",
-      "soc_description": "Writing and Communication 01:355:101",
-      "issue": "Certified on 3 courses in SOC but not listed as a current goal; the official page lists WCR and WCD.",
-      "resolution": "No requirement node created; reported as unmapped."
     }
   ],
-  "target_program": {
-    "_why": "Core requirements are attached to the STUDENT'S program version, tagged requirement_system='core'. They are not a separate program: the audit engine evaluates one ProgramVersion, and sharing only works when major and core requirements live in the same tree.",
-    "school_code": "SAS",
-    "program_code": "198",
-    "degree_type": "BA",
-    "catalog_year": "2026-2027"
+  "requirement_set": {
+    "code": "sas-core",
+    "name": "SAS Core Curriculum",
+    "definition_version": "7.2.2",
+    "requirement_system": "core",
+    "sharing_policy": "share_across_systems"
   }
 }
