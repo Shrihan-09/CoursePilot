@@ -25,9 +25,9 @@ export interface NavItem {
 
 export const NAV: NavItem[] = [
   { href: "/home", label: "Home", icon: Home, available: true, mobile: "tab" },
-  { href: "/degree", label: "Degree", icon: GraduationCap, available: false, mobile: "tab" },
-  { href: "/plan", label: "Plan", icon: Map, available: false, mobile: "tab" },
-  { href: "/schedule", label: "Schedule", icon: CalendarDays, available: false, mobile: "tab" },
+  { href: "/degree", label: "Degree", icon: GraduationCap, available: true, mobile: "tab" },
+  { href: "/plan", label: "Plan", icon: Map, available: true, mobile: "tab" },
+  { href: "/schedule", label: "Schedule", icon: CalendarDays, available: true, mobile: "tab" },
   { href: "/courses", label: "Courses", icon: BookOpen, available: false, mobile: "more" },
   { href: "/notifications", label: "Notifications", icon: Bell, available: false, mobile: "more" },
   { href: "/assistant", label: "Assistant", icon: MessageSquareText, available: false, mobile: "more" },

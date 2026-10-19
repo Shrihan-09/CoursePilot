@@ -18,6 +18,9 @@ import type {
   Profile,
   Program,
 } from "@/types/onboarding";
+import type { DegreeAudit, ScenarioAudit, ScenarioComparison } from "@/types/degree";
+import type { PlanningConstraints, PlanningContext, SavedPlan } from "@/types/plan";
+import type { ScheduleRequest, ScheduleResult } from "@/types/schedule";
 
 export class ApiError extends Error {
   constructor(
@@ -101,4 +104,21 @@ export const api = {
                           json("POST", { expected_version })),
   discardTranscript: (id: string) =>
     request<ImportSummary>(`/student/transcripts/${id}`, { method: "DELETE" }),
+
+  /* Phase 7.2 - each returns an engine's result unchanged. */
+  audit: () => request<DegreeAudit>("/student/audit"),
+  scenarioAudit: (program_key: string, catalog_year: string | null) =>
+    request<ScenarioAudit>("/student/scenarios/audit", json("POST", { program_key, catalog_year })),
+  scenarioCompare: (program_key: string, catalog_year: string | null) =>
+    request<ScenarioComparison>("/student/scenarios/compare",
+                                json("POST", { program_key, catalog_year })),
+
+  planningContext: () => request<PlanningContext>("/student/plans/context"),
+  currentPlan: () => request<{ plan: SavedPlan | null }>("/student/plans/current"),
+  savePlan: (start_term: string, constraints: PlanningConstraints) =>
+    request<SavedPlan>("/student/plans", json("POST", { start_term, constraints })),
+  deletePlan: () => request<void>("/student/plans/current", { method: "DELETE" }),
+
+  schedules: (body: ScheduleRequest) =>
+    request<ScheduleResult>("/student/schedules/generate", json("POST", body)),
 };
