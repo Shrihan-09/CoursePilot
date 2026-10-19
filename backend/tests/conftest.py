@@ -20,6 +20,10 @@ os.environ.setdefault("LLM_PROVIDER", "echo")
 # outright when the environment is production - see app/api/security.py.
 os.environ.setdefault("DEV_AUTH_ENABLED", "true")
 os.environ.setdefault("AUTH_PROVIDER", "dev")
+# Phase 7.2.1: plan start terms depend on "today" (services/planning/
+# calendar.py). Pinned so term arithmetic in tests never drifts with the clock:
+# 2025-12-01 is Fall 2025, so the next plannable term is Spring 2026.
+os.environ.setdefault("ACADEMIC_TODAY", "2025-12-01")
 
 
 @pytest.fixture

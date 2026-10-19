@@ -52,14 +52,17 @@ from app.models import (
 )
 from app.models.plans import StudentPlan
 from app.services.audit.cache import AUDIT_ENGINE_VERSION, academic_fingerprint, rules_fingerprint
+from app.services.planning.calendar import current_term, default_start, start_options
 from app.services.planning.offerings import dataset_identity
-from app.services.planning.service import generate_plan
+from app.services.planning.profile import get_profile, profile_input
+from app.services.planning.service import InvalidStartTerm, generate_plan, latest_history_term
 from app.services.planning.terms import label, next_term
 
 SOC_KIND = "rutgers_official_api"
 
 STALE_REASONS = ("program_changed", "academic_record_changed", "program_rules_changed",
-                 "rutgers_data_changed", "engine_updated", "start_term_passed")
+                 "rutgers_data_changed", "engine_updated", "start_term_passed",
+                 "planning_preferences_changed")
 
 #: Issue codes whose `details` name courses the planner did not place.
 _BLOCKING_DETAIL_CODES = ("ELIGIBILITY_UNKNOWN", "NO_PLACEABLE_OFFERING")
@@ -82,10 +85,17 @@ class LoadedTerm:
 
 @dataclass(frozen=True)
 class PlanningContext:
+    #: The latest term of COMPLETED or IN-PROGRESS coursework ("record through").
     latest_recorded_term: str | None
-    #: None only when the student has no recorded term AND no Rutgers term
-    #: data is loaded - there is then nothing to anchor a start term to.
-    earliest_start_term: str | None
+    #: The earliest such term ("history starts").
+    earliest_recorded_term: str | None
+    #: The Rutgers term in session today (approximate boundaries; calendar.py).
+    current_term: str
+    #: The default PLAN STARTING SEMESTER: the first future Fall/Spring term
+    #: that also follows the record (Phase 7.2.1 - never in the past).
+    earliest_start_term: str
+    #: Every start the API accepts, in the seasons the student plans in.
+    start_options: list[str]
     loaded_terms: list[LoadedTerm]
 
 
@@ -114,32 +124,41 @@ def loaded_terms(session: Session) -> list[LoadedTerm]:
     return out
 
 
-def _latest_term(session: Session, student: Student) -> str | None:
-    # Same query generate_plan uses for its start-term check (planned rows
-    # included), so the earliest start offered here is never refused there.
-    return session.scalar(select(StudentCourse.term_code)
-                          .where(StudentCourse.student_id == student.id)
-                          .order_by(StudentCourse.term_code.desc()).limit(1))
+def minimum_start(session: Session, student: Student) -> str:
+    """The earliest start the API accepts: after the current term AND after the record."""
+    floor = next_term(current_term())
+    latest = latest_history_term(session, student)
+    if latest is not None and next_term(latest) > floor:
+        floor = next_term(latest)
+    return floor
+
+
+def check_start(session: Session, student: Student, start_term: str) -> None:
+    """A saved plan never starts in the past or inside the recorded history."""
+    floor = minimum_start(session, student)
+    if start_term < floor:
+        raise InvalidStartTerm(
+            f"A plan starts in a future term: {label(floor)} ({floor}) or later. Terms that "
+            "have passed, or that your record already covers, can't be planned.")
 
 
 def planning_context(session: Session, student: Student) -> PlanningContext:
-    latest = _latest_term(session, student)
-    terms = loaded_terms(session)
-    if latest is not None:
-        earliest = next_term(latest)
-    elif terms:
-        # No recorded term at all: the most recent term Rutgers has published
-        # is the natural start. Never a clock - the server has no notion of
-        # "the current term" and does not invent one.
-        earliest = terms[-1].term_code
-    else:
-        earliest = None
-    # Fall/Spring only by default: a winter or summer start is still valid,
-    # but the default should be the next regular term.
-    while earliest is not None and earliest[4] not in "19":
-        earliest = next_term(earliest)
-    return PlanningContext(latest_recorded_term=latest, earliest_start_term=earliest,
-                           loaded_terms=terms)
+    latest = latest_history_term(session, student)
+    earliest = session.scalar(select(StudentCourse.term_code).where(
+        StudentCourse.student_id == student.id,
+        StudentCourse.status.in_(("completed", "in_progress")))
+        .order_by(StudentCourse.term_code).limit(1))
+    profile = get_profile(session, student)
+    prefs = profile_input(profile) if profile is not None else None
+    options = start_options(minimum_start(session, student), 6,
+                            include_summer=bool(prefs and prefs.include_summer),
+                            include_winter=bool(prefs and prefs.include_winter))
+    default = default_start(latest)
+    if default not in options:
+        options = sorted({*options, default})
+    return PlanningContext(latest_recorded_term=latest, earliest_recorded_term=earliest,
+                           current_term=current_term(), earliest_start_term=default,
+                           start_options=options, loaded_terms=loaded_terms(session))
 
 
 # --------------------------------------------------------------------------
@@ -178,13 +197,20 @@ def _decode(blob: bytes) -> PlanResult:
     return PlanResult.model_validate_json(zlib.decompress(blob))
 
 
-def save_plan(session: Session, student: Student, *, start_term: str,
+def save_plan(session: Session, student: Student, *, start_term: str | None,
               constraints: PlanningConstraints) -> SavedPlan:
     """Generate the student's plan for THEIR OWN program and replace the saved one.
+
+    Phase 7.2.1: `constraints` come from the student's CONFIRMED Planning
+    Profile (the route passes `to_constraints(profile)`), and the start term
+    defaults to - and may never precede - the server's planning floor.
 
     `generate_plan` runs read-only (it raises if the engine would write); the
     single write is the upsert below, committed by the caller's transaction.
     """
+    if start_term is None:
+        start_term = default_start(latest_history_term(session, student))
+    check_start(session, student, start_term)
     result = generate_plan(session, student, start_term=start_term, constraints=constraints)
     meta = result.metadata
     row = session.scalar(select(StudentPlan).where(StudentPlan.student_id == student.id))
@@ -242,9 +268,15 @@ def stale_reasons(session: Session, student: Student, row: StudentPlan) -> list[
     if (row.planning_engine_version != PLANNING_ENGINE_VERSION
             or row.audit_engine_version != AUDIT_ENGINE_VERSION):
         reasons.append("engine_updated")
-    latest = _latest_term(session, student)
-    if latest is not None and latest >= row.start_term:
+    latest = latest_history_term(session, student)
+    if (latest is not None and latest >= row.start_term) or row.start_term <= current_term():
         reasons.append("start_term_passed")
+    profile = get_profile(session, student)
+    if profile is not None:
+        from app.domain.planning_profile import to_constraints
+
+        if to_constraints(profile_input(profile)).model_dump(mode="json") !=                 PlanningConstraints.model_validate(row.constraints).model_dump(mode="json"):
+            reasons.append("planning_preferences_changed")
     return reasons
 
 
@@ -312,5 +344,5 @@ def blocked_courses(session: Session, result: PlanResult) -> list[BlockedCourse]
 
 
 __all__ = ["BlockedCourse", "LoadedTerm", "PlanningContext", "STALE_REASONS", "SavedPlan",
-           "blocked_courses", "current_plan", "delete_plan", "loaded_terms", "planning_context",
-           "save_plan", "stale_reasons"]
+           "blocked_courses", "check_start", "current_plan", "delete_plan", "loaded_terms",
+           "minimum_start", "planning_context", "save_plan", "stale_reasons"]

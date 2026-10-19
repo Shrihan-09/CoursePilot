@@ -20,6 +20,7 @@ from app.api.v1.routes import (
     schedules,
     live,
     onboarding,
+    personalization,
     student,
     watches,
 )
@@ -34,6 +35,7 @@ api_router.include_router(onboarding.router)
 api_router.include_router(programs.router)
 api_router.include_router(scenarios.router)
 api_router.include_router(plans.router)
+api_router.include_router(personalization.router)
 api_router.include_router(schedules.router)
 api_router.include_router(watches.router)
 for _live_router in live.routers:

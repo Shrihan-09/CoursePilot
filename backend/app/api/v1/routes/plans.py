@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import logging
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
@@ -47,6 +47,9 @@ from app.services.planning.saved import (
     planning_context,
     save_plan,
 )
+from app.domain.planning_profile import to_constraints
+from app.services.planning.profile import get_profile, profile_input
+from app.services.planning.readiness import READY_STATES, readiness
 from app.services.planning.service import InvalidStartTerm, generate_plan
 from app.services.planning.terms import label as term_label
 from app.services.scenarios import (
@@ -137,10 +140,22 @@ class LoadedTermView(BaseModel):
     retrieved_at: datetime | None
 
 
+class TermOption(BaseModel):
+    term_code: str
+    label: str
+
+
 class PlanningContextView(BaseModel):
+    #: "History starts" and "record through": completed or in-progress terms.
+    earliest_recorded_term: str | None
     latest_recorded_term: str | None
-    earliest_start_term: str | None
-    earliest_start_label: str | None
+    #: The Rutgers term in session today (approximate boundaries).
+    current_term: str
+    current_term_label: str
+    #: The default PLAN STARTING SEMESTER, and every start the API accepts.
+    earliest_start_term: str
+    earliest_start_label: str
+    start_options: list[TermOption]
     #: Terms with Rutgers section data loaded - the only terms the Schedule
     #: Engine can build for.
     loaded_terms: list[LoadedTermView]
@@ -182,10 +197,13 @@ class CurrentPlanResponse(BaseModel):
 
 
 class SavePlanRequest(BaseModel):
-    """My own program only - a what-if plan is generated, never saved."""
+    """My own program only - a what-if plan is generated, never saved.
 
-    start_term: str = Field(pattern=r"^\d{4}[0179]$")
-    constraints: PlanningConstraints = Field(default_factory=PlanningConstraints)
+    Phase 7.2.1: the load settings come from my CONFIRMED Planning Profile, not
+    from the request; the body may only choose the starting semester (default:
+    the server's), which must be a future term."""
+
+    start_term: str | None = Field(default=None, pattern=r"^\d{4}[0179]$")
 
     model_config = {"extra": "forbid"}
 
@@ -211,10 +229,13 @@ async def context(principal: Principal = Depends(enforce_request_rate_limit)
                 return None
             ctx = planning_context(session, student)
             return PlanningContextView(
+                earliest_recorded_term=ctx.earliest_recorded_term,
                 latest_recorded_term=ctx.latest_recorded_term,
+                current_term=ctx.current_term, current_term_label=term_label(ctx.current_term),
                 earliest_start_term=ctx.earliest_start_term,
-                earliest_start_label=(term_label(ctx.earliest_start_term)
-                                      if ctx.earliest_start_term else None),
+                earliest_start_label=term_label(ctx.earliest_start_term),
+                start_options=[TermOption(term_code=t, label=term_label(t))
+                               for t in ctx.start_options],
                 loaded_terms=[LoadedTermView(**vars(t)) for t in ctx.loaded_terms],
                 default_constraints=PlanningConstraints())
     try:
@@ -242,12 +263,22 @@ async def save(body: SavePlanRequest,
             student = lock_student(session, principal.account_id)
             if student is None:
                 return None
+            # Server-owned readiness: confirmed history and confirmed
+            # preferences, or no saved plan.
+            ready = readiness(session, principal.account_id, datetime.now(UTC))
+            if ready.state not in READY_STATES:
+                missing = next((c.message for c in ready.checks if c.state == "missing"),
+                               "CoursePilot isn't ready to build your plan yet.")
+                raise HTTPException(status_code=409, detail=missing)
+            profile = get_profile(session, student)
             saved = save_plan(session, student, start_term=body.start_term,
-                              constraints=body.constraints)
+                              constraints=to_constraints(profile_input(profile)))
             session.commit()
             return _saved_view(saved)
     try:
         out = await run_in_threadpool(work)
+    except HTTPException:
+        raise
     except InvalidStartTerm as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from None
     except (ProgramNotFound, CatalogYearUnavailable, ProgramNotEvaluable,

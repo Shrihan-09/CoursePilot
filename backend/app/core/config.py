@@ -7,6 +7,7 @@ knob discoverable from one place.
 
 from __future__ import annotations
 
+from datetime import date
 from enum import StrEnum
 from functools import lru_cache
 from typing import Annotated
@@ -177,6 +178,12 @@ class Settings(BaseSettings):
     # Phase 7.0: transcript uploads spawn a parser process each - their own,
     # small budget per account per window.
     rate_limit_transcript_uploads: int = 5
+
+    # --- Academic calendar (Phase 7.2.1; DATA_MODEL section 49) ---
+    # "Today" for choosing a plan's starting semester. Unset = the real date.
+    # Tests and QA pin it (ISO date) so term arithmetic is reproducible; it
+    # never affects any academic evaluation.
+    academic_today: date | None = None
 
     # --- Transcript import (Phase 7.0; DATA_MODEL section 46) ---
     # Where an upload sits WHILE it is extracted (deleted right after).

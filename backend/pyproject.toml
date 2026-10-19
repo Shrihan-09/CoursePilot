@@ -73,6 +73,7 @@ asyncio_mode = "auto"
 # than a comment - an unregistered mark is only a warning.
 markers = [
     "db: requires a PostgreSQL database (DATABASE_URL_SYNC)",
+    "unready: (Phase 7.2.1) leave the saved-plan world without confirmed history or profile",
 ]
 filterwarnings = [
     # Warnings are errors: an unnoticed DeprecationWarning today is a broken
