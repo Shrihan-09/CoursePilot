@@ -167,8 +167,19 @@ history without the student's confirmation. See
   - **Levelled semesters** with no stranded one-course final term, every move
     re-validated by the engine.
   - **"My current schedule"** shows only sections the student confirms.
+- **Phase 7.2.2:**
+  - **School rules (SAS Core) composed with the major**, each requirement
+    owned by exactly one rule set.
+  - **Modeled progress on Profile.** Completed, in-progress and planned work
+    are kept apart, and UNKNOWN is never counted. 100% does not mean
+    eligible to graduate.
+  - **WebReg schedule PDF import:**
+    - reads the positioned text layer and fails closed (no OCR);
+    - each row is reviewed and confirmed by the student;
+    - recorded separately from academic history.
 
-See [DATA_MODEL.md §48–49](docs/DATA_MODEL.md).
+See [DATA_MODEL.md §48–49](docs/DATA_MODEL.md) and
+[PHASE_7_2_2.md](docs/PHASE_7_2_2.md).
 
 **API.** Under `/api/v1`, all of the above. The student is always the
 authenticated account's own record; no request can name another student.

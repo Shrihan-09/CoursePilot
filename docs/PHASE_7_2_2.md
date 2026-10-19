@@ -193,3 +193,38 @@ limits do not imply equivalent Windows memory isolation. Conservative fabricated
 WebReg fixtures establish supported parser signatures, not comprehensive real-world
 layout coverage. Unknown layouts must fail closed and allow manual confirmation.
 Raw uploads must be removed after extraction and never enter logs or Git.
+
+## Verification record (takeover completion, 2026-10-19)
+
+**Failure injection** - `scripts/inject_academic_failures.py`, 18 faults, each
+restored and verified after its run. The first run detected 12; the six misses
+(unknown budget shown as a fraction, in-progress work changing the completed
+segment, course text beside an exact WebReg identity, identities outside a
+recognised region dropped beside a valid row, registration meetings shown after
+SOC renumbered the index, changed school rules not sent for review) each gained
+a test. One miss was an equivalent mutant (the leftover-text check still refused
+the line) and the fault was redefined. Final run: 18/18 detected.
+
+**Performance** - `scripts/benchmark_progress.py` (throwaway `*_disposable`
+database, public fixtures, fabricated students, 15 runs): `build_progress` p50
+58 ms with nothing taken and 96-105 ms with a partial or full CS record; 52 SQL
+statements per call for both, so there is no per-course N+1; output is
+byte-identical across runs. WebReg: in-process extraction p50 2 ms, parse
+0.1 ms, SOC matching of 10 rows 29 ms; the isolated child process costs about
+1 s on Windows (process spawn), once per upload.
+
+**Browser QA** - `frontend/tests/visual/academic.mjs` against a disposable stack
+(fabricated `qa722-*` students, fabricated PDF): Profile and the import review
+at 320/390/820/1280/1600 px, light and dark; 32 audited screens with no overflow,
+no axe violation and no target under the floor; 34/34 functional assertions.
+QA found and fixed: raw internal row states shown to students, a confirmed import
+still reported as "Section not chosen", a stale expiry line, a duplicated word,
+and undersized inputs. Imported registrations are shown in My current schedule,
+labelled as imported; they never write a section confirmation or academic history.
+
+**Real WebReg compatibility** - validated only with fabricated positioned PDFs so
+far. To check a real schedule locally, keep the PDF OUTSIDE the repository and run
+`python scripts/validate_webreg_local.py <path> [--match]`. It prints the outcome,
+a closed error code and counts only, never document content. A refusal such as
+`UNSUPPORTED_LAYOUT` is correct fail-closed behaviour; it means the layout needs
+a new fabricated fixture, not a parser relaxation.
