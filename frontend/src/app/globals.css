@@ -68,7 +68,9 @@
     --border: 38 42 49;                 /* #262A31 */
     --border-strong: 53 58 67;          /* #353A43 */
     --primary: 1 109 244;               /* same core blue as light */
-    --primary-hover: 14 147 252;        /* logo bright blue */
+    /* Logo deep blue. Phase 7.2 QA: the bright blue (#0E93FC) carried white
+       text at ~3:1 - a hovered primary button failed AA in dark mode. */
+    --primary-hover: 1 84 224;
     --primary-foreground: 255 255 255;
     --primary-subtle: 13 36 71;         /* #0D2447 */
     --primary-text: 90 169 255;         /* #5AA9FF  blue as text on dark */

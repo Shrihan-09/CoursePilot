@@ -248,6 +248,12 @@ export function blockedReasonText(code: string): string {
       return "Prerequisite wording CoursePilot can't interpret automatically";
     case "corequisite_not_interpreted":
       return "Co-requisite wording CoursePilot can't interpret automatically";
+    case "no_corequisite_published":
+      return "Rutgers publishes no co-requisite for it";
+    case "no_prerequisite_published":
+      return "Rutgers publishes no prerequisite for it";
+    case "no_offering_in_term":
+      return "No Rutgers offering in the term whose rules were checked";
     case "campus_prerequisites_differ":
       return "Prerequisites differ between campuses";
     case "campus_corequisites_differ":

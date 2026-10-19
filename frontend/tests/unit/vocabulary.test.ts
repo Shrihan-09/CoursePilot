@@ -103,6 +103,11 @@ describe("every engine value has words", () => {
     expect(blockedReasonText("something_new:x")).toBe("something_new:x");
     expect(blockedReasonText("unmodeled_condition:instructor_permission")).toMatch(/instructor permission/);
     expect(blockedReasonText("dependency_needs_confirmation:01:198:205")).toMatch(/01:198:205/);
+    // Every code the eligibility service emits literally has words (QA found a raw one).
+    for (const code of ["no_corequisite_published", "no_prerequisite_published", "no_offering_in_term",
+                        "campus_prerequisites_differ", "campus_corequisites_differ", "corequisite_on_some_sections"]) {
+      expect(blockedReasonText(code)).not.toBe(code);
+    }
   });
 
   it("formats term codes", () => {

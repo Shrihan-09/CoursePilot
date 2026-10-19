@@ -96,7 +96,7 @@ export default function HomePage() {
         <section aria-labelledby="degree-heading" className="space-y-3 rounded-lg border border-border bg-surface-elevated p-4">
           <div className="flex items-center justify-between gap-2">
             <h2 id="degree-heading" className="flex items-center gap-2 text-sm font-semibold text-fg"><GraduationCap aria-hidden className="size-4 text-fg-muted" /> Degree</h2>
-            <Link href="/degree" className="text-sm font-medium text-primary-text hover:underline">View degree</Link>
+            <Link href="/degree" className="inline-flex min-h-10 items-center text-sm font-medium text-primary-text hover:underline">View degree</Link>
           </div>
           {audit.isPending ? <Skeleton className="h-16" /> : audit.isError ? (
             <p className="text-sm text-fg-muted">Degree progress is unavailable right now.</p>
@@ -117,7 +117,7 @@ export default function HomePage() {
         <section aria-labelledby="plan-heading" className="space-y-3 rounded-lg border border-border bg-surface-elevated p-4">
           <div className="flex items-center justify-between gap-2">
             <h2 id="plan-heading" className="flex items-center gap-2 text-sm font-semibold text-fg"><MapIcon aria-hidden className="size-4 text-fg-muted" /> Plan</h2>
-            <Link href="/plan" className="text-sm font-medium text-primary-text hover:underline">{saved ? "View plan" : "Build a plan"}</Link>
+            <Link href="/plan" className="inline-flex min-h-10 items-center text-sm font-medium text-primary-text hover:underline">{saved ? "View plan" : "Build a plan"}</Link>
           </div>
           {plan.isPending ? <Skeleton className="h-16" /> : plan.isError ? (
             <p className="text-sm text-fg-muted">Your plan is unavailable right now.</p>

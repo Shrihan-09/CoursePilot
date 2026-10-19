@@ -81,10 +81,10 @@ function CourseChips({ courses, onRemove }: { courses: string[]; onRemove?: (c: 
   return (
     <ul className="flex flex-wrap gap-2" aria-label="Courses">
       {courses.map((c) => (
-        <li key={c} className="code inline-flex h-8 items-center gap-1 rounded border border-border-strong bg-surface px-2 text-sm text-fg">
+        <li key={c} className="code inline-flex h-10 items-center gap-1 rounded border border-border-strong bg-surface px-2 text-sm text-fg">
           {c}
           {onRemove && (
-            <button type="button" onClick={() => onRemove(c)} aria-label={`Remove ${c}`} className="-mr-1 grid size-7 place-items-center rounded text-fg-muted hover:bg-surface-hover">
+            <button type="button" onClick={() => onRemove(c)} aria-label={`Remove ${c}`} className="-mr-1 grid size-8 place-items-center rounded text-fg-muted hover:bg-surface-hover">
               <X aria-hidden className="size-3.5" />
             </button>
           )}

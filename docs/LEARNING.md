@@ -8747,3 +8747,113 @@ stays readable.
 - RFC 7636: PKCE
 - WCAG 2.2 contrast and target-size criteria
 - `prefers-reduced-motion` and motion as information
+
+---
+
+# Lesson 40: The Interface Is a Translator, Not a Judge
+
+## What We Built
+
+The engines finally reached the student, as one workflow:
+
+- **Degree:** what is complete, what remains, why, and what is uncertain;
+- **Plan:** a saved semester plan that knows when it is out of date;
+- **Schedule:** real Rutgers sections, combined without conflicts, handed back
+  as index numbers to register with yourself.
+
+The hard part was not drawing these screens. It was making sure the screens
+never became a second, quieter engine.
+
+---
+
+## Concepts
+
+### Translate states; never derive them
+
+A page that receives `indeterminate` must say "can't determine". It must not
+decide that "can't determine" probably means "met" because the student has
+the right courses. Every status word in the app comes from one table that maps
+an engine value to a label, an icon and a sentence.
+
+The table has no logic that turns one state into another. That makes the
+rule easy to audit: there is one place to look.
+
+### UNKNOWN is a statement about CoursePilot, FAILED is a statement about you
+
+"CoursePilot cannot evaluate this prerequisite" and "you do not meet this
+prerequisite" lead to opposite actions. One means "ask an advisor"; the other
+means "take something else first".
+
+So they never share a label, an icon (a question mark versus a cross) or a
+colour, and a test fails if they ever do. Showing UNKNOWN as red would be as
+wrong as showing it as green.
+
+### A saved result must know what it was made from
+
+A plan is a function of the student's record, the program's rules, the Rutgers
+data and the engine version. Storing only the plan would make it silently
+wrong the moment any of those changed.
+
+Storing the fingerprints of all of them lets every read answer a question:
+"is this still the plan these inputs produce?" When the answer is no, the page
+says which input changed. This is the audit cache's idea applied to something
+the student can see.
+
+### Hand off by reference, not by copy
+
+The Schedule page does not receive a list of courses from the Plan page's
+memory. It reads the saved plan from the server. A copy in the browser would
+be a second source of truth that nobody validates, and it would be the
+version that drifts.
+
+### Validity and availability are different facts
+
+"These sections fit together" was proven by the engine and stays true. "This
+section has seats" was true when CoursePilot last looked. Mixing them, for
+example by hiding valid schedules whenever a section closes, would make the
+answer change every few minutes for reasons that have nothing to do with
+whether the schedule works.
+
+### Honest progress, honest waiting
+
+The planner takes a few seconds and reports no intermediate steps. Four
+staged checkmarks ticking past would look nicer and would be invented. The
+branded animation shows one stage, "planning engine running", because that
+is what is known.
+
+### Rendering finds what typing cannot
+
+The typecheck passed and every unit test passed. Rendering the pages in both
+themes at five widths still found:
+
+- a dark-mode hover colour with 3:1 contrast;
+- links too small to tap;
+- a raw engine code shown to the student.
+
+None of these is visible in source code.
+
+---
+
+## Self-Check
+
+1. Why does the vocabulary module contain no function that maps one engine state to another?
+2. A requirement is `not_evaluable`. What should the page say, and what must it not say?
+3. What six things can make a saved plan stale, and why is "the clock moved on" not one of them?
+4. Why does the Schedule page read the plan from the server instead of from the Plan page's state?
+5. A section in a valid schedule closes. What changes on the page, and what does not?
+6. Why is the plan's generation animation allowed only one stage?
+
+## Try It Yourself
+
+**A.** Run `python scripts/inject_core_failures.py A B I` and read which tests notice UNKNOWN being shown as met, as failed, and tallied as complete.
+
+**B.** Save a plan, add a course on the onboarding page, and reopen Plan. Which reason does the stale notice give?
+
+**C.** Run `node tests/visual/core.mjs <out>` against the local stack and compare `schedule-result-laptop` with `schedule-mobile-day`.
+
+## Further Learning
+
+- Derived state and cache invalidation by content fingerprint
+- "Make illegal states unrepresentable" (typed enums at an API boundary)
+- WAI-ARIA disclosure (`<details>`) and tabs patterns
+- WCAG 2.2: 1.4.3 contrast, 2.5.8 target size

@@ -13,7 +13,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { PendingReviewNotice } from "@/features/degree/degree-view";
-import { RequirementNode } from "@/features/degree/requirement-tree";
+import { leafTally, RequirementNode } from "@/features/degree/requirement-tree";
 import { ScenarioBanner } from "@/features/degree/what-if";
 import { Blockers, StaleNotice } from "@/features/plan/plan-result";
 import { RankingNote, RegistrationHandoff, ValidityAndAvailability } from "@/features/schedule/option-view";
@@ -52,6 +52,19 @@ describe("degree", () => {
     expect(t).toContain("As published by Rutgers");
     expect(t).toContain("Twelve credits of electives.");
     expect(t).not.toMatch(/%/);
+  });
+
+  it("the status tally counts each leaf under the engine's own status", () => {
+    const tree = req({ requirement_code: "ROOT", status: "partially_satisfied", children: [
+      req({ requirement_code: "A", status: "satisfied" }),
+      req({ requirement_code: "B", status: "indeterminate" }),
+      req({ requirement_code: "C", status: "not_evaluable" }),
+    ] });
+    const t = leafTally([tree]);
+    expect(t.satisfied).toBe(1);
+    expect(t.indeterminate).toBe(1);
+    expect(t.not_evaluable).toBe(1);
+    expect(t.partially_satisfied).toBe(0);
   });
 
   it("filters hide a completed requirement from 'still needed', but never invent one", () => {

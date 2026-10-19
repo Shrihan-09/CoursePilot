@@ -69,7 +69,7 @@ export function Comparison({ options, selected, onSelect }: { options: ScheduleO
                   type="button"
                   onClick={() => onSelect(o.rank)}
                   aria-pressed={selected === o.rank}
-                  className={`min-h-9 rounded px-2 text-sm font-semibold ${selected === o.rank ? "bg-primary text-primary-foreground" : "text-fg hover:bg-surface-hover"}`}
+                  className={`min-h-9 min-w-9 rounded px-2 text-sm font-semibold ${selected === o.rank ? "bg-primary text-primary-foreground" : "text-fg hover:bg-surface-hover"}`}
                 >
                   {o.rank}
                 </button>
