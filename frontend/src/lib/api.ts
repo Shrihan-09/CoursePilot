@@ -1,3 +1,4 @@
+import type { ProgressResponse } from "@/types/progress";
 /**
  * Browser-side API client (Phase 7.1).
  *
@@ -81,6 +82,13 @@ const json = (method: string, body: unknown): RequestInit => ({
 });
 
 export const api = {
+  scheduleImports: () => request<{imports: {id: string; state: string; expires_at: string}[]}>("/student/schedule-imports"),
+  uploadSchedule: (file: File) => request<import("@/types/schedule-import").ScheduleImport>("/student/schedule-imports", {method: "POST", headers: {"content-type": "application/pdf"}, body: file}),
+  scheduleImport: (id: string) => request<import("@/types/schedule-import").ScheduleImport>(`/student/schedule-imports/${id}`),
+  editScheduleRow: (id: string, rowId: string, body: Record<string, unknown>) => request<import("@/types/schedule-import").ScheduleImport>(`/student/schedule-imports/${id}/rows/${rowId}`, json("PATCH", body)),
+  confirmSchedule: (id: string, expected_version: number) => request<import("@/types/schedule-import").ScheduleImport>(`/student/schedule-imports/${id}/confirm`, json("POST", {expected_version})),
+  discardSchedule: (id: string) => request<import("@/types/schedule-import").ScheduleImport>(`/student/schedule-imports/${id}`, {method: "DELETE"}),
+  registrations: () => request<{registrations: import("@/types/schedule-import").Registration[]}>("/student/registrations"),
   me: () => request<Me>("/me"),
   onboarding: () => request<Onboarding>("/student/onboarding"),
   programs: () => request<{ programs: Program[] }>("/programs"),
@@ -115,6 +123,7 @@ export const api = {
 
   /* Phase 7.2 - each returns an engine's result unchanged. */
   audit: () => request<DegreeAudit>("/student/audit"),
+  progress: () => request<ProgressResponse>("/student/progress"),
   scenarioAudit: (program_key: string, catalog_year: string | null) =>
     request<ScenarioAudit>("/student/scenarios/audit", json("POST", { program_key, catalog_year })),
   scenarioCompare: (program_key: string, catalog_year: string | null) =>

@@ -14,7 +14,8 @@ import { termLabel } from "@/lib/academic/vocabulary";
 import type { CurrentCourse, CurrentSchedule } from "@/types/personalization";
 import type { ScheduleOption, SectionChoice } from "@/types/schedule";
 
-import { WeekCalendar } from "./week-calendar";
+import { asOption, WeekCalendar } from "./week-calendar";
+import { ScheduleImportReview } from "./import-review";
 
 /**
  * My current schedule - DESCRIPTIVE (Phase 7.2.1).
@@ -25,14 +26,7 @@ import { WeekCalendar } from "./week-calendar";
  * section; it never selects one.
  */
 
-export function asOption(choices: SectionChoice[]): ScheduleOption {
-  return {
-    rank: 1, choices, total_credits: null, reasons: [], issues: [], days: [],
-    score: { needs_confirmation: 0, unknown_time_sections: 0, preference_misses: 0, class_days: 0,
-             gap_minutes: 0, closed_sections_if_current: 0, unknown_availability_if_current: 0 },
-    availability: { state: "unknown", freshness: "unobserved", as_of: null, all_open_now: false, courses: [] },
-  };
-}
+export { asOption } from "./week-calendar";
 
 function SectionPicker({ course, onClose }: { course: CurrentCourse; onClose: () => void }) {
   const client = useQueryClient();
@@ -87,7 +81,7 @@ function SectionPicker({ course, onClose }: { course: CurrentCourse; onClose: ()
   );
 }
 
-export function CurrentScheduleView() {
+function CurrentScheduleContent() {
   const client = useQueryClient();
   const current = useQuery({ queryKey: ["current-schedule"], queryFn: api.currentSchedule, staleTime: 0 });
   const [picking, setPicking] = useState<CurrentCourse | null>(null);
@@ -142,7 +136,7 @@ export function CurrentScheduleView() {
               )}
               {c.unavailable.map((u) => (
                 <p key={u.index_number} className="text-warning">
-                  Index {u.index_number} is no longer in Rutgers&apos; data for this term. Choose your section again.
+                  Confirmed section {c.confirmed_identities?.find((identity) => identity.index_number === u.index_number)?.section_number ?? "number unavailable"}, index {u.index_number}: public metadata is no longer available. Your confirmation is preserved; choose again only if your registration changed.
                 </p>
               ))}
             </div>
@@ -175,3 +169,6 @@ export function CurrentScheduleView() {
     </div>
   );
 }
+
+export function CurrentScheduleView() { return <div className="space-y-6"><CurrentScheduleContent /><ScheduleImportReview /></div>; }
+

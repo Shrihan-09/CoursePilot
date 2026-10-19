@@ -242,6 +242,8 @@ export function planReasonText(reason: PlanReason, course: PlannedCourse): strin
         : `${termLabel(off.target_term)} isn't published yet; Rutgers has offered it in this season before`;
     case "rules_from_earlier_term":
       return `Prerequisite rules are taken from ${termLabel(course.prerequisite.rules_term)}, the latest Rutgers published`;
+    case "ranked_by_requirement_coverage":
+      return "Ranks ahead on candidate requirement coverage; actual credit allocation is checked separately";
     case "selected_by_canonical_tie_break":
       return `One of ${course.interchangeable_alternatives + 1} equally suitable courses; chosen by a fixed tie-break, not by preference`;
   }

@@ -28,6 +28,7 @@ export interface ProgramVersion {
   catalog_year: string;
   support_status: "supported" | "pending_review" | "unavailable";
   lifecycle_state: string;
+  publication_basis: string | null;
   requirement_count: number;
   not_evaluable_rule_count: number;
   total_credits_min: string | null;

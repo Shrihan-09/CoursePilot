@@ -14,7 +14,7 @@ import {
   type Block,
 } from "@/lib/academic/schedule-time";
 import { cn } from "@/lib/utils";
-import type { DayCode, ScheduleOption } from "@/types/schedule";
+import type { DayCode, ScheduleOption, SectionChoice } from "@/types/schedule";
 
 /**
  * The week of ONE schedule option, as the Schedule Engine returned it.
@@ -131,4 +131,14 @@ export function WeekCalendar({ option }: { option: ScheduleOption }) {
       )}
     </div>
   );
+}
+
+/** Confirmed sections as a single option the calendar can draw (descriptive, never generated). */
+export function asOption(choices: SectionChoice[]): ScheduleOption {
+  return {
+    rank: 1, choices, total_credits: null, reasons: [], issues: [], days: [],
+    score: { needs_confirmation: 0, unknown_time_sections: 0, preference_misses: 0, class_days: 0,
+             gap_minutes: 0, closed_sections_if_current: 0, unknown_availability_if_current: 0 },
+    availability: { state: "unknown", freshness: "unobserved", as_of: null, all_open_now: false, courses: [] },
+  };
 }

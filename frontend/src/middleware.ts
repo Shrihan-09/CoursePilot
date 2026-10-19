@@ -10,7 +10,7 @@ import { SESSION_COOKIE, readSession } from "@/lib/auth/session";
  */
 export const PROTECTED_PREFIXES = [
   "/home", "/onboarding", "/settings", "/degree", "/plan", "/schedule", "/courses",
-  "/notifications", "/assistant",
+  "/notifications", "/assistant", "/profile",
 ];
 
 export function isProtected(pathname: string): boolean {

@@ -23,6 +23,16 @@ export type ScheduleReason =
   | "required_components_included"
   | "matches_preferred_campus";
 
+export type Modality = "in_person" | "synchronous_online" | "asynchronous" | "hybrid" | "unknown";
+export interface ModalityEvidence {
+  classification: Modality;
+  complete: boolean;
+  observed_modes: Modality[];
+  reasons: string[];
+  component_indexes: string[];
+  classifier_version: string;
+}
+
 export type MeetingKind = "timed" | "asynchronous" | "arranged" | "tba" | "malformed";
 export type AvailabilityState = "open" | "closed" | "unknown";
 export type AvailabilityFreshness = "current" | "stale" | "unobserved";
@@ -85,6 +95,7 @@ export interface SectionChoice {
   index_number: string;
   campus_code: string;
   meetings: MeetingInterval[];
+  modality?: ModalityEvidence;
   instructors: string[];
   availability: AvailabilityEvidence;
   restriction: RestrictionEvidence;
@@ -122,7 +133,7 @@ export interface OptionAvailability {
   freshness: AvailabilityFreshness;
   as_of: string | null;
   all_open_now: boolean;
-  courses: { course: string; state: AvailabilityState; freshness: AvailabilityFreshness; as_of: string | null; reasons: string[] }[];
+  courses: { course: string; state: AvailabilityState; freshness: AvailabilityFreshness; as_of: string | null; reasons: string[]; modality?: ModalityEvidence }[];
 }
 
 export interface ScheduleOption {
@@ -137,6 +148,7 @@ export interface ScheduleOption {
 }
 
 export interface ScheduleResult {
+  modality_options?: { course: string; term_code: string; modes: Modality[]; unknown_bundle_count: number; evidence_scope: "returned_schedule_options"; classifier_version: string }[];
   term_code: string;
   status: ScheduleStatus;
   requested_courses: string[];

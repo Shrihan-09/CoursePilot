@@ -146,7 +146,8 @@ function ProgramOption({
   const versions = program.versions.filter((v) => v.support_status !== "unavailable");
   const latest = versions[0];
   if (!latest) return null;
-  const supported = versions.every((v) => v.support_status === "supported");
+  const reviewed = versions.every((v) => v.support_status === "supported" && v.publication_basis === "human_review");
+  const legacy = versions.every((v) => v.support_status === "supported");
   return (
     <div>
       <button
@@ -180,8 +181,10 @@ function ProgramOption({
             {versions.map((v) => v.catalog_year).join(", ")}
           </span>
         </span>
-        {supported ? (
+        {reviewed ? (
           <StatusBadge tone="success" icon={BadgeCheck} label="Reviewed" className="shrink-0" />
+        ) : legacy ? (
+          <StatusBadge tone="neutral" label="Legacy curated" className="shrink-0" />
         ) : (
           <StatusBadge tone="warning" icon={Clock3} label="Pending review" className="shrink-0" />
         )}

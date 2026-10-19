@@ -65,6 +65,7 @@ export default function HomePage() {
   return (
     <div className="space-y-8">
       <PageHeader eyebrow="Home" title="Your plan at a glance" />
+      <Link href="/profile" className="inline-flex min-h-11 items-center text-sm font-medium text-primary-text underline">View modeled progress</Link>
 
       {plan.isSuccess && (
         <section aria-labelledby="next-heading" className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary-subtle p-4 sm:flex-row sm:items-center sm:justify-between">
