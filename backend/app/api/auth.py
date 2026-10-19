@@ -153,7 +153,7 @@ class OIDCTokenVerifier:
                 issuer=self._issuer,
                 audience=self._audience,
                 leeway=CLOCK_SKEW_SECONDS,
-                options={"require": ["exp", "iss", "aud", "sub"]},
+                options={"require": ["exp", "iat", "iss", "aud", "sub"]},
             )
         except Exception as exc:
             # Only the exception CLASS is logged. A JWT error can echo the
@@ -170,8 +170,52 @@ class OIDCTokenVerifier:
             issuer=str(payload.get("iss", self._issuer)),
             provider=self.provider,
             # Copied selectively. The full payload is not carried around.
-            claims={k: payload[k] for k in ("email",) if k in payload},
+            claims=_identity_claims(payload),
         )
+
+
+#: Phase 7.1: the ONLY claims carried past verification, and only for the
+#: institution policy below. Never the email address itself: CoursePilot
+#: identifies people by (issuer, sub) and neither stores nor needs an email.
+IDENTITY_CLAIMS = ("hd", "email_verified")
+
+
+def _identity_claims(payload: dict) -> dict:
+    return {k: payload[k] for k in IDENTITY_CLAIMS if k in payload}
+
+
+class InstitutionStatus:
+    #: No institution domains are configured: nothing is claimed either way.
+    NOT_CONFIGURED = "not_configured"
+    #: A signed, provider-asserted domain claim matches a configured domain.
+    VERIFIED = "verified"
+    #: Domains are configured and this identity does not prove membership.
+    NOT_VERIFIED = "not_verified"
+
+
+def institution_status(claims: dict, settings: Settings) -> str:
+    """Whether a VERIFIED identity belongs to a configured institution domain.
+
+    Decided ONLY from a claim inside the signed ID token - Google's `hd`
+    (hosted domain), which Google documents as the value to check for domain
+    restrictions - never from the domain of an email address. An identity
+    whose email is explicitly unverified is never treated as a member.
+
+    What a match proves, and what it does not: that the identity provider
+    asserts the account belongs to that organization's domain. It does NOT
+    prove current enrollment (Rutgers ScarletMail accounts persist for
+    alumni), and it grants nothing academic - authentication and academic data
+    stay separate (docs/AUTHENTICATION.md).
+    """
+    domains = {d.strip().lower() for d in settings.auth_institution_domains if d.strip()}
+    if not domains:
+        return InstitutionStatus.NOT_CONFIGURED
+    if claims.get("email_verified") is False:
+        return InstitutionStatus.NOT_VERIFIED
+    hd = claims.get(settings.auth_institution_claim)
+    if isinstance(hd, str) and hd.strip().lower() in domains:
+        return InstitutionStatus.VERIFIED
+    return InstitutionStatus.NOT_VERIFIED
 
 
 class StaticKeyVerifier:
@@ -208,7 +252,7 @@ class StaticKeyVerifier:
                 issuer=self._issuer,
                 audience=self._audience,
                 leeway=CLOCK_SKEW_SECONDS,
-                options={"require": ["exp", "iss", "aud", "sub"]},
+                options={"require": ["exp", "iat", "iss", "aud", "sub"]},
             )
         except Exception as exc:
             logger.info("token_rejected", extra={"error_type": type(exc).__name__})
@@ -221,7 +265,7 @@ class StaticKeyVerifier:
             subject=str(subject),
             issuer=str(payload["iss"]),
             provider=self.provider,
-            claims={k: payload[k] for k in ("email",) if k in payload},
+            claims=_identity_claims(payload),
         )
 
 
@@ -296,9 +340,12 @@ def build_verifier(settings: Settings) -> TokenVerifier | None:
 __all__ = [
     "ALLOWED_ALGORITHMS",
     "CLOCK_SKEW_SECONDS",
+    "IDENTITY_CLAIMS",
     "AuthenticatedPrincipal",
     "AuthenticationError",
     "DevSubjectVerifier",
+    "InstitutionStatus",
+    "institution_status",
     "OIDCTokenVerifier",
     "StaticKeyVerifier",
     "TokenVerifier",

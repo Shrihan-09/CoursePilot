@@ -144,6 +144,17 @@ class Settings(BaseSettings):
     oidc_audience: str | None = None
     oidc_jwks_uri: str | None = None
     dev_auth_enabled: bool = False
+    # --- Institution membership (Phase 7.1) ---
+    # Hosted domains whose members count as the institution's accounts, read
+    # from a SIGNED token claim (`auth_institution_claim`; Google: `hd`) -
+    # never from an email address. EMPTY BY DEFAULT: the value Rutgers
+    # ScarletMail identities carry is not documented publicly; set it only
+    # after confirming it from a real, consenting sign-in.
+    auth_institution_domains: Annotated[list[str], NoDecode] = Field(default_factory=list)
+    auth_institution_claim: str = "hd"
+    # When true, identities that do not verify as institution members are
+    # refused BEFORE any account is created. Meaningless without domains.
+    auth_require_institution: bool = False
     # In-memory, per-process. Does not coordinate across workers - see the
     # limitations note in app/api/security.py.
     rate_limit_enabled: bool = True
@@ -217,6 +228,13 @@ class Settings(BaseSettings):
             object.__setattr__(self, "debug", False)
         return self
 
+    @field_validator("auth_institution_domains", mode="before")
+    @classmethod
+    def _split_domains(cls, v: object) -> object:
+        if isinstance(v, str):
+            return [d.strip().lower() for d in v.split(",") if d.strip()]
+        return v
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_origins(cls, v: object) -> object:
@@ -267,6 +285,9 @@ def audit_production_settings(settings: "Settings") -> list[str]:
         for name in ("oidc_issuer", "oidc_audience", "oidc_jwks_uri"):
             if not getattr(settings, name):
                 findings.append(f"{name} is not configured for the oidc provider")
+    if settings.auth_require_institution and not settings.auth_institution_domains:
+        findings.append("auth_require_institution is true but no institution domains are "
+                        "configured: every sign-in will be refused")
 
     if any("localhost" in origin or "127.0.0.1" in origin
            for origin in settings.cors_origins):

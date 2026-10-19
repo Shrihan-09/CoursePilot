@@ -74,7 +74,7 @@ def test_only_a_minimal_claim_subset_survives(issuer) -> None:
         issuer.mint(email="a@example.edu", groups=["admin"], is_admin=True,
                     netid="real-netid")
     )
-    assert principal.claims == {"email": "a@example.edu"}
+    assert principal.claims == {}          # Phase 7.1: not even the email
     assert "groups" not in principal.claims
     assert "is_admin" not in principal.claims
     assert "netid" not in principal.claims

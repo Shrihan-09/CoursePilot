@@ -9117,3 +9117,56 @@ nothing from the document persisted. It covered:
 - staging and normalization against the dev catalog;
 - review and confirmation;
 - the audit.
+
+## 47. Product shell, authentication and visual foundation (Phase 7.1)
+
+Full write-ups: [AUTHENTICATION.md](AUTHENTICATION.md) (the three trust
+boundaries, the sign-in flow, what is and isn't verified) and
+[DESIGN_SYSTEM.md](DESIGN_SYSTEM.md) (tokens, primitives, responsive shell,
+motion language, accessibility).
+
+### 47.1 Schema: accounts are keyed by issuer
+
+Migration `d498ccbced22` adds `user_account.identity_issuer` (String(255), NOT
+NULL, default `''`). The identity key becomes
+`(identity_provider, identity_issuer, external_subject)`, because an OIDC `sub`
+is unique only within its issuer. Adding or changing a provider can therefore
+never map one provider's user onto another's account.
+
+- **Backfill:**
+  - dev accounts get `coursepilot-dev`, the dev verifier's fixed issuer, so
+    existing dev sign-ins keep their records;
+  - pre-7.1 OIDC rows get `OIDC_ISSUER` if it is set when the migration runs.
+- **Downgrade:** it refuses, rather than merging accounts, if a subject exists
+  under two issuers.
+
+No profile data was added. `user_account` still holds no name and no email.
+
+### 47.2 API
+
+- **`GET /api/v1/me`** returns:
+  - `sign_in_method` (`oidc` | `dev`);
+  - `institution.status` (`not_configured` | `verified` | `not_verified`);
+  - `has_academic_profile`;
+  - `onboarding_complete`.
+
+  It returns no account id, subject, issuer or email.
+- **ID tokens must carry `exp`, `iat`, `iss`, `aud` and `sub`.** Only `hd` and
+  `email_verified` survive verification, and only for the institution policy.
+- **The institution policy is decided from the SIGNED `hd` claim only:**
+  - it is never decided from an email domain;
+  - an explicitly unverified email never counts;
+  - with `AUTH_REQUIRE_INSTITUTION`, a non-member is refused (403) **before any
+    account is created**;
+  - "verified" means the provider asserts membership of a configured domain,
+    **not** current enrollment.
+
+### 47.3 Web
+
+- **The browser's only route to the API** is the same-origin proxy
+  `/api/cp/*`. It adds the credential from an encrypted httpOnly cookie, and
+  drops any credential the page itself sends.
+- **Sign-in** is OIDC Authorization Code + PKCE with scopes `openid email`
+  only.
+- **Dev sign-in** exists outside production only. Both the web app and the API
+  refuse it in production and fail closed.

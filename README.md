@@ -2,12 +2,19 @@
 
 Rutgers degree-planning and schedule-optimization platform.
 
-> **Status: a working, tested backend; no student-facing UI yet.**
-> The deterministic engines exist: degree audit, prerequisites, planner,
-> schedules, availability monitoring and student onboarding. So do the HTTP
-> API and the Rutgers data pipeline. The web frontend is still a status page.
-> Only one degree program is published (human-reviewed); seven more are
-> encoded and pending review. See [What works today](#what-works-today) and
+> **Status: a tested backend, plus the first student-facing web experience.**
+>
+> - **Engines:** the deterministic engines exist (degree audit, prerequisites,
+>   planner, schedules, availability monitoring), together with the HTTP API
+>   and the Rutgers data pipeline.
+> - **Web app (Phase 7.1):** sign-in, onboarding (program, then a transcript
+>   import or manual entry, review and confirm), a responsive app shell, and the
+>   CoursePilot design system.
+> - **Not yet in the web app:** Degree, Plan and Schedule screens.
+> - **Programs:** one is published (human-reviewed); seven more are encoded and
+>   pending review.
+>
+> See [What works today](#what-works-today) and
 > [What is not built](#what-is-not-built).
 
 ---
@@ -35,7 +42,9 @@ engine produced.
 | Document | Contents |
 |---|---|
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, layers, and every major decision with its tradeoffs |
-| [DATA_MODEL.md](docs/DATA_MODEL.md) | Schema and semantics, phase by phase (sections 12–46 describe what is built) |
+| [DATA_MODEL.md](docs/DATA_MODEL.md) | Schema and semantics, phase by phase (sections 12–47 describe what is built) |
+| [AUTHENTICATION.md](docs/AUTHENTICATION.md) | Sign-in, and the three trust boundaries: identity, academic data, institutional authorization |
+| [DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) | Tokens, components, responsive shell, motion language, accessibility |
 | [AGENT_ARCHITECTURE.md](docs/AGENT_ARCHITECTURE.md) | Agent flow and the anti-hallucination safeguards |
 | [RAG_ARCHITECTURE.md](docs/RAG_ARCHITECTURE.md) | Retrieval strategies and how they are measured |
 | [DECISION_TREE.md](docs/DECISION_TREE.md) | Step-by-step flows for each kind of student request |
@@ -50,7 +59,7 @@ engine produced.
 | Backend | Python 3.12+, FastAPI, Pydantic v2, SQLAlchemy 2, Alembic |
 | Database | PostgreSQL 16 + pgvector (`pgvector/pgvector:pg16`) |
 | Ingestion | Separate Python package (`ingestion/`), public Rutgers sources only |
-| Frontend | Next.js 15, React 19, TypeScript, Tailwind (status page only so far) |
+| Frontend | Next.js 15 (App Router), React 19, TypeScript, Tailwind, Geist; OIDC via oauth4webapi |
 | Local dev | Docker Compose: `db`, `backend`, `live-worker` |
 
 ---
@@ -71,9 +80,23 @@ alembic upgrade head
 uvicorn app.main:app --reload                # http://localhost:8000/docs
 ```
 
-Authentication is OIDC in deployment. For local development only, set
-`AUTH_PROVIDER=dev` and `DEV_AUTH_ENABLED=true` and send
-`Authorization: Bearer dev:<any-subject>`. This is refused in production.
+Then the web app, in another terminal:
+
+```bash
+cd frontend
+npm install
+AUTH_MODE=dev npm run dev                    # http://localhost:3000
+```
+
+For local development, run the API with `AUTH_PROVIDER=dev`,
+`DEV_AUTH_ENABLED=true` and `COURSEPILOT_ENV=local`, and the web app with
+`AUTH_MODE=dev`. That gives a "development sign-in" where any name signs in.
+Both halves refuse it in production.
+
+Real sign-in is OIDC Authorization Code + PKCE, requesting `openid email`
+only, against any standards-based provider (for example Google). See
+[docs/AUTHENTICATION.md](docs/AUTHENTICATION.md) for the configuration and for
+what signing in does and does not grant.
 
 ### Tests
 
@@ -124,8 +147,16 @@ authenticated account's own record; no request can name another student.
 
 ## What is not built
 
-- **The student-facing UI.** The API contract for onboarding exists (Phase
-  7.1); the screens do not. There is no mobile app.
+- **Most student-facing screens.** The web app has sign-in, onboarding,
+  Home and Settings. Degree, Plan, Schedule, Courses, Notifications and the
+  assistant are in the navigation as "Later". There is no mobile app yet; the
+  design tokens and the OIDC account model are built to carry over to one.
+- **A configured production identity provider.** The OIDC flow is tested
+  end to end against a local provider. It has also been exercised in local
+  development with a real Google client and a ScarletMail-backed Google
+  account. No production client is configured. Institution ("Rutgers email")
+  verification stays off: no `hd` value has been confirmed, and one account
+  would not establish a rule.
 - **Program coverage.** Computer Science BA is published. Economics,
   Linguistics, Mathematics, Philosophy, Psychology, Sociology and Statistics
   are encoded but **pending human review**, and every audit of them says so.
@@ -164,7 +195,7 @@ CoursePilot/
 │       └── services/  audit · planning · scheduling · onboarding · transcripts · live
 ├── ingestion/         Rutgers public-data pipeline and worker CLIs
 ├── data/programs/     curated requirement definitions + review packets
-├── frontend/          Next.js (status page)
+├── frontend/          Next.js web app: auth, onboarding, design system, brand assets
 ├── docs/              architecture, data model, learning guide
 └── scripts/           DB init, benchmarks, failure injection
 ```

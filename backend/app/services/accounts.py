@@ -100,14 +100,17 @@ def resolve_account(session: Session, principal: AuthenticatedPrincipal) -> User
     application-level check alone would produce duplicate accounts under
     exactly the race it was written to prevent.
     """
+    # Phase 7.1: keyed by issuer too - a subject is only unique per issuer.
     stmt = select(UserAccount).where(
         UserAccount.identity_provider == principal.provider,
+        UserAccount.identity_issuer == principal.issuer,
         UserAccount.external_subject == principal.subject,
     )
     account = session.scalar(stmt)
     if account is None:
         account = UserAccount(
             identity_provider=principal.provider,
+            identity_issuer=principal.issuer,
             external_subject=principal.subject,
         )
         session.add(account)

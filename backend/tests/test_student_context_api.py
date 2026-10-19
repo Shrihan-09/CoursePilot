@@ -914,6 +914,7 @@ def test_expired_and_wrong_audience_tokens_are_still_rejected() -> None:
             "iss": ISSUER,
             "aud": "coursepilot",
             "sub": "s",
+            "iat": now,
             "exp": now + _dt.timedelta(seconds=300),
             **over,
         }

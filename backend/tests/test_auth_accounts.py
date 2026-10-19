@@ -219,9 +219,13 @@ def test_token_without_subject_is_rejected(verifier, keypair) -> None:
 def test_only_minimal_claims_are_carried(verifier, keypair) -> None:
     """Extra claims must not silently become things we might trust."""
     principal = verifier.verify(
-        make_token(keypair, email="a@example.edu", groups=["admin"], is_admin=True)
+        make_token(keypair, email="a@example.edu", groups=["admin"], is_admin=True,
+                   hd="example.edu", email_verified=True)
     )
-    assert principal.claims == {"email": "a@example.edu"}
+    # Phase 7.1: only what the institution policy reads. Not even the email:
+    # CoursePilot identifies people by (issuer, sub) and stores no address.
+    assert principal.claims == {"hd": "example.edu", "email_verified": True}
+    assert "email" not in principal.claims
     assert "groups" not in principal.claims
     assert "is_admin" not in principal.claims
 

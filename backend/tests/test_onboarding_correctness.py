@@ -57,7 +57,10 @@ def grad_world():
                           requirement_type="choose_n", min_count=2, requirement_system="major",
                           source_prose="prose upper", curation_status="curated_from_prose",
                           source_id=source.id,
+                          # Unit-scoped: the random 3-digit test subject may
+                          # coincide with another unit's real subject number.
                           eligibility_rule={"query": {"subject_code": a.subject_code,
+                                                      "offering_unit_code": "98",
                                                       "min_course_number": 300}})
         s.add(req)
         s.flush()
