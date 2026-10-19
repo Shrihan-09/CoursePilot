@@ -46,6 +46,50 @@ def test_evening_single_multiple_and_arrangement_sections():
     assert all("modality" not in row for row in rows)  # SOC, not room absence, supplies modality
 
 
+def test_grid_identity_with_colon_before_index_is_read():
+    """Phase 7.2.2 real-format finding: a browser-saved WebReg print joins the
+    index to the section with a COLON (course:section:index), not a hyphen."""
+    rows = parse(
+        objects(
+            records=[
+                (170, 610, "01:999:101:01:91234"),
+                (470, 580, "01:999:101:01:91234"),
+                (270, 540, "01:999:102:02:91235"),
+            ]
+        )
+    )
+    assert [(r["course_string"], r["section_number"], r["index_number"]) for r in rows] == [
+        ("01:999:101", "01", "91234"),
+        ("01:999:102", "02", "91235"),
+    ]
+
+
+def test_colon_form_through_real_pdf_extraction_with_arrangement_rows():
+    pdf = build_schedule_pdf(
+        objects(
+            records=[(170, 610, "01:999:101:01:91234"), (370, 560, "01:999:102:02:91235")],
+            arrangement=["* INVENTED ASYNC COURSE (01:999:103:90) 91236"],
+        )
+    )
+    result = extract_layout(pdf, 20, 200000)
+    rows = parse_schedule(result[1], result[3])
+    assert [r["index_number"] for r in rows] == ["91234", "91235", "91236"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "01:999:101:01:9123",  # four-digit index
+        "01:999:101:01:912345",  # six-digit index
+        "01:999:101:01::91234",  # doubled separator
+        "01:999:101:01:91234 01:999:102:02:91235",  # two identities on one line
+    ],
+)
+def test_colon_form_stays_exact(text):
+    with pytest.raises(ScheduleParseError, match="UNSUPPORTED_LAYOUT"):
+        parse(objects(records=[(170, 610, text)]))
+
+
 def test_fallback_requires_exact_arrangement_identity():
     rows = parse(objects(records=[], arrangement=["* INVENTED COURSE (01:999:103:03)"]))
     assert rows[0]["index_number"] is None

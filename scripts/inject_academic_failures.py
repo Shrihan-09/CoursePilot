@@ -94,6 +94,9 @@ FAULTS = {
     "Q": ("missing delivery evidence is classified as in-person", SCHED, [(MODALITY,
           "        mode = Modality.UNKNOWN\n        reason = \"unrecognized_delivery_evidence\"",
           "        mode = Modality.IN_PERSON\n        reason = \"unrecognized_delivery_evidence\"")]),
+    "S": ("the real colon-separated grid identity is not read (hyphen only)", SCHED, [(WEBREG,
+          r"({COURSE}):([A-Za-z0-9]{{1,8}})[-:](\d{{5}})",
+          r"({COURSE}):([A-Za-z0-9]{{1,8}})-(\d{{5}})")]),
     "R": ("a changed school rule set is not sent back for review", ACAD, [(LIFECYCLE,
           "    school_set.lifecycle_state = NEEDS_REREVIEW\n    return True",
           "    return True")]),
@@ -113,98 +116,98 @@ SUITES = {
 }
 
 
-def _apply(letter: str) -> dict:
-    _, _, edits = FAULTS[letter]
-    originals: dict[pathlib.Path, str] = {}
-    for rel, old, new in edits:
-        path = ROOT / rel
-        originals.setdefault(path, path.read_text(encoding="utf-8", newline=""))
-        current = path.read_text(encoding="utf-8", newline="")
-        eol = "\r\n" if "\r\n" in current else "\n"
-        old, new = old.replace("\n", eol), new.replace("\n", eol)
-        if current.count(old) != 1:
-            for p, text in originals.items():
-                p.write_text(text, encoding="utf-8", newline="")
-            raise LookupError(f"pattern not found exactly once in {rel}: {old[:60]!r}")
-        path.write_text(current.replace(old, new), encoding="utf-8", newline="")
-    return originals
-
-
-def _git_clean(rels) -> None:
-    """Refuse to inject into a file that already differs from git: a fault
-    left behind by an earlier run would otherwise become the 'original'."""
-    out = subprocess.run(["git", "diff", "--name-only", "--", *sorted(set(rels))], cwd=ROOT,
-                         capture_output=True, text=True, check=False).stdout.strip()
-    if out:
-        raise RuntimeError(f"refusing to inject: working tree already modified: {out}")
-
-
-def _restore(originals: dict) -> None:
-    """Write the originals back AND read them back. On this machine the repo
-    lives under OneDrive, whose sync once raced a restore and left an injected
-    fault on disk (Phase 7.2.1 regression). Verify, retry, else stop the run."""
-    import time
-
-    for path, text in originals.items():
-        for attempt in range(6):
-            path.write_text(text, encoding="utf-8", newline="")
-            if path.read_text(encoding="utf-8", newline="") == text:
-                break
-            time.sleep(0.5 * (attempt + 1))
-        else:
-            raise SystemExit(f"RESTORE FAILED for {path} - stop and run `git checkout -- {path}`")
-
-
-def _run(cmd: list[str], cwd: pathlib.Path, env: dict) -> tuple[bool, str]:
-    proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, encoding="utf-8",
-                          errors="replace", env=env, check=False, timeout=1800)
-    lines = (proc.stdout + proc.stderr).strip().splitlines()
-    summary = next((ln for ln in reversed(lines) if "passed" in ln or "failed" in ln), lines[-1:] or [""])
-    # pytest exit 4/5 = usage error / nothing collected: not a detection.
-    if proc.returncode in (4, 5):
-        raise RuntimeError(f"suite did not run in {cwd.name}: {summary}")
-    return proc.returncode != 0, str(summary).strip()
-
-
-def run(letter: str) -> tuple[bool, str]:
-    _git_clean([rel for rel, _, _ in FAULTS[letter][-1]])
-    try:
-        originals = _apply(letter)
-    except LookupError as exc:
-        return False, f"INJECTION FAILED: {exc}"
-    try:
-        env = {**os.environ, "DATABASE_URL": TEST_DB, "DATABASE_URL_SYNC": TEST_DB,
-               "TEST_DATABASE_URL": TEST_DB}
-        details = []
-        for cmd, cwd in SUITES[FAULTS[letter][1]]:
-            try:
-                failed, summary = _run(cmd, ROOT / cwd, env)
-            except RuntimeError as exc:
-                return False, f"INJECTION FAILED: {exc}"
-            details.append(f"{cwd}: {summary}")
-            if failed:
-                return True, " | ".join(details)
-        return False, " | ".join(details)
-    finally:
-        _restore(originals)
-
-
-def main() -> None:
-    args = sys.argv[1:]
-    if args[:1] == ["--check"]:
-        for letter in args[1:] or list(FAULTS):
-            try:
-                for path, text in _apply(letter).items():
-                    path.write_text(text, encoding="utf-8", newline="")
-                print(f"{letter:3} ok")
-            except LookupError as exc:
-                print(f"{letter:3} BROKEN {exc}")
-        return
-    for letter in args or list(FAULTS):
-        detected, detail = run(letter)
-        print(f"{letter:3} {'DETECTED' if detected else 'MISSED  '} {FAULTS[letter][0]}\n"
-              f"    {detail}", flush=True)
-
-
-if __name__ == "__main__":
-    main()
+def _apply(letter: str) -> dict:
+    _, _, edits = FAULTS[letter]
+    originals: dict[pathlib.Path, str] = {}
+    for rel, old, new in edits:
+        path = ROOT / rel
+        originals.setdefault(path, path.read_text(encoding="utf-8", newline=""))
+        current = path.read_text(encoding="utf-8", newline="")
+        eol = "\r\n" if "\r\n" in current else "\n"
+        old, new = old.replace("\n", eol), new.replace("\n", eol)
+        if current.count(old) != 1:
+            for p, text in originals.items():
+                p.write_text(text, encoding="utf-8", newline="")
+            raise LookupError(f"pattern not found exactly once in {rel}: {old[:60]!r}")
+        path.write_text(current.replace(old, new), encoding="utf-8", newline="")
+    return originals
+
+
+def _git_clean(rels) -> None:
+    """Refuse to inject into a file that already differs from git: a fault
+    left behind by an earlier run would otherwise become the 'original'."""
+    out = subprocess.run(["git", "diff", "--name-only", "--", *sorted(set(rels))], cwd=ROOT,
+                         capture_output=True, text=True, check=False).stdout.strip()
+    if out:
+        raise RuntimeError(f"refusing to inject: working tree already modified: {out}")
+
+
+def _restore(originals: dict) -> None:
+    """Write the originals back AND read them back. On this machine the repo
+    lives under OneDrive, whose sync once raced a restore and left an injected
+    fault on disk (Phase 7.2.1 regression). Verify, retry, else stop the run."""
+    import time
+
+    for path, text in originals.items():
+        for attempt in range(6):
+            path.write_text(text, encoding="utf-8", newline="")
+            if path.read_text(encoding="utf-8", newline="") == text:
+                break
+            time.sleep(0.5 * (attempt + 1))
+        else:
+            raise SystemExit(f"RESTORE FAILED for {path} - stop and run `git checkout -- {path}`")
+
+
+def _run(cmd: list[str], cwd: pathlib.Path, env: dict) -> tuple[bool, str]:
+    proc = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, encoding="utf-8",
+                          errors="replace", env=env, check=False, timeout=1800)
+    lines = (proc.stdout + proc.stderr).strip().splitlines()
+    summary = next((ln for ln in reversed(lines) if "passed" in ln or "failed" in ln), lines[-1:] or [""])
+    # pytest exit 4/5 = usage error / nothing collected: not a detection.
+    if proc.returncode in (4, 5):
+        raise RuntimeError(f"suite did not run in {cwd.name}: {summary}")
+    return proc.returncode != 0, str(summary).strip()
+
+
+def run(letter: str) -> tuple[bool, str]:
+    _git_clean([rel for rel, _, _ in FAULTS[letter][-1]])
+    try:
+        originals = _apply(letter)
+    except LookupError as exc:
+        return False, f"INJECTION FAILED: {exc}"
+    try:
+        env = {**os.environ, "DATABASE_URL": TEST_DB, "DATABASE_URL_SYNC": TEST_DB,
+               "TEST_DATABASE_URL": TEST_DB}
+        details = []
+        for cmd, cwd in SUITES[FAULTS[letter][1]]:
+            try:
+                failed, summary = _run(cmd, ROOT / cwd, env)
+            except RuntimeError as exc:
+                return False, f"INJECTION FAILED: {exc}"
+            details.append(f"{cwd}: {summary}")
+            if failed:
+                return True, " | ".join(details)
+        return False, " | ".join(details)
+    finally:
+        _restore(originals)
+
+
+def main() -> None:
+    args = sys.argv[1:]
+    if args[:1] == ["--check"]:
+        for letter in args[1:] or list(FAULTS):
+            try:
+                for path, text in _apply(letter).items():
+                    path.write_text(text, encoding="utf-8", newline="")
+                print(f"{letter:3} ok")
+            except LookupError as exc:
+                print(f"{letter:3} BROKEN {exc}")
+        return
+    for letter in args or list(FAULTS):
+        detected, detail = run(letter)
+        print(f"{letter:3} {'DETECTED' if detected else 'MISSED  '} {FAULTS[letter][0]}\n"
+              f"    {detail}", flush=True)
+
+
+if __name__ == "__main__":
+    main()

@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import re
 
-PARSER_VERSION = "webreg-layout-2"
+PARSER_VERSION = "webreg-layout-3"
 MAX_ROWS = 100
 COURSE = r"\d{2}:\d{3}:\d{3}"
-GRID_ID = re.compile(rf"(?<!\d)({COURSE}):([A-Za-z0-9]{{1,8}})-(\d{{5}})(?!\d)")
+# Grid cells print course:section, then the index after ONE separator. A real
+# browser-saved WebReg print uses ":" (verified locally, Phase 7.2.2); "-" is the
+# form the first fixtures assumed. Either way exactly five digits, nothing else.
+GRID_ID = re.compile(rf"(?<!\d)({COURSE}):([A-Za-z0-9]{{1,8}})[-:](\d{{5}})(?!\d)")
 ARRANGED_ID = re.compile(rf"\(({COURSE}):([A-Za-z0-9]{{1,8}})\)\s+(\d{{5}})(?!\d)")
 FALLBACK_ID = re.compile(rf"\(({COURSE}):([A-Za-z0-9]{{1,8}})\)(?!\s*\d)")
 TERM = re.compile(r"\b(Spring|Summer|Fall|Winter)\s+(\d{4})\b", re.I)
