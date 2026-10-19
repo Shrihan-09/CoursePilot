@@ -41,7 +41,7 @@ literal colours.
 | `fg-muted` | #666E7C | #8A92A0 | hints, metadata (≥ 4.5:1) |
 | `border` / `border-strong` | #E3E6EB / #C9CED6 | #262A31 / #353A43 | dividers / controls |
 | `primary` | #016DF4 | #016DF4 | the logo's core blue: primary actions, active nav, selection, progress |
-| `primary-hover` | #0154E0 | #0E93FC | the logo's deep (light) / bright (dark) blue |
+| `primary-hover` | #0154E0 | #0154E0 | the logo's deep blue in both themes (7.2: the bright blue carried white text at ~3:1, so a hovered dark-mode button failed AA) |
 | `primary-subtle` | #EAF3FF | #0D2447 | selected rows, active nav background |
 | `primary-text` | #0154E0 | #5AA9FF | blue as TEXT (links), readable on each background |
 | `focus` | #016DF4 | #4D9FFF | focus rings |

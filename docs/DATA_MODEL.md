@@ -9170,3 +9170,214 @@ No profile data was added. `user_account` still holds no name and no email.
   only.
 - **Dev sign-in** exists outside production only. Both the web app and the API
   refuse it in production and fail closed.
+
+## 48. Core student experience: Degree, Plan, Schedule (Phase 7.2)
+
+Phase 7.2 puts the deterministic engines in front of the student as one
+workflow:
+
+```
+DEGREE    "What remains?"          GET  /student/audit           (Degree Engine)
+   |                               POST /student/scenarios/*     (same engine, what-if)
+PLAN      "What should I take?"    POST /student/plans           (Planning Engine, saved)
+   |                               GET  /student/plans/current   (+ server-computed freshness)
+SCHEDULE  "When can I take it?"    POST /student/schedules/generate (Schedule Engine)
+```
+
+No engine was rewritten. The additions are one derived table, four
+endpoints and the web pages. **Every academic statement on a page is an
+engine's output, rendered as returned.**
+
+### 48.1 The saved plan (`student_plan`, migration `edd2bebed386`)
+
+Phase 6.5 stored no plans (§40.7): nothing consumed one. Phase 7.2 has two
+consumers:
+
+- the Plan page must survive navigation, because a cold plan takes seconds
+  (§48.7);
+- a planned semester is handed to the Schedule page **by reference**, not
+  copied into the browser as a second, unvalidated source of truth.
+
+The row is **derived state**, like the audit cache (§29, §30).
+
+| Column | Purpose |
+|---|---|
+| `student_id` (UNIQUE, FK CASCADE) | ownership; one plan per student, so regenerating replaces it |
+| `program_version_id` (FK CASCADE), `catalog_year` | what it was planned for |
+| `start_term`, `constraints` (JSON) | the request snapshot |
+| `planning_engine_version`, `audit_engine_version` | engine provenance |
+| `academic_fingerprint`, `rules_fingerprint`, `offering_dataset` | the fingerprints the engine itself recorded (§40) |
+| `plan_status` | a copy of the result's status, for queries |
+| `result_blob` | zlib-compressed JSON of the EXACT `PlanResult` (not JSONB, never pickle; the §29 precedent) |
+| `created_at`, `updated_at` | timestamps |
+
+What the table deliberately does not do:
+
+- **What-if plans are never saved.** `POST /student/plans` takes a start term
+  and constraints only. A program key, status, course list or anything else
+  is a 422.
+- **No endpoint accepts a status or a plan.** The only way to change a saved
+  plan is to have the engine produce a new one.
+- **Saving takes the Phase 7.0 writer lock** (`lock_student`). The plan is
+  computed from, and saved against, one consistent record.
+
+### 48.2 Freshness is computed, never assumed
+
+`GET /student/plans/current` returns the saved plan with
+`freshness: {state: current|stale, reasons: [...]}`. The server recomputes it
+on every read with the **same functions the engine used** to record the
+fingerprints:
+
+| Reason | Detected by |
+|---|---|
+| `program_changed` | the student's `program_version_id` or `catalog_year` differ |
+| `academic_record_changed` | `academic_fingerprint` (completed / in-progress / planned rows) differs |
+| `program_rules_changed` | `rules_fingerprint` of the saved program version differs (recuration) |
+| `rutgers_data_changed` | the SOC dataset identity (`term:content-hash`) differs |
+| `engine_updated` | the planning or audit engine version differs |
+| `start_term_passed` | the record now reaches the plan's first term |
+
+A change of program necessarily changes the academic fingerprint too (it
+hashes the version). In that case only the **cause** is reported, not its
+echo.
+
+**A stale plan is shown, labelled, with its reasons, and is never relabelled
+current.** No invalidation call is needed for correctness, and none depends
+on frontend timestamps. Live open/closed changes do not make a plan stale:
+availability is not a planning input.
+
+### 48.3 Planning context
+
+`GET /student/plans/context` returns:
+
+- `latest_recorded_term` and `earliest_start_term`. The start term is the
+  next Fall or Spring after the latest recorded term, using the same query
+  `generate_plan` uses for its refusal, so an offered start term is never
+  refused.
+- `loaded_terms`: the terms that **actually have section rows**, with
+  coverage and retrieval time. This is the Schedule Engine's own definition
+  of "published" (`candidates.load_term`).
+- `default_constraints` and `constraints_source`. The defaults are labelled
+  as CoursePilot settings, not Rutgers policy.
+
+There is still no notion of "the current term". The server does not read a
+clock to invent one.
+
+### 48.4 Blocked courses
+
+The Planning Engine reports courses it will not place (UNKNOWN eligibility,
+or no usable offering evidence) only as codes inside issue `details`
+(§40.6). The saved-plan view adds `blocked_courses`, which gives each one:
+
+- its catalog title;
+- the reason codes;
+- **the original Rutgers prerequisite text** (markup removed) and the term it
+  was published for.
+
+It reads and never re-evaluates. An UNKNOWN stays UNKNOWN, and the page says
+"confirm with the department or an advisor", never "ineligible".
+
+### 48.5 Degree → Plan → Schedule handoff
+
+- **Degree to Plan:** "Plan remaining requirements" goes to the Plan page,
+  which uses the same record and program.
+- **Plan to Schedule:** each semester links to `/schedule?term=<code>`. The
+  Schedule page reads the **saved plan from the server**, and that semester's
+  course list becomes the schedule request.
+  - If the plan is stale, the Schedule page says so before you build on it.
+- **A term with no section data** (Spring 2027 at the time of writing; the
+  Rutgers feed returned no courses) is reported as unpublished. The engine's
+  own `term_schedule_not_published` is shown if requested.
+  - It is **never swapped for another term**.
+  - Exploring another term is a separate, explicit choice that starts with no
+    term selected.
+
+### 48.6 The explanation model (and the AI boundary)
+
+The frontend has one vocabulary module (`frontend/src/lib/academic/
+vocabulary.ts`). It turns engine values into a label, an icon, a tone and one
+plain sentence. It translates; it never decides, and it never maps one
+engine state onto another.
+
+What each surface explains, and from which engine field:
+
+| Surface | Shown |
+|---|---|
+| Requirement | the engine's own `reason` sentence, the allocated courses (term, grade, credits), the grade evaluations, the published `source_prose`, the curation status |
+| Planned course | each `Reason` code as a sentence built only from that course's fields (requirement names, `unlocks`, offering evidence, rules term, tie-break count); the prerequisite state and conditional dependencies; the Rutgers prerequisite text |
+| Schedule option | `Reason` codes, engine issues (travel time between campuses, closed sections, unknown restrictions), and the ranking objective in words |
+
+**UNKNOWN is never FAILED.** "CoursePilot cannot determine this" and "you do
+not meet this" never share a label, an icon (question mark vs cross) or the
+danger tone. `tests/unit/vocabulary.test.ts` pins this, and
+`scripts/inject_core_failures.py` faults A, B and I break it on purpose.
+
+The future assistant reads these same structures: the audit result, the
+saved plan and the schedule result. It must explain them, not reconstruct
+them. The grounded explanation endpoint (§23, §24) is unchanged and is not
+surfaced in 7.2.
+
+### 48.7 Structural validity, live availability, registration
+
+- **Validity:** a schedule option is valid because the engine proved it
+  (`reasons`). The page states those reasons in one panel.
+- **Availability:** a separate panel. "Open as of <time>" appears only when
+  the observation is **current**; otherwise it is dated ("open when last
+  seen"). A valid schedule can include a closed section. Availability never
+  changes validity.
+- **Registration:** the page lists the index numbers to enter in WebReg and
+  says CoursePilot registers no one. Nothing calls, scrapes or deep-links an
+  authenticated Rutgers system.
+
+### 48.8 What the frontend computes, exhaustively
+
+Display arithmetic over engine output only:
+
+- time formatting;
+- earliest start, latest end and weekly class minutes of an option's timed
+  meetings (days on campus and gap minutes come from the engine's score);
+- calendar layout;
+- start-term choices, which is calendar arithmetic (the API still refuses an
+  invalid one);
+- requirement filters by the engine's status;
+- a tally of leaf requirements by the engine's status.
+
+The tally is a count, never a percentage. The only progress bar is
+"degree credits counted / minimum", and the page defines exactly what it
+measures.
+
+### 48.9 Measured (local, real engines and Rutgers data)
+
+A fabricated CS BA student with six completed courses, using dev sign-in
+against the local stack:
+
+| Call | Time |
+|---|---|
+| `GET /student/audit` | 132 ms cold, 38 ms warm (21 KB) |
+| `POST /student/plans` (generate and save, 5 terms) | 3.3 s (28 KB) |
+| `GET /student/plans/current` (decode, freshness, blocked courses) | 72 ms |
+| `POST /student/schedules/generate` (Fall 2026, 4 courses, 10 options) | 56–188 ms (99 KB) |
+
+The plan is the only multi-second call. It is shown with the branded
+generation state and ONE honest stage, because the engine reports no
+intermediate progress. The planner's §40.8 profile (about 77% of it is the
+Degree Engine's exact allocation) is unchanged. Saving means a student pays
+that cost once per change of inputs, not once per page view. No academic
+result is cached in the browser beyond React Query's request cache; the plan
+and audit queries refetch on every view.
+
+### 48.10 Limitations
+
+- **Spring 2027 sections are not loaded.** Rutgers had not published them
+  when the poller last ran, so a plan's Spring 2027 semester cannot be
+  scheduled yet.
+- **No plan editing.** Students change settings and regenerate. There are no
+  pins, exclusions or drag-and-drop, because the engine has no
+  validate-a-manual-edit endpoint.
+- **One saved plan per student.** No history or comparison of plans.
+- **Requirement explanations are the engine's English sentences.** There are
+  no structured requirement reason codes.
+- **Blocked-course lists inherit the engine's cap** of 10 courses per issue
+  (`details.count` holds the total).
+- **Course search, Notifications and the assistant** remain "later" in the
+  navigation.

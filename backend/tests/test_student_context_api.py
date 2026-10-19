@@ -422,6 +422,10 @@ async def test_no_path_parameterised_student_route_exists(app) -> None:
     # the caller's own record (another account's id is a 404 identical to a
     # missing one) - see tests/test_onboarding_api.py and
     # tests/test_transcript_import_api.py. None names a student or account.
+    #
+    # Phase 7.2 added the saved plan (plans, plans/current) and the planning
+    # context - parameterless, owner-resolved, and the save body accepts only
+    # a start term and constraints - see tests/test_saved_plan_api.py.
     assert sorted(student_self_service) == [
         "/api/v1/student/audit",
         "/api/v1/student/context",
@@ -429,6 +433,9 @@ async def test_no_path_parameterised_student_route_exists(app) -> None:
         "/api/v1/student/courses/{entry_id}",
         "/api/v1/student/onboarding",
         "/api/v1/student/onboarding/complete",
+        "/api/v1/student/plans",
+        "/api/v1/student/plans/context",
+        "/api/v1/student/plans/current",
         "/api/v1/student/plans/generate",
         "/api/v1/student/profile",
         "/api/v1/student/program",
