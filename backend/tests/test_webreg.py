@@ -114,6 +114,25 @@ def test_raster_only_is_unsupported_no_ocr():
     )
 
 
+def test_glyphs_drawn_as_outlines_have_no_text_layer_and_fail_closed():
+    """Phase 7.2.2 real-format finding: a schedule printed through a driver that
+    converts text to vector shapes (e.g. "Microsoft Print To PDF") carries no
+    character data. Reading it would be OCR, which is deliberately not done."""
+    import io
+
+    from pypdf import PdfReader
+
+    pdf = build_schedule_pdf(outlined=True)
+    page = PdfReader(io.BytesIO(pdf)).pages[0]
+    raw = b"".join(s.get_object().get_data() for s in page["/Contents"])
+    # The fixture really has the discovered characteristics.
+    assert page["/Resources"] == {} and len(page["/Contents"]) == 2
+    assert b" c " in raw and b"BT" not in raw and b"Tj" not in raw
+    assert extract_layout(pdf, 20, 200000) == ("error", "UNSUPPORTED_LAYOUT")
+    # The same items as a text layer parse, so the refusal is the representation.
+    assert extract_layout(build_schedule_pdf(), 20, 200000)[0] == "ok"
+
+
 def test_layout_extraction_isolated_process():
     extractor = isolated_pdf_extractor(
         max_pages=20, max_chars=200000, timeout_seconds=15, _target=_layout_child

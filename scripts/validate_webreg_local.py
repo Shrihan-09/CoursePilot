@@ -12,7 +12,11 @@ SOC sections in DATABASE_URL_SYNC, inside a transaction that is rolled back.
 That database must be at migration 722schedule01 and hold SOC data for the
 schedule's term; otherwise every row honestly reports NO_MATCH.
 
-Usage:  python scripts/validate_webreg_local.py <path-to-pdf> [--match]
+Optional --diagnose prints the PDF's REPRESENTATION, never its text: producer
+family, page resources, and counts of text, image and vector-path operators -
+enough to tell a text layer from glyphs drawn as outlines or a scanned image.
+
+Usage:  python scripts/validate_webreg_local.py <path-to-pdf> [--match] [--diagnose]
 """
 
 from __future__ import annotations
@@ -23,6 +27,42 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "backend"))
+
+
+def diagnose(data: bytes) -> None:
+    """Counts only. Text, image and path operators decide which reader could work."""
+    import io
+    import re
+
+    from pypdf import PdfReader
+
+    reader = PdfReader(io.BytesIO(data), strict=False)
+    producer = str((reader.metadata or {}).get("/Producer") or "")
+    print(f"producer_is_microsoft_print_to_pdf: {'print to pdf' in producer.lower()}")
+    for number, page in enumerate(reader.pages):
+        resources = page.get("/Resources") or {}
+        streams = page.get("/Contents")
+        streams = streams.get_object() if streams is not None else []
+        if not isinstance(streams, list):  # one stream, or an array of them
+            streams = [streams]
+        raw = b" ".join(s.get_object().get_data() for s in streams)
+        ops = re.findall(rb"(?<![A-Za-z/])(BT|Tj|TJ|Do|BI|c|l|m|f\*?)(?![A-Za-z])", raw)
+        count = {op.decode(): ops.count(op) for op in set(ops)}
+        text = count.get("BT", 0)
+        images = count.get("Do", 0) + count.get("BI", 0)
+        paths = sum(count.get(k, 0) for k in ("c", "l", "m"))
+        print(
+            f"page {number}: fonts={len(resources.get('/Font') or {})} "
+            f"text_objects={text} image_draws={images} path_segments={paths}"
+        )
+        if not text and paths:
+            print("  representation: GLYPHS DRAWN AS OUTLINES (no text layer; needs OCR)")
+        elif not text and images:
+            print("  representation: RASTER IMAGE (no text layer; needs OCR)")
+        elif text:
+            print("  representation: TEXT LAYER")
+        else:
+            print("  representation: NO TEXT LAYER")
 
 
 def main() -> int:
@@ -45,6 +85,8 @@ def main() -> int:
 
     data = path.read_bytes()
     print(f"parser_version: {PARSER_VERSION}")
+    if "--diagnose" in sys.argv:
+        diagnose(data)
     try:
         check_document(data, get_settings().transcript_max_bytes)
         extracted = default_schedule_extractor()(data)

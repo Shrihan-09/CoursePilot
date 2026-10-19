@@ -44,7 +44,27 @@ def extracted_layout(items):
     ]
 
 
-def build_schedule_pdf(items=None, *, raster_only=False):
+def _outlined(x, y, text):
+    """Each character as a filled curve outline, as a print driver that converts
+    text to shapes emits it. Invented geometry; it encodes no character."""
+    ops = ["q 0 0 0 rg"]
+    for i, ch in enumerate(text):
+        if ch.isspace():
+            continue
+        left, top = x + i * 5, y + 7
+        ops.append(
+            f"{left} {y} m {left} {y + 3} {left + 1} {top} {left + 2} {top} c "
+            f"{left + 4} {top} l {left + 4} {y} l h f"
+        )
+    ops.append("Q")
+    return ops
+
+
+def build_schedule_pdf(items=None, *, raster_only=False, outlined=False):
+    """`outlined` reproduces the real-world "Microsoft Print To PDF" representation
+    found in Phase 7.2.2 validation: empty page resources (no font, no image),
+    every glyph a vector path, contents split across several streams. The
+    document LOOKS like a schedule but has no text layer at all."""
     items = objects() if items is None else items
     bodies = []
 
@@ -55,18 +75,27 @@ def build_schedule_pdf(items=None, *, raster_only=False):
     catalog, pages = add(b""), add(b"")
     font = add(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
     ops = []
-    for x, y, text in [] if raster_only else items:
+    for x, y, text in [] if raster_only or outlined else items:
         escaped = text.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
         ops.append(f"BT /F1 9 Tf 1 0 0 1 {x} {y} Tm ({escaped}) Tj ET")
     if raster_only:
         # Painted geometry has no text objects, exactly the no-text-layer path.
         ops.append("0.5 g 40 40 500 700 re f")
+    if outlined:
+        for x, y, text in items:
+            ops.extend(_outlined(x, y, text))
     stream = "\n".join(ops).encode("ascii")
-    content = add(b"<< /Length %d >>\nstream\n" % len(stream) + stream + b"\nendstream")
+    parts = [stream]
+    if outlined:  # split on an operator boundary, as the real multi-stream page is
+        cut = stream.rfind(b"\n", 0, len(stream) // 2) + 1
+        parts = [stream[:cut], stream[cut:]]
+    refs = [add(b"<< /Length %d >>\nstream\n" % len(p) + p + b"\nendstream") for p in parts]
+    contents = " ".join(f"{ref} 0 R" for ref in refs)
+    resources = "<< >>" if outlined else f"<< /Font << /F1 {font} 0 R >> >>"
     page = add(
         (
             f"<< /Type /Page /Parent {pages} 0 R /MediaBox [0 0 612 792] "
-            f"/Resources << /Font << /F1 {font} 0 R >> >> /Contents {content} 0 R >>"
+            f"/Resources {resources} /Contents [{contents}] >>"
         ).encode()
     )
     bodies[catalog - 1] = f"<< /Type /Catalog /Pages {pages} 0 R >>".encode()
