@@ -25,10 +25,22 @@ Schedule, AI, notification and native clients will build on:
   - the Next.js server exchanges the code;
   - the **real CoursePilot API** verifies the provider-issued ID token against
     the provider's JWKS.
-- **Google and Rutgers ScarletMail: not tested.** That needs a registered
-  Google OAuth client and a real sign-in. The button says **"Continue with
-  Google"**, because no public source documents the `hd` value ScarletMail
-  identities carry; see below.
+- **Real Google OIDC: exercised in local development.** One ScarletMail-backed
+  Google account signed in against a registered Google web client.
+  - Google asked only for identity (`openid email`). There was no Gmail,
+    Drive, Calendar, Contacts or Rutgers access.
+  - These worked: the callback, strict issuer and audience checks, account
+    bootstrap, authenticated API calls, refresh and navigation, and sign-out.
+  - `cp_session` was unreadable from page script, and protected routes
+    redirected to sign-in after sign-out.
+  - A second sign-in from a fresh browser profile mapped to the **same**
+    account: one OIDC account, provisioned once.
+  - The `hd` claim was deliberately not read. No institution rule exists, and
+    the button stays **"Continue with Google"**.
+  - Nothing found needed a code change.
+  - A React hydration warning seen in the regular browser profile came from
+    attributes the Grammarly extension injects. It did not reproduce in a
+    browser without extensions, so no CoursePilot change was made.
 - **Visual QA on the rendered product:**
   - light and dark, at 320 / 390 / 820 / 1280 / 1600 px;
   - every screen audited with axe-core (WCAG 2 A/AA), an overflow check and a
@@ -195,8 +207,13 @@ reported as passes.
 
 ## Limitations
 
-- **No real identity provider configured or tested.** Google and ScarletMail
-  are untested, and the ScarletMail `hd` value is unverified.
+- **Google has been exercised locally only.** Production still needs:
+  - a production OAuth client (or production redirect URIs);
+  - an `https` `APP_URL`, which makes the cookies `Secure`;
+  - secrets held outside the repository.
+- **No Rutgers institution rule.** The ScarletMail `hd` value is unconfirmed,
+  and one account would not establish a rule. Google sign-in never implies
+  current enrollment.
 - **Sessions last as long as the ID token** (Google: 1 hour). No refresh token
   is requested, by design.
 - **Degree, Plan, Schedule, Courses, Notifications and Assistant screens:** not

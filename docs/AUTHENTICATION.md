@@ -112,11 +112,21 @@ only, it says so on screen, and both halves refuse it in production.
 - **ScarletMail accounts are kept by alumni.** A ScarletMail identity
   therefore proves Rutgers affiliation, **not current enrollment**.
 
+**Exercised in local development:** one ScarletMail-backed Google account
+signed in successfully through the real Google flow (see "Verified, and how").
+That shows a ScarletMail identity can use "Continue with Google". It does not
+establish an institution rule.
+
 **Not verified:**
 
-- No public source states the `hd` value a ScarletMail identity carries.
+- No public source states the `hd` value a ScarletMail identity carries, and
+  the real sign-in deliberately did not read it. CoursePilot stores no `hd`
+  value.
+- One account would not be enough evidence for a rule covering every Rutgers
+  identity in any case.
 - So `AUTH_INSTITUTION_DOMAINS` is empty by default, and the button names the
   actual provider: **"Continue with Google"**.
+- Signing in with Google never establishes current Rutgers enrollment.
 
 **To enable "Continue with Rutgers email" correctly:**
 
@@ -156,7 +166,9 @@ Even then, the UI must not claim enrollment.
 | The browser → provider → web → **real API** chain, the cookie not readable by script, a page-supplied credential ignored, sign-out | End to end in Chrome against `tests/e2e/mock-idp.mjs` (Phase 7.1 report) |
 | Required claims, issuer-scoped accounts, the institution policy, `/me` exposing no identifiers, production refusing dev sign-in | pytest on real PostgreSQL (`backend/tests/test_auth_identity.py`) |
 | Each security property is actually tested | `scripts/inject_auth_failures.py` |
-| **Google itself, and Rutgers ScarletMail** | **Not tested.** They need a registered Google OAuth client and a real sign-in. |
+| **Real Google OIDC, local development** (a ScarletMail-backed Google account) | Manual end-to-end sign-in against a registered Google web client. Google asked only for identity (`openid email`; no Gmail, Drive, Calendar, Contacts or Rutgers access). The callback, strict issuer and audience checks, account bootstrap, authenticated API calls, refresh and navigation, and sign-out all worked. `cp_session` was not readable from page script, protected routes redirected to sign-in after sign-out, and a second sign-in from a fresh browser profile mapped to the same account. |
+| **Production Google configuration** | **Not done.** It needs a production OAuth client (or production redirect URIs), an `https` `APP_URL` (which also makes the cookies `Secure`), and secrets held outside the repository. |
+| **The ScarletMail `hd` value; any institution rule** | **Not established** (see above). |
 
 ---
 

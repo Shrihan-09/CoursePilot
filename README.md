@@ -152,9 +152,11 @@ authenticated account's own record; no request can name another student.
   assistant are in the navigation as "Later". There is no mobile app yet; the
   design tokens and the OIDC account model are built to carry over to one.
 - **A configured production identity provider.** The OIDC flow is tested
-  end to end against a local provider. It has not been tested against a real
-  Google client or a Rutgers ScarletMail account. Institution ("Rutgers email")
-  verification is off until its `hd` value is confirmed from a real sign-in.
+  end to end against a local provider. It has also been exercised in local
+  development with a real Google client and a ScarletMail-backed Google
+  account. No production client is configured. Institution ("Rutgers email")
+  verification stays off: no `hd` value has been confirmed, and one account
+  would not establish a rule.
 - **Program coverage.** Computer Science BA is published. Economics,
   Linguistics, Mathematics, Philosophy, Psychology, Sociology and Statistics
   are encoded but **pending human review**, and every audit of them says so.
