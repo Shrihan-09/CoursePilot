@@ -123,3 +123,30 @@ def test_math_paced_plan_keeps_invariants(math) -> None:
     plan = _plan(math, student, constraints=_cons(Pace.BALANCED, 12, 16))
     _invariants(plan)
     _verify_order(math, student, plan)
+
+
+def test_balanced_aims_for_the_target_not_the_maximum(cs) -> None:
+    """With room up to 15, a BALANCED plan aiming for 9 stays near 9: no term
+    goes past the target by more than its last course's credits."""
+    student = _student(cs, EARLY)
+    plan = _plan(cs, student, constraints=_cons(Pace.BALANCED, 9, 15, terms=12))
+    _invariants(plan)
+    for term in plan.terms:
+        largest = max(pc.credits for pc in term.courses)
+        assert term.credits <= D(9) + largest, (term.label, term.credits)
+
+
+def test_earlier_completion_is_offered_never_applied_never_a_graduation_claim(cs) -> None:
+    """A nearly complete student who asked for ONE course a term (LIGHTER,
+    target 3) could finish sooner at their maximum: the plan says so in those
+    words - and still follows their choice."""
+    student = _student(cs, [*CS_DONE, ("01:198:344", "20269", "in_progress")])
+    plan = _plan(cs, student, constraints=_cons(Pace.LIGHTER, 4, 15, courses=5, terms=12))
+    _invariants(plan)
+    assert plan.status is PlanStatus.COVERS_ALL_REQUIREMENTS
+    assert all(t.credits <= D(4) for t in plan.terms)                 # the choice is kept
+    [obs] = [o for o in plan.observations if o.code == "earlier_completion_possible"]
+    assert "currently modeled requirements" in obs.message
+    assert "not a graduation date" in obs.message
+    assert "graduate" not in obs.message.replace("graduation date", "")
+    assert obs.details["possible_last_term"] < obs.details["planned_last_term"]
