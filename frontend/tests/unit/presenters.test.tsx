@@ -96,7 +96,7 @@ const savedPlan = (over: Partial<SavedPlan>): SavedPlan => ({
   result: {
     target: { program_key: "k", program_name: "P", program_code: "P", degree_type: "BA", school_code: "01", catalog_year: "2026-2027",
               support_status: "supported", curation_status: "c", is_current_program: true },
-    status: "partial", terms: [], issues: [], requirements: [], assumptions: [],
+    status: "partial", terms: [], issues: [], requirements: [], assumptions: [], observations: [],
     metadata: { planning_engine_version: "6.5.0", audit_engine_version: "7.0.1", start_term: "20271",
                 constraints: { max_credits_per_term: "15", max_courses_per_term: 5, max_terms: 8, include_summer: false, include_winter: false },
                 constraints_source: "s", academic_fingerprint: "a", rules_fingerprint: "r", offering_dataset: [] },

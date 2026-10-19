@@ -61,13 +61,14 @@ export function DegreeSummary({ audit }: { audit: DegreeAudit }) {
         <div className="space-y-1.5">
           <p className="text-sm text-fg">
             <span className="tabular font-semibold">{audit.credits_applicable_to_degree}</span> of{" "}
-            <span className="tabular">{required}</span> degree credits counted
+            <span className="tabular">{required}</span> program credits counted
           </p>
-          <Progress value={applicable} max={Number(required)} label="Degree credits counted, completed courses only" />
+          <Progress value={applicable} max={Number(required)} label="Program credits counted, completed courses only" />
           <p className="text-xs text-fg-muted">
-            Measures completed credits the Degree Engine counts toward the degree&apos;s minimum total, and
-            nothing else - it is not requirement completion.
-            {audit.credits_remaining !== null && <> {audit.credits_remaining} credits remain toward the minimum.</>}
+            Completed credits the Degree Engine counts toward this program&apos;s modeled minimum ({required}). It is
+            not requirement completion, and not the total credits needed to graduate: school-wide and Rutgers
+            graduation requirements are not included unless they appear below.
+            {audit.credits_remaining !== null && <> {audit.credits_remaining} credits remain toward this minimum.</>}
           </p>
         </div>
       )}

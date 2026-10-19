@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import { calendarDays, formatDuration, formatMinute, layout, meetingText, summarize } from "@/lib/academic/schedule-time";
-import { startTermChoices } from "@/lib/academic/terms";
 import type { MeetingInterval, ScheduleOption, SectionChoice } from "@/types/schedule";
 
 const meeting = (over: Partial<MeetingInterval>): MeetingInterval => ({
@@ -61,12 +60,5 @@ describe("schedule display arithmetic", () => {
     expect(calendarDays(weekday)).toEqual(["M", "T", "W", "H", "F"]);
     const sat = layout(option([choice("1", [meeting({ day: "S" })])])).blocks;
     expect(calendarDays(sat)).toEqual(["M", "T", "W", "H", "F", "S"]);
-  });
-});
-
-describe("start-term choices", () => {
-  it("are Fall/Spring unless widened", () => {
-    expect(startTermChoices("20271", 3, { summer: false, winter: false })).toEqual(["20271", "20279", "20281"]);
-    expect(startTermChoices("20271", 4, { summer: true, winter: true })).toEqual(["20271", "20277", "20279", "20280"]);
   });
 });

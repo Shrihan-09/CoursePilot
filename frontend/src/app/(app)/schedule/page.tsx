@@ -11,6 +11,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Alert, EmptyState, ErrorState, PageHeader, Skeleton } from "@/components/ui/feedback";
 import { Checkbox, Field, Input, Radio, Select } from "@/components/ui/field";
 import { Tabs } from "@/components/ui/overlay";
+import { CurrentScheduleView } from "@/features/schedule/current-schedule";
 import { Comparison, IssueList, OptionDetails, RankingNote } from "@/features/schedule/option-view";
 import { WeekCalendar } from "@/features/schedule/week-calendar";
 import { ApiError, api } from "@/lib/api";
@@ -94,7 +95,7 @@ function CourseChips({ courses, onRemove }: { courses: string[]; onRemove?: (c: 
   );
 }
 
-function SchedulePageInner() {
+function PlannedSchedule() {
   const params = useSearchParams();
   const context = useQuery({ queryKey: ["planning-context"], queryFn: api.planningContext });
   const current = useQuery({ queryKey: ["plan"], queryFn: api.currentPlan, staleTime: 0 });
@@ -107,6 +108,18 @@ function SchedulePageInner() {
   const [draft, setDraft] = useState("");
   const [prefs, setPrefs] = useState<SchedulePreferences>(DEFAULT_PREFS);
   const [rank, setRank] = useState(1);
+  const planning = useQuery({ queryKey: ["planning-profile"], queryFn: api.planningProfile });
+  const [fromProfile, setFromProfile] = useState(false);
+  useEffect(() => {
+    // Start from the student's confirmed class-time preferences, once. They
+    // are hard limits here and the page says so; the student can change them.
+    const s = planning.data?.profile?.schedule;
+    if (!s || fromProfile) return;
+    if (s.earliest_start || s.latest_end || s.avoid_days.length) {
+      setPrefs((p) => ({ ...p, earliest_start: s.earliest_start, latest_end: s.latest_end, avoid_days: s.avoid_days }));
+    }
+    setFromProfile(true);
+  }, [planning.data, fromProfile]);
 
   useEffect(() => {
     if (current.isSuccess && !plan) setSource("custom");
@@ -140,13 +153,14 @@ function SchedulePageInner() {
     }
   };
 
+  const usesProfile = Boolean(planning.data?.profile?.schedule && (planning.data.profile.schedule.earliest_start
+    || planning.data.profile.schedule.latest_end || planning.data.profile.schedule.avoid_days.length));
+
   return (
     <div className="space-y-6">
-      <PageHeader
-        eyebrow="Schedule"
-        title="Build a schedule"
-        description="Real Rutgers sections for a term, combined by CoursePilot's schedule engine without time conflicts."
-      />
+      <p className="text-sm text-fg-secondary">
+        Real Rutgers sections for a planned semester, combined by CoursePilot&apos;s schedule engine without time conflicts.
+      </p>
 
       <Tabs
         label="Courses from"
@@ -221,6 +235,9 @@ function SchedulePageInner() {
         </div>
       )}
 
+      {usesProfile && (
+        <p className="text-xs text-fg-muted">Class-time limits start from your planning preferences.</p>
+      )}
       <Settings prefs={prefs} onChange={(p) => { setPrefs(p); generate.reset(); }} />
 
       <Button
@@ -270,10 +287,31 @@ function SchedulePageInner() {
   );
 }
 
+function ScheduleTabs() {
+  const params = useSearchParams();
+  const [view, setView] = useState<"current" | "planned">(params.get("term") ? "planned" : "current");
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        eyebrow="Schedule"
+        title="Schedule"
+        description="What you're taking now, and real section options for a semester you've planned."
+      />
+      <Tabs
+        label="Schedule view"
+        value={view}
+        onChange={setView}
+        items={[{ value: "current", label: "My current schedule" }, { value: "planned", label: "Plan a semester" }]}
+      />
+      {view === "current" ? <CurrentScheduleView /> : <PlannedSchedule />}
+    </div>
+  );
+}
+
 export default function SchedulePage() {
   return (
     <Suspense fallback={<Skeleton className="h-40" />}>
-      <SchedulePageInner />
+      <ScheduleTabs />
     </Suspense>
   );
 }

@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   CheckCircle2,
   CircleDashed,
   CircleDot,
@@ -25,6 +26,7 @@ export const STATUS_ICON: Record<IconKey, LucideIcon> = {
   unknown: HelpCircle,
   failed: XCircle,
   info: Info,
+  attention: AlertTriangle,
 };
 
 export function StateBadge({ state, className }: { state: Presentation; className?: string }) {

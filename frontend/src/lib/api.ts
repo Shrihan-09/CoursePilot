@@ -19,7 +19,15 @@ import type {
   Program,
 } from "@/types/onboarding";
 import type { DegreeAudit, ScenarioAudit, ScenarioComparison } from "@/types/degree";
-import type { PlanningConstraints, PlanningContext, SavedPlan } from "@/types/plan";
+import type {
+  CourseSections,
+  CurrentSchedule,
+  PlanningProfile,
+  PlanningProfileInput,
+  PlanningProfileResponse,
+  Readiness,
+} from "@/types/personalization";
+import type { PlanningContext, SavedPlan } from "@/types/plan";
 import type { ScheduleRequest, ScheduleResult } from "@/types/schedule";
 
 export class ApiError extends Error {
@@ -115,10 +123,25 @@ export const api = {
 
   planningContext: () => request<PlanningContext>("/student/plans/context"),
   currentPlan: () => request<{ plan: SavedPlan | null }>("/student/plans/current"),
-  savePlan: (start_term: string, constraints: PlanningConstraints) =>
-    request<SavedPlan>("/student/plans", json("POST", { start_term, constraints })),
+  /** Load settings come from the CONFIRMED planning profile, never the request (7.2.1). */
+  savePlan: (start_term?: string) =>
+    request<SavedPlan>("/student/plans", json("POST", start_term ? { start_term } : {})),
   deletePlan: () => request<void>("/student/plans/current", { method: "DELETE" }),
 
   schedules: (body: ScheduleRequest) =>
     request<ScheduleResult>("/student/schedules/generate", json("POST", body)),
+
+  /* Phase 7.2.1 */
+  planningProfile: () => request<PlanningProfileResponse>("/student/planning-profile"),
+  confirmPlanningProfile: (body: PlanningProfileInput) =>
+    request<PlanningProfile>("/student/planning-profile", json("PUT", body)),
+  readiness: () => request<Readiness>("/student/planning-readiness"),
+  currentSchedule: () => request<CurrentSchedule>("/student/current-schedule"),
+  courseSections: (course: string) =>
+    request<CourseSections>(`/student/current-schedule/sections?course=${encodeURIComponent(course)}`),
+  confirmSection: (course: string, index_number: string) =>
+    request<CurrentSchedule>("/student/current-schedule/sections", json("PUT", { course, index_number })),
+  forgetSection: (course: string) =>
+    request<void>(`/student/current-schedule/sections?course=${encodeURIComponent(course)}`,
+                  { method: "DELETE" }),
 };

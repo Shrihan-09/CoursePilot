@@ -91,7 +91,7 @@ describe("every engine value has words", () => {
       ["course_eligibility_failed", "no_valid_schedule", "options_found", "search_limit_reached", "term_schedule_not_published"]);
     expect(Object.keys(SCHEDULE_REASON)).toHaveLength(8);
     expect(Object.keys(STALE_REASON).sort()).toEqual(
-      ["academic_record_changed", "engine_updated", "program_changed", "program_rules_changed", "rutgers_data_changed", "start_term_passed"]);
+      ["academic_record_changed", "engine_updated", "planning_preferences_changed", "program_changed", "program_rules_changed", "rutgers_data_changed", "start_term_passed"]);
   });
 
   it("an unpublished term never claims a schedule exists or borrows another term", () => {

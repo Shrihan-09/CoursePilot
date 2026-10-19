@@ -9,6 +9,7 @@ import {
   ELIGIBILITY_STATE,
   OFFERING_KIND,
   PLAN_SEVERITY,
+  PACE_LABEL,
   PLAN_STATUS,
   planReasonText,
   STALE_REASON,
@@ -99,7 +100,7 @@ function WhyHere({ course }: { course: PlannedCourse }) {
   );
 }
 
-export function SemesterCard({ term, scheduleHref }: { term: PlanTerm; scheduleHref: string | null }) {
+export function SemesterCard({ term, scheduleHref, note }: { term: PlanTerm; scheduleHref: string | null; note?: string }) {
   return (
     <section aria-labelledby={`term-${term.term_code}`} className="rounded-lg border border-border bg-surface-elevated">
       <header className="flex flex-col gap-2 border-b border-border p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
@@ -113,6 +114,7 @@ export function SemesterCard({ term, scheduleHref }: { term: PlanTerm; scheduleH
           </Link>
         )}
       </header>
+      {note && <p className="border-b border-border px-3 py-2 text-xs text-fg-secondary sm:px-4">{note}</p>}
       <ul className="divide-y divide-border">
         {term.courses.map((c) => (
           <li key={c.course} className="space-y-1.5 p-3 sm:p-4">
@@ -214,6 +216,7 @@ export function PlanView({
 }) {
   const r = plan.result;
   const status = PLAN_STATUS[r.status];
+  const earlier = (r.observations ?? []).find((o) => o.code === "earlier_completion_possible");
   return (
     <div className="space-y-6">
       <StaleNotice plan={plan} onRegenerate={onRegenerate} regenerating={regenerating} />
@@ -228,16 +231,26 @@ export function PlanView({
           <StateBadge state={status} className="shrink-0" />
         </div>
         <p className="text-xs text-fg-muted">
-          Generated {new Date(plan.updated_at).toLocaleString()} by planning engine {r.metadata.planning_engine_version}.
-          Up to {String(plan.constraints.max_credits_per_term)} credits and {plan.constraints.max_courses_per_term} courses a
-          term - CoursePilot settings you chose, not Rutgers rules.
+          Generated {new Date(plan.updated_at).toLocaleString()} by planning engine {r.metadata.planning_engine_version}.{" "}
+          {plan.constraints.pace ? `${PACE_LABEL[plan.constraints.pace] ?? plan.constraints.pace} pace, ` : ""}
+          {plan.constraints.target_credits_per_term ? `aiming for ${String(plan.constraints.target_credits_per_term)} credits, ` : ""}
+          never more than {String(plan.constraints.max_credits_per_term)} credits or {plan.constraints.max_courses_per_term} courses a
+          semester - your CoursePilot planning preferences, not Rutgers rules.
         </p>
       </section>
+
+      {earlier && (
+        <Alert tone="info" title="You may be able to finish the modeled requirements sooner"
+          action={<Link href="/plan/personalize" className={buttonVariants({ variant: "secondary", size: "sm" })}>Review pace</Link>}>
+          {earlier.message}
+        </Alert>
+      )}
 
       {r.terms.length > 0 && (
         <div className="space-y-4">
           {r.terms.map((t) => (
-            <SemesterCard key={t.term_code} term={t} scheduleHref={`/schedule?term=${t.term_code}`} />
+            <SemesterCard key={t.term_code} term={t} scheduleHref={`/schedule?term=${t.term_code}`}
+              note={(r.observations ?? []).find((o) => o.code === "light_term" && o.term_code === t.term_code)?.message} />
           ))}
         </div>
       )}

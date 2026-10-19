@@ -37,7 +37,7 @@ import type {
 export type Tone = "neutral" | "info" | "success" | "warning" | "danger";
 
 /** Icon keys, resolved to components in components/academic/status.tsx. */
-export type IconKey = "complete" | "progress" | "partial" | "remaining" | "unknown" | "failed" | "info";
+export type IconKey = "complete" | "progress" | "partial" | "remaining" | "unknown" | "failed" | "info" | "attention";
 
 export interface Presentation {
   label: string;
@@ -166,7 +166,29 @@ export const STALE_REASON: Record<StaleReason, string> = {
   program_rules_changed: "Your program's requirements were updated.",
   rutgers_data_changed: "CoursePilot loaded newer Rutgers course data.",
   engine_updated: "CoursePilot's planning engine was updated.",
-  start_term_passed: "Your record now includes the plan's first term.",
+  start_term_passed: "The plan's first semester has started or is already on your record.",
+  planning_preferences_changed: "You changed your planning preferences.",
+};
+
+/* ------------------------------------------------- readiness (7.2.1) */
+
+export const READINESS_CHECK: Record<"done" | "missing" | "warning" | "info", { tone: Tone; icon: IconKey; label: string }> = {
+  done: { tone: "success", icon: "complete", label: "Done" },
+  missing: { tone: "neutral", icon: "remaining", label: "Needed" },
+  warning: { tone: "warning", icon: "attention", label: "Worth knowing" },
+  info: { tone: "info", icon: "info", label: "Note" },
+};
+
+export const PACE_LABEL: Record<string, string> = {
+  balanced: "Balanced",
+  lighter: "Lighter",
+  finish_earlier: "Finish earlier",
+};
+
+export const GOAL_KIND: Record<string, string> = {
+  second_major: "Another major",
+  minor: "Minor",
+  certificate: "Certificate",
 };
 
 const SEASONS: Record<string, string> = { "0": "Winter", "1": "Spring", "7": "Summer", "9": "Fall" };
