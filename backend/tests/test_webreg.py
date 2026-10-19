@@ -81,6 +81,20 @@ def test_ambiguous_missing_or_unsupported_structure_refused(items, code):
         parse(items)
 
 
+@pytest.mark.parametrize(
+    "items",
+    [
+        # An identity outside every recognised region beside a valid row.
+        objects(records=[(170, 610, "01:999:101:01-91234")]) + [(40, 750, "01:999:102:02-91235")],
+        # One exact grid identity plus a second course reference on the same line.
+        objects(records=[(170, 610, "01:999:101:01-91234 (01:999:102)")]),
+    ],
+)
+def test_unexplained_course_text_is_refused_not_dropped(items):
+    with pytest.raises(ScheduleParseError, match="UNSUPPORTED_LAYOUT"):
+        parse(items)
+
+
 def test_plain_sequential_text_without_layout_is_not_accepted():
     with pytest.raises(ScheduleParseError, match="UNSUPPORTED_LAYOUT"):
         parse_schedule(["WebReg | View / Print Schedule\nFall 2099\n01:999:101:01-91234"])

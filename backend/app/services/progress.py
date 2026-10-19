@@ -94,6 +94,11 @@ def measure(
     return Measure(value, 1, 0)
 
 
+def display_denominator(completed: Measure, current: Measure) -> int:
+    """An unknown budget in either evaluation makes a scope unavailable, never a fraction."""
+    return completed.budget if completed.budget_known and current.budget_known else 0
+
+
 def contribution(units: Fraction, budget: int) -> Contribution:
     exact = units * 100 / budget if budget else None
     percent = (
@@ -268,7 +273,7 @@ def build_progress(session: Session, student: Student) -> ProgressResponse:
             for n in _walk(current.requirements)
             if not n.children and (wanted is None or systems.get(n.requirement_code) in wanted)
         ]
-        denominator = a.budget if a.budget_known and b.budget_known else 0
+        denominator = display_denominator(a, b)
         metrics.append(
             ProgressMetric(
                 scope=scope,

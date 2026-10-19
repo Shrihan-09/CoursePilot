@@ -43,3 +43,16 @@ def test_progress_denominator_is_stable_as_history_changes(cs):  # noqa: F811
         m.denominator_units for m in b.metrics
     ]
     assert b.metrics[1].completed.percent > a.metrics[1].completed.percent
+
+
+def test_in_progress_work_never_changes_the_completed_segment(cs):  # noqa: F811
+    only = build_progress(cs, _student(cs, [("01:198:111", "20259")]))
+    more = build_progress(
+        cs, _student(cs, [("01:198:111", "20259"), ("01:198:112", "20269", "in_progress")])
+    )
+    for a, b in zip(only.metrics, more.metrics, strict=True):
+        assert (a.completed, a.remaining, a.percentage_kind) == (
+            b.completed,
+            b.remaining,
+            b.percentage_kind,
+        ), a.scope

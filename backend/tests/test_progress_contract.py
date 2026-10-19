@@ -7,7 +7,13 @@ import pytest
 
 from app.domain.audit import RequirementResult
 from app.domain.audit import RequirementStatus as S
-from app.services.progress import _scope_measure, contribution, measure
+from app.services.progress import (
+    Measure,
+    _scope_measure,
+    contribution,
+    display_denominator,
+    measure,
+)
 
 
 def node(code="R", kind="course", status=S.UNSATISFIED, **values):
@@ -146,3 +152,11 @@ def test_mixed_scope_multi_choice_budget_does_not_fall_back_to_one():
     choice = node(kind="any_of", needed_count=2, children=[node("A"), node("B"), node("C")])
     result = _scope_measure([choice], {"A": "major", "B": "core", "C": "core"}, {"core"})
     assert result.budget == 2 and not result.budget_known and result.unknown == 2
+
+
+def test_unknown_budget_in_either_evaluation_withholds_the_denominator():
+    known = Measure(Fraction(1), 3, 0, True)
+    unknown = Measure(Fraction(1), 3, 1, False)
+    assert display_denominator(known, known) == 3
+    assert display_denominator(unknown, known) == 0
+    assert display_denominator(known, unknown) == 0

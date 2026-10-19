@@ -169,3 +169,27 @@ async def test_fallback_matches_exact_section_and_soc_change_requires_new_review
                 f"{URL}/{imp['id']}/confirm", json={"expected_version": reviewed["version"]}
             )
         ).status_code == 200
+
+
+@requires_db
+async def test_registration_whose_soc_index_changed_shows_no_meetings(world, sections):  # noqa: F811
+    pdf = build_schedule_pdf(
+        objects(term="Spring 2099", records=[(70, 600, f"{sections['course']}:01-11111 (3.0)")])
+    )
+    async with _client(_app(), world["account_a"]) as ac:
+        imp = (await ac.post(URL, content=pdf)).json()
+        confirmed = await ac.post(
+            f"{URL}/{imp['id']}/confirm", json={"expected_version": imp["version"]}
+        )
+        assert confirmed.status_code == 200, confirmed.text
+        with _session() as session:
+            # SOC renumbered the section: the stored identity no longer describes it.
+            session.execute(
+                text("UPDATE course_section SET index_number = '29999' WHERE id = :s"),
+                {"s": sections["ids"][0]},
+            )
+            session.commit()
+        records = (await ac.get("/api/v1/student/registrations")).json()["registrations"]
+        assert records[0]["metadata_state"] == "unavailable"
+        assert records[0]["index_number"] == "11111"
+        assert records[0]["meetings"] == [] and records[0]["normalized_meetings"] == []

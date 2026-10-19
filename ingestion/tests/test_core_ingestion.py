@@ -27,6 +27,8 @@ from app.models import (
     SharingPolicy,
 )
 from app.services.audit import DegreeAuditEngine
+from sqlalchemy import func, select
+
 from coursepilot_ingestion.core_schemas import (
     NormalizedCoreEligibility,
     NormalizedCoreGoal,
@@ -37,7 +39,6 @@ from coursepilot_ingestion.parsers.core import (
 )
 from coursepilot_ingestion.pipelines.core import CoreIngestionPipeline
 from coursepilot_ingestion.validators.core import CoreValidator
-from sqlalchemy import func, select
 
 from .conftest import SAS_CORE
 from .test_degree_audit import _audit, _course, _enroll, _find, _student
@@ -762,3 +763,20 @@ def test_conflicting_verified_campus_evidence_stays_unknown():
         for c in ("NB", "NK")]
     status, reason = attempt_eligibility(requirement, attempt, course, evidence)
     assert status is Tri.UNKNOWN and "conflict" in reason
+
+
+def test_changed_school_rules_go_back_for_review_unchanged_do_not() -> None:
+    from types import SimpleNamespace
+
+    from app.services.program_lifecycle import (
+        NEEDS_REREVIEW,
+        school_set_definition_changed,
+    )
+
+    fresh = SimpleNamespace(definition_sha256=None, lifecycle_state="published")
+    assert not school_set_definition_changed(fresh, "a" * 64)
+    assert fresh.lifecycle_state == "published" and fresh.definition_sha256 == "a" * 64
+    assert not school_set_definition_changed(fresh, "a" * 64)
+    assert fresh.lifecycle_state == "published"
+    assert school_set_definition_changed(fresh, "b" * 64)
+    assert fresh.lifecycle_state == NEEDS_REREVIEW and fresh.definition_sha256 == "b" * 64
