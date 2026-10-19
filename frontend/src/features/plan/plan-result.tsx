@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { StateBadge, STATUS_ICON } from "@/components/academic/status";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Alert } from "@/components/ui/feedback";
+import { Alert, Progress } from "@/components/ui/feedback";
 import {
   blockedReasonText,
   ELIGIBILITY_STATE,
@@ -15,6 +15,8 @@ import {
   STALE_REASON,
   termLabel,
 } from "@/lib/academic/vocabulary";
+import { courseTone } from "@/lib/tone";
+import { cn } from "@/lib/utils";
 import type { BlockedCourse, PlannedCourse, PlanningIssue, PlanTerm, SavedPlan } from "@/types/plan";
 
 /**
@@ -100,39 +102,77 @@ function WhyHere({ course }: { course: PlannedCourse }) {
   );
 }
 
-export function SemesterCard({ term, scheduleHref, note }: { term: PlanTerm; scheduleHref: string | null; note?: string }) {
+/** One planned course as a board card: code + credits chip, title, # requirement tags. */
+function CourseCard({ course: c, index }: { course: PlannedCourse; index: number }) {
+  const tone = courseTone(c.course);
+  const toward = [...new Set(c.requirements.map((r) => r.requirement_name))];
   return (
-    <section aria-labelledby={`term-${term.term_code}`} className="rounded-lg border border-border bg-surface-elevated">
-      <header className="flex flex-col gap-2 border-b border-border p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+    <li
+      className={cn("cp-lift animate-cp-rise space-y-2 rounded-lg border border-border bg-surface-elevated p-3", tone)}
+      style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span className="code text-sm font-semibold text-fg">{c.course}</span>
+        <span className="tabular shrink-0 rounded-md bg-surface-hover px-1.5 py-0.5 text-2xs font-medium text-fg-secondary">
+          {c.credits} cr
+        </span>
+      </div>
+      <p className="text-sm leading-snug text-fg [overflow-wrap:anywhere]">{c.title}</p>
+      {toward.length > 0 && (
+        <p className="flex flex-wrap justify-end gap-x-2 gap-y-0.5 text-xs text-fg-secondary">
+          <span className="sr-only">Toward: </span>
+          {toward.map((name) => (
+            <span key={name} className="[overflow-wrap:anywhere]">
+              <span aria-hidden className="font-semibold text-[rgb(var(--tone))]"># </span>
+              {name}
+            </span>
+          ))}
+        </p>
+      )}
+      <WhyHere course={c} />
+    </li>
+  );
+}
+
+export function SemesterCard({
+  term,
+  scheduleHref,
+  note,
+  maxCredits,
+}: {
+  term: PlanTerm;
+  scheduleHref: string | null;
+  note?: string;
+  /** The student's hard maximum: the column's load bar is measured against it. */
+  maxCredits?: number;
+}) {
+  const credits = Number(term.credits);
+  return (
+    <section
+      aria-labelledby={`term-${term.term_code}`}
+      className="flex w-full shrink-0 snap-start flex-col gap-3 rounded-xl bg-surface p-3 md:w-[19rem]"
+    >
+      <header className="space-y-2 px-1 pt-1">
         <div>
-          <h3 id={`term-${term.term_code}`} className="text-base font-semibold text-fg">{term.label}</h3>
+          <h3 id={`term-${term.term_code}`} className="text-lg font-bold tracking-tight text-fg">{term.label}</h3>
           <p className="tabular text-xs text-fg-muted">{term.courses.length} courses · {term.credits} credits</p>
         </div>
-        {scheduleHref && (
-          <Link href={scheduleHref} className={buttonVariants({ variant: "secondary", size: "sm" })}>
-            <CalendarDays aria-hidden className="size-4" /> Build schedule for {term.label}
-          </Link>
-        )}
+        {maxCredits ? (
+          <Progress value={Math.min(credits, maxCredits)} max={maxCredits}
+            label={`${term.label}: ${term.credits} of at most ${maxCredits} credits`} className="h-1" />
+        ) : null}
       </header>
-      {note && <p className="border-b border-border px-3 py-2 text-xs text-fg-secondary sm:px-4">{note}</p>}
-      <ul className="divide-y divide-border">
-        {term.courses.map((c) => (
-          <li key={c.course} className="space-y-1.5 p-3 sm:p-4">
-            <div className="flex items-baseline justify-between gap-3">
-              <p className="min-w-0 text-sm">
-                <span className="code font-semibold text-fg">{c.course}</span>{" "}
-                <span className="text-fg-secondary [overflow-wrap:anywhere]">{c.title}</span>
-              </p>
-              <span className="tabular shrink-0 text-xs text-fg-muted">{c.credits} cr</span>
-            </div>
-            {c.requirements.length > 0 && (
-              <p className="text-xs text-fg-muted [overflow-wrap:anywhere]">
-                Toward: {[...new Set(c.requirements.map((r) => r.requirement_name))].join(" · ")}
-              </p>
-            )}
-            <WhyHere course={c} />
-          </li>
-        ))}
+      {scheduleHref && (
+        <Link href={scheduleHref}
+          className="group flex min-h-10 items-center gap-2 rounded-lg border border-border bg-surface-elevated px-3 text-sm text-fg-secondary transition-colors hover:border-border-strong hover:text-fg">
+          <CalendarDays aria-hidden className="size-4 text-fg-muted transition-colors group-hover:text-primary" />
+          <span className="flex-1">Build schedule for {term.label}</span>
+          <span className="tabular rounded-md bg-surface-hover px-1.5 py-0.5 text-2xs font-medium">{term.credits} cr</span>
+        </Link>
+      )}
+      {note && <p className="px-1 text-xs text-fg-secondary">{note}</p>}
+      <ul className="space-y-2">
+        {term.courses.map((c, i) => <CourseCard key={c.course} course={c} index={i} />)}
       </ul>
     </section>
   );
@@ -220,7 +260,7 @@ export function PlanView({
   return (
     <div className="space-y-6">
       <StaleNotice plan={plan} onRegenerate={onRegenerate} regenerating={regenerating} />
-      <section aria-labelledby="plan-summary" className="space-y-2 rounded-lg border border-border bg-surface-elevated p-4">
+      <section aria-labelledby="plan-summary" className="space-y-2 animate-cp-rise rounded-xl border border-border bg-surface-elevated p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
             <h2 id="plan-summary" className="text-sm font-semibold text-fg">
@@ -247,9 +287,12 @@ export function PlanView({
       )}
 
       {r.terms.length > 0 && (
-        <div className="space-y-4">
+        // The board: semesters side by side, scrolling sideways inside itself
+        // (never the page); stacked on phones.
+        <div className="-mx-1 flex snap-x flex-col gap-4 px-1 pb-2 md:flex-row md:items-start md:overflow-x-auto">
           {r.terms.map((t) => (
             <SemesterCard key={t.term_code} term={t} scheduleHref={`/schedule?term=${t.term_code}`}
+              maxCredits={Number(plan.constraints.max_credits_per_term) || undefined}
               note={(r.observations ?? []).find((o) => o.code === "light_term" && o.term_code === t.term_code)?.message} />
           ))}
         </div>

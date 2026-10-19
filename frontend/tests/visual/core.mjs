@@ -51,7 +51,8 @@ async function check(page, name) {
 }
 
 async function shot(page, name, { full = false, audit = true } = {}) {
-  await page.waitForTimeout(300);
+  // Let entrance animations (cp-rise, 360 ms + stagger) settle before auditing.
+  await page.waitForTimeout(700);
   await page.screenshot({ path: path.join(OUT, `${name}.png`), fullPage: full });
   if (audit) await check(page, name);
 }

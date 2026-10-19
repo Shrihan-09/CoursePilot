@@ -13,8 +13,8 @@ export function ProgressSummary() {
   return (
     <section className="space-y-4" aria-label="Modeled requirement progress">
       <Alert tone="info">These percentages describe modeled obligations. They do not establish eligibility to graduate.</Alert>
-      {data.metrics.map((metric) => (
-        <section id={metric.scope} key={metric.scope} className="space-y-2 rounded-lg border border-border bg-surface-elevated p-4">
+      {data.metrics.map((metric, i) => (
+        <section id={metric.scope} key={metric.scope} style={{ animationDelay: `${i * 70}ms` }} className="cp-lift space-y-2 animate-cp-rise rounded-xl border border-border bg-surface-elevated p-4">
           <h2 className="text-base font-semibold text-fg">{metric.label}</h2>
           {metric.availability === "unavailable" ? <p className="text-sm text-fg-muted">This requirement scope is not available. No percentage is assumed.</p> : <>
             <p className="tabular text-lg font-semibold text-fg">{metric.completed.percent}% completed</p>

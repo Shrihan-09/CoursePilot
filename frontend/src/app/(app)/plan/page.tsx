@@ -124,7 +124,7 @@ export default function PlanPage() {
           CoursePilot plans from your confirmed academic history.
         </EmptyState>
       ) : ready.state === "needs_planning_profile" ? (
-        <section aria-labelledby="personalize-heading" className="space-y-4 rounded-lg border border-border bg-surface-elevated p-4 sm:p-5">
+        <section aria-labelledby="personalize-heading" className="space-y-4 animate-cp-rise rounded-xl border border-border bg-surface-elevated p-4 sm:p-5">
           <div className="flex items-start gap-3">
             <Sparkles aria-hidden className="mt-0.5 size-5 shrink-0 text-primary-text" />
             <div className="space-y-1">
@@ -139,7 +139,7 @@ export default function PlanPage() {
           <Link href="/plan/personalize" className={buttonVariants({ variant: "primary", size: "sm" })}>Personalize my plan</Link>
         </section>
       ) : !plan ? (
-        <section aria-labelledby="ready-heading" className="space-y-5 rounded-lg border border-border bg-surface-elevated p-4 sm:p-5">
+        <section aria-labelledby="ready-heading" className="space-y-5 animate-cp-rise rounded-xl border border-border bg-surface-elevated p-4 sm:p-5">
           <h2 id="ready-heading" className="text-base font-semibold text-fg">Ready to build your plan</h2>
           <ReadinessList readiness={ready} />
           {confirmed && (
@@ -163,7 +163,7 @@ export default function PlanPage() {
             onRegenerate={() => generate.mutate(
               plan.freshness.reasons.includes("start_term_passed") ? undefined : plan.start_term)}
           />
-          <details className="rounded-lg border border-border bg-surface-elevated">
+          <details className="animate-cp-rise rounded-xl border border-border bg-surface-elevated">
             <summary className="min-h-11 cursor-pointer p-3 text-sm font-medium text-fg">Rebuild from a different semester</summary>
             <div className="flex flex-col gap-3 border-t border-border p-3 sm:flex-row sm:items-end">
               <div className="max-w-sm flex-1">

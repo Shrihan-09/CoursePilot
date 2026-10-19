@@ -63,7 +63,7 @@ export default function SettingsPage() {
 
       <section aria-labelledby="account" className="space-y-3">
         <h2 id="account" className="text-sm font-semibold text-fg">Account</h2>
-        <div className="divide-y divide-border rounded-lg border border-border bg-surface-elevated">
+        <div className="divide-y divide-border animate-cp-rise rounded-xl border border-border bg-surface-elevated">
           {me.isPending ? (
             <div className="p-4"><Skeleton className="h-10" /></div>
           ) : me.data ? (
@@ -83,7 +83,7 @@ export default function SettingsPage() {
 
       <section aria-labelledby="academic" className="space-y-3">
         <h2 id="academic" className="text-sm font-semibold text-fg">Academic profile</h2>
-        <div className="divide-y divide-border rounded-lg border border-border bg-surface-elevated">
+        <div className="divide-y divide-border animate-cp-rise rounded-xl border border-border bg-surface-elevated">
           {profile.isPending ? (
             <div className="p-4"><Skeleton className="h-10" /></div>
           ) : profile.data ? (
