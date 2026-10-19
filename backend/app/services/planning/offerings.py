@@ -95,12 +95,19 @@ class OfferingIndex:
         return OfferingEvidence(kind=OfferingEvidenceKind.NO_EVIDENCE, **base)
 
     def dataset_identity(self, session: Session) -> list[str]:
-        """The SOC payloads the evidence rests on (term:content-hash prefix)."""
-        rows = session.execute(
-            select(DataSource.term_code, DataSource.content_hash)
-            .where(DataSource.kind == "rutgers_official_api", DataSource.term_code.is_not(None))
-            .order_by(DataSource.term_code, DataSource.content_hash)).all()
-        return [f"{t}:{h[:16]}" for t, h in rows]
+        return dataset_identity(session)
 
 
-__all__ = ["PLACEABLE", "OfferingIndex"]
+def dataset_identity(session: Session) -> list[str]:
+    """The SOC payloads the evidence rests on (term:content-hash prefix).
+
+    Module-level so a saved plan's freshness check (Phase 7.2) recomputes it
+    with exactly the code the engine used to record it."""
+    rows = session.execute(
+        select(DataSource.term_code, DataSource.content_hash)
+        .where(DataSource.kind == "rutgers_official_api", DataSource.term_code.is_not(None))
+        .order_by(DataSource.term_code, DataSource.content_hash)).all()
+    return [f"{t}:{h[:16]}" for t, h in rows]
+
+
+__all__ = ["PLACEABLE", "OfferingIndex", "dataset_identity"]
