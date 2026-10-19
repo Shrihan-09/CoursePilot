@@ -64,11 +64,16 @@ FAULTS = {
                     self.in_progress[key] = a.term_code""",
           """                elif a.status == "in_progress":
                     self.passed.add(key)""")]),
+    # (Re-targeted in 7.2.2: the confirmation loop also orders by supplement now.)
     "F": ("a current section is guessed from the course code", API, [(CURRENT,
-          "        for row in sorted(confirmations.get(sc.id, []), key=lambda r: r.component):",
+          "        for row in sorted(\n"
+          "            confirmations.get(sc.id, []), key=lambda r: (r.component, r.supplement_code)\n"
+          "        ):",
           "        if cands and not confirmations.get(sc.id):\n"
           "            item.confirmed.append(_choice(cands[0], []))\n"
-          "        for row in sorted(confirmations.get(sc.id, []), key=lambda r: r.component):")]),
+          "        for row in sorted(\n"
+          "            confirmations.get(sc.id, []), key=lambda r: (r.component, r.supplement_code)\n"
+          "        ):")]),
     "G": ("a 'preference' can carry academic facts (extra fields accepted)", API, [(PROFILE,
           '''class PlanningProfileInput(BaseModel):
     """What a student confirms. Every field is a CoursePilot setting, not Rutgers policy."""
