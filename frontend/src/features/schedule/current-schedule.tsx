@@ -84,6 +84,9 @@ function SectionPicker({ course, onClose }: { course: CurrentCourse; onClose: ()
 function CurrentScheduleContent() {
   const client = useQueryClient();
   const current = useQuery({ queryKey: ["current-schedule"], queryFn: api.currentSchedule, staleTime: 0 });
+  // Confirmed WebReg imports are a SEPARATE record (no academic-history or
+  // section-confirmation write); they are shown here, labelled as imported.
+  const registrations = useQuery({ queryKey: ["registrations"], queryFn: api.registrations });
   const [picking, setPicking] = useState<CurrentCourse | null>(null);
   const forget = useMutation({
     mutationFn: (course: string) => api.forgetSection(course),
@@ -102,7 +105,9 @@ function CurrentScheduleContent() {
     );
   }
   const confirmed = cs.courses.flatMap((c) => c.confirmed);
-  const open = cs.courses.filter((c) => c.confirmed.length === 0);
+  const imported = new Map((registrations.data?.registrations ?? [])
+    .filter((r) => r.term_code === cs.term_code).map((r) => [r.course_string, r]));
+  const open = cs.courses.filter((c) => c.confirmed.length === 0 && !imported.has(c.course));
 
   return (
     <div className="space-y-5">
@@ -130,6 +135,11 @@ function CurrentScheduleContent() {
                 <p className="text-fg-secondary">
                   {c.confirmed.map((s) => `Section ${s.section_number}, index ${s.index_number}`).join(" + ")}
                   <span className="text-fg-muted"> - confirmed by you</span>
+                </p>
+              ) : imported.has(c.course) ? (
+                <p className="text-fg-secondary">
+                  Section {imported.get(c.course)!.section_number}, index {imported.get(c.course)!.index_number ?? "not supplied"}
+                  <span className="text-fg-muted"> - imported from your schedule PDF, confirmed by you</span>
                 </p>
               ) : (
                 <p className="text-fg-muted">Section not chosen{c.sections_available ? ` · ${c.sections_available} Rutgers sections` : ""}</p>
@@ -162,6 +172,8 @@ function CurrentScheduleContent() {
           <WeekCalendar option={asOption(confirmed)} />
           {open.length > 0 && <p className="text-xs text-fg-muted">{open.length} course{open.length === 1 ? "" : "s"} not shown until you choose a section.</p>}
         </section>
+      ) : imported.size > 0 ? (
+        <p className="text-sm text-fg-muted">Your imported registrations are listed with your schedule import below.</p>
       ) : (
         <p className="text-sm text-fg-muted">Choose your sections to see your week.</p>
       )}

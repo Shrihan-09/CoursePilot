@@ -7,8 +7,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { ImportedWeek } from "@/features/schedule/import-review";
-import type { Registration } from "@/types/schedule-import";
+import { ImportedWeek, matchText } from "@/features/schedule/import-review";
+import type { Registration, ScheduleImportRow } from "@/types/schedule-import";
 
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
 
@@ -36,5 +36,29 @@ describe("imported week", () => {
 
   it("draws nothing when no registration has public meeting data", () => {
     expect(renderToStaticMarkup(<ImportedWeek registrations={[reg({ metadata_state: "unavailable", normalized_meetings: [] })]} />)).toBe("");
+  });
+});
+
+const row = (over: Partial<ScheduleImportRow>): ScheduleImportRow => ({
+  id: "x", term_code: "20999", course_string: "01:999:101", section_number: "01", index_number: "91234",
+  state: "matched", issues: [], excluded: false, replace_existing: false, match_status: "EXACT_MATCH", ...over,
+});
+
+describe("import review match labels", () => {
+  it("names each of the four match states for a student, never the raw code", () => {
+    expect(matchText(row({}))).toBe("Exact match with Rutgers section data");
+    expect(matchText(row({ match_status: "NO_MATCH", issues: ["SOC_METADATA_UNAVAILABLE"] })))
+      .toBe("No matching Rutgers section data");
+    expect(matchText(row({ match_status: "MULTIPLE_MATCHES", issues: ["MULTIPLE_SOC_MATCHES"] })))
+      .toMatch(/^Several Rutgers sections match - enter the exact index$/);
+    expect(matchText(row({ match_status: "NEEDS_CONFIRMATION", issues: ["IDENTIFIERS_DISAGREE"] })))
+      .toBe("Needs your review: the index and the course/section point to different sections");
+    for (const status of ["EXACT_MATCH", "MULTIPLE_MATCHES", "NO_MATCH", "NEEDS_CONFIRMATION"] as const) {
+      expect(matchText(row({ match_status: status }))).not.toMatch(/[A-Z]{3,}_[A-Z]/);
+    }
+  });
+
+  it("an excluded row says so instead of a match state", () => {
+    expect(matchText(row({ excluded: true, match_status: "NEEDS_CONFIRMATION" }))).toBe("Excluded by you");
   });
 });

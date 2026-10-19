@@ -29,7 +29,7 @@ export function ProgressSummary() {
               <p>{metric.explanation}</p>
             </details>
             <details className="rounded border border-border p-3">
-              <summary className="min-h-11 cursor-pointer text-sm font-medium text-primary-text">Inspect {metric.label} requirements</summary>
+              <summary className="min-h-11 cursor-pointer text-sm font-medium text-primary-text">Inspect what&apos;s counted in {metric.label}</summary>
               <ul className="space-y-2">{metric.requirement_results.map((node) => <RequirementNode key={node.requirement_code} node={node} evidence={(code) => evidenceFor(code, metric.allocations, [])} filter="all" />)}</ul>
             </details>
           </>}

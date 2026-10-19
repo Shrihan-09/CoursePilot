@@ -41,6 +41,25 @@ export function ImportedWeek({ registrations }: { registrations: Registration[] 
   );
 }
 
+const MATCH_LABEL: Record<ScheduleImportRow["match_status"], string> = {
+  EXACT_MATCH: "Exact match with Rutgers section data",
+  MULTIPLE_MATCHES: "Several Rutgers sections match - enter the exact index",
+  NO_MATCH: "No matching Rutgers section data",
+  NEEDS_CONFIRMATION: "Needs your review",
+};
+const ISSUE_LABEL: Record<string, string> = {
+  IDENTIFIERS_DISAGREE: "the index and the course/section point to different sections",
+  CONFIRM_REPLACE_EXISTING: "differs from a registration you already confirmed",
+  DUPLICATE_REGISTRATION: "listed more than once",
+};
+
+/** The student-facing match state; internal row states are never shown raw. */
+export function matchText(row: ScheduleImportRow): string {
+  if (row.excluded) return "Excluded by you";
+  const issues = row.issues.map((code) => ISSUE_LABEL[code]).filter(Boolean);
+  return `${MATCH_LABEL[row.match_status]}${issues.length ? `: ${issues.join("; ")}` : ""}`;
+}
+
 export function ScheduleImportReview() {
   const client = useQueryClient();
   const [staged, setStaged] = useState<ScheduleImport | null>(null);
@@ -72,20 +91,22 @@ export function ScheduleImportReview() {
     <h3 id="schedule-import-title" className="font-semibold text-fg">Import my registered schedule</h3>
     <p className="text-sm text-fg-secondary">Upload a WebReg View / Print Schedule PDF with a reliable text layer. Image-only PDFs are unsupported; OCR is not used. Review every identity before confirming. This records your schedule; it does not register you, change academic history, or prove eligibility. Raw PDFs are not retained.</p>
     <label className="block text-sm text-fg">Schedule PDF
-      <input type="file" accept="application/pdf" disabled={busy || staged?.state === "extracted"} className="mt-2 block w-full text-sm"
+      <input type="file" accept="application/pdf" disabled={busy || staged?.state === "extracted"} className="mt-2 block min-h-11 w-full text-sm file:mr-3 file:min-h-11 file:rounded file:border file:border-border file:bg-surface file:px-3 file:text-fg"
         onChange={(event) => { const file = event.target.files?.[0]; if (file) upload.mutate(file); event.target.value = ""; }} />
     </label>
     {!staged && imports.data?.imports.filter((imp) => imp.state === "extracted").map((imp) => <Button key={imp.id} variant="secondary" disabled={busy} onClick={() => api.scheduleImport(imp.id).then(setStaged).catch(() => setError("Import could not be loaded."))}>Resume pending schedule review</Button>)}
     {error && <Alert tone="warning">{error}</Alert>}
     {staged && <div className="space-y-3">
-      <p className="text-sm text-fg-secondary">Import status: {staged.state}. Review expires {new Date(staged.expires_at).toLocaleString()}.</p>
+      <p className="text-sm text-fg-secondary">{staged.state === "extracted"
+        ? `Review every row. This review expires ${new Date(staged.expires_at).toLocaleString()}.`
+        : staged.state === "confirmed" ? "Confirmed. These registrations are recorded below." : `This import is ${staged.state}.`}</p>
       <ul className="space-y-3">{staged.rows.map((row) => <li key={row.id} className="space-y-2 rounded border border-border p-3 text-sm">
         <p className="text-fg">{termLabel(row.term_code)} · {row.course_string} · Section {row.section_number} · Index {row.index_number ?? "not supplied"}</p>
-        <p className="text-fg-secondary">{row.state.replaceAll("_", " ")}{row.issues.length ? `: ${row.issues.join(", ").replaceAll("_", " ")}` : ""}</p>
+        <p className="text-fg-secondary" data-match={row.match_status}>{matchText(row)}</p>
         {staged.state === "extracted" && <>
           <label className="flex items-center gap-2"><input type="checkbox" checked={row.excluded} disabled={busy} onChange={(e) => edit.mutate({row, changes: {excluded: e.target.checked}})} />Exclude this row</label>
           <label className="block">Correct registration index (five digits)
-            <input className="ml-2 rounded border border-border bg-surface p-1 text-fg" aria-label={`Registration index for ${row.course_string} section ${row.section_number}`} defaultValue={row.index_number ?? ""} inputMode="numeric" maxLength={5}
+            <input className="ml-2 min-h-11 rounded border border-border bg-surface px-2 text-fg" aria-label={`Registration index for ${row.course_string} section ${row.section_number}`} defaultValue={row.index_number ?? ""} inputMode="numeric" maxLength={5}
               disabled={busy} onBlur={(e) => { const value = e.target.value; if (value !== (row.index_number ?? "")) edit.mutate({row, changes: {index_number: value || null}}); }} />
           </label>
           {row.issues.includes("CONFIRM_REPLACE_EXISTING") && <label className="flex items-center gap-2"><input type="checkbox" checked={row.replace_existing} disabled={busy} onChange={(e) => edit.mutate({row, changes: {replace_existing: e.target.checked}})} />Replace the previously confirmed identity for this section</label>}

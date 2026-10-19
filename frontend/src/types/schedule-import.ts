@@ -2,6 +2,7 @@ export type ScheduleImportRow = {
   id: string; term_code: string; course_string: string; section_number: string;
   index_number: string | null; state: string; issues: string[]; excluded: boolean;
   replace_existing: boolean;
+  match_status: "EXACT_MATCH" | "MULTIPLE_MATCHES" | "NO_MATCH" | "NEEDS_CONFIRMATION";
 };
 export type ScheduleImport = {
   id: string; state: string; version: number; expires_at: string;
