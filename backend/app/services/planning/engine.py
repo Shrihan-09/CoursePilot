@@ -79,6 +79,7 @@ from app.domain.planning import (
     RequirementContribution,
     RequirementProjection,
     Severity,
+    Strategy,
 )
 from app.domain.prerequisites import ConcurrentReq, PrereqStatus, course_keys, from_json
 from app.domain.scenario import ScenarioAssumption, ScenarioTarget
@@ -671,7 +672,9 @@ class PlanningEngine:
                 candidate_requirement_coverage=len(set(serves.get(key, ()))),
                 serves_major="major" in systems,
                 serves_school=bool(systems & {"core", "school"}),
-                unlock_breadth=self._unlock_breadth().get(key, 0))
+                # Computed only when the student's strategy uses it (performance).
+                unlock_breadth=(self._unlock_breadth().get(key, 0)
+                                if c.strategy is Strategy.UNLOCK_FUTURE_OPTIONS else 0))
 
         def rank(key):
             return rank_key(key, ranking_evidence(key), c.strategy)
