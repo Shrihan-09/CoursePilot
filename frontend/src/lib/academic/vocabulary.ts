@@ -189,6 +189,14 @@ export const PACE_LABEL: Record<string, string> = {
   finish_earlier: "Finish earlier",
 };
 
+/** 7.2.4: ordering among courses already checked valid - never a shortcut. */
+export const STRATEGY_LABEL: Record<string, string> = {
+  balanced: "Balanced mix",
+  major_first: "Major first",
+  requirements_first: "School/Core first",
+  unlock_future_options: "Keep options open",
+};
+
 export const GOAL_KIND: Record<string, string> = {
   second_major: "Another major",
   minor: "Minor",

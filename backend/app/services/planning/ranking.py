@@ -3,14 +3,32 @@
 Preserves dependency/scarcity/offering/eligibility priorities. Broader evidenced
 requirement candidacy precedes canonical order; actual allocation remains the
 Degree Engine's decision. This is a greedy heuristic, not an optimality claim.
+
+Phase 7.2.4: the student's academic strategy contributes ONE key, after the
+dependency priority (a prerequisite the plan needs still comes first) and
+before the default evidence order. Only already-valid courses are ranked, so
+a strategy can reorder valid choices but never make an invalid one eligible.
 """
 
 from app.domain.course_ranking import CourseRankingEvidence
+from app.domain.planning import Strategy
 
 
-def rank_key(course: str, evidence: CourseRankingEvidence) -> tuple:
+def strategy_key(evidence: CourseRankingEvidence, strategy: Strategy) -> int:
+    if strategy is Strategy.MAJOR_FIRST:
+        return 0 if evidence.serves_major else 1
+    if strategy is Strategy.REQUIREMENTS_FIRST:
+        return 0 if evidence.serves_school else 1
+    if strategy is Strategy.UNLOCK_FUTURE_OPTIONS:
+        return -evidence.unlock_breadth
+    return 0
+
+
+def rank_key(course: str, evidence: CourseRankingEvidence,
+             strategy: Strategy = Strategy.BALANCED) -> tuple:
     return (
         0 if evidence.required_dependency else 1,
+        strategy_key(evidence, strategy),
         -evidence.downstream_targets,
         evidence.scarcity,
         0 if evidence.confirmed_offering else 1,

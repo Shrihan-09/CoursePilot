@@ -248,6 +248,7 @@ class PlanningEngine:
         self._closed: set[str] = set()       # prerequisite closure already loaded
         self.prereq_rows: dict[str, dict[str, CoursePrerequisite]] = defaultdict(dict)
         self._load_prerequisites(set(self.course_info))
+        self._breadth: dict[str, int] | None = None
 
     def _load_courses(self, keys: set[str]) -> None:
         missing = sorted(k for k in keys if k not in self.course_info and k not in self._looked_up)
@@ -280,6 +281,28 @@ class PlanningEngine:
                 .join(Course, Course.id == CoursePrerequisite.course_id)
                 .where(Course.course_string.in_(sorted(keys)))).all():
             self.prereq_rows[key][row.term_code] = row
+
+    def _system(self, code: str) -> str:
+        req = self.requirements.get(code)
+        return (req.allocation_scope or req.requirement_system) if req is not None else "major"
+
+    def _unlock_breadth(self) -> dict[str, int]:
+        """How many requirement-pool courses cite each course in their latest
+        published prerequisites (7.2.4 UNLOCK_FUTURE_OPTIONS evidence). Counts
+        published rules only - never a guess about future offerings."""
+        if self._breadth is None:
+            counts: dict[str, int] = defaultdict(int)
+            for course in sorted(set().union(*self.pools.values()) if self.pools else ()):
+                rows = self.prereq_rows.get(course)
+                if not rows:
+                    continue
+                row = rows[max(rows)]
+                if row.expression is None:
+                    continue
+                for ref in set(course_keys(from_json(row.expression))) - {course}:
+                    counts[ref] += 1
+            self._breadth = dict(counts)
+        return self._breadth
 
     def _expression_of(self, course: str):
         """Latest published prerequisite IR (for dependency PATHS only)."""
@@ -637,6 +660,7 @@ class PlanningEngine:
                        - deficit(leaf_by_code[code]) for code in codes)
 
         def ranking_evidence(key):
+            systems = {self._system(code) for code in serves.get(key, ())}
             return CourseRankingEvidence(
                 required_dependency=key in dependency_targets and key not in planned,
                 downstream_targets=len(dependency_targets.get(key, ())),
@@ -644,10 +668,13 @@ class PlanningEngine:
                 confirmed_offering=(evaluated[key][2].kind is
                                     OfferingEvidenceKind.CONFIRMED_IN_TERM),
                 prerequisites_met_by_history=(states[key] is EligibilityState.SATISFIED_BY_HISTORY),
-                candidate_requirement_coverage=len(set(serves.get(key, ()))))
+                candidate_requirement_coverage=len(set(serves.get(key, ()))),
+                serves_major="major" in systems,
+                serves_school=bool(systems & {"core", "school"}),
+                unlock_breadth=self._unlock_breadth().get(key, 0))
 
         def rank(key):
-            return rank_key(key, ranking_evidence(key))
+            return rank_key(key, ranking_evidence(key), c.strategy)
 
         order = sorted(ready | coreq_pending, key=rank)
         credits = Decimal(0)

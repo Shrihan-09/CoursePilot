@@ -33,6 +33,7 @@ def _plain(value: Decimal) -> Decimal:
 def profile_input(row: StudentPlanningProfile) -> PlanningProfileInput:
     return PlanningProfileInput.model_validate({
         "pace": row.pace,
+        "strategy": row.strategy or "balanced",
         "target_credits_per_term": _plain(row.target_credits_per_term),
         "max_credits_per_term": _plain(row.max_credits_per_term),
         "max_courses_per_term": row.max_courses_per_term,
@@ -52,6 +53,7 @@ def confirm_profile(session: Session, student: Student, data: PlanningProfileInp
         session.add(row)
     row.version = (row.version or 0) + 1
     row.pace = data.pace.value
+    row.strategy = data.strategy.value
     row.target_credits_per_term = data.target_credits_per_term
     row.max_credits_per_term = data.max_credits_per_term
     row.max_courses_per_term = data.max_courses_per_term

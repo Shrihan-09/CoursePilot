@@ -9,7 +9,7 @@ import { Checkbox, Field, Input, Radio, Select } from "@/components/ui/field";
 import { api } from "@/lib/api";
 import { DAY_NAME } from "@/lib/academic/schedule-time";
 import { GOAL_KIND } from "@/lib/academic/vocabulary";
-import type { AdditionalGoal, PlanningProfileInput, PlanningProfileResponse } from "@/types/personalization";
+import type { AdditionalGoal, PlanningProfileInput, PlanningProfileResponse, Strategy } from "@/types/personalization";
 import type { Pace } from "@/types/plan";
 import type { DayCode } from "@/types/schedule";
 
@@ -40,6 +40,7 @@ export function PreferencesForm({
 }) {
   const programs = useQuery({ queryKey: ["programs"], queryFn: api.programs });
   const [pace, setPace] = useState<Pace>(initial.pace);
+  const [strategy, setStrategy] = useState<Strategy>(initial.strategy ?? "balanced");
   const [target, setTarget] = useState(String(initial.target_credits_per_term));
   const [max, setMax] = useState(String(initial.max_credits_per_term));
   const [courses, setCourses] = useState(String(initial.max_courses_per_term));
@@ -71,7 +72,7 @@ export function PreferencesForm({
         e.preventDefault();
         if (!valid) return;
         onSubmit({
-          pace, target_credits_per_term: t, max_credits_per_term: m, max_courses_per_term: c, max_terms: n,
+          pace, strategy, target_credits_per_term: t, max_credits_per_term: m, max_courses_per_term: c, max_terms: n,
           include_summer: summer, include_winter: winter,
           schedule: { ...initial.schedule, earliest_start: early || null, latest_end: late || null, avoid_days: avoid },
           additional_goals: goals,
@@ -88,6 +89,22 @@ export function PreferencesForm({
           ))}
         </div>
       </fieldset>
+
+      {(meta.strategies?.length ?? 0) > 0 && (
+        <fieldset className="space-y-2">
+          <legend className="text-base font-semibold text-fg">When several courses fit, which should come first?</legend>
+          <p className="text-sm text-fg-muted">
+            This only changes the order of courses CoursePilot has already checked you can take. It never skips a
+            prerequisite, goes over your maximum, or plans a course Rutgers isn&apos;t offering.
+          </p>
+          <div className="space-y-1">
+            {meta.strategies!.map((s) => (
+              <Radio key={s.value} name="strategy" label={s.label} description={s.description}
+                checked={strategy === s.value} onChange={() => setStrategy(s.value)} />
+            ))}
+          </div>
+        </fieldset>
+      )}
 
       <fieldset className="space-y-3">
         <legend className="text-base font-semibold text-fg">Semester load</legend>

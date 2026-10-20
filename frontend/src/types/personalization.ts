@@ -23,8 +23,12 @@ export interface ScheduleDefaults {
   avoid_days: DayCode[];
 }
 
+/** 7.2.4 academic strategy: ordering among VALID courses only. */
+export type Strategy = "balanced" | "major_first" | "requirements_first" | "unlock_future_options";
+
 export interface PlanningProfileInput {
   pace: Pace;
+  strategy?: Strategy;
   target_credits_per_term: string | number;
   max_credits_per_term: string | number;
   max_courses_per_term: number;
@@ -46,6 +50,7 @@ export interface PlanningProfileResponse {
   profile: PlanningProfile | null;
   defaults: PlanningProfileInput;
   paces: { value: Pace; label: string; description: string }[];
+  strategies?: { value: Strategy; label: string; description: string }[];
   disclaimer: string;
 }
 

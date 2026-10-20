@@ -1,6 +1,6 @@
 import { STATUS_ICON } from "@/components/academic/status";
 import { DAY_NAME, formatMinute } from "@/lib/academic/schedule-time";
-import { GOAL_KIND, PACE_LABEL, READINESS_CHECK } from "@/lib/academic/vocabulary";
+import { GOAL_KIND, PACE_LABEL, READINESS_CHECK, STRATEGY_LABEL } from "@/lib/academic/vocabulary";
 import { cn } from "@/lib/utils";
 import type { PlanningProfileInput, Readiness } from "@/types/personalization";
 
@@ -19,6 +19,7 @@ export function profileLines(p: PlanningProfileInput, programName?: string): [st
   const lines: [string, string][] = [];
   if (programName) lines.push(["Program", programName]);
   lines.push(["Planning pace", PACE_LABEL[p.pace] ?? p.pace]);
+  lines.push(["When several courses fit", STRATEGY_LABEL[p.strategy ?? "balanced"] ?? String(p.strategy)]);
   lines.push(["Target semester load", `${p.target_credits_per_term} credits`]);
   lines.push(["Maximum semester load", `${p.max_credits_per_term} credits, never more`]);
   lines.push(["Courses per semester", `At most ${p.max_courses_per_term}`]);

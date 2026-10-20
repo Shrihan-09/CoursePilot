@@ -117,6 +117,18 @@ class Pace(StrEnum):
     FINISH_EARLIER = "finish_earlier"  # fill toward the hard maximum to finish sooner
 
 
+class Strategy(StrEnum):
+    """Academic strategy (Phase 7.2.4): a RANKING preference among courses the
+    engine has already proved valid. It never relaxes prerequisites, offering
+    evidence, the credit maximum or any other hard constraint. "Finish sooner"
+    is Pace.FINISH_EARLIER, not a strategy - one setting, one meaning."""
+
+    BALANCED = "balanced"                            # no extra preference
+    MAJOR_FIRST = "major_first"                      # primary-major requirements earlier
+    REQUIREMENTS_FIRST = "requirements_first"        # school/Core requirements earlier
+    UNLOCK_FUTURE_OPTIONS = "unlock_future_options"  # courses many others build on
+
+
 class PlanningConstraints(BaseModel):
     """Course-load PREFERENCES - CoursePilot planning defaults, NOT Rutgers rules.
 
@@ -144,6 +156,7 @@ class PlanningConstraints(BaseModel):
     include_winter: bool = False
     target_credits_per_term: Decimal | None = Field(default=None, ge=1, le=24)
     pace: Pace | None = None
+    strategy: Strategy = Strategy.BALANCED
 
     @model_validator(mode="after")
     def _target_within_max(self) -> "PlanningConstraints":

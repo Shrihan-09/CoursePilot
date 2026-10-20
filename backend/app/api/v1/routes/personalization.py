@@ -24,7 +24,7 @@ from pydantic import BaseModel, Field
 from app.api.security import Principal, enforce_request_rate_limit
 from app.api.v1.routes.student import _resolve, _unlinked
 from app.db.session import get_sync_sessionmaker
-from app.domain.planning import Pace
+from app.domain.planning import Pace, Strategy
 from app.domain.planning_profile import DEFAULT_MAX_TERMS, PlanningProfileInput
 from app.domain.schedule import SectionChoice
 from app.services.planning.profile import confirm_profile, get_profile, profile_input
@@ -56,6 +56,19 @@ PACES = [
                     "are complete sooner. Only chosen by you."},
 ]
 
+#: Academic strategy (7.2.4): an ordering preference among courses CoursePilot
+#: has already checked are valid. Never a shortcut around a requirement.
+STRATEGIES = [
+    {"value": Strategy.BALANCED.value, "label": "Balanced",
+     "description": "Mix your major, school/Core and other requirements."},
+    {"value": Strategy.MAJOR_FIRST.value, "label": "Major first",
+     "description": "When several courses fit, take your major's requirements earlier."},
+    {"value": Strategy.REQUIREMENTS_FIRST.value, "label": "School/Core first",
+     "description": "When several courses fit, finish school and Core requirements earlier."},
+    {"value": Strategy.UNLOCK_FUTURE_OPTIONS.value, "label": "Keep options open",
+     "description": "When several courses fit, prefer ones that many later courses build on."},
+]
+
 
 class ProfileView(PlanningProfileInput):
     version: int
@@ -68,6 +81,7 @@ class ProfileResponse(BaseModel):
     profile: ProfileView | None
     defaults: PlanningProfileInput
     paces: list[dict]
+    strategies: list[dict] = STRATEGIES
     #: Planning settings are CoursePilot's, never Rutgers credit-load policy.
     disclaimer: str = ("These are your CoursePilot planning settings, not Rutgers credit-load "
                        "policy. Check your school's rules before planning an overload.")

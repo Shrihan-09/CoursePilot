@@ -21,7 +21,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.domain.modality import ModalityPreferences
-from app.domain.planning import Pace, PlanningConstraints
+from app.domain.planning import Pace, PlanningConstraints, Strategy
 
 _HHMM = r"^([01][0-9]|2[0-3]):[0-5][0-9]$"
 _PROGRAM_KEY = r"^[a-z0-9]+-[a-z0-9]+-[a-z0-9]+(-[a-z0-9]+)*$"
@@ -78,6 +78,7 @@ class PlanningProfileInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     pace: Pace = Pace.BALANCED
+    strategy: Strategy = Strategy.BALANCED
     target_credits_per_term: Decimal = Field(default=Decimal("15"), ge=1, le=24)
     max_credits_per_term: Decimal = Field(default=Decimal("18"), ge=1, le=24)
     max_courses_per_term: int = Field(default=6, ge=1, le=8)
@@ -103,7 +104,8 @@ def to_constraints(profile: PlanningProfileInput) -> PlanningConstraints:
         include_summer=profile.include_summer,
         include_winter=profile.include_winter,
         target_credits_per_term=profile.target_credits_per_term,
-        pace=profile.pace)
+        pace=profile.pace,
+        strategy=profile.strategy)
 
 
 __all__ = ["AdditionalGoal", "DEFAULT_MAX_TERMS", "PlanningProfileInput", "ScheduleDefaults",
