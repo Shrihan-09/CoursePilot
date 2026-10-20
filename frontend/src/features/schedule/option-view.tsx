@@ -168,7 +168,7 @@ export function RegistrationHandoff({ option }: { option: ScheduleOption }) {
   const [copied, setCopied] = useState(false);
   const indexes = option.choices.map((c) => c.index_number);
   return (
-    <section aria-labelledby="register-heading" className="space-y-2 rounded-lg border border-border bg-surface-elevated p-4">
+    <section aria-labelledby="register-heading" className="space-y-2 animate-cp-rise rounded-xl border border-border bg-surface-elevated p-4">
       <h3 id="register-heading" className="text-sm font-semibold text-fg">Register in WebReg yourself</h3>
       <p className="text-sm text-fg-secondary">
         CoursePilot doesn&apos;t register you, and nothing here adds or drops a course. Enter these index
@@ -199,7 +199,7 @@ export function ValidityAndAvailability({ option, result }: { option: ScheduleOp
   const current = m.availability_freshness === "current";
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      <section aria-labelledby="valid-heading" className="space-y-2 rounded-lg border border-border bg-surface-elevated p-4">
+      <section aria-labelledby="valid-heading" className="space-y-2 animate-cp-rise rounded-xl border border-border bg-surface-elevated p-4">
         <h3 id="valid-heading" className="flex items-center gap-2 text-sm font-semibold text-fg">
           <ShieldCheck aria-hidden className="size-4 text-success" /> Why this schedule is valid
         </h3>
@@ -207,7 +207,7 @@ export function ValidityAndAvailability({ option, result }: { option: ScheduleOp
           {option.reasons.map((r) => <li key={r}>· {SCHEDULE_REASON[r] ?? r}</li>)}
         </ul>
       </section>
-      <section aria-labelledby="live-heading" className="space-y-2 rounded-lg border border-border bg-surface-elevated p-4">
+      <section aria-labelledby="live-heading" className="space-y-2 animate-cp-rise rounded-xl border border-border bg-surface-elevated p-4">
         <h3 id="live-heading" className="flex items-center gap-2 text-sm font-semibold text-fg">
           <LiveIcon aria-hidden className="size-4 text-fg-muted" /> Open seats (live, separate from validity)
         </h3>
@@ -234,7 +234,7 @@ export function OptionDetails({ option, result }: { option: ScheduleOption; resu
       )}
       <section aria-labelledby="sections-heading" className="space-y-2">
         <h3 id="sections-heading" className="text-sm font-semibold text-fg">Sections</h3>
-        <ul className="divide-y divide-border rounded-lg border border-border bg-surface-elevated">
+        <ul className="divide-y divide-border animate-cp-rise rounded-xl border border-border bg-surface-elevated">
           {option.choices.map((c) => <SectionDetails key={c.index_number} choice={c} />)}
         </ul>
       </section>

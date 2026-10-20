@@ -175,7 +175,7 @@ function PlannedSchedule() {
             Build a plan first, or choose courses yourself.
           </EmptyState>
         ) : (
-          <div className="space-y-4 rounded-lg border border-border bg-surface-elevated p-4">
+          <div className="space-y-4 animate-cp-rise rounded-xl border border-border bg-surface-elevated p-4">
             {plan.freshness.state === "stale" && (
               <Alert tone="warning" title="Your plan is out of date" action={<Link href="/plan" className={buttonVariants({ size: "sm" })}>Review plan</Link>}>
                 Its courses may no longer be right. Regenerate it before relying on this schedule.
@@ -206,7 +206,7 @@ function PlannedSchedule() {
           </div>
         )
       ) : (
-        <div className="space-y-4 rounded-lg border border-border bg-surface-elevated p-4">
+        <div className="space-y-4 animate-cp-rise rounded-xl border border-border bg-surface-elevated p-4">
           <Field label="Term" hint="Only terms with Rutgers section data are listed.">
             {({ id, describedBy }) => (
               <Select id={id} aria-describedby={describedBy} value={customTerm} onChange={(e) => { setCustomTerm(e.target.value); generate.reset(); }}>

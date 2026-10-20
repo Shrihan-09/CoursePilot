@@ -117,8 +117,8 @@ export function Progress({
     >
       <div
         className={cn(
-          "h-full rounded-full bg-primary transition-[width] duration-300",
-          indeterminate && "w-1/3 animate-[cp-indeterminate_1.2s_ease-in-out_infinite]",
+          "h-full rounded-full bg-primary transition-[width] duration-500 ease-out",
+          indeterminate ? "w-1/3 animate-[cp-indeterminate_1.2s_ease-in-out_infinite]" : "origin-left animate-cp-grow",
         )}
         style={indeterminate ? undefined : { width: `${pct}%` }}
       />
@@ -207,10 +207,10 @@ export function PageHeader({
   eyebrow?: string;
 }) {
   return (
-    <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <header className="flex animate-cp-slide-up flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0 space-y-1">
         {eyebrow && <p className="text-xs font-medium uppercase tracking-wide text-fg-muted">{eyebrow}</p>}
-        <h1 className="text-2xl font-semibold tracking-tight text-fg">{title}</h1>
+        <h1 className="text-[1.75rem] font-bold leading-tight tracking-tight text-fg">{title}</h1>
         {description && <p className="max-w-2xl text-sm text-fg-secondary">{description}</p>}
       </div>
       {actions && <div className="flex shrink-0 gap-2">{actions}</div>}

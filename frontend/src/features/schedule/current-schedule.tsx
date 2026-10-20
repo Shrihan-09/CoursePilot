@@ -126,7 +126,7 @@ function CurrentScheduleContent() {
         </Alert>
       )}
 
-      <ul className="divide-y divide-border rounded-lg border border-border bg-surface-elevated">
+      <ul className="divide-y divide-border animate-cp-rise rounded-xl border border-border bg-surface-elevated">
         {cs.courses.map((c) => (
           <li key={c.course} className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
             <div className="min-w-0 space-y-0.5 text-sm">
