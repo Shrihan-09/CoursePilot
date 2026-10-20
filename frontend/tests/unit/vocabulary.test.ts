@@ -11,6 +11,8 @@ import {
   AUDIT_STATUS,
   availabilityText,
   blockedReasonText,
+  historicalBasis,
+  OFFERING_KIND,
   ELIGIBILITY_STATE,
   PLAN_SEVERITY,
   PLAN_STATUS,
@@ -91,7 +93,18 @@ describe("every engine value has words", () => {
       ["course_eligibility_failed", "no_valid_schedule", "options_found", "search_limit_reached", "term_schedule_not_published"]);
     expect(Object.keys(SCHEDULE_REASON)).toHaveLength(8);
     expect(Object.keys(STALE_REASON).sort()).toEqual(
-      ["academic_record_changed", "engine_updated", "planning_preferences_changed", "program_changed", "program_rules_changed", "rutgers_data_changed", "start_term_passed"]);
+      ["academic_record_changed", "engine_updated", "offering_assumption_contradicted", "planning_preferences_changed",
+       "program_changed", "program_rules_changed", "rutgers_data_changed", "start_term_passed", "target_term_published"]);
+  });
+
+  it("history never claims Rutgers hasn't published a term CoursePilot didn't check (7.2.4)", () => {
+    const off = { target_term: "20281" };
+    expect(historicalBasis(off)).toBe("CoursePilot has no Spring 2028 schedule from Rutgers");
+    expect(historicalBasis({ ...off, target_term_authority: "unchecked" })).not.toMatch(/hasn't published/);
+    expect(historicalBasis({ ...off, target_term_authority: "not_published", target_term_checked_at: "2026-10-19T12:00:00Z" }))
+      .toMatch(/^Rutgers hasn't published Spring 2028 yet \(checked /);
+    expect(OFFERING_KIND.target_term_data_pending).toMatch(/has published that term; CoursePilot hasn't loaded it/);
+    expect(blockedReasonText("target_term_data_pending")).toMatch(/hasn't loaded it yet/);
   });
 
   it("an unpublished term never claims a schedule exists or borrows another term", () => {

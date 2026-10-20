@@ -209,12 +209,12 @@ for (const scheme of ["light", "dark"]) {
     && Number(saved.constraints.max_credits_per_term) === 18, JSON.stringify(saved.constraints));
   expect(`${scheme} no semester exceeds the maximum`, saved.result.terms.every((t) => Number(t.credits) <= 18));
 
-  // Planned semester whose term Rutgers hasn't published -> explicit other term.
+  // Planned semester CoursePilot has no sections for -> explicit other term.
   const ctx = (await api(page, "GET", "/student/plans/context")).json;
   const unpublished = saved.result.terms.find((t) => !ctx.loaded_terms.some((l) => l.term_code === t.term_code));
   if (unpublished) {
     await page.goto(`${BASE}/schedule?term=${unpublished.term_code}`);
-    await page.getByText(/hasn't published/).waitFor();
+    await page.getByText(/doesn't have .* sections from Rutgers yet/).waitFor();
     await shot(page, `${scheme}-schedule-unpublished`, { full: true });
     await page.getByRole("button", { name: "Find schedules for " + unpublished.label }).click();
     await page.getByText("Term not published").first().waitFor({ timeout: 30000 });

@@ -199,7 +199,7 @@ def test_a_cs_student_plan(cs) -> None:
     assert all(r.provisional for pc in placed.values() for r in pc.requirements)
     codes = {i.code for i in plan.issues}
     assert "IN_PROGRESS_OUTCOME_ASSUMED_PENDING" in codes
-    assert plan.metadata.planning_engine_version == "6.7.0"
+    assert plan.metadata.planning_engine_version == "6.8.0"
     assert plan.metadata.constraints_source.endswith("not_rutgers_policy")
 
 

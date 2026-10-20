@@ -7,12 +7,18 @@ This module never turns history into a promise:
 | situation | kind | placeable |
 |---|---|---|
 | SOC data for the target term lists the course | `confirmed_in_term` | yes |
-| SOC data for the target term is COMPLETE and omits it | `not_offered_in_term` | no |
-| no complete data; offered earlier in the SAME season | `historically_offered_in_season` | yes (1) |
+| the target term's data is AUTHORITATIVE (READY) and omits it | `not_offered_in_term` | no |
+| term published, not validly loaded by CoursePilot | `target_term_data_pending` | no |
+| term unpublished/unchecked; offered earlier in the SAME season | `historically_offered_in_season` | yes (1) |
 | offered, but only in other seasons | `offered_in_other_seasons_only` | no |
 | never observed | `no_offering_evidence` | no |
 
 (1) placeable as labelled EVIDENCE, never reported as a confirmed offering.
+
+Phase 7.2.4 (services.term_authority): once a target term's data is
+authoritative - or merely known to be published - history no longer decides
+whether a course is offered in it. Before, a published-but-unloaded term fell
+through to history and was described as "not published yet".
 
 "Same season" means Fall vs Fall, Spring vs Spring: Rutgers departments
 schedule many courses in one season only, and the loaded history (two Falls,
@@ -34,6 +40,7 @@ from sqlalchemy.orm import Session
 from app.domain.planning import OfferingEvidence, OfferingEvidenceKind
 from app.models import Course, CourseOffering, DataSource
 from app.services.planning.terms import season
+from app.services.term_authority import TermAuthority, authority_of, term_states
 
 PLACEABLE = (OfferingEvidenceKind.CONFIRMED_IN_TERM, OfferingEvidenceKind.HISTORICAL_SAME_SEASON)
 
@@ -61,6 +68,7 @@ class OfferingIndex:
                        DataSource.term_code.is_not(None))).all():
             if coverage == "complete" or term not in self.coverage:
                 self.coverage[term] = coverage or "partial"
+        self.authority = term_states(session)
 
     def extend(self, session: Session, course_keys: set[str]) -> None:
         missing = {k for k in course_keys if k not in self.terms}
@@ -79,14 +87,20 @@ class OfferingIndex:
         observed = list(self.terms.get(course_key, []))
         coverage = self.coverage.get(target_term)
         same = [t for t in observed if season(t) == season(target_term) and t < target_term]
+        state = authority_of(self.authority, target_term)
         base = dict(target_term=target_term, observed_terms=observed, same_season_terms=same,
                     most_recent_term=observed[-1] if observed else None,
-                    target_term_coverage=coverage)
+                    target_term_coverage=coverage, target_term_authority=state.authority.value,
+                    target_term_checked_at=state.checked_at)
         if target_term in observed:
             return OfferingEvidence(kind=OfferingEvidenceKind.CONFIRMED_IN_TERM,
                                     rules_term=target_term, **base)
-        if coverage == "complete":
+        # The target-term authority rule: from here on, history may decide
+        # nothing about a term whose data is authoritative or known published.
+        if state.authority is TermAuthority.READY:
             return OfferingEvidence(kind=OfferingEvidenceKind.NOT_OFFERED_IN_TERM, **base)
+        if state.authority is TermAuthority.PUBLISHED_PENDING:
+            return OfferingEvidence(kind=OfferingEvidenceKind.TERM_DATA_PENDING, **base)
         if same:
             return OfferingEvidence(kind=OfferingEvidenceKind.HISTORICAL_SAME_SEASON,
                                     rules_term=same[-1], **base)

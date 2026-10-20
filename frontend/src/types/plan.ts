@@ -12,7 +12,11 @@ export type OfferingEvidenceKind =
   | "not_offered_in_term"
   | "historically_offered_in_season"
   | "offered_in_other_seasons_only"
+  | "target_term_data_pending"
   | "no_offering_evidence";
+
+/** 7.2.4: may history speak for the target term? (services/term_authority.py) */
+export type TermAuthority = "ready" | "published_pending" | "not_published" | "unchecked";
 
 export type PlanSeverity = "blocker" | "needs_confirmation" | "warning";
 
@@ -60,6 +64,8 @@ export interface OfferingEvidence {
   most_recent_term: string | null;
   rules_term: string | null;
   target_term_coverage: string | null;
+  target_term_authority?: TermAuthority;
+  target_term_checked_at?: string | null;
 }
 
 export interface ConditionalDependency {
@@ -146,7 +152,9 @@ export type StaleReason =
   | "rutgers_data_changed"
   | "engine_updated"
   | "start_term_passed"
-  | "planning_preferences_changed";
+  | "planning_preferences_changed"
+  | "offering_assumption_contradicted"
+  | "target_term_published";
 
 export interface BlockedCourse {
   course: string;

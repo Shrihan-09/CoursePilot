@@ -23,6 +23,7 @@ Vocabulary is deliberate:
 
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 
@@ -32,7 +33,7 @@ from app.domain.course_ranking import CourseRankingEvidence
 from app.domain.scenario import ScenarioAssumption, ScenarioTarget
 
 #: Bumped whenever the same inputs could produce a different plan.
-PLANNING_ENGINE_VERSION = "6.7.0"   # 7.2.2: composable context and evidence-based ranking
+PLANNING_ENGINE_VERSION = "6.8.0"   # 7.2.4: target-term authority, academic strategy
 
 
 class EligibilityState(StrEnum):
@@ -46,10 +47,34 @@ class EligibilityState(StrEnum):
 
 class OfferingEvidenceKind(StrEnum):
     CONFIRMED_IN_TERM = "confirmed_in_term"                  # SOC data for that term lists it
-    NOT_OFFERED_IN_TERM = "not_offered_in_term"   # that term's SOC data is complete and omits it
+    NOT_OFFERED_IN_TERM = "not_offered_in_term"   # that term's authoritative data omits it
+    # 7.2.4: Rutgers publishes the term, CoursePilot has not validly loaded it:
+    # the offering is UNKNOWN - history may NOT decide it.
+    TERM_DATA_PENDING = "target_term_data_pending"
     HISTORICAL_SAME_SEASON = "historically_offered_in_season"  # earlier terms of that season
     OTHER_SEASONS_ONLY = "offered_in_other_seasons_only"
     NO_EVIDENCE = "no_offering_evidence"
+
+
+class OfferingStatus(StrEnum):
+    """The confidence a student sees. CONFIRMED is only ever target-term data."""
+
+    CONFIRMED = "confirmed"                                  # the target term lists it
+    NOT_FOUND_IN_PUBLISHED_TERM = "not_found_in_published_term"
+    HISTORICALLY_LIKELY = "historically_likely"              # unpublished term; same-season history
+    INSUFFICIENT_HISTORY = "insufficient_history"            # other seasons only
+    UNKNOWN = "unknown"                                      # pending data, or no evidence
+
+
+def offering_status(kind: OfferingEvidenceKind) -> OfferingStatus:
+    return {
+        OfferingEvidenceKind.CONFIRMED_IN_TERM: OfferingStatus.CONFIRMED,
+        OfferingEvidenceKind.NOT_OFFERED_IN_TERM: OfferingStatus.NOT_FOUND_IN_PUBLISHED_TERM,
+        OfferingEvidenceKind.HISTORICAL_SAME_SEASON: OfferingStatus.HISTORICALLY_LIKELY,
+        OfferingEvidenceKind.OTHER_SEASONS_ONLY: OfferingStatus.INSUFFICIENT_HISTORY,
+        OfferingEvidenceKind.TERM_DATA_PENDING: OfferingStatus.UNKNOWN,
+        OfferingEvidenceKind.NO_EVIDENCE: OfferingStatus.UNKNOWN,
+    }[kind]
 
 
 class Severity(StrEnum):
@@ -141,6 +166,14 @@ class OfferingEvidence(BaseModel):
     rules_term: str | None = None
     #: Whether SOC data for the target term itself is loaded, and how fully.
     target_term_coverage: str | None = None
+    #: 7.2.4 term authority: ready | published_pending | not_published | unchecked.
+    target_term_authority: str = "unchecked"
+    #: When CoursePilot last asked Rutgers about the target term (None: never).
+    target_term_checked_at: datetime | None = None
+
+    @property
+    def status(self) -> OfferingStatus:
+        return offering_status(self.kind)
 
 
 class ConditionalDependency(BaseModel):

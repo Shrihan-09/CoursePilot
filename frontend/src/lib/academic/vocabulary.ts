@@ -168,6 +168,10 @@ export const STALE_REASON: Record<StaleReason, string> = {
   engine_updated: "CoursePilot's planning engine was updated.",
   start_term_passed: "The plan's first semester has started or is already on your record.",
   planning_preferences_changed: "You changed your planning preferences.",
+  offering_assumption_contradicted:
+    "Rutgers published a semester this plan had estimated from past offerings, and a planned course isn't in it.",
+  target_term_published:
+    "Rutgers published a semester this plan had estimated from past offerings; CoursePilot is still loading it.",
 };
 
 /* ------------------------------------------------- readiness (7.2.1) */
@@ -237,9 +241,8 @@ export function planReasonText(reason: PlanReason, course: PlannedCourse): strin
     case "confirmed_offering_in_term":
       return `Rutgers lists it in the ${termLabel(off.target_term)} schedule`;
     case "historically_offered_in_season":
-      return off.most_recent_term
-        ? `${termLabel(off.target_term)} isn't published yet; Rutgers offered it in ${termLabel(off.most_recent_term)}`
-        : `${termLabel(off.target_term)} isn't published yet; Rutgers has offered it in this season before`;
+      return `${historicalBasis(off)}; likely, based on Rutgers offering it in ${
+        off.most_recent_term ? termLabel(off.most_recent_term) : "this season before"}`;
     case "rules_from_earlier_term":
       return `Prerequisite rules are taken from ${termLabel(course.prerequisite.rules_term)}, the latest Rutgers published`;
     case "ranked_by_requirement_coverage":
@@ -254,8 +257,24 @@ export const OFFERING_KIND: Record<OfferingEvidenceKind, string> = {
   not_offered_in_term: "Not in that term's (complete) Rutgers schedule",
   historically_offered_in_season: "Offered in past terms of the same season",
   offered_in_other_seasons_only: "Only offered in other seasons",
+  target_term_data_pending: "Rutgers has published that term; CoursePilot hasn't loaded it yet",
   no_offering_evidence: "No record of Rutgers offering it",
 };
+
+/**
+ * What a HISTORICAL offering claim rests on. Never says "Rutgers hasn't
+ * published" unless CoursePilot actually checked (7.2.4): an unloaded term is
+ * a fact about CoursePilot, not about Rutgers.
+ */
+export function historicalBasis(off: { target_term: string; target_term_authority?: string;
+                                       target_term_checked_at?: string | null }): string {
+  const term = termLabel(off.target_term);
+  if (off.target_term_authority === "not_published") {
+    const when = off.target_term_checked_at ? ` (checked ${new Date(off.target_term_checked_at).toLocaleDateString()})` : "";
+    return `Rutgers hasn't published ${term} yet${when}`;
+  }
+  return `CoursePilot has no ${term} schedule from Rutgers`;
+}
 
 /**
  * Why a course could not be evaluated or placed. The codes are open-ended
@@ -290,6 +309,8 @@ export function blockedReasonText(code: string): string {
       return "Only offered in seasons this plan doesn't include";
     case "not_offered_in_term":
       return "Not in the published schedule for the planned term";
+    case "target_term_data_pending":
+      return "Rutgers has published the planned term, but CoursePilot hasn't loaded it yet";
     case "variable_credit":
       return "Variable credits - CoursePilot won't guess a credit value";
     case "no_prerequisite_path":

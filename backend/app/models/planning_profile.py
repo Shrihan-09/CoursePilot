@@ -31,6 +31,8 @@ class StudentPlanningProfile(Base, TimestampMixin):
         Uuid, ForeignKey("student.id", ondelete="CASCADE"), primary_key=True)
     version: Mapped[int] = mapped_column(Integer, default=1)
     pace: Mapped[str] = mapped_column(String(32))
+    #: Academic strategy (Phase 7.2.4): a RANKING preference among valid courses.
+    strategy: Mapped[str] = mapped_column(String(32), default="balanced", server_default="balanced")
     target_credits_per_term: Mapped[Decimal] = mapped_column(Numeric(4, 1))
     max_credits_per_term: Mapped[Decimal] = mapped_column(Numeric(4, 1))
     max_courses_per_term: Mapped[int] = mapped_column(Integer)
