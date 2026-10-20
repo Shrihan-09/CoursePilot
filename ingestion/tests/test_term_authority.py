@@ -233,3 +233,15 @@ def test_source_disagreement_is_recorded_not_resolved():
     }
     # Neither input was modified to agree with the other.
     assert courses[0]["sections"][1]["openStatus"] is False and "99999" in listed
+
+
+def test_discovery_records_the_disagreement_on_the_term(session):
+    sample = json.loads((FIXTURE_DIR / "soc_cs_courses_sample.json").read_bytes())
+    indexes = [s["index"] for c in sample for s in c["sections"]]
+    listed = json.dumps(indexes[1:] + ["99999"]).encode()       # one dropped, one unknown
+    discover(session, lambda q: _payload(sample), fetch_open=lambda q: listed,
+             terms=["20279"], pause=0, now=lambda: NOW)
+    row = session.scalar(select(RutgersTerm))
+    assert row.availability_supported is True
+    assert row.disagreements["listed_open_but_unknown_section"] == 1
+    assert row.disagreements["sections"] == len(indexes)
