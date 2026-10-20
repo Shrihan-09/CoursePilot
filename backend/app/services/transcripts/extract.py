@@ -28,11 +28,24 @@ from dataclasses import dataclass
 
 PDF_MAGIC = b"%PDF-"
 
-FAILURE_CODES = frozenset({
-    "FILE_EMPTY", "FILE_TOO_LARGE", "FILE_NOT_PDF", "PDF_ENCRYPTED", "PDF_TOO_MANY_PAGES",
-    "PDF_TEXT_TOO_LARGE", "PDF_NO_TEXT_LAYER", "PDF_UNREADABLE", "PDF_EXTRACTION_TIMEOUT",
-    "PDF_EXTRACTION_CRASHED", "NO_COURSE_ROWS", "TOO_MANY_ROWS", "PROCESSING_INTERRUPTED",
-})
+FAILURE_CODES = frozenset(
+    {
+        "FILE_EMPTY",
+        "FILE_TOO_LARGE",
+        "FILE_NOT_PDF",
+        "PDF_ENCRYPTED",
+        "PDF_TOO_MANY_PAGES",
+        "PDF_TEXT_TOO_LARGE",
+        "PDF_NO_TEXT_LAYER",
+        "PDF_UNREADABLE",
+        "PDF_EXTRACTION_TIMEOUT",
+        "UNSUPPORTED_LAYOUT",
+        "PDF_EXTRACTION_CRASHED",
+        "NO_COURSE_ROWS",
+        "TOO_MANY_ROWS",
+        "PROCESSING_INTERRUPTED",
+    }
+)
 
 
 class ExtractionFailed(Exception):
@@ -46,6 +59,7 @@ class ExtractionFailed(Exception):
 class ExtractedText:
     pages: list[str]
     page_count: int
+    layout: list[dict] | None = None
 
 
 #: (bytes) -> ExtractedText, raising ExtractionFailed. Injectable for tests.
@@ -61,7 +75,7 @@ def check_document(data: bytes, max_bytes: int) -> None:
         raise ExtractionFailed("FILE_NOT_PDF")
 
 
-def _limit_child() -> None:   # pragma: no cover - POSIX only
+def _limit_child() -> None:  # pragma: no cover - POSIX only
     try:
         import resource
 
@@ -78,8 +92,9 @@ def _child(conn, data, max_pages, max_chars):  # runs in the spawned process
     extract(conn, data, max_pages, max_chars)
 
 
-def isolated_pdf_extractor(*, max_pages: int, max_chars: int, timeout_seconds: float,
-                           _target=None) -> Extractor:
+def isolated_pdf_extractor(
+    *, max_pages: int, max_chars: int, timeout_seconds: float, _target=None
+) -> Extractor:
     """An Extractor that parses in a fresh, killable child process.
 
     `_target` replaces the child's entry point - tests only, to prove that a
@@ -90,8 +105,7 @@ def isolated_pdf_extractor(*, max_pages: int, max_chars: int, timeout_seconds: f
     def run(data: bytes) -> ExtractedText:
         ctx = multiprocessing.get_context("spawn")
         parent, child = ctx.Pipe(duplex=False)
-        proc = ctx.Process(target=target, args=(child, data, max_pages, max_chars),
-                           daemon=True)
+        proc = ctx.Process(target=target, args=(child, data, max_pages, max_chars), daemon=True)
         proc.start()
         child.close()
         try:
@@ -109,11 +123,13 @@ def isolated_pdf_extractor(*, max_pages: int, max_chars: int, timeout_seconds: f
         if not isinstance(message, tuple) or not message:
             raise ExtractionFailed("PDF_EXTRACTION_CRASHED")
         if message[0] == "error":
-            code = message[1] if len(message) > 1 and message[1] in FAILURE_CODES \
-                else "PDF_UNREADABLE"
+            code = (
+                message[1] if len(message) > 1 and message[1] in FAILURE_CODES else "PDF_UNREADABLE"
+            )
             raise ExtractionFailed(code)
-        _, pages, count = message
-        return ExtractedText(pages=list(pages), page_count=int(count))
+        _, pages, count = message[:3]
+        layout = message[3] if len(message) == 4 else None
+        return ExtractedText(pages=list(pages), page_count=int(count), layout=layout)
 
     return run
 
@@ -122,10 +138,20 @@ def default_extractor() -> Extractor:
     from app.core.config import get_settings
 
     s = get_settings()
-    return isolated_pdf_extractor(max_pages=s.transcript_max_pages,
-                                  max_chars=s.transcript_max_text_chars,
-                                  timeout_seconds=s.transcript_extraction_timeout_seconds)
+    return isolated_pdf_extractor(
+        max_pages=s.transcript_max_pages,
+        max_chars=s.transcript_max_text_chars,
+        timeout_seconds=s.transcript_extraction_timeout_seconds,
+    )
 
 
-__all__ = ["FAILURE_CODES", "PDF_MAGIC", "ExtractedText", "ExtractionFailed", "Extractor",
-           "check_document", "default_extractor", "isolated_pdf_extractor"]
+__all__ = [
+    "FAILURE_CODES",
+    "PDF_MAGIC",
+    "ExtractedText",
+    "ExtractionFailed",
+    "Extractor",
+    "check_document",
+    "default_extractor",
+    "isolated_pdf_extractor",
+]

@@ -28,6 +28,7 @@ const config: Config = {
         warning: { DEFAULT: token("warning"), subtle: token("warning-subtle") },
         danger: { DEFAULT: token("danger"), subtle: token("danger-subtle") },
         overlay: token("overlay"),
+        canvas: token("canvas"),
       },
       textColor: {
         // "fg" not "primary": blue text is text-primary-text, never ambiguous.
@@ -58,11 +59,18 @@ const config: Config = {
         "cp-fade-in": { from: { opacity: "0" }, to: { opacity: "1" } },
         "cp-slide-up": { from: { opacity: "0", transform: "translateY(8px)" },
                          to: { opacity: "1", transform: "translateY(0)" } },
+        // Board entrance: cards rise into place, staggered by --cp-i.
+        "cp-rise": { from: { opacity: "0", transform: "translateY(10px)" },
+                     to: { opacity: "1", transform: "translateY(0)" } },
+        // Progress fills from the left on first paint.
+        "cp-grow": { from: { transform: "scaleX(0)" }, to: { transform: "scaleX(1)" } },
       },
       animation: {
         "cp-shimmer": "cp-shimmer 1.6s linear infinite",
         "cp-fade-in": "cp-fade-in 160ms ease-out",
         "cp-slide-up": "cp-slide-up 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+        "cp-rise": "cp-rise 360ms cubic-bezier(0.2, 0.8, 0.2, 1) both",
+        "cp-grow": "cp-grow 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both",
       },
     },
   },

@@ -27,7 +27,8 @@ export type PlanReason =
   | "confirmed_offering_in_term"
   | "historically_offered_in_season"
   | "rules_from_earlier_term"
-  | "selected_by_canonical_tie_break";
+  | "selected_by_canonical_tie_break"
+  | "ranked_by_requirement_coverage";
 
 export type PlanStatus = "covers_all_requirements" | "partial" | "nothing_to_plan";
 

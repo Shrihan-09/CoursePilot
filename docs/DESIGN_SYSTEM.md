@@ -184,6 +184,35 @@ different kinds of "loading":
 - **7.1 builds the component only.** It connects to the Planning Engine UI in
   the core-product phase.
 
+## Board layout (Sunsama-inspired refresh)
+
+The planning surfaces borrow a daily-planner's *structure and motion*, not its
+colours: CoursePilot's neutral-first palette and logo blue are unchanged.
+
+- **Canvas and inset panel (lg+).** The app sits on `--canvas`; the sidebar has
+  no border, and the page content is an inset rounded panel. Phones keep the
+  top bar and bottom tabs.
+- **Grouped sidebar.** Small-caps section labels: Academics, Planning, Coming
+  later, Account. Progress (`/profile`) is now in the navigation.
+- **Plan board.** Each semester is a column: a bold title, a muted count line,
+  a credit-load bar measured against the student's own maximum, and a
+  "Build schedule" row in the place of a planner's "Add task". Courses are
+  cards: code, a credits chip, title, and `#` requirement tags. The board
+  scrolls sideways inside itself, never the page, and stacks on phones.
+- **Course tones.** `lib/tone.ts` gives every course a stable tone (`.cp-tone-1..4`),
+  shared by its plan card and its calendar blocks. Tones are the logo's blue
+  family ONLY, so a tone never reads as a status. Text on a tone fill is always
+  primary or secondary text (AA in both themes; muted text failed and was
+  removed). The tone classes are plain CSS outside `@layer`: the names are
+  built at runtime, and Tailwind silently purged them when they were layered.
+- **Motion.** `animate-cp-rise` (opacity + 10 px rise, 360 ms, staggered at most
+  8 steps) for cards and calendar blocks; `cp-lift` (1 px hover lift and shadow,
+  hover-capable pointers only); progress fills grow from the left
+  (`animate-cp-grow`); page headers slide up. No scale in entrances: a scaled
+  frame measured buttons under the touch-target floor. All of it is disabled by
+  the global reduced-motion rule. Visual QA waits 700 ms before auditing so it
+  never samples text mid-fade.
+
 ## Transcript review
 
 The student must see at once what was recognized, what is uncertain, what needs

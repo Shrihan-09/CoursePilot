@@ -14,7 +14,8 @@ import { termLabel } from "@/lib/academic/vocabulary";
 import type { CurrentCourse, CurrentSchedule } from "@/types/personalization";
 import type { ScheduleOption, SectionChoice } from "@/types/schedule";
 
-import { WeekCalendar } from "./week-calendar";
+import { asOption, WeekCalendar } from "./week-calendar";
+import { ScheduleImportReview } from "./import-review";
 
 /**
  * My current schedule - DESCRIPTIVE (Phase 7.2.1).
@@ -25,14 +26,7 @@ import { WeekCalendar } from "./week-calendar";
  * section; it never selects one.
  */
 
-export function asOption(choices: SectionChoice[]): ScheduleOption {
-  return {
-    rank: 1, choices, total_credits: null, reasons: [], issues: [], days: [],
-    score: { needs_confirmation: 0, unknown_time_sections: 0, preference_misses: 0, class_days: 0,
-             gap_minutes: 0, closed_sections_if_current: 0, unknown_availability_if_current: 0 },
-    availability: { state: "unknown", freshness: "unobserved", as_of: null, all_open_now: false, courses: [] },
-  };
-}
+export { asOption } from "./week-calendar";
 
 function SectionPicker({ course, onClose }: { course: CurrentCourse; onClose: () => void }) {
   const client = useQueryClient();
@@ -87,9 +81,12 @@ function SectionPicker({ course, onClose }: { course: CurrentCourse; onClose: ()
   );
 }
 
-export function CurrentScheduleView() {
+function CurrentScheduleContent() {
   const client = useQueryClient();
   const current = useQuery({ queryKey: ["current-schedule"], queryFn: api.currentSchedule, staleTime: 0 });
+  // Confirmed WebReg imports are a SEPARATE record (no academic-history or
+  // section-confirmation write); they are shown here, labelled as imported.
+  const registrations = useQuery({ queryKey: ["registrations"], queryFn: api.registrations });
   const [picking, setPicking] = useState<CurrentCourse | null>(null);
   const forget = useMutation({
     mutationFn: (course: string) => api.forgetSection(course),
@@ -108,7 +105,9 @@ export function CurrentScheduleView() {
     );
   }
   const confirmed = cs.courses.flatMap((c) => c.confirmed);
-  const open = cs.courses.filter((c) => c.confirmed.length === 0);
+  const imported = new Map((registrations.data?.registrations ?? [])
+    .filter((r) => r.term_code === cs.term_code).map((r) => [r.course_string, r]));
+  const open = cs.courses.filter((c) => c.confirmed.length === 0 && !imported.has(c.course));
 
   return (
     <div className="space-y-5">
@@ -127,7 +126,7 @@ export function CurrentScheduleView() {
         </Alert>
       )}
 
-      <ul className="divide-y divide-border rounded-lg border border-border bg-surface-elevated">
+      <ul className="divide-y divide-border animate-cp-rise rounded-xl border border-border bg-surface-elevated">
         {cs.courses.map((c) => (
           <li key={c.course} className="flex flex-col gap-2 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
             <div className="min-w-0 space-y-0.5 text-sm">
@@ -137,12 +136,17 @@ export function CurrentScheduleView() {
                   {c.confirmed.map((s) => `Section ${s.section_number}, index ${s.index_number}`).join(" + ")}
                   <span className="text-fg-muted"> - confirmed by you</span>
                 </p>
+              ) : imported.has(c.course) ? (
+                <p className="text-fg-secondary">
+                  Section {imported.get(c.course)!.section_number}, index {imported.get(c.course)!.index_number ?? "not supplied"}
+                  <span className="text-fg-muted"> - imported from your schedule PDF, confirmed by you</span>
+                </p>
               ) : (
                 <p className="text-fg-muted">Section not chosen{c.sections_available ? ` · ${c.sections_available} Rutgers sections` : ""}</p>
               )}
               {c.unavailable.map((u) => (
                 <p key={u.index_number} className="text-warning">
-                  Index {u.index_number} is no longer in Rutgers&apos; data for this term. Choose your section again.
+                  Confirmed section {c.confirmed_identities?.find((identity) => identity.index_number === u.index_number)?.section_number ?? "number unavailable"}, index {u.index_number}: public metadata is no longer available. Your confirmation is preserved; choose again only if your registration changed.
                 </p>
               ))}
             </div>
@@ -168,6 +172,8 @@ export function CurrentScheduleView() {
           <WeekCalendar option={asOption(confirmed)} />
           {open.length > 0 && <p className="text-xs text-fg-muted">{open.length} course{open.length === 1 ? "" : "s"} not shown until you choose a section.</p>}
         </section>
+      ) : imported.size > 0 ? (
+        <p className="text-sm text-fg-muted">Your imported registrations are listed with your schedule import below.</p>
       ) : (
         <p className="text-sm text-fg-muted">Choose your sections to see your week.</p>
       )}
@@ -175,3 +181,6 @@ export function CurrentScheduleView() {
     </div>
   );
 }
+
+export function CurrentScheduleView() { return <div className="space-y-6"><CurrentScheduleContent /><ScheduleImportReview /></div>; }
+

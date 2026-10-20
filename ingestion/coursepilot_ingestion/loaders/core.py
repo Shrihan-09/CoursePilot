@@ -1,29 +1,4 @@
-"""Loader: SAS Core goals and eligibility -> the EXISTING requirement tables.
-
-No Core-specific tables, and no Core-specific program. Core joins the
-STUDENT'S existing program version:
-
-    Program (e.g. CS 198 BA)
-      -> ProgramVersion(sharing_policy='share_across_systems')
-        -> Requirement(requirement_system='major')   the major tree
-        -> Requirement(requirement_system='core')    the core tree, added here
-          -> RequirementCourseOption                 course -> goal eligibility
-
-Two roots in one tree, distinguished only by `requirement_system`.
-
-That reuse is the point. A parallel `CoreRequirement` hierarchy would need its
-own audit engine, its own allocator, and its own sharing rules - and the one
-thing Core most needs (sharing with the major) already exists. It also would
-not work: the audit engine evaluates ONE ProgramVersion, so core requirements
-stored elsewhere would never appear in a student's audit.
-
-Rules it enforces, consistent with every other loader:
-
-  * **Never create a Course.** A certification naming a course outside the
-    ingested SOC terms is reported, never manufactured.
-  * **Never mix catalog years.** Every row carries the run's catalog year.
-  * **Idempotent.** Re-loading updates in place.
-"""
+"""Idempotent school-owned Core ingestion; never clones rules per major."""
 
 from __future__ import annotations
 
@@ -36,12 +11,11 @@ from app.models import (
     Course,
     CurationStatus,
     DataSource,
-    Program,
-    ProgramVersion,
     Requirement,
     RequirementCourseOption,
     RequirementSystem,
     School,
+    SchoolRequirementSetVersion,
 )
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -92,64 +66,47 @@ class CoreLoader:
     # structure
     # ------------------------------------------------------------------ #
 
-    def _resolve_target_version(
-        self, definition, catalog_year: str
-    ) -> ProgramVersion:
-        """Find the EXISTING program version Core attaches to.
-
-        Core requirements do not get their own program. They join the
-        student's program version tagged `requirement_system='core'`, because:
-
-          * the audit engine evaluates ONE ProgramVersion, so core
-            requirements in a separate version would be invisible to a
-            student's audit; and
-          * sharing only works when major and core slots are in the same tree.
-
-        This raises rather than creating a program. A missing target means the
-        major has not been ingested, and inventing one would produce a Core
-        attached to a program nobody is enrolled in.
-        """
-        target = definition.target_program
-        version = self.session.scalar(
-            select(ProgramVersion)
-            .join(Program, Program.id == ProgramVersion.program_id)
-            .join(School, School.id == Program.school_id)
-            .where(
-                School.code == target["school_code"],
-                Program.code == target["program_code"],
-                Program.degree_type == target["degree_type"],
-                ProgramVersion.catalog_year == catalog_year,
-            )
-        )
+    def _resolve_target_version(self, definition, catalog_year: str) -> SchoolRequirementSetVersion:
+        school = self.session.scalar(select(School).where(
+            School.code == definition.school["code"],
+            School.campus_code == definition.school["campus_code"]))
+        if school is None:
+            raise ValueError("School must be ingested before its requirement set")
+        metadata = definition.requirement_set
+        code = metadata.get("code") or definition.requirements[0]["code"].lower().replace("_", "-")
+        version = self.session.scalar(select(SchoolRequirementSetVersion).where(
+            SchoolRequirementSetVersion.school_id == school.id,
+            SchoolRequirementSetVersion.catalog_year == catalog_year,
+            SchoolRequirementSetVersion.code == code))
+        digest = hashlib.sha256(__import__("json").dumps({
+            "requirements": definition.requirements,
+            "goals": [g.model_dump() for g in definition.goals],
+            "source": definition.source, "school": definition.school,
+            "requirement_set": metadata}, sort_keys=True).encode()).hexdigest()
         if version is None:
-            raise ValueError(
-                f"target program version not found: {target['school_code']}/"
-                f"{target['program_code']}/{target['degree_type']} {catalog_year}. "
-                "Core attaches to an existing program version - ingest the program's "
-                "requirements first."
-            )
+            version = SchoolRequirementSetVersion(school_id=school.id, catalog_year=catalog_year,
+                code=code, name=metadata.get("name", f"{school.name} Core"),
+                definition_version=metadata.get("definition_version", "1"),
+                source_url=definition.source["url"], definition_sha256=digest,
+                sharing_policy=metadata.get("sharing_policy", "exclusive"),
+                lifecycle_state="pending_review",
+                source_id=self._active_source.id)
+            self.session.add(version)
+        elif version.definition_sha256 != digest:
+            from app.services.program_lifecycle import school_set_definition_changed
 
-        # Core is the reason this program must share. Applied here rather than
-        # left to the major's definition, because the sharing permission comes
-        # from the SAS core source, not from the major's catalog page.
-        policy = definition.program_version.get("sharing_policy")
-        if policy and version.sharing_policy != policy:
-            logger.info(
-                "setting sharing_policy=%s on %s %s (was %s) - required by SAS core",
-                policy,
-                target["program_code"],
-                catalog_year,
-                version.sharing_policy,
-            )
-            version.sharing_policy = policy
-            self.session.flush()
-
+            school_set_definition_changed(version, digest)
+            version.source_url = definition.source["url"]
+            version.source_id = self._active_source.id
+            version.definition_version = metadata.get("definition_version", "1")
+            version.sharing_policy = metadata.get("sharing_policy", "exclusive")
+        self.session.flush()
         return version
 
     def _load_requirements(
         self,
         definition,
-        version: ProgramVersion,
+        version: SchoolRequirementSetVersion,
         source: DataSource,
         stats: CoreIngestionStats,
     ) -> tuple[dict[str, Requirement], dict[str, list[str]]]:
@@ -160,7 +117,7 @@ class CoreLoader:
         the mapping is many-to-many in both directions.
         """
         curation = definition.source.get("curation_status", CurationStatus.UNVERIFIED.value)
-        system = RequirementSystem.CORE.value
+        system = definition.requirement_set.get("requirement_system", RequirementSystem.CORE.value)
 
         by_code: dict[str, Requirement] = {}
         goal_to_requirements: dict[str, list[str]] = {}
@@ -168,7 +125,7 @@ class CoreLoader:
         for rdef in definition.requirements:
             existing = self.session.scalar(
                 select(Requirement).where(
-                    Requirement.program_version_id == version.id,
+                    Requirement.school_requirement_set_version_id == version.id,
                     Requirement.code == rdef["code"],
                 )
             )
@@ -176,6 +133,11 @@ class CoreLoader:
                 # Every field the insert sets is refreshed. Before Phase 6.0
                 # only five were, so a revised source left stale prose - and a
                 # stale count - on the row while reporting a successful load.
+                existing.exemption_rule = rdef.get("exemption_rule")
+                existing.allocation_scope = rdef.get("allocation_scope")
+                existing.eligible_origins = rdef.get("eligible_origins")
+                existing.graded_only = rdef.get("graded_only", False)
+                existing.required_campus = rdef.get("required_campus")
                 existing.name = rdef["name"]
                 existing.requirement_type = rdef["requirement_type"]
                 existing.requirement_system = system
@@ -190,11 +152,17 @@ class CoreLoader:
                 existing.notes = rdef.get("notes")
                 existing.source_prose = rdef.get("source_prose")
                 existing.curation_status = curation
+                existing.source_id = source.id
                 stats.requirements_updated += 1
                 by_code[rdef["code"]] = existing
             else:
                 req = Requirement(
-                    program_version_id=version.id,
+                    school_requirement_set_version_id=version.id,
+                    exemption_rule=rdef.get("exemption_rule"),
+                    allocation_scope=rdef.get("allocation_scope"),
+                    eligible_origins=rdef.get("eligible_origins"),
+                    graded_only=rdef.get("graded_only", False),
+                    required_campus=rdef.get("required_campus"),
                     code=rdef["code"],
                     name=rdef["name"],
                     requirement_type=rdef["requirement_type"],
@@ -224,8 +192,15 @@ class CoreLoader:
 
         for rdef in definition.requirements:
             parent_code = rdef.get("parent")
-            if parent_code:
-                by_code[rdef["code"]].parent_id = by_code[parent_code].id
+            by_code[rdef["code"]].parent_id = by_code[parent_code].id if parent_code else None
+        self.session.flush()
+        # A complete curated definition supersedes obsolete structure, while
+        # student rows and legacy program-owned trees are untouched.
+        obsolete = self.session.scalars(select(Requirement).where(
+            Requirement.school_requirement_set_version_id == version.id,
+            Requirement.code.not_in(list(by_code))))
+        for row in list(obsolete):
+            self.session.delete(row)
         self.session.flush()
 
         return by_code, goal_to_requirements
@@ -330,6 +305,7 @@ class CoreLoader:
         stats: CoreIngestionStats,
     ) -> CoreIngestionStats:
         source = self.get_or_create_source(definition.source, raw_definition, catalog_year)
+        self._active_source = source
         version = self._resolve_target_version(definition, catalog_year)
         by_code, goal_to_requirements = self._load_requirements(
             definition, version, source, stats

@@ -33,6 +33,7 @@ from enum import StrEnum
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -77,8 +78,9 @@ class RequirementSystem(StrEnum):
     general education, college requirements) and adding one must not need a
     migration. These constants are the known values, not an exhaustive set.
 
-    The system is what makes sharing expressible: allocation is exclusive
-    WITHIN a system, and sharing ACROSS systems is governed by policy.
+    Systems describe academic scope for presentation. Allocation defaults to
+    system-level exclusivity; explicit allocation_scope permits sourced reuse
+    across areas inside a system without weakening pairwise restrictions.
     """
 
     MAJOR = "major"
@@ -88,10 +90,9 @@ class RequirementSystem(StrEnum):
 class SharingPolicy(StrEnum):
     """Whether one course may satisfy requirements in more than one system.
 
-    Only two values, deliberately. A third - sharing WITHIN a single tree -
-    was considered and left out: no observed Rutgers rule needs it, and an
-    unused policy value is an invitation to apply it wrongly. Add it when a
-    real requirement demands it.
+    Scoped sharing retains the legacy policy value while an explicit
+    allocation_scope identifies independently reusable areas. A missing scope
+    retains the original system-level exclusive matching behavior.
 
     EXCLUSIVE is the default because the conservative direction is the safe
     one: over-counting tells a student they can graduate when they cannot.
@@ -305,6 +306,42 @@ class ProgramVersion(Base, TimestampMixin):
         return f"<ProgramVersion {self.catalog_year}>"
 
 
+class SchoolRequirementSetVersion(Base, TimestampMixin):
+    """Explicit independently versioned school rules composed with matching majors."""
+    __tablename__ = "school_requirement_set_version"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    school_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("school.id"), index=True)
+    catalog_year: Mapped[str] = mapped_column(String(16))
+    code: Mapped[str] = mapped_column(String(64))
+    name: Mapped[str] = mapped_column(Text)
+    definition_version: Mapped[str] = mapped_column(String(32), default="1")
+    source_url: Mapped[str] = mapped_column(Text)
+    source_prose: Mapped[str | None] = mapped_column(Text)
+    definition_sha256: Mapped[str] = mapped_column(String(64))
+    lifecycle_state: Mapped[str] = mapped_column(String(24), default="pending_review")
+    sharing_policy: Mapped[str] = mapped_column(String(32), default="exclusive")
+    source_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("data_source.id"))
+    __table_args__ = (UniqueConstraint("school_id", "catalog_year", "code",
+                                      name="uq_school_requirement_set_version"),)
+
+
+class StudentAcademicEvidence(Base, TimestampMixin):
+    """Explicit verified claims; engines never create or approve evidence."""
+    __tablename__ = "student_academic_evidence"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    student_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("student.id", ondelete="CASCADE"), index=True
+    )
+    evidence_kind: Mapped[str] = mapped_column(String(32))
+    evidence_key: Mapped[str] = mapped_column(String(64))
+    value: Mapped[dict] = mapped_column(JSON)
+    verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    source_reference: Mapped[str] = mapped_column(Text)
+    __table_args__ = (CheckConstraint(
+        "evidence_kind IN ('exam_score','attendance_campus','requirement_waiver')",
+        name="academic_evidence_kind_known"),)
+
+
 class Requirement(Base, TimestampMixin):
     """A node in the requirement tree.
 
@@ -321,9 +358,18 @@ class Requirement(Base, TimestampMixin):
     __tablename__ = "requirement"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
-    program_version_id: Mapped[uuid.UUID] = mapped_column(
+    program_version_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("program_version.id", ondelete="CASCADE"), index=True
     )
+    school_requirement_set_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("school_requirement_set_version.id", ondelete="CASCADE",
+                   name="fk_requirement_school_set"), index=True
+    )
+    allocation_scope: Mapped[str | None] = mapped_column(String(64))
+    eligible_origins: Mapped[list | None] = mapped_column(JSON(none_as_null=True))
+    graded_only: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    required_campus: Mapped[str | None] = mapped_column(String(8))
+    exemption_rule: Mapped[dict | None] = mapped_column(JSON(none_as_null=True))
     parent_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("requirement.id", ondelete="CASCADE"), index=True
     )
@@ -397,7 +443,7 @@ class Requirement(Base, TimestampMixin):
     #   {"ANALYSIS": [["01:640:411", "01:640:412"]]}   (catalog "411-412")
     category_sequences: Mapped[dict | None] = mapped_column(JSON(none_as_null=True))
 
-    program_version: Mapped[ProgramVersion] = relationship(back_populates="requirements")
+    program_version: Mapped[ProgramVersion | None] = relationship(back_populates="requirements")
     children: Mapped[list[Requirement]] = relationship(
         back_populates="parent", cascade="all, delete-orphan", remote_side=None
     )
@@ -410,6 +456,12 @@ class Requirement(Base, TimestampMixin):
 
     __table_args__ = (
         UniqueConstraint("program_version_id", "code", name="uq_requirement_code"),
+        UniqueConstraint("school_requirement_set_version_id", "code",
+                         name="uq_school_requirement_code"),
+        CheckConstraint(
+            "(program_version_id IS NOT NULL AND school_requirement_set_version_id IS NULL) OR "
+            "(program_version_id IS NULL AND school_requirement_set_version_id IS NOT NULL)",
+            name="requirement_exactly_one_owner"),
         CheckConstraint("min_count IS NULL OR min_count >= 0", name="min_count_non_negative"),
         CheckConstraint(
             "min_distinct_categories IS NULL OR min_distinct_categories >= 0",

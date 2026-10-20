@@ -48,7 +48,7 @@ export function DegreeSummary({ audit }: { audit: DegreeAudit }) {
   const required = audit.credits_required_min;
   const applicable = Number(audit.credits_applicable_to_degree);
   return (
-    <section aria-labelledby="summary-heading" className="space-y-4 rounded-lg border border-border bg-surface-elevated p-4 sm:p-5">
+    <section aria-labelledby="summary-heading" className="space-y-4 animate-cp-rise rounded-xl border border-border bg-surface-elevated p-4 sm:p-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 space-y-1">
           <h2 id="summary-heading" className="text-sm font-semibold text-fg">Overall</h2>

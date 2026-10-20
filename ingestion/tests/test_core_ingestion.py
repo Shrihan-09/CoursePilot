@@ -19,22 +19,29 @@ from decimal import Decimal
 import pytest
 from app.domain.audit import RequirementStatus
 from app.models import (
+    Course,
     ProgramVersion,
     Requirement,
     RequirementCourseOption,
+    SchoolRequirementSetVersion,
     SharingPolicy,
-    Student,
 )
 from app.services.audit import DegreeAuditEngine
-from coursepilot_ingestion.core_schemas import NormalizedCoreEligibility, NormalizedCoreGoal
-from coursepilot_ingestion.parsers.core import CoreDefinitionParser, CoreEligibilityParser
-from coursepilot_ingestion.pipelines.core import CoreIngestionPipeline
-from coursepilot_ingestion.validators.core import CoreValidator
 from sqlalchemy import func, select
 
-from .test_degree_audit import _audit, _course, _enroll, _find, _student
+from coursepilot_ingestion.core_schemas import (
+    NormalizedCoreEligibility,
+    NormalizedCoreGoal,
+)
+from coursepilot_ingestion.parsers.core import (
+    CoreDefinitionParser,
+    CoreEligibilityParser,
+)
+from coursepilot_ingestion.pipelines.core import CoreIngestionPipeline
+from coursepilot_ingestion.validators.core import CoreValidator
 
 from .conftest import SAS_CORE
+from .test_degree_audit import _audit, _course, _enroll, _find, _student
 
 FIXTURES = pathlib.Path(__file__).parent / "fixtures"
 CORE_DEFINITION = SAS_CORE
@@ -87,16 +94,16 @@ def _core_reqs(session) -> dict[str, Requirement]:
 # ==========================================================================
 
 
-def test_thirteen_official_goals_are_defined(core_session) -> None:
-    """The official SAS page lists 13 current learning goals."""
+def test_current_goals_include_college_writing(core_session) -> None:
+    """The writing page confirms WC alongside the thirteen goal codes."""
     definition = CoreDefinitionParser().parse(CORE_DEFINITION.read_bytes())
     codes = {g.code for g in definition.goals}
 
-    assert len(definition.goals) == 13
+    assert len(definition.goals) == 14
     assert codes == {
         "CCD", "CCO", "NS", "HST", "SCL",
         "AHo", "AHp", "AHq", "AHr",
-        "WCr", "WCd", "QQ", "QR",
+        "WC", "WCr", "WCd", "QQ", "QR",
     }
 
 
@@ -123,16 +130,17 @@ def test_goal_descriptions_are_the_official_wording(core_session) -> None:
 def test_core_requirements_land_in_the_core_system(core_session) -> None:
     reqs = _core_reqs(core_session)
 
-    assert len(reqs) == 13
+    assert len(reqs) == 18
     assert all(r.requirement_system == "core" for r in reqs.values())
     assert "SAS_CORE" in reqs
 
 
-def test_core_and_major_share_one_program_version(core_session) -> None:
-    """Core is NOT a separate program. It joins the student's version, which
-    is the only way the audit engine can see it."""
+def test_core_is_independent_of_the_major_version(core_session) -> None:
+    """One school-owned tree composes with majors without cloning."""
     versions = core_session.scalars(select(ProgramVersion)).all()
     assert len(versions) == 1
+    assert all(r.program_version_id is None and r.school_requirement_set_version_id
+               for r in _core_reqs(core_session).values())
 
     systems = {
         r.requirement_system
@@ -148,10 +156,11 @@ def test_every_core_requirement_carries_its_source_prose(core_session) -> None:
 
 
 def test_core_ingestion_sets_the_sharing_policy(core_session) -> None:
-    """The sharing permission comes from the SAS core source, so Core is what
-    flips the program to share_across_systems."""
+    """The independent school source owns sharing; the major is untouched."""
     version = core_session.scalar(select(ProgramVersion))
-    assert version.sharing_policy == SharingPolicy.SHARE_ACROSS_SYSTEMS.value
+    assert version.sharing_policy == SharingPolicy.EXCLUSIVE.value
+    school_set = core_session.scalar(select(SchoolRequirementSetVersion))
+    assert school_set.sharing_policy == SharingPolicy.SHARE_ACROSS_SYSTEMS.value
 
 
 def test_requirement_structure_matches_the_official_areas(core_session) -> None:
@@ -161,8 +170,9 @@ def test_requirement_structure_matches_the_official_areas(core_session) -> None:
     assert reqs["CORE_CCD"].min_count == 1
     assert reqs["CORE_CCO"].min_count == 1
     # Writing: 3 courses. Quantitative: 2 courses. AH: 2 courses.
-    assert reqs["CORE_WC"].min_count == 3
-    assert reqs["CORE_QFR"].min_count == 2
+    assert reqs["CORE_WC"].requirement_type == "all_of"
+    assert {r.code for r in reqs["CORE_WC"].children} == {"CORE_COLLEGE_WRITING", "CORE_WCR", "CORE_WCD"}
+    assert {r.code for r in reqs["CORE_QFR"].children} == {"CORE_QQ", "CORE_QR"}
     assert reqs["CORE_AH"].min_count == 2
     # NS states credits, not a course count - so it is a credits requirement.
     assert reqs["CORE_NS"].requirement_type == "credits"
@@ -186,7 +196,7 @@ def test_certified_courses_become_requirement_options(core_session) -> None:
     reqs = _core_reqs(core_session)
     qfr_options = {
         core_session.get(__import__("app.models", fromlist=["Course"]).Course, o.course_id).course_string
-        for o in reqs["CORE_QFR"].course_options
+        for o in reqs["CORE_QQ"].course_options
     }
 
     # QQ and QR both feed CORE_QFR; three fixture courses carry them.
@@ -195,7 +205,6 @@ def test_certified_courses_become_requirement_options(core_session) -> None:
 
 def test_one_course_can_be_eligible_for_several_goals(core_session) -> None:
     """01:198:405 is certified for CCO and WCd - two different requirements."""
-    from app.models import Course
 
     course = _course(core_session, "01:198:405")
     options = core_session.scalars(
@@ -207,37 +216,15 @@ def test_one_course_can_be_eligible_for_several_goals(core_session) -> None:
         core_session.get(Requirement, o.requirement_id).code for o in options
     }
 
-    assert {"CORE_CCO", "CORE_WC"} <= codes
+    assert {"CORE_CCO", "CORE_WCD"} <= codes
 
 
-def test_goals_feeding_one_requirement_keep_their_categories(core_session) -> None:
-    """01:198:111 is certified for BOTH QQ and QR, which both feed CORE_QFR.
-
-    Phase 4 collapsed this to ONE categoryless row. Phase 4.1 keeps one row
-    per certifying goal, because 'which goal certifies this course' is part
-    of the fact and CORE_AH cannot be evaluated without it. The unique
-    constraint is now (requirement, course, category), so these are not
-    duplicates.
-
-    Two rows still mean ONE course: eligibility is deduplicated per course
-    before allocation, so 01:198:111 fills one QFR slot, not two. That is
-    asserted below rather than assumed.
-    """
-    from app.models import Course
-
+def test_dual_certification_is_preserved_in_separate_exclusive_obligations(core_session):
     course = _course(core_session, "01:198:111")
-    qfr = _core_reqs(core_session)["CORE_QFR"]
-    rows = core_session.scalars(
-        select(RequirementCourseOption).where(
-            RequirementCourseOption.requirement_id == qfr.id,
-            RequirementCourseOption.course_id == course.id,
-        )
-    ).all()
-
-    assert {r.category for r in rows} == {"QQ", "QR"}
-    # The source states "2 courses required" and says nothing about distinct
-    # goals, so QFR carries no distinctness constraint. Not inferred either way.
-    assert qfr.min_distinct_categories is None
+    reqs = _core_reqs(core_session)
+    for code, goal in (("CORE_QQ", "QQ"), ("CORE_QR", "QR")):
+        assert {r.category for r in reqs[code].course_options if r.course_id == course.id} == {goal}
+    assert reqs["CORE_QQ"].allocation_scope == reqs["CORE_QR"].allocation_scope
 
 
 def test_unmapped_soc_codes_are_reported_not_silently_dropped(
@@ -413,39 +400,14 @@ def test_shared_course_counts_its_credits_once(core_session) -> None:
     assert isinstance(result.credits_applicable_to_degree, Decimal)
 
 
-def test_one_course_cannot_fill_two_core_slots(core_session) -> None:
-    """Sharing is ACROSS systems only.
-
-    01:070:111 is certified CCD, CCO and NS - three different core
-    requirements - but a single course can occupy only ONE core slot.
-    """
+def test_one_course_can_fill_different_core_areas_but_not_contemporary_pair(core_session):
     student = _student(core_session)
     _enroll(core_session, student, "01:070:111")
-
     result = _audit(core_session, student)
-    core_allocs = [a for a in result.allocation if a.requirement_system == "core"]
-
-    assert len(core_allocs) == 1
-
-
-def test_eligibility_for_several_goals_does_not_satisfy_them_all(core_session) -> None:
-    """Eligibility creates possible assignments; allocation decides.
-
-    This is the distinction the brief calls out: being certified for three
-    goals must not satisfy three requirements from one course.
-    """
-    student = _student(core_session)
-    _enroll(core_session, student, "01:070:111")   # CCD, CCO, NS
-
-    result = _audit(core_session, student)
-    progressed = [
-        code
-        for code in ("CORE_CCD", "CORE_CCO", "CORE_NS")
-        if _find(result, code).status
-        in (RequirementStatus.SATISFIED, RequirementStatus.PARTIALLY_SATISFIED)
-    ]
-
-    assert len(progressed) == 1
+    codes = {a.requirement_code for a in result.allocation if a.requirement_system == "core"}
+    assert "CORE_NS" in codes
+    assert len(codes & {"CORE_CCD", "CORE_CCO"}) == 1
+    assert result.credits_applicable_to_degree == Decimal(4)
 
 
 def test_dual_certified_course_fills_one_slot_not_two(core_session) -> None:
@@ -460,7 +422,7 @@ def test_dual_certified_course_fills_one_slot_not_two(core_session) -> None:
     _enroll(core_session, student, "01:198:111")
 
     result = _audit(core_session, student)
-    qfr_allocs = [a for a in result.allocation if a.requirement_code == "CORE_QFR"]
+    qfr_allocs = [a for a in result.allocation if a.requirement_code in {"CORE_QQ", "CORE_QR"}]
 
     assert len(qfr_allocs) <= 1
     assert _find(result, "CORE_QFR").status is not RequirementStatus.SATISFIED
@@ -505,13 +467,7 @@ def test_arts_and_humanities_requires_two_distinct_goals(core_session) -> None:
 
 
 def test_natural_sciences_does_not_starve_a_count_requirement(core_session) -> None:
-    """The real starvation case measured in Phase 4.
-
-    01:070:111 carries NS credit and is the ONLY course certified for CCD.
-    While credits competed in the matching, CORE_NS claimed it and CORE_CCD
-    could never be satisfied. CORE_NS is settled after the matching now, so
-    01:070:111 goes to the requirement with no alternative.
-    """
+    """Independent NS scope permits reuse without starving count obligations."""
     student = _student(core_session)
     _enroll(core_session, student, "01:070:111")   # CCD, CCO, NS - 4 credits
     _enroll(core_session, student, "01:070:102")   # NS - 4 credits
@@ -523,7 +479,7 @@ def test_natural_sciences_does_not_starve_a_count_requirement(core_session) -> N
         if a.requirement_code == "CORE_NS"
     }
 
-    assert "01:070:111" not in ns_courses
+    assert "01:070:111" in ns_courses
     assert _find(result, "CORE_NS").satisfied_credits <= Decimal(8)
 
 
@@ -538,7 +494,7 @@ def test_separate_courses_satisfy_separate_goals(core_session) -> None:
         a.requirement_code for a in result.allocation if a.requirement_system == "core"
     }
 
-    assert len(core_allocs) == 2
+    assert len(core_allocs) == 3
     assert "CORE_HST" in core_allocs
 
 
@@ -605,22 +561,10 @@ def test_core_credits_requirement_accumulates(core_session) -> None:
     assert node.status is RequirementStatus.SATISFIED
 
 
-def test_credit_requirements_take_only_what_count_requirements_leave(
+def test_credit_requirements_reuse_permitted_courses_across_areas(
     core_session,
 ) -> None:
-    """The deliberate priority, pinned so it cannot change unnoticed.
-
-    Phase 4.1 settles credit requirements AFTER the matching, so CORE_NS can
-    only claim courses the count requirements did not take. Here there are
-    two courses and two scarce count requirements - 01:070:111 is the only
-    CCD-certified course, 01:070:102 the only HST-certified one - so both are
-    taken and CORE_NS gets nothing.
-
-    That is the intended ordering, not the Phase 4 starvation defect. The
-    defect was the reverse: CORE_NS claiming courses it did not need and
-    leaving CCD unsatisfiable. See
-    test_natural_sciences_does_not_starve_a_count_requirement for that case.
-    """
+    """Independent NS scope permits reuse without starving count obligations."""
     student = _student(core_session)
     _enroll(core_session, student, "01:070:111")   # CCD, CCO, NS
     _enroll(core_session, student, "01:070:102")   # HST, NS
@@ -632,7 +576,7 @@ def test_credit_requirements_take_only_what_count_requirements_leave(
     assert _find(result, "CORE_HST").status is RequirementStatus.SATISFIED
     # ...and nothing is left for the credits requirement. It reports zero
     # honestly rather than counting a course another requirement holds.
-    assert _find(result, "CORE_NS").satisfied_credits == Decimal(0)
+    assert _find(result, "CORE_NS").satisfied_credits == Decimal(8)
 
 
 def test_core_audit_is_deterministic(core_session) -> None:
@@ -678,3 +622,161 @@ def test_core_root_must_also_be_satisfied_for_a_complete_degree(core_session) ->
     assert "SAS_CORE" in roots
     assert roots["SAS_CORE"] is not RequirementStatus.SATISFIED
     assert result.is_complete is False
+
+
+# Phase 7.2.2 correctness probes use fabricated student records only.
+def _certify(session, code, course_string, category=None):
+    req = _core_reqs(session)[code]
+    course = _course(session, course_string)
+    session.add(RequirementCourseOption(requirement_id=req.id, course_id=course.id,
+        category=category, source_id=req.source_id))
+    session.flush()
+
+
+def test_same_goal_courses_cannot_complete_quantitative_area(core_session):
+    from sqlalchemy import delete
+    reqs = _core_reqs(core_session)
+    core_session.execute(delete(RequirementCourseOption).where(
+        RequirementCourseOption.requirement_id == reqs["CORE_QR"].id))
+    student = _student(core_session)
+    _enroll(core_session, student, "01:640:151")
+    _enroll(core_session, student, "01:640:152")
+    result = _audit(core_session, student)
+    assert _find(result, "CORE_QQ").status is RequirementStatus.SATISFIED
+    assert _find(result, "CORE_QR").status is RequirementStatus.UNSATISFIED
+    assert _find(result, "CORE_QFR").status is not RequirementStatus.SATISFIED
+
+
+def test_pass_grade_earns_degree_credit_but_not_core(core_session):
+    student = _student(core_session)
+    _enroll(core_session, student, "01:640:151", grade="P")
+    result = _audit(core_session, student)
+    assert result.credits_completed > 0
+    assert not [a for a in result.allocation if a.requirement_system == "core"]
+
+
+def test_wcr_requires_verified_nb_campus_and_rejects_transfer(core_session):
+    from app.models import StudentAcademicEvidence, StudentCourse
+    _certify(core_session, "CORE_WCR", "01:198:111", "WCr")
+    student = _student(core_session)
+    _enroll(core_session, student, "01:198:111")
+    result = _audit(core_session, student)
+    assert _find(result, "CORE_WCR").status is RequirementStatus.PROVISIONALLY_SATISFIED
+    assert any(f.code == "requirement_eligibility_unknown"
+               and f.requirement_code == "CORE_WCR" for f in result.findings)
+    core_session.add(StudentAcademicEvidence(student_id=student.id,
+        evidence_kind="attendance_campus", evidence_key="01:198:111",
+        value={"term_code": "20269", "campus": "NB"}, verified=True,
+        source_reference="synthetic://verified-attendance"))
+    assert _find(_audit(core_session, student), "CORE_WCR").status is RequirementStatus.SATISFIED
+    attempt = core_session.scalar(select(StudentCourse).where(StudentCourse.student_id == student.id))
+    attempt.credit_origin = "transfer"
+    assert _find(_audit(core_session, student), "CORE_WCR").status is RequirementStatus.UNSATISFIED
+
+
+def test_ap_exemption_requires_verified_score_and_changes_academic_identity(core_session):
+    from app.models import StudentAcademicEvidence
+    from app.services.audit.cache import academic_fingerprint
+    student = _student(core_session)
+    claim = StudentAcademicEvidence(student_id=student.id, evidence_kind="exam_score",
+        evidence_key="ap_english_language", value={"score": 4}, verified=False,
+        source_reference="synthetic://exam-report")
+    core_session.add(claim)
+    core_session.flush()
+    before = academic_fingerprint(core_session, student)
+    assert _find(_audit(core_session, student), "CORE_COLLEGE_WRITING").status is RequirementStatus.UNSATISFIED
+    claim.verified = True
+    core_session.flush()
+    assert academic_fingerprint(core_session, student) != before
+    result = _audit(core_session, student)
+    assert _find(result, "CORE_COLLEGE_WRITING").status is RequirementStatus.SATISFIED
+    assert "verified academic evidence" in _find(result, "CORE_COLLEGE_WRITING").reason
+    assert _find(result, "CORE_WC").status is not RequirementStatus.SATISFIED
+    assert result.credits_completed == 0
+
+
+def test_count_and_credit_constraints_select_feasible_alternative(core_session):
+    from app.models import StudentCourse
+    _certify(core_session, "CORE_HST", "01:198:111", "HST")
+    student = _student(core_session)
+    _enroll(core_session, student, "01:013:120")
+    low = core_session.scalar(select(StudentCourse).where(StudentCourse.student_id == student.id))
+    low.credits_earned = Decimal(1)
+    result = _audit(core_session, student)
+    assert _find(result, "CORE_HST").status is RequirementStatus.PARTIALLY_SATISFIED
+    assert _find(result, "CORE_HST").needed_credits == 3
+    _enroll(core_session, student, "01:198:111")
+    result = _audit(core_session, student)
+    hst = _find(result, "CORE_HST")
+    assert hst.status is RequirementStatus.SATISFIED
+    assert hst.satisfied_credits >= 3
+    assert [c.course_string for c in hst.allocated_courses] == ["01:198:111"]
+
+
+def test_school_tree_is_reused_by_second_major_and_is_fingerprinted(core_session):
+    from app.models import Program
+    from app.services.academic_context import composed_requirements, context_coverage
+    from app.services.audit.cache import rules_fingerprint
+    original = core_session.scalar(select(ProgramVersion))
+    program = Program(school_id=original.program.school_id, code="synthetic-722",
+        name="Fabricated second major", degree_type="BA", source_id=original.source_id)
+    core_session.add(program)
+    core_session.flush()
+    other = ProgramVersion(program_id=program.id, catalog_year=original.catalog_year,
+        source_id=original.source_id)
+    core_session.add(other)
+    core_session.flush()
+    original_ids = {r.id for r in composed_requirements(core_session, original) if r.requirement_system == "core"}
+    assert original_ids == {r.id for r in composed_requirements(core_session, other)}
+    assert context_coverage(core_session, other)["school_context"] == "available"
+    before = rules_fingerprint(core_session, other.id)
+    school_set = core_session.scalar(select(SchoolRequirementSetVersion))
+    school_set.definition_version = "synthetic-update"
+    core_session.flush()
+    assert rules_fingerprint(core_session, other.id) != before
+
+
+@pytest.mark.parametrize("score", [None, "not a score", "NaN", "Infinity", 3, 4.5, 6])
+def test_invalid_or_insufficient_ap_evidence_never_waives_requirement(score):
+    from types import SimpleNamespace
+
+    from app.services.academic_context import requirement_exemptions
+    requirement = SimpleNamespace(code="WC", exemption_rule={"evidence_kind": "exam_score",
+        "keys": ["ap_english_language"], "minimum_score": 4, "allowed_scores": [4, 5]})
+    claim = SimpleNamespace(verified=True, evidence_kind="exam_score",
+        evidence_key="ap_english_language", value={"score": score})
+    assert requirement_exemptions([requirement], [claim]) == set()
+
+
+def test_conflicting_verified_campus_evidence_stays_unknown():
+    from types import SimpleNamespace
+
+    from app.domain.grades import Tri
+    from app.services.academic_context import attempt_eligibility
+    requirement = SimpleNamespace(eligible_origins=["rutgers"], graded_only=True,
+                                  required_campus="NB")
+    attempt = SimpleNamespace(credit_origin="rutgers", status="completed", grade="A",
+                              term_code="20309")
+    course = SimpleNamespace(course_string="01:999:101")
+    evidence = [SimpleNamespace(verified=True, evidence_kind="attendance_campus",
+        evidence_key=course.course_string, value={"term_code": "20309", "campus": c})
+        for c in ("NB", "NK")]
+    status, reason = attempt_eligibility(requirement, attempt, course, evidence)
+    assert status is Tri.UNKNOWN and "conflict" in reason
+
+
+def test_changed_school_rules_go_back_for_review_unchanged_do_not() -> None:
+    from types import SimpleNamespace
+
+    from app.services.program_lifecycle import (
+        NEEDS_REREVIEW,
+        school_set_definition_changed,
+    )
+
+    fresh = SimpleNamespace(definition_sha256=None, lifecycle_state="published")
+    assert not school_set_definition_changed(fresh, "a" * 64)
+    assert fresh.lifecycle_state == "published" and fresh.definition_sha256 == "a" * 64
+    assert not school_set_definition_changed(fresh, "a" * 64)
+    assert fresh.lifecycle_state == "published"
+    assert school_set_definition_changed(fresh, "b" * 64)
+    assert fresh.lifecycle_state == NEEDS_REREVIEW and fresh.definition_sha256 == "b" * 64

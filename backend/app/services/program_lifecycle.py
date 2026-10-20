@@ -165,6 +165,19 @@ def definition_changed(version: ProgramVersion, new_definition_sha256: str) -> b
     return True
 
 
+def school_set_definition_changed(school_set, new_definition_sha256: str) -> bool:
+    """Phase 7.2.2: a re-encoded school requirement set (e.g. SAS Core) needs
+    re-review, exactly like a program definition. Kept here so every lifecycle
+    transition stays in this one module."""
+    if school_set.definition_sha256 in (None, new_definition_sha256):
+        school_set.definition_sha256 = new_definition_sha256
+        return False
+    school_set.definition_sha256 = new_definition_sha256
+    school_set.lifecycle_state = NEEDS_REREVIEW
+    return True
+
+
 __all__ = ["NEEDS_REREVIEW", "PARSED", "PUBLISHED", "REVIEWED", "STATES", "VALIDATED",
            "LifecycleError", "assert_human_reviewer", "check_source", "definition_changed",
-           "latest_review", "mark_validated", "publish", "record_review"]
+           "latest_review", "mark_validated", "publish", "record_review",
+           "school_set_definition_changed"]

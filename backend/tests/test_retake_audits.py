@@ -104,6 +104,6 @@ def test_an_audit_cached_before_the_fix_is_never_served(retake_world, monkeypatc
 
     # Any version after the 6.2 retake fix (6.4.0 grade semantics, 7.0.0
     # lifecycle finding + graduate gate) invalidates the doctored 6.0.0 row.
-    assert cache_module.AUDIT_ENGINE_VERSION in ("6.4.0", "7.0.0", "7.0.1")
+    assert cache_module.AUDIT_ENGINE_VERSION in ("6.4.0", "7.0.0", "7.0.1", "7.2.2")
     assert from_cache is False
     assert len(_applied(served, x)) == 1

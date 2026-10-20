@@ -42,9 +42,10 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.domain.availability import AvailabilityStatus, Freshness
+from app.domain.modality import CourseModalityOptions, ModalityEvidence
 
 #: Bumped whenever the same inputs could produce different options.
-SCHEDULE_ENGINE_VERSION = "6.7.0"
+SCHEDULE_ENGINE_VERSION = "6.8.0"
 
 #: SOC weekday codes (H = Thursday, U = Sunday), in calendar order.
 WEEKDAYS = ("M", "T", "W", "H", "F", "S", "U")
@@ -268,6 +269,7 @@ class CourseAvailability(BaseModel):
     freshness: AvailabilityFreshness         # the least fresh component
     as_of: str | None = None                 # the OLDEST component observation
     components: list[ComponentAvailability]
+    modality: ModalityEvidence = Field(default_factory=ModalityEvidence)
     reasons: list[str] = Field(default_factory=list)
 
 
@@ -308,6 +310,7 @@ class SectionChoice(BaseModel):
     index_number: str                        # what a student types into WebReg
     campus_code: str
     meetings: list[MeetingInterval]
+    modality: ModalityEvidence = Field(default_factory=ModalityEvidence)
     instructors: list[str] = Field(default_factory=list)
     availability: AvailabilityEvidence
     restriction: RestrictionEvidence
@@ -414,6 +417,7 @@ class CourseRelationship(BaseModel):
 
 
 class ScheduleResult(BaseModel):
+    modality_options: list[CourseModalityOptions] = Field(default_factory=list)
     term_code: str
     status: ScheduleStatus
     requested_courses: list[str]

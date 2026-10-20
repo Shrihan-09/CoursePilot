@@ -94,6 +94,7 @@ RULES_TABLES: tuple[str, ...] = (
     "requirement",
     "requirement_course_option",
     "program_rule",
+    "school_requirement_set_version",
 )
 
 

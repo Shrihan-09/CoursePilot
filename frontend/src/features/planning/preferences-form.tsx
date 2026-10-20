@@ -73,7 +73,7 @@ export function PreferencesForm({
         onSubmit({
           pace, target_credits_per_term: t, max_credits_per_term: m, max_courses_per_term: c, max_terms: n,
           include_summer: summer, include_winter: winter,
-          schedule: { earliest_start: early || null, latest_end: late || null, avoid_days: avoid },
+          schedule: { ...initial.schedule, earliest_start: early || null, latest_end: late || null, avoid_days: avoid },
           additional_goals: goals,
         });
       }}

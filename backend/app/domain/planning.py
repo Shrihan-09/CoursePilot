@@ -28,10 +28,11 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.domain.course_ranking import CourseRankingEvidence
 from app.domain.scenario import ScenarioAssumption, ScenarioTarget
 
 #: Bumped whenever the same inputs could produce a different plan.
-PLANNING_ENGINE_VERSION = "6.6.0"   # 7.2.1: pace, target load, validated levelling
+PLANNING_ENGINE_VERSION = "6.7.0"   # 7.2.2: composable context and evidence-based ranking
 
 
 class EligibilityState(StrEnum):
@@ -69,6 +70,7 @@ class Reason(StrEnum):
     HISTORICALLY_OFFERED_IN_SEASON = "historically_offered_in_season"
     RULES_FROM_EARLIER_TERM = "rules_from_earlier_term"
     SELECTED_BY_CANONICAL_TIE_BREAK = "selected_by_canonical_tie_break"
+    RANKED_BY_REQUIREMENT_COVERAGE = "ranked_by_requirement_coverage"
 
 
 class PlanStatus(StrEnum):
@@ -183,6 +185,7 @@ class PlannedCourse(BaseModel):
     unlocks: list[str] = Field(default_factory=list)
     #: How many other equally ranked candidates existed (a canonical tie-break chose).
     interchangeable_alternatives: int = 0
+    ranking_evidence: CourseRankingEvidence | None = None
 
 
 class PlanTerm(BaseModel):

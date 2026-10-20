@@ -38,7 +38,8 @@ taken by this key, smallest first, while the load limits allow:
        requirements it can serve;
     4. confirmed offering in the term before historical evidence;
     5. eligibility from history before conditional eligibility;
-    6. the course string (canonical tie-break).
+    6. more candidate requirement groups served (allocation still rechecked);
+    7. the course string (canonical tie-break).
 
 A requirement candidate is ACCEPTED only if the Degree Engine, re-run with it,
 shows strict progress (more requirement slots/credits met). A course eligible
@@ -57,6 +58,7 @@ from sqlalchemy.orm import Session
 
 from app.domain.attempts import Attempt
 from app.domain.audit import DegreeAuditResult, RequirementResult, RequirementStatus
+from app.domain.course_ranking import CourseRankingEvidence
 from app.domain.grades import Tri, earns_credit
 from app.domain.planning import (
     ConditionalDependency,
@@ -66,9 +68,9 @@ from app.domain.planning import (
     Pace,
     PlanMetadata,
     PlannedCourse,
-    PlanObservation,
     PlanningConstraints,
     PlanningIssue,
+    PlanObservation,
     PlanResult,
     PlanStatus,
     PlanTerm,
@@ -96,6 +98,7 @@ from app.services.audit.engine import DegreeAuditEngine, constraint_counts
 from app.services.course_eligibility import EligibilityCheck, check_proposal
 from app.services.planning.dependencies import UNREADABLE, DependencyPlanner
 from app.services.planning.offerings import PLACEABLE, OfferingIndex
+from app.services.planning.ranking import rank_key
 from app.services.planning.terms import label, planning_terms
 from app.services.prerequisites import attempts_by_course
 
@@ -223,8 +226,8 @@ class PlanningEngine:
 
     def _load_static(self, version: ProgramVersion) -> None:
         s = self.session
-        self.requirements = {r.code: r for r in s.scalars(
-            select(Requirement).where(Requirement.program_version_id == version.id))}
+        from app.services.academic_context import composed_requirements
+        self.requirements = {r.code: r for r in composed_requirements(s, version)}
         self.pools: dict[str, set[str]] = defaultdict(set)
         self.course_info: dict[str, Course] = {}
         for code, course in s.execute(
@@ -232,7 +235,7 @@ class PlanningEngine:
                 .join(RequirementCourseOption,
                       RequirementCourseOption.requirement_id == Requirement.id)
                 .join(Course, Course.id == RequirementCourseOption.course_id)
-                .where(Requirement.program_version_id == version.id)).all():
+                .where(Requirement.id.in_([r.id for r in self.requirements.values()]))).all():
             self.pools[code].add(course.course_string)
             self.course_info[course.course_string] = course
         self.excluded: set[str] = set()
@@ -468,6 +471,15 @@ class PlanningEngine:
                 message=("This program's requirements have not been verified by a person; "
                          "the plan inherits that uncertainty.")))
 
+        # The plan inherits every unresolved school/attempt authority boundary.
+        for finding in final.findings:
+            if finding.code in {"requirement_eligibility_unknown",
+                                "school_requirements_pending_review",
+                                "program_legacy_curated"}:
+                issues.append(PlanningIssue(severity=Severity.WARNING,
+                    code=finding.code.upper(), message=finding.message,
+                    requirement_code=finding.requirement_code))
+
         before_status = {n.requirement_code: n.status.value for n in _walk(before.requirements)
                          if n.requirement_type in LEAF_TYPES}
         projections = [RequirementProjection(
@@ -624,13 +636,18 @@ class PlanningEngine:
             return min(sum(1 for k in ready if code in serves.get(k, ()))
                        - deficit(leaf_by_code[code]) for code in codes)
 
+        def ranking_evidence(key):
+            return CourseRankingEvidence(
+                required_dependency=key in dependency_targets and key not in planned,
+                downstream_targets=len(dependency_targets.get(key, ())),
+                scarcity=scarcity(key),
+                confirmed_offering=(evaluated[key][2].kind is
+                                    OfferingEvidenceKind.CONFIRMED_IN_TERM),
+                prerequisites_met_by_history=(states[key] is EligibilityState.SATISFIED_BY_HISTORY),
+                candidate_requirement_coverage=len(set(serves.get(key, ()))))
+
         def rank(key):
-            is_dep = key in dependency_targets and key not in planned
-            unlocks = len(dependency_targets.get(key, ()))
-            ev = evaluated[key][2]
-            return (0 if is_dep else 1, -unlocks, scarcity(key),
-                    0 if ev.kind is OfferingEvidenceKind.CONFIRMED_IN_TERM else 1,
-                    0 if states[key] is EligibilityState.SATISFIED_BY_HISTORY else 1, key)
+            return rank_key(key, ranking_evidence(key))
 
         order = sorted(ready | coreq_pending, key=rank)
         credits = Decimal(0)
@@ -679,6 +696,7 @@ class PlanningEngine:
                     continue
                 score, latest = max(after, score), result
                 open_codes = {leaf.requirement_code for leaf in active_leaves(result.requirements)}
+            ranked_evidence = {g: ranking_evidence(g) for g in group if g in states}
             planned.update({g: term for g in group})
             credits += group_credits
             count += len(group)
@@ -702,6 +720,7 @@ class PlanningEngine:
                     "dependency_for": sorted(dependency_targets.get(g, ())),
                     "corequisite_for": [key] if g != key else [],
                     "alternatives": self._alternatives(g, serves, ready, rank, planned),
+                    "ranking_evidence": ranked_evidence.get(g),
                 }
                 term_plan.courses.append(self._planned_course(g, info[g]))
                 term_plan.credits += self.course_info[g].credits
@@ -793,8 +812,11 @@ class PlanningEngine:
             reasons.append(Reason.RULES_FROM_EARLIER_TERM)
         if facts["alternatives"]:
             reasons.append(Reason.SELECTED_BY_CANONICAL_TIE_BREAK)
+        evidence = facts.get("ranking_evidence")
+        if evidence and evidence.candidate_requirement_coverage > 1:
+            reasons.append(Reason.RANKED_BY_REQUIREMENT_COVERAGE)
         return PlannedCourse(
-            course=key, title=course.title, credits=course.credits, term_code=facts["term"],
+            ranking_evidence=evidence, course=key, title=course.title, credits=course.credits, term_code=facts["term"],
             reasons=reasons, prerequisite=pre, offering=ev, corequisite_group=facts["group"],
             unlocks=sorted(set(facts["dependency_for"]) | set(facts["corequisite_for"])),
             interchangeable_alternatives=facts["alternatives"])

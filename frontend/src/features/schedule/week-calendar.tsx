@@ -13,8 +13,9 @@ import {
   meetingText,
   type Block,
 } from "@/lib/academic/schedule-time";
+import { courseTone } from "@/lib/tone";
 import { cn } from "@/lib/utils";
-import type { DayCode, ScheduleOption } from "@/types/schedule";
+import type { DayCode, ScheduleOption, SectionChoice } from "@/types/schedule";
 
 /**
  * The week of ONE schedule option, as the Schedule Engine returned it.
@@ -45,16 +46,20 @@ function DayList({ day, blocks, top, positioned }: { day: DayCode; blocks: Block
           <li
             key={`${b.choice.index_number}-${b.start}-${i}`}
             className={cn(
-              "overflow-hidden rounded border-l-[3px] border-primary bg-primary-subtle px-2 py-1 text-xs",
-              positioned && "absolute inset-x-0.5",
+              "cp-tone cp-lift animate-cp-rise overflow-hidden rounded-md border-l-[3px] px-2 py-1 text-xs",
+              courseTone(b.choice.course_string),
+              positioned && "absolute inset-x-1",
             )}
-            style={positioned ? { top: (b.start - top) * PX_PER_MIN, height: Math.max(22, (b.end - b.start) * PX_PER_MIN) } : undefined}
+            style={{
+              animationDelay: `${Math.min(i, 6) * 40}ms`,
+              ...(positioned ? { top: (b.start - top) * PX_PER_MIN, height: Math.max(22, (b.end - b.start) * PX_PER_MIN) } : {}),
+            }}
           >
             <span className="code block truncate font-semibold text-fg">{label(b)}</span>
             <span className="tabular block truncate text-fg-secondary">
               {formatMinute(b.start)} to {formatMinute(b.end)}
             </span>
-            {place && <span className="block truncate text-fg-muted">{place}</span>}
+            {place && <span className="block truncate text-fg-secondary">{place}</span>}
           </li>
         );
       })}
@@ -92,10 +97,10 @@ export function WeekCalendar({ option }: { option: ScheduleOption }) {
 
       {/* Tablet and up: the week grid */}
       <div className="hidden md:block">
-        <div className="grid gap-px rounded border border-border bg-border" style={{ gridTemplateColumns: `3.5rem repeat(${days.length}, minmax(0, 1fr))` }}>
+        <div className="grid gap-px overflow-hidden rounded-xl border border-border bg-border/60" style={{ gridTemplateColumns: `3.5rem repeat(${days.length}, minmax(0, 1fr))` }}>
           <div className="bg-surface-elevated" aria-hidden />
           {days.map((d) => (
-            <div key={d} className="bg-surface-elevated p-2 text-center text-xs font-medium text-fg-secondary" aria-hidden>
+            <div key={d} className="bg-surface-elevated px-2 py-2.5 text-center text-2xs font-semibold uppercase tracking-[0.08em] text-fg-secondary" aria-hidden>
               {DAY_SHORT[d]}
             </div>
           ))}
@@ -109,7 +114,7 @@ export function WeekCalendar({ option }: { option: ScheduleOption }) {
           {days.map((d) => (
             <div key={d} className="relative bg-surface-elevated" style={{ height }}>
               {hours.map((m) => (
-                <div key={m} aria-hidden className="absolute inset-x-0 border-t border-border/60" style={{ top: (m - start) * PX_PER_MIN }} />
+                <div key={m} aria-hidden className="absolute inset-x-0 border-t border-border/50" style={{ top: (m - start) * PX_PER_MIN }} />
               ))}
               <DayList day={d} blocks={byDay(d)} top={start} positioned />
             </div>
@@ -131,4 +136,14 @@ export function WeekCalendar({ option }: { option: ScheduleOption }) {
       )}
     </div>
   );
+}
+
+/** Confirmed sections as a single option the calendar can draw (descriptive, never generated). */
+export function asOption(choices: SectionChoice[]): ScheduleOption {
+  return {
+    rank: 1, choices, total_credits: null, reasons: [], issues: [], days: [],
+    score: { needs_confirmation: 0, unknown_time_sections: 0, preference_misses: 0, class_days: 0,
+             gap_minutes: 0, closed_sections_if_current: 0, unknown_availability_if_current: 0 },
+    availability: { state: "unknown", freshness: "unobserved", as_of: null, all_open_now: false, courses: [] },
+  };
 }

@@ -65,6 +65,7 @@ export default function HomePage() {
   return (
     <div className="space-y-8">
       <PageHeader eyebrow="Home" title="Your plan at a glance" />
+      <Link href="/profile" className="inline-flex min-h-11 items-center text-sm font-medium text-primary-text underline">View modeled progress</Link>
 
       {plan.isSuccess && (
         <section aria-labelledby="next-heading" className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary-subtle p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -79,7 +80,7 @@ export default function HomePage() {
         </section>
       )}
 
-      <section aria-labelledby="program-heading" className="space-y-4 rounded-lg border border-border bg-surface-elevated p-4 sm:p-5">
+      <section aria-labelledby="program-heading" className="space-y-4 animate-cp-rise rounded-xl border border-border bg-surface-elevated p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 space-y-1">
             <p className="text-xs font-medium uppercase tracking-wide text-fg-muted">Program</p>
@@ -98,7 +99,7 @@ export default function HomePage() {
       </section>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <section aria-labelledby="degree-heading" className="space-y-3 rounded-lg border border-border bg-surface-elevated p-4">
+        <section aria-labelledby="degree-heading" className="space-y-3 animate-cp-rise rounded-xl border border-border bg-surface-elevated p-4">
           <div className="flex items-center justify-between gap-2">
             <h2 id="degree-heading" className="flex items-center gap-2 text-sm font-semibold text-fg"><GraduationCap aria-hidden className="size-4 text-fg-muted" /> Degree</h2>
             <Link href="/degree" className="inline-flex min-h-10 items-center text-sm font-medium text-primary-text hover:underline">View degree</Link>
@@ -119,7 +120,7 @@ export default function HomePage() {
           )}
         </section>
 
-        <section aria-labelledby="plan-heading" className="space-y-3 rounded-lg border border-border bg-surface-elevated p-4">
+        <section aria-labelledby="plan-heading" className="space-y-3 animate-cp-rise rounded-xl border border-border bg-surface-elevated p-4">
           <div className="flex items-center justify-between gap-2">
             <h2 id="plan-heading" className="flex items-center gap-2 text-sm font-semibold text-fg"><MapIcon aria-hidden className="size-4 text-fg-muted" /> Plan</h2>
             <Link href="/plan" className="inline-flex min-h-10 items-center text-sm font-medium text-primary-text hover:underline">{saved ? "View plan" : "Build a plan"}</Link>

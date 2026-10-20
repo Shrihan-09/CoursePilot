@@ -32,23 +32,32 @@ class StudentCurrentSection(Base, TimestampMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     student_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, ForeignKey("student.id", ondelete="CASCADE"), index=True)
+        Uuid, ForeignKey("student.id", ondelete="CASCADE"), index=True
+    )
     student_course_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid, ForeignKey("student_course.id", ondelete="CASCADE"))
+        Uuid, ForeignKey("student_course.id", ondelete="CASCADE")
+    )
     term_code: Mapped[str] = mapped_column(String(16))
     course_string: Mapped[str] = mapped_column(String(32))
     index_number: Mapped[str] = mapped_column(String(16))
     #: primary | required_companion - a Rutgers-linked lab/recitation has its
     #: own index, so a course may carry one confirmation per component.
+    section_number: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    supplement_code: Mapped[str] = mapped_column(String(16), default="", server_default="")
     component: Mapped[str] = mapped_column(String(32), default="primary")
     section_id: Mapped[uuid.UUID | None] = mapped_column(
-        Uuid, ForeignKey("course_section.id", ondelete="SET NULL"), nullable=True)
+        Uuid, ForeignKey("course_section.id", ondelete="SET NULL"), nullable=True
+    )
     source: Mapped[str] = mapped_column(String(32), default="student_confirmed")
     confirmed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
     __table_args__ = (
-        UniqueConstraint("student_course_id", "component",
-                         name="uq_student_current_section_course_component"),
+        UniqueConstraint(
+            "student_course_id",
+            "component",
+            "supplement_code",
+            name="uq_student_current_section_course_component",
+        ),
     )
 
     def __repr__(self) -> str:

@@ -23,7 +23,7 @@ function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
       {!item.available && <span className="text-2xs font-medium text-fg-muted">Later</span>}
     </>
   );
-  const base = "flex h-9 items-center gap-3 rounded px-3 text-sm font-medium";
+  const base = "flex h-9 items-center gap-3 rounded-md px-3 text-sm font-medium";
   if (!item.available) {
     return (
       <span aria-disabled className={cn(base, "cursor-default text-fg-muted/80")}>
@@ -38,7 +38,9 @@ function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
       className={cn(
         base,
         "transition-colors",
-        active ? "bg-primary-subtle text-fg" : "text-fg-secondary hover:bg-surface-hover hover:text-fg",
+        active
+          ? "bg-surface-elevated text-fg shadow-[0_1px_2px_rgb(var(--overlay)/0.08)]"
+          : "text-fg-secondary hover:bg-surface-elevated/70 hover:text-fg",
       )}
     >
       {body}
@@ -78,10 +80,17 @@ export function AppShell({
   const [moreOpen, setMoreOpen] = useState(false);
   const tabs = NAV.filter((n) => n.mobile === "tab");
   const more = NAV.filter((n) => n.mobile === "more");
+  // Sidebar sections in first-appearance order; ungrouped items lead.
+  const groups: [NavItem["group"], NavItem[]][] = [];
+  for (const item of NAV) {
+    const found = groups.find(([g]) => g === item.group);
+    if (found) found[1].push(item);
+    else groups.push([item.group, [item]]);
+  }
 
   return (
     <ToastProvider>
-      <div className="min-h-dvh lg:grid lg:grid-cols-[15rem_1fr]">
+      <div className="min-h-dvh lg:grid lg:grid-cols-[15rem_1fr] lg:bg-canvas">
         <a
           href="#main"
           className="sr-only z-50 rounded bg-surface-elevated px-3 py-2 focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
@@ -90,18 +99,25 @@ export function AppShell({
         </a>
 
         {/* Desktop sidebar */}
-        <aside className="sticky top-0 hidden h-dvh flex-col border-r border-border bg-surface lg:flex">
+        <aside className="sticky top-0 hidden h-dvh flex-col bg-canvas lg:flex">
           <div className="flex h-14 items-center px-4">
             <Link href="/home" className="rounded" aria-label="CoursePilot home">
               <Wordmark />
             </Link>
           </div>
-          <nav aria-label="Primary" className="flex-1 space-y-0.5 px-2 py-2">
-            {NAV.map((item) => (
-              <SidebarLink key={item.href} item={item} active={isActive(pathname, item.href)} />
+          <nav aria-label="Primary" className="flex-1 space-y-4 overflow-y-auto px-2 py-2">
+            {groups.map(([group, items]) => (
+              <div key={group ?? "top"} className="space-y-0.5">
+                {group && (
+                  <p className="px-3 pb-1 text-2xs font-semibold uppercase tracking-[0.08em] text-fg-muted">{group}</p>
+                )}
+                {items.map((item) => (
+                  <SidebarLink key={item.href} item={item} active={isActive(pathname, item.href)} />
+                ))}
+              </div>
             ))}
           </nav>
-          <div className="space-y-1 border-t border-border p-2">
+          <div className="space-y-1 p-2">
             {identity && (
               <p className="truncate px-3 py-1 text-xs text-fg-muted" title={identity}>
                 {identity}
@@ -111,7 +127,8 @@ export function AppShell({
           </div>
         </aside>
 
-        <div className="flex min-h-dvh min-w-0 flex-col">
+        {/* lg+: the page is an inset panel on the canvas (board layout). */}
+        <div className="flex min-h-dvh min-w-0 flex-col lg:min-h-[calc(100dvh-1rem)] lg:my-2 lg:mr-2 lg:rounded-xl lg:border lg:border-border lg:bg-background lg:shadow-[0_1px_3px_rgb(var(--overlay)/0.06)]">
           {/* Mobile top bar */}
           <header className="sticky top-0 z-30 flex h-14 items-center border-b border-border bg-background/90 px-4 backdrop-blur lg:hidden">
             <Link href="/home" className="rounded" aria-label="CoursePilot home">
@@ -119,7 +136,7 @@ export function AppShell({
             </Link>
           </header>
 
-          <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 pb-28 pt-6 sm:px-6 lg:px-10 lg:pb-12 lg:pt-10">
+          <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-6 sm:px-6 lg:px-10 lg:pb-12 lg:pt-10">
             {children}
           </main>
         </div>

@@ -113,7 +113,7 @@ def sections_conflict(a: list[MeetingInterval], b: list[MeetingInterval],
 
 
 def time_verified(meetings: list[MeetingInterval]) -> bool:
-    return all(m.kind not in TIME_UNKNOWN_KINDS for m in meetings)
+    return bool(meetings) and all(m.kind not in TIME_UNKNOWN_KINDS for m in meetings)
 
 
 def hhmm(value: str | None) -> int | None:

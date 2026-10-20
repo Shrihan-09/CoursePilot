@@ -37,6 +37,7 @@ from app.models import (
     Student,
     StudentCourse,
 )
+from app.services.academic_context import composed_requirements
 from app.services.audit.engine import DegreeAuditEngine
 from coursepilot_ingestion.loaders.postgres import CourseLoader
 from coursepilot_ingestion.loaders.requirements import RequirementLoader
@@ -239,9 +240,8 @@ def test_math_provenance_and_curation_status(session, two_programs) -> None:
         Requirement.requirement_system == "major")))
     assert statuses == {"unverified"}
     # Core joined Mathematics with ITS OWN, human-curated status intact.
-    core = set(session.scalars(select(Requirement.curation_status).where(
-        Requirement.program_version_id == math.id,
-        Requirement.requirement_system == "core")))
+    core = {r.curation_status for r in composed_requirements(session, math)
+            if r.requirement_system == "core"}
     assert core == {"curated_from_prose"}
     rule = session.scalar(select(ProgramRule).where(ProgramRule.code == "MATH_RESIDENCY"))
     assert rule.is_evaluable is False and rule.not_evaluable_reason
@@ -311,10 +311,13 @@ def test_a_recurated_core_requirement_is_refreshed_on_reload(session, two_progra
 
     CoreIngestionPipeline(session).run(path, archive)                     # CS, default
     rows = session.scalars(select(Requirement).where(Requirement.code == "CORE_AH")).all()
-    by_program = {session.get(ProgramVersion, r.program_version_id).program.code:
-                  r.source_prose for r in rows}
-    assert by_program["198"] == "revised AH sentence"
-    assert by_program["640"] != "revised AH sentence"                     # untouched
+    assert len(rows) == 1
+    assert rows[0].program_version_id is None
+    assert rows[0].source_prose == "revised AH sentence"
+    for code in ("198", "640"):
+        shared = next(r for r in composed_requirements(session, _version(session, code))
+                      if r.code == "CORE_AH")
+        assert shared.id == rows[0].id and shared.source_prose == "revised AH sentence"
 
 
 def test_an_unknown_course_query_key_is_refused(session) -> None:
@@ -322,16 +325,15 @@ def test_an_unknown_course_query_key_is_refused(session) -> None:
         RequirementLoader(session)._query_courses({"subject_code": "640", "exclude": ["491"]})
 
 
-def test_core_can_target_a_second_major(session, two_programs) -> None:
-    """The same SAS Core source, attached to CS by default and to Math on request."""
-    per_version = dict(session.execute(
-        select(Program.code, func.count(Requirement.id))
-        .join(ProgramVersion, ProgramVersion.program_id == Program.id)
-        .join(Requirement, Requirement.program_version_id == ProgramVersion.id)
-        .where(Requirement.requirement_system == "core")
-        .group_by(Program.code)).all())
-    assert per_version["198"] == per_version["640"] > 0
-    assert _version(session, "640").sharing_policy == "share_across_systems"
+def test_core_is_composed_for_both_majors_without_cloning(session, two_programs):
+    """The independent school source applies to either matching major."""
+    core_ids = []
+    for code in ("198", "640"):
+        version = _version(session, code)
+        core_ids.append({r.id for r in composed_requirements(session, version)
+                         if r.requirement_system == "core"})
+        assert version.sharing_policy == "exclusive"
+    assert core_ids[0] == core_ids[1] and core_ids[0]
 
 
 def test_core_target_override_is_validated(session, tmp_path) -> None:

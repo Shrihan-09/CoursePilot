@@ -80,7 +80,10 @@ async def test_profile_creation_is_owned_idempotent_and_audited(ob) -> None:
         program = first.json()["profile"]["program"]
         assert program["program_key"] == ob["keys"]["pub"]
         assert program["catalog_year"] == "2026-2027"
-        assert program["support_status"] == "supported" and program["warnings"] == []
+        # Phase 7.2.2: a legacy-curated publication is disclosed as such - it was
+        # never recorded as human-reviewed (the world publishes PUB that way).
+        assert program["support_status"] == "supported"
+        assert [w["code"] for w in program["warnings"]] == ["legacy_curated_requirements"]
         # A retry - even naming another program - returns the record unchanged.
         again = await _profile(ac, ob, "pend")
         assert again.status_code == 200 and again.json()["created"] is False

@@ -92,6 +92,7 @@ class CurrentCourseView(BaseModel):
     confirmed: list[SectionChoice]
     unavailable: list[dict]
     sections_available: int
+    confirmed_identities: list[dict] = Field(default_factory=list)
 
 
 class CurrentScheduleView(BaseModel):

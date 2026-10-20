@@ -170,8 +170,8 @@ def test_requirement_system_accepts_core_without_a_migration(
 def test_core_loads_on_postgres(pg_session, cs_payload_bytes: bytes) -> None:
     stats = _seed(pg_session, cs_payload_bytes)
 
-    assert stats.goals_defined == 13
-    assert stats.requirements_inserted == 13
+    assert stats.goals_defined == 14
+    assert stats.requirements_inserted == 18
     assert stats.eligibility_inserted > 0
     assert stats.unresolved_courses == []
 
@@ -180,7 +180,7 @@ def test_core_loads_on_postgres(pg_session, cs_payload_bytes: bytes) -> None:
         .select_from(Requirement)
         .where(Requirement.requirement_system == "core")
     )
-    assert core_count == 13
+    assert core_count == 18
 
 
 # --------------------------------------------------------------------------
@@ -287,19 +287,33 @@ def test_duplicate_core_requirement_code_rejected(
 
 
 @requires_postgres
-def test_deleting_the_version_cascades_through_core(
+def test_core_is_owned_by_the_school_set_not_by_a_major(
     pg_session, cs_payload_bytes: bytes
 ) -> None:
+    """Phase 7.2.2: Core is ONE school requirement set composed with matching
+    majors, no longer copied into a major's version. Deleting a major removes
+    only that major's requirements; deleting the school set removes Core."""
+    from app.models import SchoolRequirementSetVersion
+
     _seed(pg_session, cs_payload_bytes)
     version = pg_session.scalar(select(ProgramVersion))
-    assert pg_session.scalar(select(func.count()).select_from(RequirementCourseOption)) > 0
+    school_owned = select(func.count()).select_from(Requirement).where(
+        Requirement.school_requirement_set_version_id.is_not(None))
+    core_before = pg_session.scalar(school_owned)
+    assert core_before > 0
 
-    pg_session.execute(
-        text("DELETE FROM program_version WHERE id = :i"), {"i": version.id}
-    )
+    pg_session.execute(text("DELETE FROM program_version WHERE id = :i"), {"i": version.id})
     pg_session.commit()
     pg_session.expunge_all()
+    assert pg_session.scalar(select(func.count()).select_from(Requirement).where(
+        Requirement.program_version_id.is_not(None))) == 0
+    assert pg_session.scalar(school_owned) == core_before        # Core is intact
 
+    school_set = pg_session.scalar(select(SchoolRequirementSetVersion))
+    pg_session.execute(text("DELETE FROM school_requirement_set_version WHERE id = :i"),
+                       {"i": school_set.id})
+    pg_session.commit()
+    pg_session.expunge_all()
     assert pg_session.scalar(select(func.count()).select_from(Requirement)) == 0
     assert pg_session.scalar(select(func.count()).select_from(RequirementCourseOption)) == 0
 
@@ -449,11 +463,12 @@ def test_core_ingestion_idempotent_on_postgres(
 
 
 @requires_postgres
-def test_core_refuses_a_missing_target_program(
+def test_core_applicability_comes_from_its_source_not_a_caller(
     pg_session, cs_payload_bytes: bytes
 ) -> None:
-    """Core attaches to an existing program version. A missing target must
-    raise rather than invent a program nobody is enrolled in."""
+    """Phase 7.2.2 (replaces "refuses a missing target program"): Core no longer
+    attaches to a major, so a missing major is irrelevant - but a caller may
+    never redirect Core to ANOTHER school than its source names."""
     _seed(pg_session, cs_payload_bytes, with_core=False)
     pg_session.execute(text("DELETE FROM program_version"))
     pg_session.commit()
@@ -461,5 +476,9 @@ def test_core_refuses_a_missing_target_program(
     archive = pathlib.Path(tempfile.mkdtemp()) / "soc_courses_2026_9_NB.json"
     archive.write_bytes(cs_payload_bytes)
 
-    with pytest.raises(ValueError, match="target program version not found"):
-        CoreIngestionPipeline(pg_session).run(CORE_DEFINITION, archive)
+    with pytest.raises(ValueError, match="cannot override the source school"):
+        CoreIngestionPipeline(pg_session).run(
+            CORE_DEFINITION, archive,
+            target_program={"school_code": "99", "program_code": "198", "degree_type": "BA"})
+    stats = CoreIngestionPipeline(pg_session).run(CORE_DEFINITION, archive)
+    assert stats is not None                    # loads with no major present

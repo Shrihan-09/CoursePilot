@@ -7,7 +7,7 @@
  */
 
 import type { Pace } from "@/types/plan";
-import type { DayCode, SectionChoice } from "@/types/schedule";
+import type { DayCode, SectionChoice, Modality } from "@/types/schedule";
 
 export interface AdditionalGoal {
   kind: "second_major" | "minor" | "certificate";
@@ -17,6 +17,7 @@ export interface AdditionalGoal {
 }
 
 export interface ScheduleDefaults {
+  modality?: { application_state: "not_applied"; preferred: Exclude<Modality, "unknown"> | null; excluded: Exclude<Modality, "unknown">[] };
   earliest_start: string | null;
   latest_end: string | null;
   avoid_days: DayCode[];
@@ -68,6 +69,7 @@ export interface CurrentCourse {
   confirmed: SectionChoice[];
   unavailable: { index_number: string; component: string }[];
   sections_available: number;
+  confirmed_identities?: {term_code: string; course_string: string; section_number: string | null; index_number: string; supplement_code: string; source: string; confirmed_at: string}[];
 }
 
 export interface CurrentSchedule {
