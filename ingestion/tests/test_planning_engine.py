@@ -377,7 +377,8 @@ def test_l_m_confirmed_and_historical_offerings(cs) -> None:
     assert historical
     for pc in historical:
         assert Reason.CONFIRMED_OFFERING_IN_TERM not in pc.reasons
-        assert pc.offering.rules_term in pc.offering.same_season_terms
+        # Phase 7.3: the course's most recent loaded rules, whatever the season.
+        assert pc.offering.rules_term == pc.offering.most_recent_term
         assert pc.offering.rules_term != pc.term_code
         assert Reason.RULES_FROM_EARLIER_TERM in pc.reasons
 

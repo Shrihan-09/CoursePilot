@@ -53,7 +53,7 @@ import uuid
 from collections import defaultdict
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.domain.attempts import Attempt
@@ -277,10 +277,18 @@ class PlanningEngine:
             frontier = referenced - self._closed
 
     def _load_prerequisites(self, keys: set[str]) -> None:
+        """Each course's MOST RECENT published prerequisite row only - older
+        terms are offering evidence, never a source of rules (Phase 7.3)."""
+        latest = (select(CoursePrerequisite.course_id,
+                         func.max(CoursePrerequisite.term_code).label("term_code"))
+                  .join(Course, Course.id == CoursePrerequisite.course_id)
+                  .where(Course.course_string.in_(sorted(keys)))
+                  .group_by(CoursePrerequisite.course_id).subquery())
         for key, row in self.session.execute(
                 select(Course.course_string, CoursePrerequisite)
                 .join(Course, Course.id == CoursePrerequisite.course_id)
-                .where(Course.course_string.in_(sorted(keys)))).all():
+                .join(latest, (latest.c.course_id == CoursePrerequisite.course_id)
+                      & (latest.c.term_code == CoursePrerequisite.term_code))).all():
             self.prereq_rows[key][row.term_code] = row
 
     def _system(self, code: str) -> str:

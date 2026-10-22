@@ -66,6 +66,20 @@ def test_more_history_strengthens_offering_evidence(session, tmp_path):
     assert (five.same_season_offered, five.same_season_loaded) == (4, 5)
 
 
+def test_older_terms_never_supply_prerequisite_rules(session, tmp_path):
+    # Phase 7.3 finding: with history loaded, a Fall placement was checked
+    # against the latest FALL's rules (e.g. 2022) although a newer Spring had
+    # published the course's current rules. History is offering evidence only.
+    records = _records("soc_cs_courses_sample.json")
+    course = records[0]["courseString"]
+    for year, term in ((2022, "9"), (2023, "9"), (2026, "1")):     # SYNTHETIC history
+        _load_term(session, tmp_path, records, year, term)
+    ev = OfferingIndex(session, {course}).evidence(course, "20279")
+    assert ev.kind is K.HISTORICAL_SAME_SEASON
+    assert ev.same_season_terms == ["20229", "20239"]
+    assert ev.rules_term == "20261"
+
+
 def test_a_complete_spring_2027_places_only_confirmed_courses(cs):  # noqa: F811
     # The CS world loads Spring 2027 partially (314, 336). Once that payload is
     # complete, history may not place anything else there.

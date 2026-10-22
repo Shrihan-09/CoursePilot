@@ -367,12 +367,32 @@ requirement-pool courses of the loaded programs, before vs after):
 before, "2 of 2" was the strongest possible. 87 further pool courses exist only
 in older terms. Caveat: a course seen in 1 of 6 Falls is still "historically
 offered" (engine semantics unchanged; the count is now shown to the student).
-Planning: `plan_quality.py` changed 12 of 20 persona/mode results (e.g. a
-fresh student's balanced plan 8 -> 7 semesters); `benchmark_planning.py`
-moved one what-if (sas-730) from partial to covering all requirements, while
-the two fresh-student "large" plans place fewer courses (34->31, 32->29) - not
-yet explained - and SQL statements per plan rose (up to 2.3x, e.g. 284 -> 652) because
-prerequisite rows now span 24 terms.
+Planning: right after the backfill, the two fresh-student "large" benchmark
+plans placed fewer courses (34->31, 32->29). Cause: a historical placement took
+its prerequisite rules from the latest SAME-SEASON offering, so with six Falls
+loaded, 13 placed courses per plan were checked against 2021-2024 rules (e.g.
+01:050:240 under Fall 2023, which published no prerequisite; its current rule
+requires College Writing). Fixed: rules now come only from each course's most
+recent loaded term; history is offering evidence only (`offerings.py`,
+`engine._load_prerequisites`). Measured with `benchmark_planning.py 3 20279`
+on this data, old rule -> fixed rule:
+
+| Case | Placed | SQL statements | p50 ms |
+|---|---|---|---|
+| small (dev student, CS) | 14 -> 11 (covers all -> partial) | 352 -> 321 | 1,879 -> 1,658 |
+| what-if sas-220 | 11 -> 5 | 652 -> 600 | 1,189 -> 923 |
+| what-if sas-640 | 21 -> 18 (covers all -> partial) | 440 -> 449 | 2,837 -> 2,534 |
+| large sas-198 (nothing taken) | 31 -> 23 | 757 -> 572 | 16,480 -> 3,725 |
+| large sas-640 (nothing taken) | 29 -> 22 | 781 -> 592 | 16,305 -> 3,059 |
+
+The fixed rule places FEWER courses, honestly: the newest rows (mostly Spring
+2027) carry conditions the Fall 2026 rows lacked - 01:640:115 an uninterpreted
+`placement` condition, 01:640:025 a section-note co-requisite ("must register
+for 640:001:20") - so the remedial math chain 001->025->026->115->135/151->152
+needs confirmation for a student with no placement record, and stops. The
+`plan_quality.py` "nothing yet" plans go from 32-34 courses in 7-10 terms
+(6.6-17.7 s) to 23 courses in 5-8 terms (2.4-4.4 s). The offering threshold
+(1 of N same-season terms counts as historical) is unchanged.
 
 ### Rutgers REUSES registration indexes across terms — verified
 

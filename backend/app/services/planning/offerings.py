@@ -26,8 +26,11 @@ one Spring, one Summer, a partial Winter) is the only evidence there is. No
 probability is claimed - the evidence lists the observed terms.
 
 `rules_term` is the term whose PUBLISHED prerequisites the planner applies:
-the target term itself when confirmed, else the most recent same-season term
-with an offering (the evaluation is then labelled an assumption).
+the target term itself when confirmed, else the course's most recent LOADED
+offering in any season (the evaluation is then labelled an assumption).
+Older terms are offering evidence only: a course last given in Fall 2021 and
+again in Spring 2026 is checked against the Spring 2026 rules, never 2021's
+(Phase 7.3 finding: the history backfill had planned under 2021-2024 rules).
 """
 
 from __future__ import annotations
@@ -105,7 +108,7 @@ class OfferingIndex:
             return OfferingEvidence(kind=OfferingEvidenceKind.TERM_DATA_PENDING, **base)
         if same:
             return OfferingEvidence(kind=OfferingEvidenceKind.HISTORICAL_SAME_SEASON,
-                                    rules_term=same[-1], **base)
+                                    rules_term=observed[-1], **base)
         if observed:
             return OfferingEvidence(kind=OfferingEvidenceKind.OTHER_SEASONS_ONLY, **base)
         return OfferingEvidence(kind=OfferingEvidenceKind.NO_EVIDENCE, **base)
