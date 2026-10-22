@@ -191,7 +191,9 @@ def test_validated_ingestion_makes_a_term_ready(session, tmp_path):
     assert outcome.ok, outcome
     assert term_states(session)["20279"].authority is TermAuthority.READY
     source = session.scalar(select(DataSource).where(DataSource.term_code == "20279"))
-    assert source.coverage == "complete"
+    # READY (authoritative for what it lists) is not COMPLETE: completeness needs
+    # the Phase 7.3 watcher's stability evidence, never validation alone.
+    assert source.coverage == "partial"
 
 
 @pytest.mark.parametrize("break_it,code", [

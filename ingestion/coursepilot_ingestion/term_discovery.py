@@ -193,9 +193,13 @@ def ingest_term(session: Session, row: RutgersTerm, *,
                 run_sections: Callable[[SocQuery], object],
                 now: Callable[[], datetime] = lambda: datetime.now(UTC)) -> IngestOutcome:
     """Load a PUBLISHED term with the existing pipelines, then VALIDATE before
-    calling it ingested. The loaded source row is promoted to coverage
-    'complete' only after validation, so a failed or short load can never be
-    mistaken for authoritative term data."""
+    calling it ingested (READY for planning, services.term_authority).
+
+    Validation never claims COMPLETENESS: the loaded source row records the
+    term's evidence-backed `coverage_state` ('partial' until the term watcher
+    promotes it with stated stability evidence - Phase 7.3). So a growing term
+    is authoritative about what it lists, and removal is never asserted from
+    a partial download (services.monitoring.removed_section_ids)."""
     if row.publication_state != PUBLISHED or not row.content_hash:
         return IngestOutcome(row.term_code, False, "NOT_PUBLISHED")
     query = SocQuery(year=int(row.term_code[:4]), term=row.term_code[4], campus=row.campus)
@@ -230,8 +234,10 @@ def ingest_term(session: Session, row: RutgersTerm, *,
         DataSource.kind == "rutgers_official_api", DataSource.term_code == row.term_code,
         DataSource.content_hash == row.content_hash))
     if source is not None:
-        source.coverage = "complete"
-        source.coverage_note = "Validated by term ingestion (Phase 7.2.4)."
+        source.coverage = row.coverage_state or "partial"
+        source.coverage_note = (row.coverage_evidence if source.coverage == "complete"
+                                else "Validated load; completeness not yet established "
+                                     "(Phase 7.3 term watcher).")
     row.ingestion_state = INGESTED
     row.ingested_hash = row.content_hash
     row.last_validated_at = now()

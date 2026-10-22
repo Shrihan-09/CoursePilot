@@ -60,3 +60,14 @@ class RutgersTerm(Base, TimestampMixin):
     availability_supported: Mapped[bool] = mapped_column(Boolean, default=False)
     #: Aggregate source disagreements (counts), recorded - never resolved silently.
     disagreements: Mapped[dict] = mapped_column(JSON, default=dict)
+
+    # Phase 7.3 term watcher ------------------------------------------------
+    #: Recent successful fetches, newest last: {at, hash, courses, sections} (bounded).
+    observations: Mapped[list] = mapped_column(JSON, default=list)
+    #: 'partial' until stability evidence promotes it; never inferred.
+    coverage_state: Mapped[str] = mapped_column(String(16), default="partial",
+                                                server_default="partial")
+    #: The stated evidence for a promotion to 'complete' (human-readable).
+    coverage_evidence: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    coverage_promoted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True)

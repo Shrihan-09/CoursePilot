@@ -72,6 +72,7 @@ class TickReport:
     failed: int = 0
     suppressed: int = 0
     activities_expired: int = 0
+    term_watch: dict[str, str] = field(default_factory=dict)   # term -> watcher action (7.3)
     errors: list[str] = field(default_factory=list)            # step names, never secrets
 
 
@@ -81,7 +82,9 @@ class LiveWorker:
                  transport: httpx.BaseTransport | None = None,
                  clock: Callable[[], datetime] = lambda: datetime.now(UTC),
                  lease: timedelta = TERM_LEASE, deliver_limit: int = 100,
-                 stop: threading.Event | None = None) -> None:
+                 stop: threading.Event | None = None,
+                 term_watch: Callable[[Session], list] | None = None,
+                 term_watch_every: timedelta = timedelta(hours=6)) -> None:
         self.session_factory = session_factory
         self.owner = owner
         self.archive_dir = archive_dir
@@ -91,6 +94,12 @@ class LiveWorker:
         self.lease = lease
         self.deliver_limit = deliver_limit
         self.stop = stop or threading.Event()
+        #: Phase 7.3 term watcher - a low-frequency step of THIS loop (not a second
+        #: system). The watcher itself decides per-term cadence and makes at most
+        #: one courses.json request per term per run.
+        self.term_watch = term_watch
+        self.term_watch_every = term_watch_every
+        self._term_watch_last: datetime | None = None
 
     # ---------------------------------------------------------------- refresh
 
@@ -178,6 +187,13 @@ class LiveWorker:
             s.commit()
             return count
         report.activities_expired = self._step(report, "expire_activities", expire) or 0
+        now = self.clock()
+        if self.term_watch is not None and (
+                self._term_watch_last is None
+                or now - self._term_watch_last >= self.term_watch_every):
+            self._term_watch_last = now
+            watched = self._step(report, "term_watch", self.term_watch) or []
+            report.term_watch = {o.term_code: o.action for o in watched}
         logger.info("live_tick", extra={
             "terms_polled": len(report.polled), "openings": report.openings,
             "events": report.events, "deliveries_created": report.deliveries_created,

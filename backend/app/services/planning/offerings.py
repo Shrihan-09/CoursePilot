@@ -88,7 +88,9 @@ class OfferingIndex:
         coverage = self.coverage.get(target_term)
         same = [t for t in observed if season(t) == season(target_term) and t < target_term]
         state = authority_of(self.authority, target_term)
+        loaded = [t for t in self.coverage if season(t) == season(target_term) and t < target_term]
         base = dict(target_term=target_term, observed_terms=observed, same_season_terms=same,
+                    same_season_offered=len(same), same_season_loaded=len(loaded),
                     most_recent_term=observed[-1] if observed else None,
                     target_term_coverage=coverage, target_term_authority=state.authority.value,
                     target_term_checked_at=state.checked_at)

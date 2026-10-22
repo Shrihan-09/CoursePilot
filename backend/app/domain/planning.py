@@ -183,6 +183,10 @@ class OfferingEvidence(BaseModel):
     target_term_authority: str = "unchecked"
     #: When CoursePilot last asked Rutgers about the target term (None: never).
     target_term_checked_at: datetime | None = None
+    #: Phase 7.3: a FACT, never a probability - "offered in `offered` of the
+    #: last `loaded` same-season terms CoursePilot holds data for".
+    same_season_offered: int = 0
+    same_season_loaded: int = 0
 
     @property
     def status(self) -> OfferingStatus:
