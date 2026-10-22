@@ -249,8 +249,7 @@ export function planReasonText(reason: PlanReason, course: PlannedCourse): strin
     case "confirmed_offering_in_term":
       return `Rutgers lists it in the ${termLabel(off.target_term)} schedule`;
     case "historically_offered_in_season":
-      return `${historicalBasis(off)}; likely, based on Rutgers offering it in ${
-        off.most_recent_term ? termLabel(off.most_recent_term) : "this season before"}`;
+      return `${historicalBasis(off)}; likely, based on ${seasonRecord(off)}`;
     case "rules_from_earlier_term":
       return `Prerequisite rules are taken from ${termLabel(course.prerequisite.rules_term)}, the latest Rutgers published`;
     case "ranked_by_requirement_coverage":
@@ -274,6 +273,17 @@ export const OFFERING_KIND: Record<OfferingEvidenceKind, string> = {
  * published" unless CoursePilot actually checked (7.2.4): an unloaded term is
  * a fact about CoursePilot, not about Rutgers.
  */
+/** "Rutgers offering it in 4 of the last 5 Falls" - counts, never a probability (7.3). */
+export function seasonRecord(off: { target_term: string; most_recent_term?: string | null;
+                                    same_season_offered?: number; same_season_loaded?: number }): string {
+  const season = ({ "0": "Winter", "1": "Spring", "7": "Summer", "9": "Fall" } as Record<string, string>)[off.target_term.charAt(4)] ?? "";
+  if (off.same_season_loaded && off.same_season_offered !== undefined) {
+    const plural = off.same_season_loaded === 1 ? season : `${season}s`;
+    return `Rutgers offering it in ${off.same_season_offered} of the last ${off.same_season_loaded} ${plural} CoursePilot has data for`;
+  }
+  return `Rutgers offering it in ${off.most_recent_term ? termLabel(off.most_recent_term) : "this season before"}`;
+}
+
 export function historicalBasis(off: { target_term: string; target_term_authority?: string;
                                        target_term_checked_at?: string | null }): string {
   const term = termLabel(off.target_term);

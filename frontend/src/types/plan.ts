@@ -66,6 +66,9 @@ export interface OfferingEvidence {
   target_term_coverage: string | null;
   target_term_authority?: TermAuthority;
   target_term_checked_at?: string | null;
+  /** Phase 7.3: a fact - offered in `same_season_offered` of the last `same_season_loaded` same-season terms. */
+  same_season_offered?: number;
+  same_season_loaded?: number;
 }
 
 export interface ConditionalDependency {
