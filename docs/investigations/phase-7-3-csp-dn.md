@@ -124,7 +124,7 @@ invented subject 999, building `XYZ`, `example.invalid`. It reproduces all 15
 element kinds found in the real print, with none missing and none extra, and
 `test_committed_synthetic_webreg_fixture_matches_the_real_layout_kind` pins it.
 
-**DN audit PDF:** pending - `dn_audit.pdf` not yet provided.
+
 
 ## 3. Degree Navigator (DN) - captured 2026-10-22
 
@@ -171,3 +171,51 @@ can enter CoursePilot only as the student's uploaded DN audit PDF (trust
 boundary 3); this capture establishes the vocabulary and structure that PDF
 parsing must map, and shows no structured endpoint that would make the PDF
 unnecessary.
+
+## 4. Degree Navigator audit PDF - layout and field map (developer's own export)
+
+Measured on the developer's Chrome "Save as PDF" audit (kept outside the
+repository; only kinds, counts and masked shapes recorded).
+
+- **Text layer:** yes - 9 pages, ~620 positioned fragments (each a whole
+  line), 4-8 fonts per page. Students must save with Chrome's own "Save as
+  PDF": "Microsoft Print to PDF" produces files with no text layer (plan §5a).
+- **Status is an IMAGE, not text.** Each requirement heading carries one of
+  five icons on the same baseline (all 21 icons were aligned with a text
+  line). Identified by size, and for the two 13x9 icons by pixel comparison
+  with DN's own legend images:
+
+| Icon | Size | DN meaning | Uses | CoursePilot concept |
+|---|---|---|---|---|
+| check | 13x9, blue | Completed / Fulfilled | 9 | satisfied requirement / completed course |
+| x | 13x9, red | Incomplete | 4 | unsatisfied |
+| course_cur | 10x8 | Current | 4 | in progress |
+| doubletilde | 14x11 | In Progress or Planned | 3 | provisional - **ambiguous**: DN merges two states |
+| course_pl_Square | 10x9 | Planned | 1 | planned |
+
+  The counts equal the live audit page's icon counts (§3), so the PDF
+  preserves the whole status layer.
+- **Reading-order hazard:** 154 of 326 baselines hold several fragments;
+  numbered course lists put **two courses on one line**
+  (`1. <course> ( … ) 2. <course> ( … )`) - split on the `n.` items, never on
+  lines.
+
+| Field | Present? | Shape | CoursePilot model |
+|---|---|---|---|
+| Requirement name | yes | `Requirement R9 : <Title> [CODE]` | DN requirement; mapping to CoursePilot `Requirement.code` is an open question |
+| Requirement status | yes (icon) | five icons above | DN status record (comparison), never written as audit truth |
+| "Needs" | yes (6) | `Needs: 9 more …` / `Needs: In Progress: …` | DN remaining text, stored as evidence |
+| Courses allocated | yes (34 codes) | `<course> ( credits, Season YYYY, grade )` | `student_course` candidates (staged) + DN allocation |
+| Grades | yes | letter grade, or a status word (e.g. `current`) in the grade slot | `grade` / `status` |
+| Terms | yes (26) | `Fall 2025` style | `term_code` |
+| Credits | yes | integer in the row | `credits_earned` (SOC credits win where they differ) |
+| Core goal codes | yes (13 kinds, 133 refs) | `[AHo]` … `[WCr]` in headings and rule text `{ … [CODE] ( <course> ) }` | SAS Core goal codes (`sas-core.json`) |
+| Transfer / AP rows | **not observed** | the only "AP" text is inside an all-caps note | unknown - needs a sample with transfer/AP credit |
+| Exceptions / waivers | **not observed** | - | unknown |
+| Disclaimer | yes | "not an official transcript …" | shown to the student, as DN does |
+
+**Synthetic fixture:** `backend/tests/fixtures/synthetic/dn_audit.SYNTHETIC.pdf`
+(`tests/support/synthetic_dn.py`; subject 999, terms in 2098, invented
+titles, icons at DN's sizes and colours). It reproduces all 17 element kinds
+measured in the real audit, none missing or extra; `tests/test_dn_fixture.py`
+pins the status-as-image, two-courses-per-line and Needs/Core shapes.

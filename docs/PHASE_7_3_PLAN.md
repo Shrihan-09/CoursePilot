@@ -7,10 +7,10 @@ only** - no production code is written until the discovery report is reviewed.
 
 ## 1. Decision record
 
-**Date:** 2026-10-22 · **Decided by:** the project owner · **Supersedes:** the
-blanket "never automate / never scrape an authenticated Rutgers session" rule
-in `AUTHENTICATION.md` and the "Degree Navigator is not scraped" stance in
-`DATA_SOURCES.md` - **only** as narrowed below.
+**Date:** 2026-10-22 · **Decided by:** the project owner · **Status:** revised
+the same day after discovery (§1a). The "never automate / never scrape an
+authenticated Rutgers session" rule in `AUTHENTICATION.md` **stands
+unchanged**.
 
 **Context.** Rutgers students plan in **Course Schedule Planner (CSP)**,
 register in **WebReg**, and track progress in **Degree Navigator (DN)**.
@@ -20,20 +20,32 @@ CoursePilot is only useful if it agrees with what students see in those tools.
 
 | Data | Preferred source | How it reaches CoursePilot | Fallback |
 |---|---|---|---|
-| Section data (term-scoped, identical for every student) | **CSP**, layered over SOC | A developer-run collector using the **developer's own** saved session | SOC (existing pipeline) |
+| Section data (term-scoped, identical for every student) | **SOC** (existing public pipeline) - see §1a | Unchanged | - |
 | A student's requirement status | **DN audit** | The student uploads a DN audit **PDF**; staged, reviewed, confirmed | CoursePilot's own Degree Engine |
 | What the student is taking now | **WebReg schedule PDF** | The student uploads it (7.2.2 importer); staged, reviewed, confirmed | Manual section confirmation |
 
-The combined data view keeps every field's provenance. Where CSP and SOC
+The combined data view keeps every field's provenance. Where sources
 disagree, the disagreement is recorded and surfaced (the 7.2.4 rule) - never
 silently resolved. CoursePilot's Degree Engine stays CoursePilot's engine: a
 confirmed DN status is a **student-provided comparison and status record**,
 not a replacement for the deterministic audit.
 
-**Consequences.** CSP collection is a deliberate, narrow exception to
-"CoursePilot never scrapes an authenticated Rutgers session": developer-only,
-manual login, no Duo automation, polite, cached. It does **not** extend to
-students' sessions, to DN, or to WebReg, which enter only as student uploads.
+### 1a. Revision after discovery (2026-10-22): CSP is not adopted
+
+Discovery compared **962 Spring 2027 sections** captured from CSP against
+public SOC `courses.json` and found **0 semantic disagreements** on every
+shared field (`investigations/phase-7-3-csp-dn.md` §1). CSP adds only
+presentational extras (building numbers, by-arrangement hours, major names)
+and lacks SOC's minor and unit-major restrictions.
+
+**Decision (owner):** SOC remains the primary and only source for section
+data. CSP is **out** - no collector, no saved CSP session in use - unless a
+later need for one of its extra fields justifies revisiting this. The
+proposed amendments to `AUTHENTICATION.md` and `DATA_SOURCES.md` are **not
+approved**; both documents stay as they are. The discovery tooling
+(`scripts/discover_csp.py`) remains for re-checking parity only.
+
+DN and WebReg data still enter only as student uploads (trust boundary 3).
 
 ---
 
@@ -42,12 +54,11 @@ students' sessions, to DN, or to WebReg, which enter only as student uploads.
 1. **The CoursePilot server never receives, stores or proxies** any student's
    NetID password, Duo approval or Rutgers session cookie. Nothing in the
    product asks a student to sign in to Rutgers through CoursePilot.
-2. **CSP section data is collected only with the developer's own session**,
-   created by a manual, headed Playwright login and saved to
-   `data/private/csp_state.json` (gitignored). Duo is never automated. When the
-   session expires the collector **stops**, records `auth_expired`, raises an
-   alert, and the app falls back to SOC. The session never reaches the
-   CoursePilot server, the database, logs or Git.
+2. **No CSP collector exists (§1a).** Discovery re-checks only: manual,
+   headed sign-in by the developer (Duo never automated), recording only
+   after sign-in, files only under `COURSEPILOT_PRIVATE_DIR` (outside
+   OneDrive, gitignored). A saved CSP session is never used for automated
+   collection and never reaches the CoursePilot server, database, logs or Git.
 3. **Per-student data (DN, WebReg) enters only as a document the student
    uploads (PDF)**: extraction → staging → student review → explicit
    confirmation, mirroring `services/transcripts/`. A document never writes
@@ -110,10 +121,11 @@ browsing of a system the user is authorized to use.
 
 ---
 
-## 5. Changes to earlier documents - PENDING owner confirmation
+## 5. Changes to earlier documents - NOT APPROVED (§1a)
 
-These amendments were drafted but **not applied**: the change narrows a
-documented security rule, so it waits for the owner's explicit confirmation.
+These amendments were drafted, then **declined by the owner** after
+discovery. `AUTHENTICATION.md` and `DATA_SOURCES.md` stay unchanged. Kept here
+only as the record of what was considered:
 
 - `AUTHENTICATION.md` "CoursePilot never" - to be narrowed: the **server**
   still never asks for, stores or proxies a Rutgers credential and never
@@ -129,6 +141,14 @@ Discovery evidence relevant to that decision (§1 of the investigation): in a
 presentational extras, while lacking SOC's minor/unit restrictions.
 
 ---
+
+## 5a. Upload guidance for students (DN audit and WebReg schedule)
+
+Both documents must be saved with the **browser's own "Save as PDF"**
+(Chrome: Print → Destination "Save as PDF"). **Do not use "Microsoft Print
+to PDF"**: it draws every character as a shape, so the file has no text layer
+and CoursePilot cannot read it (no OCR - verified on a real WebReg print,
+7.2.4). The importers refuse such files with a message saying exactly this.
 
 ## 6. Discovery steps (this prompt)
 
