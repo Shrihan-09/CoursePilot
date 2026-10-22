@@ -1,0 +1,2 @@
+# Binary fixtures must never have line endings converted (Phase 7.3).
+*.pdf binary

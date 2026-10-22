@@ -53,3 +53,9 @@ pgdata/
 
 # ---------- Docker ----------
 docker-compose.override.yml
+
+# ---------- Phase 7.3: private developer/student material (PHASE_7_3_PLAN.md §2) ----------
+# Session state, HAR captures and real DN/WebReg exports never enter Git.
+data/private/
+*.har
+*state*.json

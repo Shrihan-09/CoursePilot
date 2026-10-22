@@ -34,6 +34,43 @@ def objects(*, term="Fall 2099", records=None, arrangement=None):
     return result
 
 
+def realistic_objects(*, term="Spring 2099"):
+    """SYNTHETIC copy of the REAL browser-saved WebReg print layout (Phase 7.3
+    Step 3): header, term, five weekday headers on one baseline, a time axis,
+    and per meeting block - identity (course:section:index), credits, time
+    range, campus, building-room - then a by-arrangement region whose index is
+    a SEPARATE fragment on the same baseline, plus Credits/Location lines.
+    Every value is invented (subject 999, building XYZ, example.invalid)."""
+    items = [
+        (40, 770, "WebReg | View / Print Schedule"),
+        (40, 752, term),
+        (40, 736, "Total Credits"), (120, 736, "10.0"),
+    ]
+    for x, day in [(83, "Monday"), (151, "Tuesday"), (216, "Wednesday"),
+                   (288, "Thursday"), (361, "Friday")]:
+        items.append((x, 716, day))
+    for i, label in enumerate(["8:00 AM", "9:00 AM", "10:00 AM", "11:00 AM", "12:00 PM",
+                               "1:00 PM", "2:00 PM", "3:00 PM"]):
+        items.append((28, 700 - i * 38, label))
+    blocks = [  # (x, y, identity, credits, time, campus, room)
+        (83, 650, "01:999:101:01:91234", "(4.0)", "10:20 AM - 11:40 AM", "Busch", "XYZ-A101"),
+        (216, 650, "01:999:101:01:91234", "(4.0)", "10:20 AM - 11:40 AM", "Busch", "XYZ-A101"),
+        (151, 560, "01:999:102:02:91235", "(3.0)", "12:10 PM - 1:30 PM", "Livingston", "XYZ-B202"),
+        (288, 560, "01:999:102:02:91235", "(3.0)", "12:10 PM - 1:30 PM", "Livingston", "XYZ-B202"),
+        (361, 470, "01:999:103:03:91236", "(3.0)", "2:00 PM - 2:55 PM", "College Avenue",
+         "XYZ-C303"),
+    ]
+    for x, y, ident, credits, when, campus, room in blocks:
+        items += [(x, y, ident), (x, y - 11, credits), (x, y - 22, when),
+                  (x, y - 33, campus), (x, y - 44, room)]
+    items.append((59, 376, "By Arrangement, Off-campus, or Other Courses"))
+    items += [(40, 350, "INVENTED ASYNCHRONOUS COURSE"), (40, 338, "(01:999:150:90)"),
+              (160, 338, "91250"), (40, 326, "Credits: 3.0"),
+              (40, 314, "Location: Asynchronous Content (Online)")]
+    items += [(40, 40, "01/01/99, 9:00 AM"), (300, 40, "https://example.invalid/webreg/print.htm")]
+    return items
+
+
 def extracted_layout(items):
     return [
         {
