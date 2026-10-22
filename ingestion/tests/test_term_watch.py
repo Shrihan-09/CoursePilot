@@ -133,16 +133,22 @@ def test_promotion_needs_stable_counts_over_time(session, tmp_path):
         == "complete"
 
 
-def test_no_promotion_when_counts_move_or_span_too_short(session, tmp_path):
-    source = Source(tmp_path, {TERM: _sample()})
-    for hours in (0, 25, 49):
-        _run(session, tmp_path, source, T0 + timedelta(hours=hours))
+def _obs(hours, sections=100):
+    return {"at": (T0 + timedelta(hours=hours)).isoformat(), "hash": "h",
+            "courses": 10, "sections": sections}
+
+
+def test_no_promotion_when_counts_move_span_too_short_or_too_few(session, tmp_path):
+    _run(session, tmp_path, Source(tmp_path, {TERM: _sample()}), T0)
     row = session.scalar(select(RutgersTerm))
-    row.observations = [*row.observations[:-1], {**row.observations[-1], "sections": 1}]
+    row.observations = [_obs(0), _obs(25), _obs(49)]
+    assert promotion_evidence(row) is not None                     # control: all rules met
+    row.observations = [_obs(0), _obs(25), _obs(49, sections=101)]
     assert promotion_evidence(row) is None                         # counts moved
-    row.observations = [{**o, "at": (T0 + timedelta(hours=i)).isoformat()}
-                        for i, o in enumerate(row.observations)]
-    assert promotion_evidence(row) is None                         # 3 fetches within 2 hours
+    row.observations = [_obs(0), _obs(1), _obs(2)]
+    assert promotion_evidence(row) is None                         # same counts, 2 hours only
+    row.observations = [_obs(0), _obs(49)]
+    assert promotion_evidence(row) is None                         # span met, too few fetches
 
 
 def test_structure_change_blocks_the_load(session, tmp_path):

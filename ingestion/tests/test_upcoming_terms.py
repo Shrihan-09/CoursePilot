@@ -60,6 +60,10 @@ def test_more_history_strengthens_offering_evidence(session, tmp_path):
     four = OfferingIndex(session, {course}).evidence(course, "20279")
     assert four.kind is K.HISTORICAL_SAME_SEASON
     assert (four.same_season_offered, four.same_season_loaded) == (4, 4)
+    # A loaded Fall WITHOUT the course: offered stays 4, loaded becomes 5.
+    _load_term(session, tmp_path, [r for r in records if r["courseString"] != course], 2022, "9")
+    five = OfferingIndex(session, {course}).evidence(course, "20279")
+    assert (five.same_season_offered, five.same_season_loaded) == (4, 5)
 
 
 def test_a_complete_spring_2027_places_only_confirmed_courses(cs):  # noqa: F811
