@@ -185,6 +185,44 @@ async def test_changing_program_keeps_courses_and_refreshes_the_audit(ob) -> Non
         assert (await ac.get(PROFILE)).json()["program"]["program_key"] == ob["keys"]["pend"]
 
 
+@requires_db
+async def test_math_placement_is_optional_validated_and_clearable(ob) -> None:
+    import random
+
+    from app.models import Course, Subject
+
+    with _session() as session:                 # SYNTHETIC math course 98:640:NNN
+        source_id = session.scalar(select(Course.source_id).where(
+            Course.course_string == ob["code"]["A"]))
+        if session.scalar(select(Subject).where(Subject.offering_unit_code == "98",
+                                                Subject.code == "640")) is None:
+            session.add(Subject(code="640", offering_unit_code="98", description="OB MATH",
+                                source_id=source_id))
+            session.flush()
+        subject_id = session.scalar(select(Subject.id).where(
+            Subject.offering_unit_code == "98", Subject.code == "640"))
+        number = str(random.randint(100, 999))
+        while session.scalar(select(Course.id).where(Course.course_string == f"98:640:{number}")):
+            number = str(random.randint(100, 999))
+        session.add(Course(offering_unit_code="98", subject_code="640", course_number=number,
+                           supplement_code="", course_string=f"98:640:{number}",
+                           title="OB MATH", level="U", subject_id=subject_id,
+                           source_id=source_id))
+        session.commit()
+    math = f"98:640:{number}"
+    async with _client(_app(), ob["account"]) as ac:
+        await _profile(ac, ob)
+        assert (await ac.get(PROFILE)).json()["math_placement"] is None
+        ok = await ac.put("/api/v1/student/placement", json={"math_placement": math})
+        assert ok.status_code == 200 and ok.json()["math_placement"] == math
+        for bad in (ob["code"]["A"], "98:640:000x"):          # not math / not a course
+            r = await ac.put("/api/v1/student/placement", json={"math_placement": bad})
+            assert r.status_code == 422 and _issue_codes(r) == ["MATH_PLACEMENT_INVALID"]
+        assert (await ac.get(PROFILE)).json()["math_placement"] == math
+        cleared = await ac.put("/api/v1/student/placement", json={"math_placement": None})
+        assert cleared.status_code == 200 and cleared.json()["math_placement"] is None
+
+
 # --------------------------------------------------------------------------
 # manual history
 # --------------------------------------------------------------------------

@@ -32,7 +32,8 @@ export type PlanReason =
   | "historically_offered_in_season"
   | "rules_from_earlier_term"
   | "selected_by_canonical_tie_break"
-  | "ranked_by_requirement_coverage";
+  | "ranked_by_requirement_coverage"
+  | "requires_math_placement";
 
 export type PlanStatus = "covers_all_requirements" | "partial" | "nothing_to_plan";
 

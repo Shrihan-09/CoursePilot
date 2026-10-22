@@ -254,6 +254,20 @@ def test_unclear_coreqs_are_unsupported_not_guessed(text) -> None:
                for p in parse_note(text, resolve))
 
 
+@pytest.mark.parametrize("text", [
+    "STUDENTS WANTING THIS SECTION; MUST REGISTER FOR 640:001:20; IND.#05673 & WILL "
+    "AUTOMATICALLY; BE REGISTERED FOR 640:025:20",           # 01:640:025, Spring 2027
+    "COREQ: 640:001:14",                                     # 01:640:025, Fall 2025
+    "COREQ 01:640:001:16",
+    "STUDENTS AUTO-REGISTERED FOR 01:160:101:E1 (RECITATION)",
+])
+def test_section_scheduling_constraints_are_not_corequisites(text) -> None:
+    from app.domain.corequisites import SECTION_CONSTRAINT, all_clauses
+
+    assert parse_note(text, resolve) == []
+    assert [p.classification for p in all_clauses(text, resolve)] == [SECTION_CONSTRAINT]
+
+
 def test_advice_is_not_a_rule() -> None:
     assert parse_note("RECOMMENDED AS A COREQUISITE FOR INTERNSHIP.", resolve) == []
     assert parse_note("MAY TAKE 565:103 CONCURRENTLY", resolve) == []

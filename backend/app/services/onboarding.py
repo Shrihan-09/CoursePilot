@@ -72,6 +72,10 @@ class OpenImportExists(OnboardingError):
     code = "OPEN_TRANSCRIPT_IMPORT"
 
 
+class PlacementInvalid(OnboardingError):
+    code = "MATH_PLACEMENT_INVALID"
+
+
 @dataclass(frozen=True, slots=True)
 class SelectionWarning:
     code: str
@@ -252,6 +256,33 @@ def change_program(session: Session, account_id: uuid.UUID, *, program_key: str,
         session.flush()
         invalidate_audit(session, student.id)
         logger.info("program_changed", extra={"account": redact_id(account_id)})
+    return student
+
+
+def set_math_placement(session: Session, account_id: uuid.UUID,
+                       placement: str | None) -> Student:
+    """State (or clear, with None) the math course the student is placed into.
+
+    Must be a New Brunswick-style math course key CoursePilot knows
+    ("01:640:151"); app.services.placement decides what it satisfies.
+    """
+    from app.models import Course
+    from app.services.placement import is_math
+
+    student = lock_student(session, account_id)
+    if student is None:
+        raise ProfileMissing("No academic record exists for this account.")
+    if placement is not None:
+        placement = placement.strip()
+        known = session.scalar(select(Course.id).where(
+            Course.course_string == placement, Course.supplement_code == "").limit(1))
+        if not is_math(placement) or known is None:
+            raise PlacementInvalid("A math placement is a math course, e.g. 01:640:151.")
+    if student.math_placement != placement:
+        student.math_placement = placement
+        session.flush()
+        invalidate_audit(session, student.id)
+        logger.info("math_placement_changed", extra={"account": redact_id(account_id)})
     return student
 
 

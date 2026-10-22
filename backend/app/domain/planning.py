@@ -96,6 +96,9 @@ class Reason(StrEnum):
     RULES_FROM_EARLIER_TERM = "rules_from_earlier_term"
     SELECTED_BY_CANONICAL_TIE_BREAK = "selected_by_canonical_tie_break"
     RANKED_BY_REQUIREMENT_COVERAGE = "ranked_by_requirement_coverage"
+    #: Phase 7.3: placed, but needs confirmation - the published rule accepts
+    #: math placement and the student's profile states none.
+    REQUIRES_MATH_PLACEMENT = "requires_math_placement"
 
 
 class PlanStatus(StrEnum):

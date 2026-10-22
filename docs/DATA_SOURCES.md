@@ -394,6 +394,46 @@ needs confirmation for a student with no placement record, and stops. The
 (6.6-17.7 s) to 23 courses in 5-8 terms (2.4-4.4 s). The offering threshold
 (1 of N same-season terms counts as historical) is unchanged.
 
+**Follow-up (Phase 7.3, same day): both blockers resolved, not worked around.**
+
+* *Section notes are not co-requisites.* "MUST REGISTER FOR 640:001:20",
+  "COREQ: 640:001:14" and "AUTO-REGISTERED FOR 01:160:101:E1" name a SECTION:
+  they tie one section's registration to another section. They are now
+  `section_constraint` clauses (`app.domain.corequisites`, parser v3), dropped
+  from `course_corequisite`; the Schedule Engine reads section notes itself.
+  `scripts/reload_corequisites.py` re-read all 24 archived terms (archive hash
+  = loaded payload, so no new provenance): 1-3 rows removed per term; a second
+  run changes nothing.
+* *The placement condition is a season pattern, not a format change.*
+  01:640:115's sections say "PREREQ: 640:026 OR PLACEMENT" in Spring 2021,
+  2024, 2025, 2026 and 2027; Spring 2022/2023 and every Fall, Summer and Winter
+  term carry no such note (the course prerequisite text is identical in all).
+  Only 01:640:111 and 01:640:115 name placement among math courses.
+* *Math placement on the profile* (`student.math_placement`, migration
+  `73placement01`, `PUT /api/v1/student/placement`): the course the student is
+  placed into. Stated: a placement condition on math course X is met when X is
+  that course or in its published prerequisite closure, else the prerequisite
+  decides. Not stated: the course is placed, `needs_confirmation`, reason
+  `requires_math_placement`; the chain is not blocked. Non-math placement
+  conditions are unchanged.
+
+Back to back on the same machine and hour (`benchmark_planning.py 3 20279`;
+"before" = commit 8d74e2a on a restore of the pre-change database):
+
+| Case | Placed | SQL statements | p50 ms |
+|---|---|---|---|
+| small (dev student, CS) | 11 -> 11 | 321 -> 321 | 2,569 -> 2,563 |
+| what-if sas-220 | 5 -> 10 | 600 -> 986 | 2,283 -> 4,021 |
+| what-if sas-640 | 18 -> 18 | 449 -> 449 | 4,052 -> 4,481 |
+| large sas-198 (nothing taken) | 23 -> 30 | 572 -> 589 | 6,459 -> 7,112 |
+| large sas-640 (nothing taken) | 22 -> 28 | 592 -> 578 | 5,492 -> 8,255 |
+
+`plan_quality.py` "nothing yet": 23 courses in 5-8 terms (5.6-7.8 s) -> 30-31
+courses in 7-10 terms (7.1-9.6 s). sas-220 at 10, not the original 11: the
+missing course is 01:220:397, whose Fall listings publish no prerequisite but
+whose latest (Spring 2026) listing requires 220:102 & 103 with a C - the
+latest-term rule now applies it.
+
 ### Rutgers REUSES registration indexes across terms — verified
 
 The central Phase 2.5 question. Measured with

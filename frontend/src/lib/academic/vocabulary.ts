@@ -256,6 +256,8 @@ export function planReasonText(reason: PlanReason, course: PlannedCourse): strin
       return "Ranks ahead on candidate requirement coverage; actual credit allocation is checked separately";
     case "selected_by_canonical_tie_break":
       return `One of ${course.interchangeable_alternatives + 1} equally suitable courses; chosen by a fixed tie-break, not by preference`;
+    case "requires_math_placement":
+      return "Requires math placement: Rutgers accepts a placement result, and your profile doesn't state one yet";
   }
 }
 
@@ -311,6 +313,10 @@ export function blockedReasonText(code: string): string {
       return "Co-requisite wording CoursePilot can't interpret automatically";
     case "no_corequisite_published":
       return "Rutgers publishes no co-requisite for it";
+    case "requires_math_placement":
+      return "Requires math placement";
+    case "satisfied_by_math_placement":
+      return "Met by your math placement";
     case "no_prerequisite_published":
       return "Rutgers publishes no prerequisite for it";
     case "no_offering_in_term":

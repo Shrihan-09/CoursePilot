@@ -97,6 +97,8 @@ from app.models import (
 from app.services.audit.cache import AUDIT_ENGINE_VERSION, academic_fingerprint, rules_fingerprint
 from app.services.audit.engine import DegreeAuditEngine, constraint_counts
 from app.services.course_eligibility import EligibilityCheck, check_proposal
+from app.services.placement import REQUIRES_PLACEMENT, is_math, names_placement
+from app.services.placement import covered as placement_covered
 from app.services.planning.dependencies import UNREADABLE, DependencyPlanner
 from app.services.planning.offerings import PLACEABLE, OfferingIndex
 from app.services.planning.ranking import rank_key
@@ -250,6 +252,7 @@ class PlanningEngine:
         self.prereq_rows: dict[str, dict[str, CoursePrerequisite]] = defaultdict(dict)
         self._load_prerequisites(set(self.course_info))
         self._breadth: dict[str, int] | None = None
+        self.placement_covers: frozenset[str] = frozenset()     # set per student (_history)
 
     def _load_courses(self, keys: set[str]) -> None:
         missing = sorted(k for k in keys if k not in self.course_info and k not in self._looked_up)
@@ -320,6 +323,9 @@ class PlanningEngine:
         if not rows:
             return None
         row = rows[max(rows)]
+        if (course in self.placement_covers and is_math(course)
+                and names_placement(row.interpreted_conditions)):
+            return None         # "<prerequisite> OR PLACEMENT", met by placement: no path
         if row.expression is None:
             return UNREADABLE
         return from_json(row.expression)
@@ -338,6 +344,7 @@ class PlanningEngine:
 
     def _history(self, student: Student) -> None:
         self.history = attempts_by_course(self.session, student)
+        self.placement_covers = placement_covered(self.session, student.math_placement)
         self.passed: set[str] = set()
         self.in_progress: dict[str, str] = {}
         for key, attempts in self.history.items():
@@ -410,6 +417,20 @@ class PlanningEngine:
             return EligibilityState.NEEDS_CONFIRMATION
         return EligibilityState.UNSATISFIED
 
+    @staticmethod
+    def _awaits_placement(b: EligibilityCheck | None) -> bool:
+        """Unknown ONLY because no math placement is stated (app.services.placement):
+        placed and marked needs-confirmation, never a blocked chain."""
+        return (b is not None and b.status is PrereqStatus.UNKNOWN
+                and b.prerequisite.reasons == [REQUIRES_PLACEMENT]
+                and (not b.corequisite.has_corequisite
+                     or b.corequisite.status is PrereqStatus.SATISFIED))
+
+    def _placeable_state(self, state: EligibilityState, b: EligibilityCheck | None) -> bool:
+        return state in (EligibilityState.SATISFIED_BY_HISTORY,
+                         EligibilityState.CONDITIONAL_ON_PLAN) or (
+            state is EligibilityState.NEEDS_CONFIRMATION and self._awaits_placement(b))
+
     def _prereq_evidence(self, a, b, state, planned, term) -> PrerequisiteEvidence:
         ev = PrerequisiteEvidence(state=state)
         if b is None:
@@ -423,7 +444,7 @@ class PlanningEngine:
         unknown = state is EligibilityState.NEEDS_CONFIRMATION
         ev.unknown_reasons = sorted(set(pre.reasons)
                                     | set(b.corequisite.reasons if unknown else ()))
-        if state is EligibilityState.CONDITIONAL_ON_PLAN:
+        if state is EligibilityState.CONDITIONAL_ON_PLAN or self._awaits_placement(b):
             minimum = (pre.interpreted_conditions or {}).get("minimum_grade") or {}
             named = set(minimum.get("courses", ()))
             used = set(pre.evidence.satisfied_courses) if pre.evidence else set()
@@ -566,8 +587,7 @@ class PlanningEngine:
 
         states = {k: self._state(a, b) for k, (a, b, _) in evaluated.items()}
         ready = {k for k, s in states.items()
-                 if s in (EligibilityState.SATISFIED_BY_HISTORY,
-                          EligibilityState.CONDITIONAL_ON_PLAN)
+                 if self._placeable_state(s, evaluated[k][1])
                  and evaluated[k][2].kind in PLACEABLE
                  and self.course_info[k].credits is not None}
 
@@ -575,6 +595,8 @@ class PlanningEngine:
         for key in keys:
             for code in serves.get(key, ()):
                 ev = evaluated[key][2]
+                if key in ready:
+                    continue
                 if states[key] is EligibilityState.NEEDS_CONFIRMATION:
                     b = evaluated[key][1]
                     needs_confirmation[code][key] = sorted(
@@ -634,8 +656,7 @@ class PlanningEngine:
         for k in sorted(k for k in dependency_targets if k in evaluated and k not in planned):
             if k in new:
                 states[k] = self._state(*evaluated[k][:2])
-            if (states[k] in (EligibilityState.SATISFIED_BY_HISTORY,
-                              EligibilityState.CONDITIONAL_ON_PLAN)
+            if (self._placeable_state(states[k], evaluated[k][1])
                     and evaluated[k][2].kind in PLACEABLE
                     and self.course_info[k].credits is not None):
                 ready.add(k)
@@ -837,6 +858,8 @@ class PlanningEngine:
         if pre.state is EligibilityState.SATISFIED_BY_HISTORY:
             reasons.append(Reason.PREREQUISITES_SATISFIED_BY_HISTORY if pre.raw_text or
                            pre.corequisite_text else Reason.NO_PREREQUISITE_PUBLISHED)
+        elif pre.state is EligibilityState.NEEDS_CONFIRMATION:
+            reasons.append(Reason.REQUIRES_MATH_PLACEMENT)       # the only placeable kind
         else:
             reasons.append(Reason.PREREQUISITES_CONDITIONAL_ON_PLAN)
         if facts["dependency_for"]:

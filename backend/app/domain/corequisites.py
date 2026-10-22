@@ -21,10 +21,18 @@ condition reading is unchanged):
 | "01:750:227 IS A CO-REQUSITE" (Rutgers' spelling, 01:750:229) | `co` |
 | "01:750:203 IS A CO-REQUISITE" (01:750:205) | `co` |
 | "MUST REGISTER FOR LAB 03:691:103", "STUDENTS MU ST ALSO REGISTER FOR 01:078:117" | `co` |
-| "STUDENTS AUTO-REGISTERED FOR 01:160:101:E1 (RECITATION)" | `co`, unsupported |
 
-(The registration rows are same-term registration in ANOTHER course; the
-auto-registration names a section, not a course, so it stays unsupported.)
+(The registration rows are same-term registration in ANOTHER course.)
+
+Phase 7.3 - SECTION scheduling constraints are not co-requisites. A clause
+whose every item names a SECTION ("MUST REGISTER FOR 640:001:20",
+"COREQ: 640:001:14", "STUDENTS AUTO-REGISTERED FOR 01:160:101:E1
+(RECITATION)") ties one section's registration to another section. It says
+nothing about which COURSES a student may take, so `parse_note` drops it and
+the degree planner never sees it; the Schedule Engine reads section notes
+itself (app.services.scheduling). Finding: 01:640:025's Spring sections
+publish "MUST REGISTER FOR 640:001:20", which made the course UNKNOWN for
+every student once Spring rules were the latest.
 
 A registration phrase must name a course code; "MUST REGISTER FOR BOTH REC
 AND LAB SECTION" names none - that is a REGISTRATION component of the same
@@ -54,7 +62,7 @@ from app.domain.prerequisites import (
     to_text,
 )
 
-COREQUISITE_PARSER_VERSION = "2"
+COREQUISITE_PARSER_VERSION = "3"
 
 _MARKER = COREQ_MARKER
 _ADVICE_BEFORE = re.compile(r"RECOMMENDED(\s+AS)?(\s+AN?)?\s*$", re.I)
@@ -63,6 +71,9 @@ _STOP = re.compile(r"\b(PRE-?\s?REQ(UISITE)?S?|LABS?|CHE SCHEDULE|THIS APPLIES|A
 _PERMISSION = re.compile(r"^(PERM|PERMISSION)( OF( THE)? (DEPT|DEPARTMENT))?$|"
                          r"^(INSTRUCTOR'?S? )?PERMISSION( OF( THE)? INSTRUCTOR)?$", re.I)
 _CODE_ITEM = re.compile(r"^(\d{2}:)?\d{3}:\d{3}$|^\d{3}$")
+#: A SECTION reference: [unit:]subject:course:section, optional "(RECITATION)".
+_SECTION_ITEM = re.compile(r"^(\d{2}:)?\d{3}:\d{3}:[A-Z0-9]{1,3}(\s*\([^)]*\))?$", re.I)
+SECTION_CONSTRAINT = "section_constraint"
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,6 +133,9 @@ def parse_clause(kind: str, body: str, resolve: Resolve) -> CoreqParse:
     if re.search(r"\bOR HIGHER\b|\bAND\b|&|\bCOURSE FROM\b|\bEQUIV", body, re.I):
         return CoreqParse(kind, "unsupported", None, (), f"not interpreted: {body[:80]}")
     items = [i.strip(" ,") for i in re.split(r"\bOR\b|,", body, flags=re.I) if i.strip(" ,")]
+    if items and all(_SECTION_ITEM.match(i) for i in items):
+        return CoreqParse(kind, SECTION_CONSTRAINT, None, (),
+                          f"section scheduling constraint: {body[:80]}")
     alternatives: list[Expr] = []
     for item in items:
         if _PERMISSION.match(item):
@@ -136,6 +150,12 @@ def parse_clause(kind: str, body: str, resolve: Resolve) -> CoreqParse:
 
 
 def parse_note(text: str | None, resolve: Resolve) -> list[CoreqParse]:
+    """COURSE-level co-requisite clauses; section constraints are dropped."""
+    return [p for p in all_clauses(text, resolve) if p.classification != SECTION_CONSTRAINT]
+
+
+def all_clauses(text: str | None, resolve: Resolve) -> list[CoreqParse]:
+    """Every clause, section constraints included (measurement and tests)."""
     return [parse_clause(kind, body, resolve) for kind, body in find_clauses(text)]
 
 

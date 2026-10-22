@@ -436,6 +436,10 @@ async def test_no_path_parameterised_student_route_exists(app) -> None:
     # owner-resolved) and staged WebReg schedule imports, whose {import_id} /
     # {row_id} name an IMPORT or ROW looked up inside the caller's own record
     # (another account's id is a 404) - see tests/test_schedule_import_api.py.
+    #
+    # Phase 7.3 added the math placement (PUT, parameterless, owner-resolved,
+    # extra="forbid" body of one validated course key) - see
+    # tests/test_onboarding_api.py.
     assert sorted(student_self_service) == [
         "/api/v1/student/audit",
         "/api/v1/student/context",
@@ -445,6 +449,7 @@ async def test_no_path_parameterised_student_route_exists(app) -> None:
         "/api/v1/student/current-schedule/sections",
         "/api/v1/student/onboarding",
         "/api/v1/student/onboarding/complete",
+        "/api/v1/student/placement",
         "/api/v1/student/planning-profile",
         "/api/v1/student/planning-readiness",
         "/api/v1/student/plans",

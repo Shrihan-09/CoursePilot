@@ -20,6 +20,8 @@ Answers are deliberately conservative:
 | an INTERPRETED minimum grade (Phase 6.4) | evaluated on the student's grades |
 | an interpreted "OR PLACEMENT TEST / PERMISSION" alternative (6.4) | prerequisite OR UNKNOWN |
 | any condition still NOT interpreted | caps SATISFIED at UNKNOWN |
+| MATH placement condition (7.3), placement stated | met: SATISFIED; else the prerequisite |
+| MATH placement condition, none stated | SATISFIED -> UNKNOWN (`requires_math_placement`) |
 | campuses publish different prerequisites for the term | UNKNOWN (`campus_prerequisites_differ`) |
 
 Grades come from app.domain.grades; which attempt answers is
@@ -44,13 +46,20 @@ from app.domain.prerequisites import (
     AttemptState,
     Evaluation,
     GradeCondition,
-    course_keys,
     PrereqStatus,
     Unsupported,
+    course_keys,
     evaluate,
     from_json,
 )
 from app.models import Course, CourseOffering, CoursePrerequisite, Student, StudentCourse
+from app.services.placement import (
+    MET_BY_PLACEMENT,
+    REQUIRES_PLACEMENT,
+    is_math,
+    names_placement,
+)
+from app.services.placement import covered as placement_covered
 
 
 @dataclass(slots=True)
@@ -158,7 +167,9 @@ def check_many(
         .where(Course.course_string.in_(course_keys), CoursePrerequisite.term_code == term_code)
     ).all())
 
-    return {key: _check(key, term_code, key in offered, published.get(key, []), history)
+    placement = getattr(student, "math_placement", None)
+    return {key: _check(key, term_code, key in offered, published.get(key, []), history,
+                        placement, lambda: placement_covered(session, placement))
             for key in course_keys}
 
 
@@ -187,7 +198,8 @@ def check(session: Session, student: Student, course_key: str, term_code: str) -
     return check_many(session, student, [course_key], term_code)[course_key]
 
 
-def _check(key, term_code, offered, rows, history) -> PrerequisiteCheck:
+def _check(key, term_code, offered, rows, history, placement=None,
+           placement_covers=frozenset) -> PrerequisiteCheck:
     if not offered:
         return PrerequisiteCheck(key, term_code, PrereqStatus.UNKNOWN, False,
                                  reasons=["no_offering_in_term"])
@@ -206,14 +218,18 @@ def _check(key, term_code, offered, rows, history) -> PrerequisiteCheck:
                              or ""))
     interpreted = row.interpreted_conditions
     grade_condition = None
+    # A math placement condition is decided below, never left uninterpreted.
+    math_placement = is_math(key) and names_placement(interpreted)
     if interpreted is not None:
-        unmodeled = tuple(interpreted.get("uninterpreted", ()))
+        unmodeled = tuple(c for c in interpreted.get("uninterpreted", ())
+                          if not (math_placement and c == "placement"))
         minimum = interpreted.get("minimum_grade")
         if minimum:
             grade_condition = GradeCondition(minimum["grade"], minimum["scope"],
                                              frozenset(minimum.get("courses", ())))
+        decided = {"placement"} if math_placement else set()
         alternatives = sorted({k for alt in interpreted.get("alternatives", ())
-                               for k in alt["kinds"]})
+                               for k in alt["kinds"]} - decided)
         if alternatives and row.expression is not None:
             # "PREREQ - X OR PLACEMENT TEST": the published prerequisite OR an
             # alternative CoursePilot cannot check.
@@ -224,6 +240,8 @@ def _check(key, term_code, offered, rows, history) -> PrerequisiteCheck:
         unmodeled = tuple(c for c in conditions if c)
     evidence = evaluate(expr, history, unmodeled_conditions=unmodeled,
                         grade_condition=grade_condition)
+    if math_placement:
+        _apply_placement(evidence, key, placement, placement_covers)
     return PrerequisiteCheck(
         key, term_code, evidence.status, True,
         raw_text=row.raw_text, condition_note=row.condition_note,
@@ -234,6 +252,24 @@ def _check(key, term_code, offered, rows, history) -> PrerequisiteCheck:
                             if row.expression is not None else []),
         evidence=evidence, reasons=list(evidence.unknown_reasons),
     )
+
+
+def _apply_placement(evidence: Evaluation, key: str, placement: str | None,
+                     placement_covers) -> None:
+    """Published "<prerequisite> OR PLACEMENT" for a math course (app.services.placement)."""
+    if placement and key in placement_covers():
+        # Met by placement: the OR holds whatever the courses say; any OTHER
+        # uninterpreted condition still caps it.
+        evidence.uncapped_status = PrereqStatus.SATISFIED
+        evidence.status = (PrereqStatus.UNKNOWN if evidence.unmodeled_conditions
+                           else PrereqStatus.SATISFIED)
+        evidence.unknown_reasons = [MET_BY_PLACEMENT] + [
+            r for r in evidence.unknown_reasons if r.startswith("unmodeled_condition:")]
+    elif not placement and evidence.status is PrereqStatus.SATISFIED:
+        # No placement stated: never assumed. The course stays plannable
+        # (the planner marks it needs-confirmation), the reason says why.
+        evidence.status = evidence.uncapped_status = PrereqStatus.UNKNOWN
+        evidence.unknown_reasons = [*evidence.unknown_reasons, REQUIRES_PLACEMENT]
 
 
 __all__ = ["PrerequisiteCheck", "attempt_history", "attempts_by_course", "base_record_rows",
