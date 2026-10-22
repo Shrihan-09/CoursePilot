@@ -328,6 +328,52 @@ Confirms the term digits (0=Winter, 1=Spring, 7=Summer, 9=Fall) against real
 responses; previously only `9` had been verified. Summer and Winter are an
 order of magnitude smaller than Fall/Spring.
 
+### 1d. Spring 2027 published; historical terms queryable (Phase 7.3, 2026-10-22)
+
+**Spring 2027** (`2027/1`) was still `[]` on 2026-10-14, then published:
+4,520 courses / 11,233 sections on 2026-10-19 and 4,546 / 11,276 on
+2026-10-22 - still growing, so it is loaded with coverage `partial`. The
+structural check against Fall 2026 found no new or missing fields, no unknown
+`meetingDay`, the same restriction and `coreCodes` shapes, and 4 meetings with
+end <= start (Fall 2026: 3 - a known source anomaly).
+
+**History.** Probed backwards one term at a time (3 s apart, archived): every
+New Brunswick term from **Spring 2021 (20211) through Summer 2025 (20257)**
+answers with data; **Winter 2021 (20210) and everything earlier return `[]`**.
+
+| Season | Queryable terms | Courses per term |
+|---|---|---|
+| Fall | 2021, 2022, 2023, 2024 (+ loaded 2025, 2026) | 4,367-4,503 |
+| Spring | 2021, 2022, 2023, 2024, 2025 (+ loaded 2026, 2027) | 4,486-4,616 |
+| Summer | 2021, 2022, 2023, 2024, 2025 (+ loaded 2026) | 1,094-1,250 |
+| Winter | 2022, 2023, 2024, 2025 (+ loaded 2027) | 110-127 |
+
+All 18 were loaded (course stage: offerings + prerequisites) with coverage
+`complete` and the note "fetched after the term ended"; sections for finished
+terms were not loaded (offering evidence uses offerings; the archives allow it
+later).
+
+**What the history buys** (`scripts/measure_offering_evidence.py`; the 801
+requirement-pool courses of the loaded programs, before vs after):
+
+| Target (unpublished) | Kind | Before (2 same-season terms) | After (6 Falls / 7 Springs) |
+|---|---|---|---|
+| Fall 2027 | historically offered | 696 | 736 |
+| | other seasons only | 105 | 65 |
+| Spring 2028 | historically offered | 538 | 646 |
+| | other seasons only | 263 | 155 |
+
+484 courses now ran in at least 3 of the last 6 Falls (missing at most one);
+before, "2 of 2" was the strongest possible. 87 further pool courses exist only
+in older terms. Caveat: a course seen in 1 of 6 Falls is still "historically
+offered" (engine semantics unchanged; the count is now shown to the student).
+Planning: `plan_quality.py` changed 12 of 20 persona/mode results (e.g. a
+fresh student's balanced plan 8 -> 7 semesters); `benchmark_planning.py`
+moved one what-if (sas-730) from partial to covering all requirements, while
+the two fresh-student "large" plans place fewer courses (34->31, 32->29) - not
+yet explained - and SQL statements per plan rose (up to 2.3x, e.g. 284 -> 652) because
+prerequisite rows now span 24 terms.
+
 ### Rutgers REUSES registration indexes across terms — verified
 
 The central Phase 2.5 question. Measured with
@@ -540,7 +586,7 @@ Recorded so nobody re-investigates them:
 - [ ] Authoritative source for course descriptions
 - [ ] Authoritative source for degree requirements, per school
 - [ ] Confirm the full term-code and campus-code sets
-- [ ] Whether historical terms remain queryable
+- [x] Whether historical terms remain queryable - yes, back to Spring 2021 (§1d, 2026-10-22)
 
 ---
 
