@@ -206,6 +206,16 @@ export const GOAL_KIND: Record<string, string> = {
 const SEASONS: Record<string, string> = { "0": "Winter", "1": "Spring", "7": "Summer", "9": "Fall" };
 
 /** "20271" -> "Spring 2027". Display only (term codes are YYYYT). */
+/** Rutgers-NB Mathematics Department placement policy - the source for "met by placement". */
+export const PLACEMENT_POLICY_URL =
+  "https://math.sas.rutgers.edu/academics/undergraduate/placement-advice/1061-placement-advice";
+
+/** "Calc 151"-style label for the placement a plan relied on. */
+export function placementLabel(p: { course: string; title: string | null }): string {
+  const number = p.course.split(":")[2] ?? p.course;
+  return p.title ? `${p.title} (${number})` : p.course;
+}
+
 export function termLabel(code: string | null | undefined): string {
   if (!code || code.length !== 5) return code ?? "";
   const season = SEASONS[code[4] ?? ""];
@@ -258,6 +268,8 @@ export function planReasonText(reason: PlanReason, course: PlannedCourse): strin
       return `One of ${course.interchangeable_alternatives + 1} equally suitable courses; chosen by a fixed tie-break, not by preference`;
     case "requires_math_placement":
       return "Requires math placement: Rutgers accepts a placement result, and your profile doesn't state one yet";
+    case "prerequisites_met_by_placement":
+      return `Prerequisites met by placement (source: ${PLACEMENT_POLICY_URL})`;
   }
 }
 

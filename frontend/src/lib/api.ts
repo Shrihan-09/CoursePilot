@@ -99,6 +99,8 @@ export const api = {
   changeProgram: (program_key: string, catalog_year: string) =>
     request<Profile>("/student/program", json("PUT", { program_key, catalog_year })),
   completeOnboarding: () => request<Profile>("/student/onboarding/complete", { method: "POST" }),
+  setPlacement: (math_placement: string | null) =>
+    request<Profile>("/student/placement", json("PUT", { math_placement })),
 
   courses: () => request<{ entries: Entry[] }>("/student/courses"),
   addCourse: (body: Record<string, string | null>) =>

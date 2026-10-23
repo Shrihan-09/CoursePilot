@@ -161,3 +161,25 @@ and CoursePilot cannot read it (no OCR - verified on a real WebReg print,
 3. DN audit and WebReg PDF layout investigation on the developer's own
    exports; synthetic fixture PDFs that copy each layout with invented data.
 4. Stop and report. No production code.
+
+## 7. Known issues
+
+### 7a. Plan generation time (recorded 2026-10-22, not optimized yet)
+
+p50 of `scripts/benchmark_planning.py 3 20279` on the development data, after
+the latest-term rules, section-constraint and placement changes (one machine,
+measured back to back with the previous code):
+
+| Case | p50 | Over target |
+|---|---|---|
+| small (dev student, CS) | 2.6 s | - |
+| what-if sas-220 | 4.0 s | yes |
+| what-if sas-640 | 4.5 s | yes |
+| large sas-198 (nothing taken) | 7.1 s | yes |
+| large sas-640 (nothing taken) | 8.3 s | yes |
+
+`plan_quality.py` "nothing yet" plans: 7.1-9.6 s. **Target: under 3 s p50
+for every case.** Known contributors: prerequisite rows for 24 loaded terms,
+one `check_proposal` pair per distinct rules term per planning term, and
+longer plans now that the math chains are no longer blocked. Not optimized
+in Phase 7.3 by decision; plans stay deterministic (identical across runs).

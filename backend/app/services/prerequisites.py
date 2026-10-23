@@ -20,8 +20,8 @@ Answers are deliberately conservative:
 | an INTERPRETED minimum grade (Phase 6.4) | evaluated on the student's grades |
 | an interpreted "OR PLACEMENT TEST / PERMISSION" alternative (6.4) | prerequisite OR UNKNOWN |
 | any condition still NOT interpreted | caps SATISFIED at UNKNOWN |
-| MATH placement condition (7.3), placement stated | met: SATISFIED; else the prerequisite |
-| MATH placement condition, none stated | SATISFIED -> UNKNOWN (`requires_math_placement`) |
+| math course at/below the stated placement (7.3) | SATISFIED (`satisfied_by_math_placement`) |
+| "... OR PLACEMENT" math rule, none stated, unmet | UNKNOWN (`requires_math_placement`) |
 | campuses publish different prerequisites for the term | UNKNOWN (`campus_prerequisites_differ`) |
 
 Grades come from app.domain.grades; which attempt answers is
@@ -240,8 +240,8 @@ def _check(key, term_code, offered, rows, history, placement=None,
         unmodeled = tuple(c for c in conditions if c)
     evidence = evaluate(expr, history, unmodeled_conditions=unmodeled,
                         grade_condition=grade_condition)
-    if math_placement:
-        _apply_placement(evidence, key, placement, placement_covers)
+    if is_math(key) and (placement or math_placement):
+        _apply_placement(evidence, key, placement, placement_covers, math_placement)
     return PrerequisiteCheck(
         key, term_code, evidence.status, True,
         raw_text=row.raw_text, condition_note=row.condition_note,
@@ -255,19 +255,20 @@ def _check(key, term_code, offered, rows, history, placement=None,
 
 
 def _apply_placement(evidence: Evaluation, key: str, placement: str | None,
-                     placement_covers) -> None:
-    """Published "<prerequisite> OR PLACEMENT" for a math course (app.services.placement)."""
+                     placement_covers, names_it: bool) -> None:
+    """Math placement for a 640 course (see app.services.placement)."""
     if placement and key in placement_covers():
-        # Met by placement: the OR holds whatever the courses say; any OTHER
-        # uninterpreted condition still caps it.
+        # Placed at or above X: its prerequisites are met by placement
+        # (department policy); any OTHER uninterpreted condition still caps it.
         evidence.uncapped_status = PrereqStatus.SATISFIED
         evidence.status = (PrereqStatus.UNKNOWN if evidence.unmodeled_conditions
                            else PrereqStatus.SATISFIED)
         evidence.unknown_reasons = [MET_BY_PLACEMENT] + [
             r for r in evidence.unknown_reasons if r.startswith("unmodeled_condition:")]
-    elif not placement and evidence.status is PrereqStatus.SATISFIED:
-        # No placement stated: never assumed. The course stays plannable
-        # (the planner marks it needs-confirmation), the reason says why.
+    elif not placement and names_it and evidence.status is PrereqStatus.UNSATISFIED:
+        # "<prerequisite> OR PLACEMENT", prerequisite unmet, no placement
+        # stated: placement could meet it - unknown, never assumed. When the
+        # prerequisite IS met (history or plan) nothing is flagged.
         evidence.status = evidence.uncapped_status = PrereqStatus.UNKNOWN
         evidence.unknown_reasons = [*evidence.unknown_reasons, REQUIRES_PLACEMENT]
 

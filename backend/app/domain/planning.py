@@ -33,7 +33,7 @@ from app.domain.course_ranking import CourseRankingEvidence
 from app.domain.scenario import ScenarioAssumption, ScenarioTarget
 
 #: Bumped whenever the same inputs could produce a different plan.
-PLANNING_ENGINE_VERSION = "6.8.0"   # 7.2.4: target-term authority, academic strategy
+PLANNING_ENGINE_VERSION = "7.3.0"   # 7.3: latest-term rules, section constraints, placement
 
 
 class EligibilityState(StrEnum):
@@ -99,6 +99,9 @@ class Reason(StrEnum):
     #: Phase 7.3: placed, but needs confirmation - the published rule accepts
     #: math placement and the student's profile states none.
     REQUIRES_MATH_PLACEMENT = "requires_math_placement"
+    #: Phase 7.3: its prerequisites are met by the student's stated math
+    #: placement (Rutgers Mathematics Department placement policy).
+    PREREQUISITES_MET_BY_PLACEMENT = "prerequisites_met_by_placement"
 
 
 class PlanStatus(StrEnum):
@@ -297,10 +300,19 @@ class PlanMetadata(BaseModel):
     offering_dataset: list[str]
 
 
+class PlacementBasis(BaseModel):
+    """Phase 7.3: the student's stated math placement this plan relied on."""
+
+    course: str
+    title: str | None = None
+    source_url: str
+
+
 class PlanResult(BaseModel):
     target: ScenarioTarget
     status: PlanStatus
     terms: list[PlanTerm] = Field(default_factory=list)
+    placement: PlacementBasis | None = None
     issues: list[PlanningIssue] = Field(default_factory=list)
     requirements: list[RequirementProjection] = Field(default_factory=list)
     assumptions: list[ScenarioAssumption] = Field(default_factory=list)
@@ -314,7 +326,8 @@ class PlanResult(BaseModel):
 
 __all__ = ["CONSTRAINTS_SOURCE", "PLANNING_ENGINE_VERSION",
            "ConditionalDependency", "EligibilityState",
-           "OfferingEvidence", "OfferingEvidenceKind", "PlanMetadata", "PlanResult", "PlanStatus",
+           "OfferingEvidence", "OfferingEvidenceKind", "PlacementBasis", "PlanMetadata", "PlanResult",
+           "PlanStatus",
            "Pace", "PlanObservation", "PlanTerm", "PlannedCourse", "PlanningConstraints", "PlanningIssue",
            "PrerequisiteEvidence", "Reason", "RequirementContribution", "RequirementProjection",
            "Severity"]

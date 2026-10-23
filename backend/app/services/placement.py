@@ -1,20 +1,29 @@
-"""Math placement conditions (Phase 7.3) - deterministic, from published rules only.
+"""Math placement (Phase 7.3) - deterministic, from published rules only.
 
-Rutgers publishes "PREREQ: 640:026 OR PLACEMENT" on some terms' sections of
-01:640:115 and 01:640:111 (the only math courses whose latest rules name
-placement). The student profile may state the course their placement result
-places them into (`Student.math_placement`, e.g. "01:640:151").
+The student profile may state the math course their placement result places
+them into (`Student.math_placement`, e.g. "01:640:151"). The Rutgers-NB
+Mathematics Department: "Students may not enroll in any mathematics course
+unless they meet the prerequisites by suitable placement - that is, by the
+placement test, an appropriate AP Calculus exam score, or with a grade of C or
+better in an approved transferred course" (PLACEMENT_POLICY_URL). Placement
+is therefore one way to MEET a course's prerequisites:
 
-| profile | placement condition on math course X |
-|---|---|
-| placement P, and X is P or a course below P | met (`satisfied_by_math_placement`) |
-| placement P, X above or beside P | not met by placement: the published prerequisite decides |
-| no placement stated | `requires_math_placement`: placed, marked needs confirmation |
+For a math (640) course X:
+
+* placement P, X is P or below P - prerequisites met by placement
+  (`satisfied_by_math_placement`); nothing below X is needed to reach it;
+* placement P, X above or beside P - the published prerequisite decides;
+* none stated, X's rule says "... OR PLACEMENT", prerequisite met by history
+  or plan - met by the prerequisite, no flag;
+* none stated, same rule, prerequisite unmet - UNKNOWN
+  (`requires_math_placement`): the planner plans the published path, and
+  places X flagged only when that path cannot be planned.
 
 "Below P" = X appears in P's prerequisite closure under each course's most
 recent published rules (placed into 01:640:151 -> 115, 112, 111, 026, ...).
-No placement ladder is invented. Placement conditions on other subjects
-(languages, chemistry) are not math placement and are unchanged.
+No placement ladder is invented. Placement only removes prerequisites: it
+never earns credit or satisfies a degree requirement. Placement conditions on
+other subjects (languages, chemistry) are not math placement and are unchanged.
 """
 
 from __future__ import annotations
@@ -29,6 +38,8 @@ MATH_SUBJECT = "640"
 REQUIRES_PLACEMENT = "requires_math_placement"
 MET_BY_PLACEMENT = "satisfied_by_math_placement"
 MAX_DEPTH = 8
+PLACEMENT_POLICY_URL = ("https://math.sas.rutgers.edu/academics/undergraduate/"
+                        "placement-advice/1061-placement-advice")
 
 
 def is_math(course_key: str) -> bool:
@@ -74,4 +85,5 @@ def covered(session: Session, placement: str | None) -> frozenset[str]:
     return cache[placement]
 
 
-__all__ = ["MET_BY_PLACEMENT", "REQUIRES_PLACEMENT", "covered", "is_math", "names_placement"]
+__all__ = ["MET_BY_PLACEMENT", "PLACEMENT_POLICY_URL", "REQUIRES_PLACEMENT", "covered",
+           "is_math", "names_placement"]

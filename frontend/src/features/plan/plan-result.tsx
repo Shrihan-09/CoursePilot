@@ -11,6 +11,7 @@ import {
   PLAN_SEVERITY,
   PACE_LABEL,
   PLAN_STATUS,
+  placementLabel,
   planReasonText,
   STALE_REASON,
   termLabel,
@@ -267,6 +268,12 @@ export function PlanView({
               {r.terms.length} {r.terms.length === 1 ? "semester" : "semesters"} from {termLabel(plan.start_term)}
             </h2>
             <p className="text-sm text-fg-secondary">{status.meaning}</p>
+            {r.placement && (
+              <p className="text-sm text-fg-secondary">
+                Based on your placement into {placementLabel(r.placement)}.{" "}
+                <Link href="/profile" className="underline underline-offset-2">Wrong? Change it</Link>
+              </p>
+            )}
           </div>
           <StateBadge state={status} className="shrink-0" />
         </div>

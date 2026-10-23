@@ -33,7 +33,8 @@ export type PlanReason =
   | "rules_from_earlier_term"
   | "selected_by_canonical_tie_break"
   | "ranked_by_requirement_coverage"
-  | "requires_math_placement";
+  | "requires_math_placement"
+  | "prerequisites_met_by_placement";
 
 export type PlanStatus = "covers_all_requirements" | "partial" | "nothing_to_plan";
 
@@ -147,6 +148,8 @@ export interface PlanResult {
   assumptions: ScenarioAssumption[];
   observations: PlanObservation[];
   metadata: PlanMetadata;
+  /** Phase 7.3: the stated math placement the plan relied on. */
+  placement?: { course: string; title: string | null; source_url: string } | null;
 }
 
 export type StaleReason =

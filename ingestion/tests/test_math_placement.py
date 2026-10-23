@@ -86,41 +86,58 @@ def test_a_section_registration_note_is_not_a_corequisite(placement_world):
     assert not check.corequisite.has_corequisite
 
 
-def test_without_a_placement_the_condition_needs_confirmation(placement_world):
+def test_without_a_placement_the_published_prerequisite_decides(placement_world):
     s = placement_world
     student = _fresh(s)
+    # 026 completed (or planned): "026 OR PLACEMENT" is met - nothing flagged.
     met = _check(s, student, "01:640:115", passed=["01:640:026"])
-    assert met.status is PrereqStatus.UNKNOWN and met.reasons == [REQUIRES_PLACEMENT]
-    # Never assumed met either: without 026 the published prerequisite fails.
-    assert _check(s, student, "01:640:115").status is PrereqStatus.UNSATISFIED
+    assert met.status is PrereqStatus.SATISFIED and REQUIRES_PLACEMENT not in met.reasons
+    # 026 not taken: placement COULD meet it, so unknown - never assumed met.
+    unmet = _check(s, student, "01:640:115")
+    assert unmet.status is PrereqStatus.UNKNOWN and unmet.reasons == [REQUIRES_PLACEMENT]
 
 
-def test_without_a_placement_the_chain_is_planned_not_blocked(placement_world):
+def test_without_a_placement_the_published_path_is_planned_unflagged(placement_world):
     s = placement_world
     plan = _plan(s, _fresh(s))
     placed = _placed(plan)
     assert {"01:640:026", "01:640:115", "01:640:151"} <= set(placed)
     pre = placed["01:640:115"]
-    assert pre.prerequisite.state is EligibilityState.NEEDS_CONFIRMATION
-    assert REQUIRES_PLACEMENT in pre.prerequisite.unknown_reasons
-    assert Reason.REQUIRES_MATH_PLACEMENT in pre.reasons
+    assert pre.prerequisite.state is EligibilityState.CONDITIONAL_ON_PLAN
+    assert REQUIRES_PLACEMENT not in pre.prerequisite.unknown_reasons
+    assert Reason.REQUIRES_MATH_PLACEMENT not in pre.reasons
     assert placed["01:640:026"].term_code < pre.term_code < placed["01:640:151"].term_code
+    assert plan.placement is None
 
 
-def test_a_placement_at_or_above_the_course_meets_it(placement_world):
+def test_placed_into_calculus_needs_nothing_below_it(placement_world):
     s = placement_world
-    student = _fresh(s, "01:640:151")       # 115 is in 151's published prerequisite
-    met = _check(s, student, "01:640:115")
-    assert met.status is PrereqStatus.SATISFIED and met.reasons == [MET_BY_PLACEMENT]
+    student = _fresh(s, "01:640:151")
+    for key in ("01:640:151", "01:640:115"):          # 151 itself, and below it
+        met = _check(s, student, key)
+        assert met.status is PrereqStatus.SATISFIED and met.reasons == [MET_BY_PLACEMENT]
     plan = _plan(s, student)
     placed = _placed(plan)
-    assert "01:640:026" not in placed           # no remedial path for a placed student
-    assert placed["01:640:115"].prerequisite.state is EligibilityState.SATISFIED_BY_HISTORY
+    assert not {"01:640:026", "01:640:115"} & set(placed)     # nothing below 151 planned
+    calc = placed["01:640:151"]          # placement never satisfies the requirement itself
+    assert calc.prerequisite.state is EligibilityState.SATISFIED_BY_HISTORY
+    assert Reason.PREREQUISITES_MET_BY_PLACEMENT in calc.reasons
+    assert plan.placement is not None and plan.placement.course == "01:640:151"
+    assert plan.placement.source_url.startswith("https://math.sas.rutgers.edu/")
 
 
 def test_a_placement_below_the_course_leaves_the_prerequisite_to_decide(placement_world):
     s = placement_world
     student = _fresh(s, "01:640:026")
+    # A placement IS stated, so nothing is "unknown": the prerequisite decides.
     assert _check(s, student, "01:640:115").status is PrereqStatus.UNSATISFIED
     done = _check(s, student, "01:640:115", passed=["01:640:026"])
     assert done.status is PrereqStatus.SATISFIED and REQUIRES_PLACEMENT not in done.reasons
+
+
+def test_placement_never_touches_other_subjects(placement_world):
+    s = placement_world
+    student = _fresh(s, "01:640:151")
+    # 14:332:252 (ECE) is in the sample; a math placement says nothing about it.
+    check = _check(s, student, "14:332:252")
+    assert MET_BY_PLACEMENT not in check.reasons

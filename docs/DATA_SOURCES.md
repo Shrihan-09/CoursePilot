@@ -410,12 +410,38 @@ needs confirmation for a student with no placement record, and stops. The
   term carry no such note (the course prerequisite text is identical in all).
   Only 01:640:111 and 01:640:115 name placement among math courses.
 * *Math placement on the profile* (`student.math_placement`, migration
-  `73placement01`, `PUT /api/v1/student/placement`): the course the student is
-  placed into. Stated: a placement condition on math course X is met when X is
-  that course or in its published prerequisite closure, else the prerequisite
-  decides. Not stated: the course is placed, `needs_confirmation`, reason
-  `requires_math_placement`; the chain is not blocked. Non-math placement
-  conditions are unchanged.
+  `73placement01`, `PUT /api/v1/student/placement`, optional onboarding step):
+  the course the student is placed into. Revised 2026-10-23 (decisions 1-2):
+  - **Source.** Rutgers-NB Mathematics Department, "Placement Advice"
+    (<https://math.sas.rutgers.edu/academics/undergraduate/placement-advice/1061-placement-advice>,
+    read 2026-10-23, undated): "Students may not enroll in any mathematics
+    course unless they meet the prerequisites by suitable placement - that
+    is, by the placement test, an appropriate AP Calculus exam score, or with
+    a grade of C or better in an approved transferred course." Placement is
+    thus a way to MEET prerequisites; the page does not say it earns credit.
+    (A faculty page, <https://sites.math.rutgers.edu/~hirsch/mpt.html>,
+    undated and not department policy, adds that a placement names "the
+    highest math course in which they may enroll".)
+  - **Placed into X** (640 only): X's prerequisites, and those of every course
+    below X in its published prerequisite closure, are met by placement -
+    labelled "met by placement (source: <url>)". Nothing below X is planned to
+    reach X. Placement never satisfies a degree requirement: X is still
+    planned. Chemistry/language placement unchanged.
+  - **No placement stated**, rule "<prereq> OR PLACEMENT": met by the
+    prerequisite (history or plan) -> no flag. Unmet -> UNKNOWN
+    `requires_math_placement`; the planner plans the published path, and
+    places the course flagged only if that path cannot be planned.
+  - Plans carry the placement they relied on ("Based on your placement into
+    ... (151)") so a wrong entry is visible; changing it marks saved plans out
+    of date (academic fingerprint).
+* *01:940:326 rewrite* (one row, Fall 2026): raw `preReqNotes` "(01:940:202
+  ...) OR (01:940:204 ...)", section note "PREREQ: 940:202 OR 940:204". Parsed
+  tree unchanged (`any_of[202, 204]`); only `interpreted_conditions` changed,
+  `uninterpreted: ["other"]` -> `[]`. The note restates exactly the published
+  prerequisite, so it adds no condition: the new row is correct. The old one
+  came from a pre-commit build of condition parser "2" (row dated 2026-10-07
+  05:22 UTC, before 73af38e) - same version label, different output. No
+  parser regression.
 
 Back to back on the same machine and hour (`benchmark_planning.py 3 20279`;
 "before" = commit 8d74e2a on a restore of the pre-change database):

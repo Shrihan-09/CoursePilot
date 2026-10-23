@@ -66,6 +66,7 @@ from app.domain.planning import (
     OfferingEvidence,
     OfferingEvidenceKind,
     Pace,
+    PlacementBasis,
     PlanMetadata,
     PlannedCourse,
     PlanningConstraints,
@@ -97,7 +98,12 @@ from app.models import (
 from app.services.audit.cache import AUDIT_ENGINE_VERSION, academic_fingerprint, rules_fingerprint
 from app.services.audit.engine import DegreeAuditEngine, constraint_counts
 from app.services.course_eligibility import EligibilityCheck, check_proposal
-from app.services.placement import REQUIRES_PLACEMENT, is_math, names_placement
+from app.services.placement import (
+    MET_BY_PLACEMENT,
+    PLACEMENT_POLICY_URL,
+    REQUIRES_PLACEMENT,
+    is_math,
+)
 from app.services.placement import covered as placement_covered
 from app.services.planning.dependencies import UNREADABLE, DependencyPlanner
 from app.services.planning.offerings import PLACEABLE, OfferingIndex
@@ -323,9 +329,8 @@ class PlanningEngine:
         if not rows:
             return None
         row = rows[max(rows)]
-        if (course in self.placement_covers and is_math(course)
-                and names_placement(row.interpreted_conditions)):
-            return None         # "<prerequisite> OR PLACEMENT", met by placement: no path
+        if course in self.placement_covers and is_math(course):
+            return None         # prerequisites met by placement: nothing below it is needed
         if row.expression is None:
             return UNREADABLE
         return from_json(row.expression)
@@ -425,6 +430,16 @@ class PlanningEngine:
                 and b.prerequisite.reasons == [REQUIRES_PLACEMENT]
                 and (not b.corequisite.has_corequisite
                      or b.corequisite.status is PrereqStatus.SATISFIED))
+
+    def _settle(self, key: str, state: EligibilityState, b: EligibilityCheck | None,
+                planner: DependencyPlanner) -> EligibilityState:
+        """A course awaiting a placement nobody stated: when its published
+        prerequisite path can be planned, plan THAT (it is unmet for now);
+        only when it cannot is the course placed, flagged needs-confirmation."""
+        if (state is EligibilityState.NEEDS_CONFIRMATION and self._awaits_placement(b)
+                and planner.path_for(key).feasible):
+            return EligibilityState.UNSATISFIED
+        return state
 
     def _placeable_state(self, state: EligibilityState, b: EligibilityCheck | None) -> bool:
         return state in (EligibilityState.SATISFIED_BY_HISTORY,
@@ -550,6 +565,7 @@ class PlanningEngine:
             status = PlanStatus.PARTIAL
         return PlanResult(
             target=target, status=status, terms=plan_terms,
+            placement=self._placement_basis(student),
             issues=sorted(issues, key=lambda i: (i.severity.value, i.code,
                                                  i.requirement_code or "", i.course or "")),
             requirements=projections, assumptions=assumptions,
@@ -585,7 +601,13 @@ class PlanningEngine:
         keys = sorted(set(serves) | set(dependencies))
         evaluated = self._evaluate(student, keys, term, planned)
 
-        states = {k: self._state(a, b) for k, (a, b, _) in evaluated.items()}
+        planner = DependencyPlanner(
+            expression_of=self._expression_of,
+            available=self.passed | set(self.in_progress) | set(planned),
+            contributes=lambda k: k in serves,
+            plannable=self._plannable)
+        states = {k: self._settle(k, self._state(a, b), b, planner)
+                  for k, (a, b, _) in evaluated.items()}
         ready = {k for k, s in states.items()
                  if self._placeable_state(s, evaluated[k][1])
                  and evaluated[k][2].kind in PLACEABLE
@@ -608,11 +630,6 @@ class PlanningEngine:
 
         # Dependency expansion: requirements whose ready candidates cannot
         # cover their need get prerequisite paths for the cheapest targets.
-        planner = DependencyPlanner(
-            expression_of=self._expression_of,
-            available=self.passed | set(self.in_progress) | set(planned),
-            contributes=lambda k: k in serves,
-            plannable=self._plannable)
         for code in sorted(leaf_by_code):
             leaf = leaf_by_code[code]
             pool = [k for k in sorted(serves) if code in serves[k]]
@@ -655,7 +672,8 @@ class PlanningEngine:
             evaluated.update(self._evaluate(student, new, term, planned))
         for k in sorted(k for k in dependency_targets if k in evaluated and k not in planned):
             if k in new:
-                states[k] = self._state(*evaluated[k][:2])
+                states[k] = self._settle(k, self._state(*evaluated[k][:2]), evaluated[k][1],
+                                         planner)
             if (self._placeable_state(states[k], evaluated[k][1])
                     and evaluated[k][2].kind in PLACEABLE
                     and self.course_info[k].credits is not None):
@@ -850,12 +868,25 @@ class PlanningEngine:
         return sum(1 for k in ready if k != key and k not in planned
                    and set(serves.get(k, ())) == codes and rank(k)[:-1] == mine)
 
+    def _placement_basis(self, student: Student) -> PlacementBasis | None:
+        """The stated math placement the plan relied on - shown, so a wrong
+        entry is easy to spot."""
+        if not student.math_placement:
+            return None
+        title = self.session.scalar(select(Course.title).where(
+            Course.course_string == student.math_placement, Course.supplement_code == ""))
+        return PlacementBasis(course=student.math_placement, title=title,
+                              source_url=PLACEMENT_POLICY_URL)
+
     def _planned_course(self, key, facts) -> PlannedCourse:
         course = self.course_info[key]
         ev: OfferingEvidence = facts["evidence"]
         pre: PrerequisiteEvidence = facts["prereq"]
         reasons = []
-        if pre.state is EligibilityState.SATISFIED_BY_HISTORY:
+        if (pre.state is EligibilityState.SATISFIED_BY_HISTORY
+                and MET_BY_PLACEMENT in pre.unknown_reasons):
+            reasons.append(Reason.PREREQUISITES_MET_BY_PLACEMENT)
+        elif pre.state is EligibilityState.SATISFIED_BY_HISTORY:
             reasons.append(Reason.PREREQUISITES_SATISFIED_BY_HISTORY if pre.raw_text or
                            pre.corequisite_text else Reason.NO_PREREQUISITE_PUBLISHED)
         elif pre.state is EligibilityState.NEEDS_CONFIRMATION:

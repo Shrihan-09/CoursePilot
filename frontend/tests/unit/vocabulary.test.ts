@@ -17,6 +17,8 @@ import {
   ELIGIBILITY_STATE,
   PLAN_SEVERITY,
   PLAN_STATUS,
+  PLACEMENT_POLICY_URL,
+  placementLabel,
   planReasonText,
   REQUIREMENT_STATUS,
   RESTRICTION_OUTCOME,
@@ -157,6 +159,7 @@ describe("placement reasons come from the course's own fields", () => {
     "satisfies_requirement", "prerequisites_satisfied_by_history", "prerequisites_conditional_on_plan",
     "no_prerequisite_published", "required_prerequisite_for", "required_corequisite_for", "unlocks_downstream_course",
     "confirmed_offering_in_term", "historically_offered_in_season", "rules_from_earlier_term", "selected_by_canonical_tie_break",
+    "ranked_by_requirement_coverage", "requires_math_placement", "prerequisites_met_by_placement",
   ];
 
   it("has a sentence for every reason", () => {
@@ -168,6 +171,15 @@ describe("placement reasons come from the course's own fields", () => {
     expect(planReasonText("required_prerequisite_for", course)).toContain("01:198:344");
     expect(planReasonText("historically_offered_in_season", course)).toContain("Spring 2026");
     expect(planReasonText("selected_by_canonical_tie_break", course)).toMatch(/One of 3 .*not by preference/);
+  });
+
+  it("names its source when placement met the prerequisites, and shows the placement (7.3)", () => {
+    expect(planReasonText("prerequisites_met_by_placement", course))
+      .toBe(`Prerequisites met by placement (source: ${PLACEMENT_POLICY_URL})`);
+    expect(PLACEMENT_POLICY_URL).toMatch(/^https:\/\/math\.sas\.rutgers\.edu\//);
+    expect(placementLabel({ course: "01:640:151", title: "CALC I-MATH/PHYS" })).toBe("CALC I-MATH/PHYS (151)");
+    expect(placementLabel({ course: "01:640:151", title: null })).toBe("01:640:151");
+    expect(blockedReasonText("requires_math_placement")).not.toBe("requires_math_placement");
   });
 });
 
