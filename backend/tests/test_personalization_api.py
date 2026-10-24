@@ -62,7 +62,14 @@ async def test_profile_is_null_until_confirmed_then_versioned(world) -> None:  #
     assert empty["profile"] is None
     assert empty["defaults"]["pace"] == "balanced"                 # BALANCED by default
     assert "not Rutgers credit-load policy" in empty["disclaimer"]
-    assert [p["value"] for p in empty["paces"]] == ["balanced", "lighter", "finish_earlier"]
+    # Phase 7.3: pace is the graduation target - On time / Early / No rush.
+    assert [(p["value"], p["label"]) for p in empty["paces"]] == [
+        ("balanced", "On time"), ("finish_earlier", "Early"), ("lighter", "No rush")]
+    assert empty["defaults"]["workload_level"] == "balanced"
+    assert [w["value"] for w in empty["workload_levels"]] == [
+        "light", "balanced", "semi_rigorous", "challenging"]
+    assert {f["value"] for f in empty["filler_preferences"]} == {
+        "flexible", "in_person", "no_preference"}
     assert first.status_code == 200 and first.json()["version"] == 1
     assert second.json()["version"] == 2
     assert now["profile"]["pace"] == "finish_earlier"

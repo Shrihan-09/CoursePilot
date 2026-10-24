@@ -1,0 +1,607 @@
+{
+  "packet_version": "review-packet/2",
+  "program_key": "sas-198-bs",
+  "catalog_year": "2026-2027",
+  "definition_file": "data/programs/rutgers/nb-undergrad/2026-2027/sas-198-bs.json",
+  "definition_sha256": "e55095cdd4f410c03f5c7c9ec1af50096af768a673d277a8b12bb73172d551bc",
+  "source": {
+    "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/computer-science-198",
+    "catalog_page": "/schools/sas/program-listing/computer-science-198",
+    "archive": "data/raw/catalog/catalog_computer-science-198_2026_2027.html",
+    "archive_present": true,
+    "archive_sha256": "4f56493b41181fd13e8052c75eef7e8be56ee6396332680ff19ecd0a83b500fd",
+    "prose_sha256": "4421d9b70ef5a4f84a90ebc5006fb76da4c43496f874e8d91e57dff419bfcb67"
+  },
+  "curated_by": "manual encoding, Phase 7.3 (Claude Code session, 2026-10-23)",
+  "curation_status_label": "curated_from_prose",
+  "lifecycle_state": "validated",
+  "publication_basis": null,
+  "machine_checks": {
+    "passed": true,
+    "quotes_found": 9,
+    "quotes_checked": 9,
+    "errors": [],
+    "warnings": [],
+    "note": "Machine checks are NOT review. They prove quotes exist and the engine can load the tree - not that the encoding means what the prose means."
+  },
+  "non_undergraduate_eligible_rows": 0,
+  "admission_prose": null,
+  "requirements": [
+    {
+      "code": "CS_BS",
+      "type": "all_of",
+      "parent": null,
+      "quote": "The basic major, leading to a bachelor of arts (B.A.) degree, consists of: 1) six required courses in computer science, 01:198:111, 112, 205, 206, 211, and 344; 2) three courses in mathematics, 01:640:151-152 and 01:640:250; and 3) five electives from a designated list of courses in computer science and related disciplines.",
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "CS_CORE",
+      "type": "all_of",
+      "parent": "CS_BS",
+      "quote": "six required courses in computer science, 01:198:111, 112, 205, 206, 211, and 344",
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "CS_111",
+      "type": "course",
+      "parent": "CS_CORE",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:198:111"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_112",
+      "type": "course",
+      "parent": "CS_CORE",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:198:112"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_205",
+      "type": "course",
+      "parent": "CS_CORE",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:198:205"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_206",
+      "type": "course",
+      "parent": "CS_CORE",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:198:206"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_211",
+      "type": "course",
+      "parent": "CS_CORE",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:198:211"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_344",
+      "type": "course",
+      "parent": "CS_CORE",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:198:344"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_MATH",
+      "type": "all_of",
+      "parent": "CS_BS",
+      "quote": "three courses in mathematics, 01:640:151-152 and 01:640:250",
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "MATH_151",
+      "type": "course",
+      "parent": "CS_MATH",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:640:151"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "MATH_152",
+      "type": "course",
+      "parent": "CS_MATH",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:640:152"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "MATH_250",
+      "type": "course",
+      "parent": "CS_MATH",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:640:250"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_ELECTIVES",
+      "type": "choose_n",
+      "parent": "CS_BS",
+      "quote": "complete seven courses from category 3, no more than two of these outside the Department of Computer Science",
+      "notes": "B.S.: seven electives from category 3 (the B.A.'s designated list), at most two outside CS. The 300-level minimum is kept from the category's definition - a REVIEW QUESTION. Non-CS options are not encoded (list not in the catalog).",
+      "min_count": 7,
+      "min_at_level": 300,
+      "min_at_level_count": 2,
+      "max_outside_subject": 2,
+      "constraint_subject_code": "198",
+      "eligible_course_query": {
+        "subject_code": "198",
+        "min_course_number": 300
+      },
+      "eligible_course_rows": 32
+    },
+    {
+      "code": "CS_BS_SCIENCE",
+      "type": "any_of",
+      "parent": "CS_BS",
+      "quote": "plus four physics courses: 01:750:203, 204, 205, and 206 (or 01:750:123, 124, 227, and 229 or 01:750:193 and 194 or 01:750:271, 272, 275, and 276 or 01:750:201 and 202 or 01:750:193, 194); or chemistry 01:160:159, 160, and 171 (or 01:160:161, 162, and 171 or 01:160:163, 164, and 171)",
+      "notes": "One complete set: a physics sequence or a chemistry sequence, as the prose lists them.",
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "CS_BS_PHYS_A",
+      "type": "all_of",
+      "parent": "CS_BS_SCIENCE",
+      "quote": null,
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "CS_BS_PHYS_A_203",
+      "type": "course",
+      "parent": "CS_BS_PHYS_A",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:750:203"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_BS_PHYS_A_204",
+      "type": "course",
+      "parent": "CS_BS_PHYS_A",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:750:204"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_BS_PHYS_A_205",
+      "type": "course",
+      "parent": "CS_BS_PHYS_A",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:750:205"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_BS_PHYS_A_206",
+      "type": "course",
+      "parent": "CS_BS_PHYS_A",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:750:206"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_BS_PHYS_B",
+      "type": "all_of",
+      "parent": "CS_BS_SCIENCE",
+      "quote": null,
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "CS_BS_PHYS_B_123",
+      "type": "course",
+      "parent": "CS_BS_PHYS_B",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:750:123"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_BS_PHYS_B_124",
+      "type": "course",
+      "parent": "CS_BS_PHYS_B",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:750:124"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_BS_PHYS_B_227",
+      "type": "course",
+      "parent": "CS_BS_PHYS_B",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:750:227"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_BS_PHYS_B_229",
+      "type": "course",
+      "parent": "CS_BS_PHYS_B",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:750:229"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_BS_PHYS_C",
+      "type": "all_of",
+      "parent": "CS_BS_SCIENCE",
+      "quote": null,
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "CS_BS_PHYS_C_193",
+      "type": "course",
+      "parent": "CS_BS_PHYS_C",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:750:193"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_BS_PHYS_C_194",
+      "type": "course",
+      "parent": "CS_BS_PHYS_C",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:750:194"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_BS_PHYS_D",
+      "type": "all_of",
+      "parent": "CS_BS_SCIENCE",
+      "quote": null,
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "CS_BS_PHYS_D_271",
+      "type": "course",
+      "parent": "CS_BS_PHYS_D",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:750:271"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_BS_PHYS_D_272",
+      "type": "course",
+      "parent": "CS_BS_PHYS_D",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:750:272"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_BS_PHYS_D_275",
+      "type": "course",
+      "parent": "CS_BS_PHYS_D",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:750:275"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_BS_PHYS_D_276",
+      "type": "course",
+      "parent": "CS_BS_PHYS_D",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:750:276"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_BS_PHYS_E",
+      "type": "all_of",
+      "parent": "CS_BS_SCIENCE",
+      "quote": null,
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "CS_BS_PHYS_E_201",
+      "type": "course",
+      "parent": "CS_BS_PHYS_E",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:750:201"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_BS_PHYS_E_202",
+      "type": "course",
+      "parent": "CS_BS_PHYS_E",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:750:202"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_BS_CHEM_A",
+      "type": "all_of",
+      "parent": "CS_BS_SCIENCE",
+      "quote": null,
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "CS_BS_CHEM_A_159",
+      "type": "course",
+      "parent": "CS_BS_CHEM_A",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:160:159"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_BS_CHEM_A_160",
+      "type": "course",
+      "parent": "CS_BS_CHEM_A",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:160:160"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_BS_CHEM_A_171",
+      "type": "course",
+      "parent": "CS_BS_CHEM_A",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:160:171"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_BS_CHEM_B",
+      "type": "all_of",
+      "parent": "CS_BS_SCIENCE",
+      "quote": null,
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "CS_BS_CHEM_B_161",
+      "type": "course",
+      "parent": "CS_BS_CHEM_B",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:160:161"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_BS_CHEM_B_162",
+      "type": "course",
+      "parent": "CS_BS_CHEM_B",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:160:162"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_BS_CHEM_B_171",
+      "type": "course",
+      "parent": "CS_BS_CHEM_B",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:160:171"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_BS_CHEM_C",
+      "type": "all_of",
+      "parent": "CS_BS_SCIENCE",
+      "quote": null,
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "CS_BS_CHEM_C_163",
+      "type": "course",
+      "parent": "CS_BS_CHEM_C",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:160:163"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_BS_CHEM_C_164",
+      "type": "course",
+      "parent": "CS_BS_CHEM_C",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:160:164"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "CS_BS_CHEM_C_171",
+      "type": "course",
+      "parent": "CS_BS_CHEM_C",
+      "quote": null,
+      "notes": null,
+      "courses": [
+        "01:160:171"
+      ],
+      "eligible_course_rows": 1
+    }
+  ],
+  "program_rules": [
+    {
+      "code": "CS_MAX_D",
+      "name": "At most one grade of D in required major courses",
+      "rule_type": "max_grade_count",
+      "grade": "D",
+      "max_count": 1,
+      "is_evaluable": true,
+      "source_prose": "No more than one grade of D can be accepted in the courses required for the major."
+    },
+    {
+      "code": "CS_EXCLUDED",
+      "name": "Courses that earn no credit for declared CS majors",
+      "rule_type": "course_exclusion",
+      "excluded_course_strings": "01:198:105,01:198:107,01:198:110,01:198:142,01:198:170,01:198:405",
+      "is_evaluable": true,
+      "source_prose": "Declared computer science majors (198) will not receive credit (major or degree) for subsequent enrollment in computer science 105, 107,110, 142, 170, or 405."
+    },
+    {
+      "code": "CS_RESIDENCY",
+      "name": "Minimum seven courses in the Rutgers-New Brunswick CS department",
+      "rule_type": "residency",
+      "min_count": 7,
+      "subject_code": "198",
+      "offering_unit_code": "01",
+      "is_evaluable": false,
+      "not_evaluable_reason": "The rule requires knowing which courses were taken AT Rutgers-New Brunswick. StudentCourse records no transfer provenance, and a cross-listed course carries another department's code, so the count cannot be computed without guessing. Rutgers publishes no transfer-equivalence rule we could apply here.",
+      "source_prose": "A minimum of seven courses must be taken in the Rutgers University-New Brunswick Department of Computer Science."
+    }
+  ],
+  "rules_not_yet_modeled": [
+    {
+      "rule": "At most two of the five electives may be taken outside the Department of Computer Science; at least two must be CS at the 300 level or above.",
+      "why_not": "IMPLEMENTED as group constraints on CS_ELECTIVES (max_outside_subject / min_at_level), not as a program rule."
+    }
+  ],
+  "review_questions": [
+    "Category 3 for the B.S.: the B.A. text says 'at least two must be computer science courses at the 300 level or above'. The B.S. sentence repeats only the 'no more than two outside' limit. This encoding KEEPS the 300-level minimum (2) for the seven electives - confirm it applies to the B.S.",
+    "The physics list names '01:750:193 and 194' twice ('... or 01:750:193 and 194 ... or 01:750:193, 194'). Encoded once. Confirm no other course was meant.",
+    "Chemistry 01:160:171 appears in all three chemistry options; each option is encoded as its own all-of set.",
+    "Same elective-list gap and graduate-course question as the B.A. (sas-198-ba.json review_questions)."
+  ],
+  "what_to_verify": [
+    "Open the archived page (path below) and find every quoted sentence.",
+    "For each requirement node, confirm the encoding says what the quote says: course lists, counts, levels, exclusions.",
+    "Confirm nothing the page requires for COMPLETION is missing - compare against 'rules not yet modeled'.",
+    "Confirm admission/declaration rules are kept as admission_prose and not as completion requirements.",
+    "Answer every review question; a 'changes_requested' review is a valid outcome.",
+    "Spot-check the eligible-course counts below against the course list you expect."
+  ],
+  "how_to_record": "python -m coursepilot_ingestion.registry_cli review --program sas-198-bs --year 2026-2027 --reviewer \"<your full name>\" --decision approved|changes_requested --notes \"...\"  (then, if approved: registry_cli publish --program ... --year ...)",
+  "quotes": [
+    {
+      "node": "program_version",
+      "quote": "The B.A. option requires 51-55 credits (depending on 3-credit or 4-credit elective options); the B.S. option requires 67-72 credits."
+    },
+    {
+      "node": "CS_BS",
+      "quote": "The basic major, leading to a bachelor of arts (B.A.) degree, consists of: 1) six required courses in computer science, 01:198:111, 112, 205, 206, 211, and 344; 2) three courses in mathematics, 01:640:151-152 and 01:640:250; and 3) five electives from a designated list of courses in computer science and related disciplines."
+    },
+    {
+      "node": "CS_CORE",
+      "quote": "six required courses in computer science, 01:198:111, 112, 205, 206, 211, and 344"
+    },
+    {
+      "node": "CS_MATH",
+      "quote": "three courses in mathematics, 01:640:151-152 and 01:640:250"
+    },
+    {
+      "node": "CS_ELECTIVES",
+      "quote": "complete seven courses from category 3, no more than two of these outside the Department of Computer Science"
+    },
+    {
+      "node": "CS_BS_SCIENCE",
+      "quote": "plus four physics courses: 01:750:203, 204, 205, and 206 (or 01:750:123, 124, 227, and 229 or 01:750:193 and 194 or 01:750:271, 272, 275, and 276 or 01:750:201 and 202 or 01:750:193, 194); or chemistry 01:160:159, 160, and 171 (or 01:160:161, 162, and 171 or 01:160:163, 164, and 171)"
+    },
+    {
+      "node": "CS_MAX_D",
+      "quote": "No more than one grade of D can be accepted in the courses required for the major."
+    },
+    {
+      "node": "CS_EXCLUDED",
+      "quote": "Declared computer science majors (198) will not receive credit (major or degree) for subsequent enrollment in computer science 105, 107,110, 142, 170, or 405."
+    },
+    {
+      "node": "CS_RESIDENCY",
+      "quote": "A minimum of seven courses must be taken in the Rutgers University-New Brunswick Department of Computer Science."
+    }
+  ]
+}

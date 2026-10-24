@@ -18,6 +18,7 @@ import {
   PLAN_SEVERITY,
   PLAN_STATUS,
   PLACEMENT_POLICY_URL,
+  deliveryText,
   offeringLabel,
   placementLabel,
   planReasonText,
@@ -29,6 +30,10 @@ import {
   SCHEDULE_STATUS,
   STALE_REASON,
   termLabel,
+  upcomingTerms,
+  ROLE_LABEL,
+  WORKLOAD_LEVEL_LABEL,
+  workloadBreakdown,
 } from "@/lib/academic/vocabulary";
 import type { PlannedCourse, PlanReason } from "@/types/plan";
 
@@ -173,6 +178,21 @@ describe("placement reasons come from the course's own fields", () => {
     expect(planReasonText("required_prerequisite_for", course)).toContain("01:198:344");
     expect(planReasonText("historically_offered_in_season", course)).toContain("Spring 2026");
     expect(planReasonText("selected_by_canonical_tie_break", course)).toMatch(/One of 3 .*not by preference/);
+  });
+
+  it("shows every number behind a workload weight, never easy/hard (7.3)", () => {
+    expect(workloadBreakdown({ weight: "5.13", components: { credits: "4", contact_above_credits: "0.13", lab: "0", level: "0.00", technical: "1" } }))
+      .toBe("4 credits + 0.13 contact hours above credits + 1 technical = 5.13");
+    expect(deliveryText(["async", "in_person"])).toMatch(/asynchronous/);
+    const words = [...Object.values(WORKLOAD_LEVEL_LABEL), ...Object.values(ROLE_LABEL)].join(" ");
+    expect(words).not.toMatch(/(easy|easier|hard|harder|difficult)/i);
+  });
+
+  it("lists the semesters a pin can name, from the next one on (7.3)", () => {
+    expect(upcomingTerms(new Date(2026, 9, 23), 3)).toEqual(["20271", "20279", "20281"]);
+    expect(upcomingTerms(new Date(2026, 9, 23), 4, { summer: true, winter: true }))
+      .toEqual(["20270", "20271", "20277", "20279"]);
+    expect(upcomingTerms(new Date(2027, 5, 1), 2)).toEqual(["20279", "20281"]);
   });
 
   it("says plainly when a placement is history, not a published listing (7.3)", () => {

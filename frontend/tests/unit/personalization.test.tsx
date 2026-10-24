@@ -33,13 +33,24 @@ const profile: PlanningProfileInput = {
 describe("planning preferences", () => {
   it("says target and maximum in their real meanings", () => {
     const lines = Object.fromEntries(profileLines(profile, "Computer Science"));
-    expect(lines["Planning pace"]).toBe("Balanced");
+    expect(lines["Graduation target"]).toBe("On time");
     expect(lines["Target semester load"]).toBe("16 credits");
     expect(lines["Maximum semester load"]).toBe("18 credits, never more");
     expect(lines["Winter"]).toMatch(/Can include/);
     expect(lines["Summer"]).toBe("Not planned");
     expect(lines["Schedule"]).toContain("No classes before 10:00 AM");
     expect(lines["Schedule"]).toContain("Friday");
+  });
+
+  it("with a workload level, shows intensity, filler preference and pins instead of credit targets (7.3)", () => {
+    const lines = Object.fromEntries(profileLines({
+      ...profile, workload_level: "semi_rigorous", filler_preference: "flexible",
+      pins: [{ course: "01:640:152", term_code: "20271" }],
+    }));
+    expect(lines["Semester intensity"]).toBe("Semi-rigorous");
+    expect(lines["Filling the rest"]).toMatch(/asynchronous/);
+    expect(lines["Pinned courses"]).toBe("01:640:152 (Spring 2027)");
+    expect(lines["Target semester load"]).toBeUndefined();
   });
 
   it("shows an additional program only as something being explored", () => {

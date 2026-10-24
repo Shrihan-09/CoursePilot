@@ -17,12 +17,13 @@ import { ManualEntry } from "./manual-entry";
 import { PlacementStep } from "./placement-step";
 import { ProgramStep } from "./program-step";
 import { TranscriptReview, TranscriptUpload } from "./transcript";
+import { WorkloadStep } from "./workload-step";
 
-type View = "welcome" | "program" | "history" | "transcript" | "review" | "manual" | "placement" | "done";
+type View = "welcome" | "program" | "history" | "transcript" | "review" | "manual" | "placement" | "workload" | "done";
 
 /**
  * Welcome -> program -> transcript OR manual -> review -> confirm -> (optional) math
- * placement -> complete.
+ * placement -> (optional) workload -> complete.
  * The server's onboarding state decides where a returning student resumes;
  * this component only navigates between the steps the API allows.
  */
@@ -55,6 +56,7 @@ export function OnboardingFlow() {
     { key: ["history", "transcript", "manual"], label: "Courses" },
     { key: ["review"], label: "Review" },
     { key: ["placement"], label: "Placement" },
+    { key: ["workload"], label: "Workload" },
     { key: ["done"], label: "Finish" },
   ];
   const stepIndex = view ? steps.findIndex((s) => s.key.includes(view)) : 0;
@@ -203,8 +205,12 @@ export function OnboardingFlow() {
           {view === "placement" && (
             <PlacementStep initial={status.data?.profile?.math_placement} onDone={async () => {
               await refresh();
-              setView("done");
+              setView("workload");
             }} />
+          )}
+
+          {view === "workload" && (
+            <WorkloadStep onDone={() => setView("done")} />
           )}
 
           {view === "done" && (

@@ -8,8 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Checkbox, Field, Input, Radio, Select } from "@/components/ui/field";
 import { api } from "@/lib/api";
 import { DAY_NAME } from "@/lib/academic/schedule-time";
-import { GOAL_KIND } from "@/lib/academic/vocabulary";
-import type { AdditionalGoal, PlanningProfileInput, PlanningProfileResponse, Strategy } from "@/types/personalization";
+import { GOAL_KIND, termLabel, upcomingTerms } from "@/lib/academic/vocabulary";
+import type {
+  AdditionalGoal,
+  CoursePin,
+  FillerPreference,
+  PlanningProfileInput,
+  PlanningProfileResponse,
+  Strategy,
+  WorkloadLevel,
+} from "@/types/personalization";
 import type { Pace } from "@/types/plan";
 import type { DayCode } from "@/types/schedule";
 
@@ -53,6 +61,13 @@ export function PreferencesForm({
   const [goals, setGoals] = useState<AdditionalGoal[]>(initial.additional_goals);
   const [goalKind, setGoalKind] = useState<AdditionalGoal["kind"]>("second_major");
   const [goalProgram, setGoalProgram] = useState("");
+  const [level, setLevel] = useState<WorkloadLevel | null>(initial.workload_level ?? null);
+  const [filler, setFiller] = useState<FillerPreference>(initial.filler_preference ?? "no_preference");
+  const [pins, setPins] = useState<CoursePin[]>(initial.pins ?? []);
+  const termsAhead = upcomingTerms(new Date(), 8, { summer: initial.include_summer, winter: initial.include_winter });
+  const [pinCourse, setPinCourse] = useState("");
+  const [pinTerm, setPinTerm] = useState(termsAhead[0] ?? "");
+  const pinValid = /^\d{2}:\d{3}:\d{3}$/.test(pinCourse.trim());
 
   const t = Number(target), m = Number(max), c = Number(courses), n = terms === "" ? null : Number(terms);
   const errors = {
@@ -76,12 +91,13 @@ export function PreferencesForm({
           include_summer: summer, include_winter: winter,
           schedule: { ...initial.schedule, earliest_start: early || null, latest_end: late || null, avoid_days: avoid },
           additional_goals: goals,
+          workload_level: level, filler_preference: filler, pins,
         });
       }}
     >
       <fieldset className="space-y-2">
-        <legend className="text-base font-semibold text-fg">How would you like to pace your semesters?</legend>
-        <p className="text-sm text-fg-muted">Balanced is the default. CoursePilot never assumes you want to finish early.</p>
+        <legend className="text-base font-semibold text-fg">When do you want to graduate?</legend>
+        <p className="text-sm text-fg-muted">This sets how many semesters your plan has. On time is the default; CoursePilot never assumes you want to finish early.</p>
         <div className="space-y-1">
           {meta.paces.map((p) => (
             <Radio key={p.value} name="pace" label={p.label} description={p.description}
@@ -89,6 +105,78 @@ export function PreferencesForm({
           ))}
         </div>
       </fieldset>
+
+      {(meta.workload_levels?.length ?? 0) > 0 && (
+        <fieldset className="space-y-2">
+          <legend className="text-base font-semibold text-fg">How intense should each semester be?</legend>
+          <p className="text-sm text-fg-muted">
+            Each level sets a credit range and a workload budget per semester. Courses you must take (a retake,
+            or one you pin) always stay - if they go over the budget, your plan says so.
+          </p>
+          <div className="space-y-1">
+            {meta.workload_levels!.map((w) => (
+              <Radio key={w.value} name="workload_level" label={w.label} description={w.description}
+                checked={level === w.value} onChange={() => setLevel(w.value)} />
+            ))}
+          </div>
+          {meta.workload_weight && <p className="text-xs text-fg-muted">{meta.workload_weight}</p>}
+        </fieldset>
+      )}
+
+      {(meta.filler_preferences?.length ?? 0) > 0 && level && (
+        <fieldset className="space-y-2">
+          <legend className="text-base font-semibold text-fg">For the rest of a semester&apos;s credits</legend>
+          <p className="text-sm text-fg-muted">After the courses you need, CoursePilot fills up to your credit range with courses that complete a requirement.</p>
+          <div className="space-y-1">
+            {meta.filler_preferences!.map((f) => (
+              <Radio key={f.value} name="filler_preference" label={f.label} description={f.description}
+                checked={filler === f.value} onChange={() => setFiller(f.value)} />
+            ))}
+          </div>
+        </fieldset>
+      )}
+
+      {level && (
+        <fieldset className="space-y-3">
+          <legend className="text-base font-semibold text-fg">Courses you want in a specific semester</legend>
+          <p className="text-sm text-fg-muted">
+            A pinned course is placed in that semester or not at all. If it can&apos;t be (prerequisites, not offered,
+            restricted), your plan explains why.
+          </p>
+          {pins.length > 0 && (
+            <ul className="divide-y divide-border rounded border border-border">
+              {pins.map((p, i) => (
+                <li key={`${p.course}-${p.term_code}`} className="flex items-center justify-between gap-2 p-2 text-sm">
+                  <span className="code">{p.course} <span className="text-fg-muted">in {termLabel(p.term_code)}</span></span>
+                  <Button type="button" variant="ghost" size="sm" aria-label={`Unpin ${p.course}`} onClick={() => setPins(pins.filter((_, j) => j !== i))}>
+                    <Trash2 aria-hidden className="size-4" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="grid gap-3 sm:grid-cols-[1fr_12rem_auto] sm:items-end">
+            <Field label="Course" hint="e.g. 01:640:152">
+              {({ id, describedBy }) => <Input id={id} aria-describedby={describedBy} value={pinCourse} placeholder="01:640:152" onChange={(e) => setPinCourse(e.target.value)} />}
+            </Field>
+            <Field label="Semester">
+              {({ id }) => (
+                <Select id={id} value={pinTerm} onChange={(e) => setPinTerm(e.target.value)}>
+                  {termsAhead.map((t) => <option key={t} value={t}>{termLabel(t)}</option>)}
+                </Select>
+              )}
+            </Field>
+            <Button type="button" variant="secondary" disabled={!pinValid || pins.length >= 24}
+              onClick={() => {
+                const pin = { course: pinCourse.trim(), term_code: pinTerm };
+                if (!pins.some((p) => p.course === pin.course)) setPins([...pins, pin]);
+                setPinCourse("");
+              }}>
+              <Plus aria-hidden className="size-4" /> Pin
+            </Button>
+          </div>
+        </fieldset>
+      )}
 
       {(meta.strategies?.length ?? 0) > 0 && (
         <fieldset className="space-y-2">
@@ -108,13 +196,14 @@ export function PreferencesForm({
 
       <fieldset className="space-y-3">
         <legend className="text-base font-semibold text-fg">Semester load</legend>
+        {level && <p className="text-sm text-fg-muted">Your workload level sets the credit range; the course limit below still applies.</p>}
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Aim for (credits)" hint="CoursePilot aims near this; it isn't a minimum." error={errors.target}>
+          {!level && <Field label="Aim for (credits)" hint="CoursePilot aims near this; it isn't a minimum." error={errors.target}>
             {({ id, describedBy, invalid }) => <Input id={id} aria-describedby={describedBy} aria-invalid={invalid} type="number" inputMode="decimal" min={1} max={24} step={0.5} value={target} onChange={(e) => setTarget(e.target.value)} />}
-          </Field>
-          <Field label="Never more than (credits)" hint="A hard limit for every semester." error={errors.max}>
+          </Field>}
+          {!level && <Field label="Never more than (credits)" hint="A hard limit for every semester." error={errors.max}>
             {({ id, describedBy, invalid }) => <Input id={id} aria-describedby={describedBy} aria-invalid={invalid} type="number" inputMode="decimal" min={1} max={24} step={0.5} value={max} onChange={(e) => setMax(e.target.value)} />}
-          </Field>
+          </Field>}
           <Field label="Courses per semester, at most" error={errors.courses}>
             {({ id, invalid }) => <Input id={id} aria-invalid={invalid} type="number" inputMode="numeric" min={1} max={8} value={courses} onChange={(e) => setCourses(e.target.value)} />}
           </Field>
@@ -207,7 +296,7 @@ export function PreferencesForm({
       <details className="rounded border border-border">
         <summary className="min-h-11 cursor-pointer p-3 text-sm font-medium text-fg">More settings</summary>
         <div className="border-t border-border p-3">
-          <Field label="Plan at most this many semesters" hint="Leave empty to let your pace decide (8, or 12 for Lighter)." error={errors.terms}>
+          <Field label="Plan at most this many semesters" hint="Leave empty to let your graduation target decide." error={errors.terms}>
             {({ id, describedBy, invalid }) => <Input id={id} aria-describedby={describedBy} aria-invalid={invalid} type="number" inputMode="numeric" min={1} max={12} value={terms} onChange={(e) => setTerms(e.target.value)} />}
           </Field>
         </div>

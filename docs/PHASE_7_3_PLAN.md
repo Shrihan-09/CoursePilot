@@ -183,3 +183,65 @@ for every case.** Known contributors: prerequisite rows for 24 loaded terms,
 one `check_proposal` pair per distinct rules term per planning term, and
 longer plans now that the math chains are no longer blocked. Not optimized
 in Phase 7.3 by decision; plans stay deterministic (identical across runs).
+
+## 8. Workload levels, fillers and pins (2026-10-23)
+
+Decisions by the product owner: Pace stays separate as the GRADUATION TARGET
+("When do you want to graduate?" - On time 8 terms / Early 7 / No rush 12;
+stored values unchanged) and only sets the horizon; the WORKLOAD LEVEL sets
+each term's load. The proposed formula and budgets were accepted as written.
+
+| level | credits | workload budget |
+|---|---|---|
+| Light | 12-14 | 16 |
+| Balanced (default) | 14-17 | 20 |
+| Semi-rigorous | 16-19 | 24 |
+| Challenging | 17-21 | 28 |
+
+`weight = credits + 0.25 x weekly contact hours above credits + 1 lab +
+0.5 x (level - 1) + 1 technical` (major subject, 01:640, or SAS Core NS), from
+the term's own SOC meetings when published, else the course's latest loaded
+term (`basis_term`). Every component is shown; no "easy/hard" wording
+(app.services.planning.workload).
+
+Each term, re-validated by the Degree Engine at every step:
+anchors (pins, then needed retakes; may exceed the budget, and the term says
+so) -> multi-requirement courses (2+ open requirements, within the audit's
+sharing policy) -> ONE major-subject course that counts toward the major ->
+fillers one at a time against the term as it stands: preferred delivery mode
+(SOC meeting mode: asynchronous = mode 90 with no day/time), then one that
+reaches the credit floor within budget, then the lowest weight. A lab joins
+its lecture with the lecture's role. Fillers stop at the floor; nothing goes
+past the level's maximum or (except anchors) the budget.
+
+Pins are hard constraints: placed in their term or nowhere, never pruned.
+Impossible pins are explained (not listed for the term, prerequisites unmet,
+already completed, every section restricted). A pinned course whose
+prerequisites CoursePilot cannot verify is placed and flagged
+(`PIN_PREREQUISITES_UNVERIFIED`); a pinned course the program excludes is
+placed with `PIN_WILL_NOT_COUNT` (e.g. 01:198:142 Data 101 for CS).
+
+If the level cannot fit the graduation target, the plan says so
+(`WORKLOAD_VS_GRADUATION_TARGET`) with fixes; it never extends the horizon.
+Profiles confirmed before 7.3 have no level and keep the 7.2.1 behaviour until
+the student chooses one (onboarding and the preferences form preselect
+Balanced).
+
+Changes this needed elsewhere, each decided or recorded:
+
+* "Any Course EQUAL or GREATER Than: (X)" (553 rows, 72 courses incl. Gen
+  Physics 203/205, Linear Algebra 250, CS 111) is now read LITERALLY - met by
+  a passed course of the same unit and subject numbered >= X (decision of
+  2026-10-23; prerequisite parser v2). Before, these were never planned.
+* CS B.S. encoded from the catalog prose (`sas-198-bs.json`, pending human
+  review; review packet generated): seven electives and a physics or
+  chemistry sequence.
+* An ANY_OF with no progress no longer opens only its alphabetically first
+  alternative ("CHEM" sorted before "PHYS").
+
+Scenario test (`ingestion/tests/test_workload_levels.py`, real public SOC
+records): a CS B.S. student who failed Calc II, Semi-rigorous, prefer
+flexible -> Spring 2027 = Calc II (anchor, retake) + Gen Physics 203 with
+lab 205 (Core NS and the B.S. science) + 01:198:211 (major) + 01:810:135
+(asynchronous, Core AHq) = 16 credits, workload 22.0 of 24.
+

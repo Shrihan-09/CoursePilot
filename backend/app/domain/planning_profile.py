@@ -21,7 +21,14 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.domain.modality import ModalityPreferences
-from app.domain.planning import Pace, PlanningConstraints, Strategy
+from app.domain.planning import (
+    CoursePin,
+    FillerPreference,
+    Pace,
+    PlanningConstraints,
+    Strategy,
+    WorkloadLevel,
+)
 
 _HHMM = r"^([01][0-9]|2[0-3]):[0-5][0-9]$"
 _PROGRAM_KEY = r"^[a-z0-9]+-[a-z0-9]+-[a-z0-9]+(-[a-z0-9]+)*$"
@@ -29,6 +36,11 @@ _PROGRAM_KEY = r"^[a-z0-9]+-[a-z0-9]+-[a-z0-9]+(-[a-z0-9]+)*$"
 #: The horizon a pace implies when the student does not set one. A lighter
 #: pace needs more terms to reach the same requirements (persona audit N4).
 DEFAULT_MAX_TERMS: dict[Pace, int] = {Pace.BALANCED: 8, Pace.LIGHTER: 12, Pace.FINISH_EARLIER: 8}
+#: Phase 7.3: with a workload level, Pace is ONLY the graduation target and
+#: sets the horizon - "On time" (balanced) 8 terms, "Early" (finish_earlier)
+#: 7, "No rush" (lighter) 12. The level, not the pace, sets each term's load.
+GRADUATION_TARGET_TERMS: dict[Pace, int] = {Pace.BALANCED: 8, Pace.FINISH_EARLIER: 7,
+                                            Pace.LIGHTER: 12}
 
 
 class ScheduleDefaults(BaseModel):
@@ -87,6 +99,11 @@ class PlanningProfileInput(BaseModel):
     include_winter: bool = False
     schedule: ScheduleDefaults = Field(default_factory=ScheduleDefaults)
     additional_goals: list[AdditionalGoal] = Field(default_factory=list, max_length=4)
+    #: Phase 7.3 - per-term intensity, filler preference and pinned courses.
+    #: A profile confirmed before 7.3 has no level and keeps the pace behaviour.
+    workload_level: WorkloadLevel | None = None
+    filler_preference: FillerPreference = FillerPreference.NO_PREFERENCE
+    pins: list[CoursePin] = Field(default_factory=list, max_length=24)
 
     @model_validator(mode="after")
     def _load(self) -> "PlanningProfileInput":
@@ -97,16 +114,20 @@ class PlanningProfileInput(BaseModel):
 
 def to_constraints(profile: PlanningProfileInput) -> PlanningConstraints:
     """The ONLY path from preferences to the planner."""
+    horizon = (GRADUATION_TARGET_TERMS if profile.workload_level else DEFAULT_MAX_TERMS)
     return PlanningConstraints(
         max_credits_per_term=profile.max_credits_per_term,
         max_courses_per_term=profile.max_courses_per_term,
-        max_terms=profile.max_terms or DEFAULT_MAX_TERMS[profile.pace],
+        max_terms=profile.max_terms or horizon[profile.pace],
         include_summer=profile.include_summer,
         include_winter=profile.include_winter,
         target_credits_per_term=profile.target_credits_per_term,
         pace=profile.pace,
-        strategy=profile.strategy)
+        strategy=profile.strategy,
+        workload_level=profile.workload_level,
+        filler_preference=profile.filler_preference,
+        pins=profile.pins)
 
 
-__all__ = ["AdditionalGoal", "DEFAULT_MAX_TERMS", "PlanningProfileInput", "ScheduleDefaults",
-           "to_constraints"]
+__all__ = ["AdditionalGoal", "DEFAULT_MAX_TERMS", "GRADUATION_TARGET_TERMS", "PlanningProfileInput",
+           "ScheduleDefaults", "to_constraints"]

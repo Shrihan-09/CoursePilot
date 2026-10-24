@@ -34,7 +34,8 @@ export type PlanReason =
   | "selected_by_canonical_tie_break"
   | "ranked_by_requirement_coverage"
   | "requires_math_placement"
-  | "prerequisites_met_by_placement";
+  | "prerequisites_met_by_placement"
+  | "prerequisites_need_confirmation";
 
 export type PlanStatus = "covers_all_requirements" | "partial" | "nothing_to_plan";
 
@@ -106,6 +107,32 @@ export interface PlannedCourse {
   /** Phase 7.3: generic topics course; `topics` = this term's section subtitles. */
   is_topics_course?: boolean;
   topics?: string[];
+  /** Phase 7.3 workload levels: the numbers behind the weight, and why it's in this term. */
+  workload?: WorkloadEvidence | null;
+  role?: "anchor" | "multi_requirement" | "major" | "filler" | null;
+  role_reason?: string | null;
+}
+
+export interface WorkloadEvidence {
+  weight: string;
+  credits: string;
+  contact_hours: string | null;
+  has_lab: boolean;
+  level: number;
+  technical: string | null;
+  components: Record<string, string>;
+  delivery: ("async" | "online" | "in_person")[];
+  basis_term: string | null;
+}
+
+export interface TermWorkload {
+  level: string;
+  budget: string;
+  total: string;
+  credit_floor: string;
+  credit_max: string;
+  contact_hours: string;
+  notes: string[];
 }
 
 export interface PlanTerm {
@@ -113,6 +140,7 @@ export interface PlanTerm {
   label: string;
   courses: PlannedCourse[];
   credits: string;
+  workload?: TermWorkload | null;
 }
 
 export interface PlanningIssue {

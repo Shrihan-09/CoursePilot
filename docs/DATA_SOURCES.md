@@ -907,8 +907,9 @@ A flat course -> requirement table cannot represent any of the last five.
 * Grade rules, exclusions, and residency are recorded in the fixture under
   `rules_not_yet_modeled` but are **not evaluated** by the engine.
 * Core Curriculum requirements are not yet ingested.
-* One program (CS B.A.) only. The B.S. variant is modeled in the prose but not
-  encoded.
+* The CS B.S. was encoded on 2026-10-23 (`sas-198-bs.json`, PENDING human review):
+  requirements 1-2 as the B.A., seven electives (at most two outside CS), and one
+  physics or chemistry sequence as the prose lists them. Quote checks 9/9.
 * No official terms of use located for the catalog site.
 
 ---

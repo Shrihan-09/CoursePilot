@@ -183,11 +183,77 @@ export const READINESS_CHECK: Record<"done" | "missing" | "warning" | "info", { 
   info: { tone: "info", icon: "info", label: "Note" },
 };
 
+/** Phase 7.3: pace is the graduation target ("When do you want to graduate?"). */
 export const PACE_LABEL: Record<string, string> = {
-  balanced: "Balanced",
-  lighter: "Lighter",
-  finish_earlier: "Finish earlier",
+  balanced: "On time",
+  lighter: "No rush",
+  finish_earlier: "Early",
 };
+
+/** Phase 7.3 workload levels - CoursePilot settings, never "easy"/"hard". */
+export const WORKLOAD_LEVEL_LABEL: Record<string, string> = {
+  light: "Light",
+  balanced: "Balanced",
+  semi_rigorous: "Semi-rigorous",
+  challenging: "Challenging",
+};
+
+/** Why a course is in its term (Phase 7.3 fill order). */
+export const ROLE_LABEL: Record<string, string> = {
+  anchor: "Must take",
+  multi_requirement: "Counts for several requirements",
+  major: "Major course",
+  filler: "Fills the semester",
+};
+
+const WEIGHT_PART: Record<string, string> = {
+  credits: "credits",
+  contact_above_credits: "contact hours above credits",
+  lab: "lab",
+  level: "course level",
+  technical: "technical",
+};
+
+/** "4 credits + 0.25 contact hours above credits + 1 lab + 0.5 course level = 5.75". */
+export function workloadBreakdown(w: { weight: string; components: Record<string, string> }): string {
+  const parts = Object.entries(w.components)
+    .filter(([, v]) => Number(v) !== 0)
+    .map(([k, v]) => `${Number(v)} ${WEIGHT_PART[k] ?? k}`);
+  return `${parts.join(" + ")} = ${Number(w.weight)}`;
+}
+
+export function deliveryText(delivery: string[]): string {
+  if (delivery.includes("async")) return "has an asynchronous online section";
+  if (delivery.includes("online")) return "has an online section";
+  if (delivery.includes("in_person")) return "in person";
+  return "delivery not published";
+}
+
+/**
+ * The next `n` term codes from `now` (Fall/Spring, plus Summer/Winter when
+ * the student considers them) - for choosing a pin's semester.
+ */
+export function upcomingTerms(now: Date, n: number, extra: { summer?: boolean; winter?: boolean } = {}): string[] {
+  const order = ["0", "1", "7", "9"].filter((s) => (s === "7" ? extra.summer : s === "0" ? extra.winter : true));
+  let year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  // The NEXT term to plan: Jan-Apr -> this Summer (if considered) or Fall;
+  // May-Aug -> this Fall; Sep-Dec -> the coming Winter (if considered) or Spring.
+  let season: string;
+  if (month <= 4) season = extra.summer ? "7" : "9";
+  else if (month <= 8) season = "9";
+  else { year += 1; season = extra.winter ? "0" : "1"; }
+  const seasons = ["0", "1", "7", "9"] as const;
+  const out: string[] = [];
+  let i = seasons.indexOf(season as (typeof seasons)[number]);
+  while (out.length < n) {
+    if (order.includes(seasons[i]!)) out.push(`${year}${seasons[i]}`);
+    if (i === 3) { year += 1; i = 0; } else i += 1;
+  }
+  return out;
+}
+
+
 
 /** 7.2.4: ordering among courses already checked valid - never a shortcut. */
 export const STRATEGY_LABEL: Record<string, string> = {
@@ -291,6 +357,8 @@ export function planReasonText(reason: PlanReason, course: PlannedCourse): strin
       return `One of ${course.interchangeable_alternatives + 1} equally suitable courses; chosen by a fixed tie-break, not by preference`;
     case "requires_math_placement":
       return "Requires math placement: Rutgers accepts a placement result, and your profile doesn't state one yet";
+    case "prerequisites_need_confirmation":
+      return "You pinned it here; CoursePilot can't verify its prerequisites, so confirm them before registering";
     case "prerequisites_met_by_placement":
       return `Prerequisites met by placement (source: ${PLACEMENT_POLICY_URL})`;
   }

@@ -11,8 +11,12 @@ import {
   PLAN_SEVERITY,
   PACE_LABEL,
   PLAN_STATUS,
+  deliveryText,
   offeringLabel,
   placementLabel,
+  ROLE_LABEL,
+  WORKLOAD_LEVEL_LABEL,
+  workloadBreakdown,
   planReasonText,
   topicsText,
   STALE_REASON,
@@ -130,6 +134,19 @@ function CourseCard({ course: c, index }: { course: PlannedCourse; index: number
           {offeringLabel(c.offering)}
         </p>
       )}
+      {c.role && (
+        <p className="text-xs text-fg-secondary">
+          <span className="font-medium text-fg">{ROLE_LABEL[c.role] ?? c.role}</span>
+          {c.role_reason ? <span> — {c.role_reason}</span> : null}
+        </p>
+      )}
+      {c.workload && (
+        <p className="tabular text-2xs text-fg-muted" title={workloadBreakdown(c.workload)}>
+          Workload {Number(c.workload.weight)} ({workloadBreakdown(c.workload)})
+          {c.workload.contact_hours ? ` · ${Number(c.workload.contact_hours)} contact hrs/week` : ""}
+          {` · ${deliveryText(c.workload.delivery)}`}
+        </p>
+      )}
       {toward.length > 0 && (
         <p className="flex flex-wrap justify-end gap-x-2 gap-y-0.5 text-xs text-fg-secondary">
           <span className="sr-only">Toward: </span>
@@ -168,6 +185,16 @@ export function SemesterCard({
         <div>
           <h3 id={`term-${term.term_code}`} className="text-lg font-bold tracking-tight text-fg">{term.label}</h3>
           <p className="tabular text-xs text-fg-muted">{term.courses.length} courses · {term.credits} credits</p>
+          {term.workload && (
+            <p className="tabular text-xs text-fg-secondary">
+              {WORKLOAD_LEVEL_LABEL[term.workload.level] ?? term.workload.level}: workload {Number(term.workload.total)} of{" "}
+              {Number(term.workload.budget)} · {Number(term.workload.contact_hours)} contact hrs/week ·{" "}
+              {Number(term.workload.credit_floor)}-{Number(term.workload.credit_max)} credits
+            </p>
+          )}
+          {term.workload?.notes.map((n) => (
+            <p key={n} className="text-xs text-warning">{n}</p>
+          ))}
         </div>
         {maxCredits ? (
           <Progress value={Math.min(credits, maxCredits)} max={maxCredits}

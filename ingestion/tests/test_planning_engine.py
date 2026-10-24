@@ -199,7 +199,7 @@ def test_a_cs_student_plan(cs) -> None:
     assert all(r.provisional for pc in placed.values() for r in pc.requirements)
     codes = {i.code for i in plan.issues}
     assert "IN_PROGRESS_OUTCOME_ASSUMED_PENDING" in codes
-    assert plan.metadata.planning_engine_version == "7.3.1"
+    assert plan.metadata.planning_engine_version == "7.3.2"
     assert plan.metadata.constraints_source.endswith("not_rutgers_policy")
 
 
@@ -410,23 +410,23 @@ def test_fall_only_course_is_never_placed_in_spring(cs) -> None:
 # ==========================================================================
 
 
-def test_o_unknown_prerequisite_needs_confirmation(cs) -> None:
+def test_o_minimum_course_level_is_met_by_a_higher_course(cs) -> None:
     """111's real prerequisite ("Any Course EQUAL or GREATER Than: 640:112")
-    is not something CoursePilot evaluates: 111 is never planned for a
-    student without it, and the plan says why."""
+    is read literally since Phase 7.3: Calc I (01:640:151 >= 112) meets it."""
     student = _student(cs, [("01:640:151", "20259")])
-    plan = _plan(cs, student)
+    plan = _plan(cs, student, start_term="20279")
     _invariants(plan)
     _verify_order(cs, student, plan)
-    assert "01:198:111" not in _placed(plan)
-    issue = next(i for i in plan.issues if i.requirement_code == "CS_111"
-                 and i.code == "ELIGIBILITY_UNKNOWN")
-    assert issue.severity is Severity.NEEDS_CONFIRMATION
-    assert plan.status is PlanStatus.PARTIAL
+    placed = _placed(plan)["01:198:111"]
+    assert placed.prerequisite.state is EligibilityState.SATISFIED_BY_HISTORY
+    assert not any(i.requirement_code == "CS_111" and i.code == "ELIGIBILITY_UNKNOWN"
+                   for i in plan.issues)
 
 
 def test_r_dead_end_and_horizon(cs) -> None:
-    student = _student(cs, [("01:640:151", "20259")])
+    # No math at all: 111 needs a 01:640 course numbered >= 112, and the
+    # sample has no path to one (151's prerequisites are not in it).
+    student = _student(cs, [])
     plan = _plan(cs, student)
     blockers = {i.requirement_code for i in plan.issues if i.severity is Severity.BLOCKER}
     assert {"CS_111", "CS_112", "CS_211"} <= blockers            # everything behind 111

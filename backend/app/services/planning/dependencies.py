@@ -52,6 +52,7 @@ from app.domain.prerequisites import (
     ConcurrentReq,
     CourseReq,
     Expr,
+    MinimumCourse,
     Unsupported,
     to_text,
 )
@@ -118,6 +119,12 @@ class DependencyPlanner:
         return result
 
     def _solve(self, e: Expr, stack: tuple[str, ...]) -> PathResult:
+        if isinstance(e, MinimumCourse):
+            # Phase 7.3: met by anything available at or above the named
+            # course; otherwise plan the named course itself.
+            if any(e.admits(k) for k in self.available):
+                return PathResult(True)
+            return self._solve(CourseReq(e.course_key), stack)
         if isinstance(e, CourseReq | ConcurrentReq):
             key = e.course_key
             if key in self.available:

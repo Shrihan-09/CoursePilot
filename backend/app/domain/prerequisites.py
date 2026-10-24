@@ -38,8 +38,11 @@ title text. Treating the words case-insensitively would split real titles.
 
 ## What is NOT interpreted
 
-  * "Any Course EQUAL or GREATER Than: (X)" - a course-level rule whose
-    ordering Rutgers does not define in the data -> UNSUPPORTED;
+  * (Phase 6.2 - 7.2) "Any Course EQUAL or GREATER Than: (X)" was left
+    UNSUPPORTED: Rutgers does not define the ordering in the data. Phase 7.3
+    (decided by the product owner, 2026-10-23) reads it LITERALLY - see
+    `MinimumCourse` - because it blocked 72 courses (Gen Physics 203/205,
+    Linear Algebra 250, CS 111, ...) from ever being planned;
   * mixed `and`/`or` at one nesting level without parentheses - precedence
     is not published, so it is not guessed -> UNSUPPORTED;
   * anything that does not tokenize -> MALFORMED / UNKNOWN.
@@ -70,7 +73,7 @@ from typing import Union
 
 #: Bump when parsing output can change for identical input. Stored with every
 #: parsed prerequisite so an old interpretation is identifiable.
-PARSER_VERSION = "1"
+PARSER_VERSION = "2"
 
 COURSE_KEY = re.compile(r"\d{2}:\d{3}:\d{3}")
 
@@ -139,7 +142,23 @@ class Unsupported:
     references: tuple[str, ...] = ()
 
 
-Expr = Union[CourseReq, ConcurrentReq, AllOf, AnyOf, AtLeast, Unsupported]
+@dataclass(frozen=True, slots=True)
+class MinimumCourse:
+    """ "Any Course EQUAL or GREATER Than: (01:640:112 ...)" - Phase 7.3 reading:
+    met by any course of the SAME unit and subject whose number is at least
+    the named course's (01:640:151 >= 01:640:112); 01:640:103 and 21:640:135
+    do not count. Every published instance names exactly one course."""
+
+    course_key: str
+
+    def admits(self, other: str) -> bool:
+        unit, subject, number = self.course_key.split(":")
+        parts = other.split(":")
+        return (len(parts) == 3 and parts[0] == unit and parts[1] == subject
+                and parts[2].isdigit() and number.isdigit() and int(parts[2]) >= int(number))
+
+
+Expr = Union[CourseReq, ConcurrentReq, MinimumCourse, AllOf, AnyOf, AtLeast, Unsupported]
 
 
 def course_keys(expr: Expr) -> list[str]:
@@ -147,7 +166,7 @@ def course_keys(expr: Expr) -> list[str]:
     out: list[str] = []
 
     def walk(e: Expr) -> None:
-        if isinstance(e, CourseReq | ConcurrentReq):
+        if isinstance(e, CourseReq | ConcurrentReq | MinimumCourse):
             if e.course_key not in out:
                 out.append(e.course_key)
         elif isinstance(e, Unsupported):
@@ -175,7 +194,7 @@ def canonicalize(expr: Expr) -> Expr:
       * children are sorted by their canonical text, so order is irrelevant
       * a single-child AND/OR collapses to the child
     """
-    if isinstance(expr, CourseReq | ConcurrentReq | Unsupported):
+    if isinstance(expr, CourseReq | ConcurrentReq | MinimumCourse | Unsupported):
         return expr
     if isinstance(expr, AtLeast):
         kids = sorted({to_text(canonicalize(c)): canonicalize(c) for c in expr.children}.items())
@@ -199,6 +218,8 @@ def to_text(expr: Expr) -> str:
         mode = {True: "before or same term", None: "same term; earlier unspecified",
                 False: "same term only"}[expr.prior_allowed]
         return f"CONCURRENT[{expr.course_key}: {mode}]"
+    if isinstance(expr, MinimumCourse):
+        return f"Any Course EQUAL or GREATER Than: ({expr.course_key})"
     if isinstance(expr, Unsupported):
         return f"UNSUPPORTED[{expr.reason}]"
     if isinstance(expr, AtLeast):
@@ -214,6 +235,8 @@ def to_json(expr: Expr) -> dict:
         return {"course": expr.course_key}
     if isinstance(expr, ConcurrentReq):
         return {"concurrent": expr.course_key, "prior_allowed": expr.prior_allowed}
+    if isinstance(expr, MinimumCourse):
+        return {"min_course": expr.course_key}
     if isinstance(expr, Unsupported):
         return {"unsupported": expr.reason, "text": expr.text,
                 "references": list(expr.references)}
@@ -228,6 +251,8 @@ def from_json(data: dict) -> Expr:
         return CourseReq(data["course"])
     if "concurrent" in data:
         return ConcurrentReq(data["concurrent"], data.get("prior_allowed"))
+    if "min_course" in data:
+        return MinimumCourse(data["min_course"])
     if "unsupported" in data:
         return Unsupported(data["unsupported"], data.get("text", ""),
                            tuple(data.get("references", ())))
@@ -384,11 +409,13 @@ def parse(raw: str | None) -> ParseResult | None:
     references = tuple(dict.fromkeys(COURSE_KEY.findall(raw)))
 
     if _MIN_LEVEL.match(raw):
-        # The referenced course survives as an identity, but "equal or
-        # greater" has no ordering CoursePilot can apply. UNKNOWN, always.
+        # Phase 7.3: read literally (MinimumCourse). Only the single-course
+        # form is ever published; anything else stays UNKNOWN, as before.
+        if len(references) == 1:
+            return ParseResult(Classification.PARSED, MinimumCourse(references[0]), references)
         node = Unsupported("minimum_course_level", raw.strip(), references)
         return ParseResult(Classification.UNSUPPORTED_MINIMUM_COURSE_LEVEL, node, references,
-                           "course-level ordering is not defined in the data")
+                           "not exactly one named course")
 
     if m := _N_OF.match(raw):
         n = _COUNT_WORDS[m.group(1)]
@@ -673,7 +700,17 @@ def evaluate(
         out.concurrent_checks.append(entry)
         return record(key, PrereqStatus.UNSATISFIED)
 
+    def minimum_leaf(e: MinimumCourse) -> PrereqStatus:
+        if e.course_key not in out.required_courses:
+            out.required_courses.append(e.course_key)
+        candidates = sorted(k for k in history if e.admits(k))
+        if not candidates:
+            return record(e.course_key, PrereqStatus.UNSATISFIED)
+        return _combine_any([course_leaf(k) for k in candidates])
+
     def walk(e: Expr) -> PrereqStatus:
+        if isinstance(e, MinimumCourse):
+            return minimum_leaf(e)
         if isinstance(e, CourseReq):
             if e.course_key not in out.required_courses:
                 out.required_courses.append(e.course_key)
@@ -716,6 +753,7 @@ __all__ = [
     "Classification",
     "ConcurrentReq",
     "CourseReq",
+    "MinimumCourse",
     "Evaluation",
     "Expr",
     "GradeCondition",

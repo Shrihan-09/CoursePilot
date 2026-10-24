@@ -33,7 +33,7 @@ from app.domain.course_ranking import CourseRankingEvidence
 from app.domain.scenario import ScenarioAssumption, ScenarioTarget
 
 #: Bumped whenever the same inputs could produce a different plan.
-PLANNING_ENGINE_VERSION = "7.3.1"   # 7.3: latest-term rules, placement, no twins, topics cap
+PLANNING_ENGINE_VERSION = "7.3.2"   # 7.3: workload levels, pins, minimum course level
 
 
 class EligibilityState(StrEnum):
@@ -102,6 +102,9 @@ class Reason(StrEnum):
     #: Phase 7.3: its prerequisites are met by the student's stated math
     #: placement (Rutgers Mathematics Department placement policy).
     PREREQUISITES_MET_BY_PLACEMENT = "prerequisites_met_by_placement"
+    #: Phase 7.3: placed because the student PINNED it; CoursePilot cannot
+    #: verify its prerequisites (needs confirmation).
+    PREREQUISITES_NEED_CONFIRMATION = "prerequisites_need_confirmation"
 
 
 class PlanStatus(StrEnum):
@@ -121,6 +124,35 @@ class Pace(StrEnum):
     BALANCED = "balanced"              # aim for the target; even terms; no stranded last term
     LIGHTER = "lighter"                # never above the target; extra terms are fine
     FINISH_EARLIER = "finish_earlier"  # fill toward the hard maximum to finish sooner
+
+
+class WorkloadLevel(StrEnum):
+    """Per-term INTENSITY (Phase 7.3) - separate from Pace, which is the
+    graduation target and sets the horizon. Each level sets a credit floor and
+    maximum and a workload budget (app.services.planning.workload.LEVELS).
+    CoursePilot planning settings, never Rutgers rules."""
+
+    LIGHT = "light"
+    BALANCED = "balanced"
+    SEMI_RIGOROUS = "semi_rigorous"
+    CHALLENGING = "challenging"
+
+
+class FillerPreference(StrEnum):
+    """How a term's FILLER courses are chosen (Phase 7.3), from SOC meeting modes."""
+
+    FLEXIBLE = "flexible"          # asynchronous / online sections first
+    IN_PERSON = "in_person"
+    NO_PREFERENCE = "no_preference"
+
+
+class CoursePin(BaseModel):
+    """'I want this course in this term' - a HARD constraint (Phase 7.3)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    course: str = Field(pattern=r"^\d{2}:\d{3}:\d{3}$")
+    term_code: str = Field(pattern=r"^\d{4}[0179]$")
 
 
 class Strategy(StrEnum):
@@ -167,6 +199,13 @@ class PlanningConstraints(BaseModel):
     #: per term. Their content is announced late and varies by term, so one is
     #: the default; fixed-content electives are always preferred first.
     max_topics_courses_per_term: int = Field(default=1, ge=0, le=8)
+    #: Phase 7.3: when set, the level's credit floor/maximum and workload
+    #: budget shape each term (anchors -> multi-requirement -> major ->
+    #: fillers); Pace then only sets the horizon. None keeps the earlier
+    #: behaviour (stateless requests, older saved plans).
+    workload_level: WorkloadLevel | None = None
+    filler_preference: FillerPreference = FillerPreference.NO_PREFERENCE
+    pins: list[CoursePin] = Field(default_factory=list, max_length=24)
 
     @model_validator(mode="after")
     def _target_within_max(self) -> "PlanningConstraints":
@@ -231,6 +270,21 @@ class RequirementContribution(BaseModel):
     provisional: bool = True
 
 
+class WorkloadEvidence(BaseModel):
+    """A course's workload WEIGHT and every input to it (Phase 7.3) - from
+    published SOC facts only; never a difficulty rating."""
+
+    weight: Decimal
+    credits: Decimal
+    contact_hours: Decimal | None
+    has_lab: bool
+    level: int
+    technical: str | None
+    components: dict[str, Decimal]
+    delivery: list[str] = Field(default_factory=list)
+    basis_term: str | None = None
+
+
 class PlannedCourse(BaseModel):
     course: str
     title: str
@@ -251,6 +305,24 @@ class PlannedCourse(BaseModel):
     #: Rutgers has not announced one (or the term is planned from history).
     is_topics_course: bool = False
     topics: list[str] = Field(default_factory=list)
+    #: Phase 7.3 (workload levels): the numbers behind the course's workload
+    #: weight, and why it is in this term - anchor | multi_requirement |
+    #: major | filler (None without a workload level).
+    workload: WorkloadEvidence | None = None
+    role: str | None = None
+    role_reason: str | None = None
+
+
+class TermWorkload(BaseModel):
+    """Phase 7.3: a term against its workload level - all numbers shown."""
+
+    level: WorkloadLevel
+    budget: Decimal
+    total: Decimal
+    credit_floor: Decimal
+    credit_max: Decimal
+    contact_hours: Decimal
+    notes: list[str] = Field(default_factory=list)
 
 
 class PlanTerm(BaseModel):
@@ -258,6 +330,7 @@ class PlanTerm(BaseModel):
     label: str
     courses: list[PlannedCourse] = Field(default_factory=list)
     credits: Decimal = Decimal(0)
+    workload: TermWorkload | None = None
 
 
 class PlanningIssue(BaseModel):

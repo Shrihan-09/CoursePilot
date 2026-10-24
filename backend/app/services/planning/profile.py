@@ -42,6 +42,9 @@ def profile_input(row: StudentPlanningProfile) -> PlanningProfileInput:
         "include_winter": row.include_winter,
         "schedule": row.schedule or {},
         "additional_goals": row.additional_goals or [],
+        "workload_level": row.workload_level,
+        "filler_preference": row.filler_preference or "no_preference",
+        "pins": row.pins or [],
     })
 
 
@@ -62,6 +65,9 @@ def confirm_profile(session: Session, student: Student, data: PlanningProfileInp
     row.include_winter = data.include_winter
     row.schedule = data.schedule.model_dump(mode="json")
     row.additional_goals = [g.model_dump(mode="json") for g in data.additional_goals]
+    row.workload_level = data.workload_level.value if data.workload_level else None
+    row.filler_preference = data.filler_preference.value
+    row.pins = [p.model_dump(mode="json") for p in data.pins]
     row.source = source
     row.confirmed_at = now
     session.flush()

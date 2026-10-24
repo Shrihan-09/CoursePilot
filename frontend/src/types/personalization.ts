@@ -26,6 +26,11 @@ export interface ScheduleDefaults {
 /** 7.2.4 academic strategy: ordering among VALID courses only. */
 export type Strategy = "balanced" | "major_first" | "requirements_first" | "unlock_future_options";
 
+/** Phase 7.3: per-term intensity and how fillers are chosen. */
+export type WorkloadLevel = "light" | "balanced" | "semi_rigorous" | "challenging";
+export type FillerPreference = "flexible" | "in_person" | "no_preference";
+export interface CoursePin { course: string; term_code: string }
+
 export interface PlanningProfileInput {
   pace: Pace;
   strategy?: Strategy;
@@ -37,6 +42,9 @@ export interface PlanningProfileInput {
   include_winter: boolean;
   schedule: ScheduleDefaults;
   additional_goals: AdditionalGoal[];
+  workload_level?: WorkloadLevel | null;
+  filler_preference?: FillerPreference;
+  pins?: CoursePin[];
 }
 
 export interface PlanningProfile extends PlanningProfileInput {
@@ -51,6 +59,9 @@ export interface PlanningProfileResponse {
   defaults: PlanningProfileInput;
   paces: { value: Pace; label: string; description: string }[];
   strategies?: { value: Strategy; label: string; description: string }[];
+  workload_levels?: { value: WorkloadLevel; label: string; description: string; credit_floor: string; credit_max: string; budget: string }[];
+  filler_preferences?: { value: FillerPreference; label: string; description: string }[];
+  workload_weight?: string;
   disclaimer: string;
 }
 

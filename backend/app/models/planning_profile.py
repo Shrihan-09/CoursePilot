@@ -41,6 +41,12 @@ class StudentPlanningProfile(Base, TimestampMixin):
     include_winter: Mapped[bool] = mapped_column(Boolean, default=False)
     schedule: Mapped[dict] = mapped_column(JSON)
     additional_goals: Mapped[list] = mapped_column(JSON)
+    #: Phase 7.3: per-term intensity (NULL: confirmed before 7.3 - pace behaviour),
+    #: how fillers are chosen, and courses pinned to terms (hard constraints).
+    workload_level: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    filler_preference: Mapped[str] = mapped_column(String(16), default="no_preference",
+                                                   server_default="no_preference")
+    pins: Mapped[list] = mapped_column(JSON, default=list)
     source: Mapped[str] = mapped_column(String(32), default="student_form")
     confirmed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 

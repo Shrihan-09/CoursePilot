@@ -1,6 +1,6 @@
 import { STATUS_ICON } from "@/components/academic/status";
 import { DAY_NAME, formatMinute } from "@/lib/academic/schedule-time";
-import { GOAL_KIND, PACE_LABEL, READINESS_CHECK, STRATEGY_LABEL } from "@/lib/academic/vocabulary";
+import { GOAL_KIND, PACE_LABEL, READINESS_CHECK, STRATEGY_LABEL, termLabel, WORKLOAD_LEVEL_LABEL } from "@/lib/academic/vocabulary";
 import { cn } from "@/lib/utils";
 import type { PlanningProfileInput, Readiness } from "@/types/personalization";
 
@@ -15,13 +15,26 @@ function minutes(hhmm: string): number {
   return (h ?? 0) * 60 + (m ?? 0);
 }
 
+const FILLER_LABEL: Record<string, string> = {
+  flexible: "Prefer flexible (asynchronous or online first)",
+  in_person: "Prefer in person",
+  no_preference: "No preference",
+};
+
 export function profileLines(p: PlanningProfileInput, programName?: string): [string, string][] {
   const lines: [string, string][] = [];
   if (programName) lines.push(["Program", programName]);
-  lines.push(["Planning pace", PACE_LABEL[p.pace] ?? p.pace]);
+  lines.push(["Graduation target", PACE_LABEL[p.pace] ?? p.pace]);
+  if (p.workload_level) {
+    lines.push(["Semester intensity", WORKLOAD_LEVEL_LABEL[p.workload_level] ?? p.workload_level]);
+    lines.push(["Filling the rest", FILLER_LABEL[p.filler_preference ?? "no_preference"] ?? String(p.filler_preference)]);
+    if (p.pins?.length) lines.push(["Pinned courses", p.pins.map((x) => `${x.course} (${termLabel(x.term_code)})`).join(", ")]);
+  }
   lines.push(["When several courses fit", STRATEGY_LABEL[p.strategy ?? "balanced"] ?? String(p.strategy)]);
-  lines.push(["Target semester load", `${p.target_credits_per_term} credits`]);
-  lines.push(["Maximum semester load", `${p.max_credits_per_term} credits, never more`]);
+  if (!p.workload_level) {
+    lines.push(["Target semester load", `${p.target_credits_per_term} credits`]);
+    lines.push(["Maximum semester load", `${p.max_credits_per_term} credits, never more`]);
+  }
   lines.push(["Courses per semester", `At most ${p.max_courses_per_term}`]);
   lines.push(["Summer", p.include_summer ? "Can include summer courses" : "Not planned"]);
   lines.push(["Winter", p.include_winter ? "Can include winter courses" : "Not planned"]);
