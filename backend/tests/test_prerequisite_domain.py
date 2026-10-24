@@ -100,11 +100,17 @@ def test_any_n_of_the_following() -> None:
     assert course_keys(r.expression) == ["01:615:305", "01:615:315", "01:615:325"]
 
 
-def test_minimum_course_level_is_unsupported_but_keeps_its_reference() -> None:
+def test_minimum_course_level_is_read_literally_and_keeps_its_reference() -> None:
+    """Phase 7.3 (product decision, 2026-10-23): same unit and subject, number >= named."""
+    from app.domain.prerequisites import MinimumCourse
+
     r = parse("Any Course EQUAL or GREATER Than: (01:640:112 PRECALCULUS PART II )")
-    assert r.classification is Classification.UNSUPPORTED_MINIMUM_COURSE_LEVEL
-    assert isinstance(r.expression, Unsupported)
+    assert r.classification is Classification.PARSED
+    assert r.expression == MinimumCourse("01:640:112")
     assert r.references == ("01:640:112",)
+    assert evaluate(r.expression, {"01:640:151": P}).status is SAT
+    assert evaluate(r.expression, {"01:640:103": P}).status is not SAT      # below 112
+    assert evaluate(r.expression, {"21:640:135": P}).status is not SAT      # another unit
 
 
 def test_mixed_and_or_without_grouping_is_not_guessed() -> None:
@@ -225,10 +231,10 @@ def test_at_least() -> None:
 
 
 def test_unsupported_is_never_satisfied() -> None:
-    r = parse("Any Course EQUAL or GREATER Than: (01:640:112 PRECALCULUS PART II )")
-    ev = evaluate(r.expression, {"01:640:112": P})
+    r = parse("(01:198:111 X  or 01:640:151 Y  and 01:640:152 Z )")
+    ev = evaluate(r.expression, {"01:198:111": P, "01:640:151": P, "01:640:152": P})
     assert ev.status is UNK
-    assert "unsupported:minimum_course_level" in ev.unknown_reasons
+    assert "unsupported:ambiguous_precedence" in ev.unknown_reasons
 
 
 def test_an_unmodeled_condition_caps_satisfied_at_unknown() -> None:

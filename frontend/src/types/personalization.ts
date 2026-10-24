@@ -23,8 +23,17 @@ export interface ScheduleDefaults {
   avoid_days: DayCode[];
 }
 
+/** 7.2.4 academic strategy: ordering among VALID courses only. */
+export type Strategy = "balanced" | "major_first" | "requirements_first" | "unlock_future_options";
+
+/** Phase 7.3: per-term intensity and how fillers are chosen. */
+export type WorkloadLevel = "light" | "balanced" | "semi_rigorous" | "challenging";
+export type FillerPreference = "flexible" | "in_person" | "no_preference";
+export interface CoursePin { course: string; term_code: string }
+
 export interface PlanningProfileInput {
   pace: Pace;
+  strategy?: Strategy;
   target_credits_per_term: string | number;
   max_credits_per_term: string | number;
   max_courses_per_term: number;
@@ -33,6 +42,11 @@ export interface PlanningProfileInput {
   include_winter: boolean;
   schedule: ScheduleDefaults;
   additional_goals: AdditionalGoal[];
+  workload_level?: WorkloadLevel | null;
+  filler_preference?: FillerPreference;
+  pins?: CoursePin[];
+  /** Phase 7.3: overrides the graduation target pace, e.g. "20281". */
+  expected_graduation_term?: string | null;
 }
 
 export interface PlanningProfile extends PlanningProfileInput {
@@ -46,6 +60,10 @@ export interface PlanningProfileResponse {
   profile: PlanningProfile | null;
   defaults: PlanningProfileInput;
   paces: { value: Pace; label: string; description: string }[];
+  strategies?: { value: Strategy; label: string; description: string }[];
+  workload_levels?: { value: WorkloadLevel; label: string; description: string; credit_floor: string; credit_max: string; budget: string }[];
+  filler_preferences?: { value: FillerPreference; label: string; description: string }[];
+  workload_weight?: string;
   disclaimer: string;
 }
 

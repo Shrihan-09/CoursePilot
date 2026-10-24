@@ -199,7 +199,8 @@ def test_all_requirements_satisfied_but_audit_is_indeterminate(cs_session) -> No
     student = _student(cs_session)
     for cs in CORE + MATH:
         _enroll(cs_session, student, cs)
-    for cs in ["01:198:314", "01:198:323", "01:198:334", "01:198:336", "01:198:345"]:
+    # 352, not 345: the department's elective list (2026-10-24) omits 345.
+    for cs in ["01:198:314", "01:198:323", "01:198:334", "01:198:336", "01:198:352"]:
         _enroll(cs_session, student, cs)
 
     result = _audit(cs_session, student)

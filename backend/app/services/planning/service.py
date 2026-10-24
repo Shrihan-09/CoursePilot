@@ -45,6 +45,23 @@ def latest_history_term(session: Session, student: Student) -> str | None:
                           .order_by(StudentCourse.term_code.desc()).limit(1))
 
 
+def pending_term_assumptions(session: Session, start_term: str,
+                             result: PlanResult) -> list[ScenarioAssumption]:
+    """Semesters in the plan's span that Rutgers publishes but CoursePilot has
+    not validly loaded: nothing in them was placed on history (7.2.4)."""
+    from app.services.planning.terms import label
+    from app.services.term_authority import TermAuthority, term_states
+
+    last = max((t.term_code for t in result.terms), default=start_term)
+    return [ScenarioAssumption(
+        code="target_term_data_pending",
+        message=(f"Rutgers has published {label(code)}, but CoursePilot hasn't loaded and "
+                 f"checked that schedule yet, so no course was placed in {label(code)} on "
+                 "past offerings. Regenerate once it is loaded."))
+        for code, state in sorted(term_states(session).items())
+        if state.authority is TermAuthority.PUBLISHED_PENDING and start_term <= code <= last]
+
+
 def generate_plan(session: Session, student: Student, *, start_term: str,
                   program_key_: str | None = None, catalog_year: str | None = None,
                   constraints: PlanningConstraints | None = None) -> PlanResult:
@@ -68,6 +85,7 @@ def generate_plan(session: Session, student: Student, *, start_term: str,
 
     result = PlanningEngine(session, constraints).plan(student, version, target, start_term,
                                                        assumptions)
+    result.assumptions += pending_term_assumptions(session, start_term, result)
     if session.new or session.dirty or session.deleted:
         session.rollback()
         raise ScenarioWouldWrite("plan generation attempted to modify state")

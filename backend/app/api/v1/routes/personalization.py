@@ -24,12 +24,18 @@ from pydantic import BaseModel, Field
 from app.api.security import Principal, enforce_request_rate_limit
 from app.api.v1.routes.student import _resolve, _unlinked
 from app.db.session import get_sync_sessionmaker
-from app.domain.planning import Pace
-from app.domain.planning_profile import DEFAULT_MAX_TERMS, PlanningProfileInput
+from app.domain.planning import FillerPreference, Pace, Strategy, WorkloadLevel
+from app.domain.planning_profile import (
+    DEFAULT_MAX_TERMS,
+    GRADUATION_TARGET_TERMS,
+    PlanningProfileInput,
+)
 from app.domain.schedule import SectionChoice
+from app.services.planning.engine import GRADUATION_SEMESTERS
 from app.services.planning.profile import confirm_profile, get_profile, profile_input
 from app.services.planning.readiness import readiness
 from app.services.planning.terms import label as term_label
+from app.services.planning.workload import LEVELS
 from app.services.scheduling.current import (
     CurrentScheduleError,
     NotInProgress,
@@ -45,15 +51,51 @@ router = APIRouter(prefix="/student", tags=["personalization"])
 
 COURSE = r"^\d{2}:\d{3}:\d{3}$"
 
+#: Phase 7.3: Pace is the GRADUATION TARGET ("When do you want to graduate?")
+#: and sets only the plan's horizon; the workload level sets each term's load.
+#: Stored values are unchanged (balanced / finish_earlier / lighter).
 PACES = [
-    {"value": Pace.BALANCED.value, "label": "Balanced",
-     "description": "Aim for your target load with even semesters. CoursePilot avoids leaving "
-                    "a nearly empty last semester, but doesn't rush you."},
-    {"value": Pace.LIGHTER.value, "label": "Lighter",
-     "description": "Never go above your target load. Taking more semesters is fine."},
-    {"value": Pace.FINISH_EARLIER.value, "label": "Finish earlier",
-     "description": "Fill semesters toward your maximum so the currently modeled requirements "
-                    "are complete sooner. Only chosen by you."},
+    {"value": pace.value, "label": label,
+     "description": (f"Graduate within {GRADUATION_SEMESTERS[pace]} Fall/Spring semesters, counted "
+                     "from your first semester at Rutgers. If the remaining requirements don't "
+                     "fit, the plan says so - it never silently pushes graduation later.")}
+    for pace, label in ((Pace.BALANCED, "On time"), (Pace.FINISH_EARLIER, "Early"),
+                        (Pace.LIGHTER, "No rush"))]
+
+#: Phase 7.3: per-term intensity. Numbers are CoursePilot settings, shown as is.
+WORKLOAD_LEVELS = [
+    {"value": level.value, "label": label,
+     "credit_floor": str(LEVELS[level][0]), "credit_max": str(LEVELS[level][1]),
+     "budget": str(LEVELS[level][2]),
+     "description": (f"{LEVELS[level][0]}-{LEVELS[level][1]} credits a semester, workload up "
+                     f"to {LEVELS[level][2]}.")}
+    for level, label in ((WorkloadLevel.LIGHT, "Light"), (WorkloadLevel.BALANCED, "Balanced"),
+                         (WorkloadLevel.SEMI_RIGOROUS, "Semi-rigorous"),
+                         (WorkloadLevel.CHALLENGING, "Challenging"))]
+FILLER_PREFERENCES = [
+    {"value": FillerPreference.FLEXIBLE.value, "label": "Prefer flexible",
+     "description": "Asynchronous or online sections first, when a course has them."},
+    {"value": FillerPreference.IN_PERSON.value, "label": "Prefer in person",
+     "description": "In-person sections first."},
+    {"value": FillerPreference.NO_PREFERENCE.value, "label": "No preference",
+     "description": "Delivery mode doesn't matter."},
+]
+WORKLOAD_WEIGHT_TEXT = (
+    "Workload weight = credits + 0.25 x weekly contact hours above the credits + 1 for a lab "
+    "+ 0.5 x (course level - 1) + 1 if technical (your major's subject, math, or a Core "
+    "natural science). Computed from the Rutgers Schedule of Classes; not a difficulty rating.")
+
+#: Academic strategy (7.2.4): an ordering preference among courses CoursePilot
+#: has already checked are valid. Never a shortcut around a requirement.
+STRATEGIES = [
+    {"value": Strategy.BALANCED.value, "label": "Balanced",
+     "description": "Mix your major, school/Core and other requirements."},
+    {"value": Strategy.MAJOR_FIRST.value, "label": "Major first",
+     "description": "When several courses fit, take your major's requirements earlier."},
+    {"value": Strategy.REQUIREMENTS_FIRST.value, "label": "School/Core first",
+     "description": "When several courses fit, finish school and Core requirements earlier."},
+    {"value": Strategy.UNLOCK_FUTURE_OPTIONS.value, "label": "Keep options open",
+     "description": "When several courses fit, prefer ones that many later courses build on."},
 ]
 
 
@@ -68,6 +110,10 @@ class ProfileResponse(BaseModel):
     profile: ProfileView | None
     defaults: PlanningProfileInput
     paces: list[dict]
+    strategies: list[dict] = STRATEGIES
+    workload_levels: list[dict] = WORKLOAD_LEVELS
+    filler_preferences: list[dict] = FILLER_PREFERENCES
+    workload_weight: str = WORKLOAD_WEIGHT_TEXT
     #: Planning settings are CoursePilot's, never Rutgers credit-load policy.
     disclaimer: str = ("These are your CoursePilot planning settings, not Rutgers credit-load "
                        "policy. Check your school's rules before planning an overload.")
@@ -130,7 +176,9 @@ def _view(row) -> ProfileView:
     data = profile_input(row)
     return ProfileView(**data.model_dump(), version=row.version, confirmed_at=row.confirmed_at,
                        source=row.source,
-                       effective_max_terms=data.max_terms or DEFAULT_MAX_TERMS[data.pace])
+                       effective_max_terms=data.max_terms or (
+                           GRADUATION_TARGET_TERMS if data.workload_level
+                           else DEFAULT_MAX_TERMS)[data.pace])
 
 
 async def _run(work, event: str):
@@ -159,7 +207,8 @@ async def get_planning_profile(principal: Principal = Depends(enforce_request_ra
                 return None
             row = get_profile(session, student)
             return ProfileResponse(profile=_view(row) if row else None,
-                                   defaults=PlanningProfileInput(), paces=PACES)
+                                   defaults=PlanningProfileInput(
+                                       workload_level=WorkloadLevel.BALANCED), paces=PACES)
     out = await _run(work, "planning_profile_get_failed")
     if out is None:
         raise _unlinked()

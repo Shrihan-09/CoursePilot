@@ -12,7 +12,11 @@ export type OfferingEvidenceKind =
   | "not_offered_in_term"
   | "historically_offered_in_season"
   | "offered_in_other_seasons_only"
+  | "target_term_data_pending"
   | "no_offering_evidence";
+
+/** 7.2.4: may history speak for the target term? (services/term_authority.py) */
+export type TermAuthority = "ready" | "published_pending" | "not_published" | "unchecked";
 
 export type PlanSeverity = "blocker" | "needs_confirmation" | "warning";
 
@@ -28,7 +32,10 @@ export type PlanReason =
   | "historically_offered_in_season"
   | "rules_from_earlier_term"
   | "selected_by_canonical_tie_break"
-  | "ranked_by_requirement_coverage";
+  | "ranked_by_requirement_coverage"
+  | "requires_math_placement"
+  | "prerequisites_met_by_placement"
+  | "prerequisites_need_confirmation";
 
 export type PlanStatus = "covers_all_requirements" | "partial" | "nothing_to_plan";
 
@@ -60,6 +67,11 @@ export interface OfferingEvidence {
   most_recent_term: string | null;
   rules_term: string | null;
   target_term_coverage: string | null;
+  target_term_authority?: TermAuthority;
+  target_term_checked_at?: string | null;
+  /** Phase 7.3: a fact - offered in `same_season_offered` of the last `same_season_loaded` same-season terms. */
+  same_season_offered?: number;
+  same_season_loaded?: number;
 }
 
 export interface ConditionalDependency {
@@ -92,6 +104,35 @@ export interface PlannedCourse {
   corequisite_group: string[];
   unlocks: string[];
   interchangeable_alternatives: number;
+  /** Phase 7.3: generic topics course; `topics` = this term's section subtitles. */
+  is_topics_course?: boolean;
+  topics?: string[];
+  /** Phase 7.3 workload levels: the numbers behind the weight, and why it's in this term. */
+  workload?: WorkloadEvidence | null;
+  role?: "anchor" | "multi_requirement" | "major" | "filler" | null;
+  role_reason?: string | null;
+}
+
+export interface WorkloadEvidence {
+  weight: string;
+  credits: string;
+  contact_hours: string | null;
+  has_lab: boolean;
+  level: number;
+  technical: string | null;
+  components: Record<string, string>;
+  delivery: ("async" | "online" | "in_person")[];
+  basis_term: string | null;
+}
+
+export interface TermWorkload {
+  level: string;
+  budget: string;
+  total: string;
+  credit_floor: string;
+  credit_max: string;
+  contact_hours: string;
+  notes: string[];
 }
 
 export interface PlanTerm {
@@ -99,6 +140,7 @@ export interface PlanTerm {
   label: string;
   courses: PlannedCourse[];
   credits: string;
+  workload?: TermWorkload | null;
 }
 
 export interface PlanningIssue {
@@ -137,6 +179,10 @@ export interface PlanResult {
   assumptions: ScenarioAssumption[];
   observations: PlanObservation[];
   metadata: PlanMetadata;
+  /** Phase 7.3: the stated math placement the plan relied on. */
+  placement?: { course: string; title: string | null; source_url: string } | null;
+  /** Phase 7.3: the last semester the plan may use, and why. */
+  graduation_target?: { term_code: string; basis: string; entry_term: string | null; semesters: number | null } | null;
 }
 
 export type StaleReason =
@@ -146,7 +192,9 @@ export type StaleReason =
   | "rutgers_data_changed"
   | "engine_updated"
   | "start_term_passed"
-  | "planning_preferences_changed";
+  | "planning_preferences_changed"
+  | "offering_assumption_contradicted"
+  | "target_term_published";
 
 export interface BlockedCourse {
   course: string;

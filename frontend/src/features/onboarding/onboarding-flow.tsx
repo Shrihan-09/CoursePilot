@@ -14,13 +14,16 @@ import { cn } from "@/lib/utils";
 import type { Onboarding } from "@/types/onboarding";
 
 import { ManualEntry } from "./manual-entry";
+import { PlacementStep } from "./placement-step";
 import { ProgramStep } from "./program-step";
 import { TranscriptReview, TranscriptUpload } from "./transcript";
+import { WorkloadStep } from "./workload-step";
 
-type View = "welcome" | "program" | "history" | "transcript" | "review" | "manual" | "done";
+type View = "welcome" | "program" | "history" | "transcript" | "review" | "manual" | "placement" | "workload" | "done";
 
 /**
- * Welcome -> program -> transcript OR manual -> review -> confirm -> complete.
+ * Welcome -> program -> transcript OR manual -> review -> confirm -> (optional) math
+ * placement -> (optional) workload -> complete.
  * The server's onboarding state decides where a returning student resumes;
  * this component only navigates between the steps the API allows.
  */
@@ -52,6 +55,8 @@ export function OnboardingFlow() {
     { key: ["welcome", "program"], label: "Program" },
     { key: ["history", "transcript", "manual"], label: "Courses" },
     { key: ["review"], label: "Review" },
+    { key: ["placement"], label: "Placement" },
+    { key: ["workload"], label: "Workload" },
     { key: ["done"], label: "Finish" },
   ];
   const stepIndex = view ? steps.findIndex((s) => s.key.includes(view)) : 0;
@@ -144,7 +149,7 @@ export function OnboardingFlow() {
                             body="Add each course with its term and grade."
                             onClick={() => setView("manual")} />
               </div>
-              <Button variant="link" onClick={() => setView("done")}>
+              <Button variant="link" onClick={() => setView("placement")}>
                 I haven&apos;t taken any courses yet
               </Button>
             </section>
@@ -171,7 +176,7 @@ export function OnboardingFlow() {
               importId={importId}
               onConfirmed={async () => {
                 await refresh();
-                setView("done");
+                setView("placement");
               }}
               onDiscarded={async () => {
                 setImportId(null);
@@ -190,11 +195,22 @@ export function OnboardingFlow() {
               <ManualEntry />
               <div className="flex justify-between">
                 <Button variant="ghost" onClick={() => setView("history")}>Back</Button>
-                <Button variant="primary" onClick={() => setView("done")}>
+                <Button variant="primary" onClick={() => setView("placement")}>
                   Done adding <ArrowRight aria-hidden className="size-4" />
                 </Button>
               </div>
             </section>
+          )}
+
+          {view === "placement" && (
+            <PlacementStep initial={status.data?.profile?.math_placement} onDone={async () => {
+              await refresh();
+              setView("workload");
+            }} />
+          )}
+
+          {view === "workload" && (
+            <WorkloadStep onDone={() => setView("done")} />
           )}
 
           {view === "done" && (

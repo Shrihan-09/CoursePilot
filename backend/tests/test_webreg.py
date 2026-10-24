@@ -185,3 +185,20 @@ def test_layout_extraction_isolated_process():
     assert len(parse_schedule(result.pages, result.layout)) == 1
     with pytest.raises(ExtractionFailed, match="UNSUPPORTED_LAYOUT"):
         extractor(build_schedule_pdf(raster_only=True))
+
+
+def test_committed_synthetic_webreg_fixture_matches_the_real_layout_kind():
+    """Phase 7.3: the committed fixture is SYNTHETIC (invented data) but copies
+    the real browser-saved print layout, element for element."""
+    import pathlib
+
+    from .support.synthetic_webreg import realistic_objects
+
+    fixture = (pathlib.Path(__file__).parent / "fixtures" / "synthetic"
+               / "webreg_schedule.SYNTHETIC.pdf")
+    assert fixture.read_bytes() == build_schedule_pdf(realistic_objects())   # regenerable
+    result = extract_layout(fixture.read_bytes(), 20, 200000)
+    rows = parse_schedule(result[1], result[3])
+    assert [(r["course_string"], r["section_number"], r["index_number"]) for r in rows] == [
+        ("01:999:101", "01", "91234"), ("01:999:102", "02", "91235"),
+        ("01:999:103", "03", "91236"), ("01:999:150", "90", "91250")]

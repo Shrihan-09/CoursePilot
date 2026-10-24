@@ -285,6 +285,93 @@ SELECT count(*) FROM (
   GROUP BY section_id HAVING count(DISTINCT campus_name) > 1) x;  -- 830
 ```
 
+## 1e. Topics courses, cross-listings and the CS elective list (Phase 7.3, 2026-10-23)
+
+Investigated after a Spring 2027 plan listed 01:198:442 "TOPICS IN COMPUTER
+SCIENCE" and 01:198:443 "TPCS IN COMPUTER SCI" in the same term.
+
+**Root cause of that plan: Spring 2027 was not in the term registry.** It
+was loaded with the manual CLI (`--stage both --all`), which never wrote
+`rutgers_term`; its source is `partial`, so `term_authority` called the term
+UNCHECKED and history filled it - 443 (offered Spring 2025/2026, *not*
+Spring 2027) was placed there. Fixed: a full manual load now registers and
+validates the term through the watcher's own `record_probe`/`ingest_term`
+(`term_discovery.register_full_load`); Spring 2027 re-registered from the
+archive (no network): READY, coverage still `partial`.
+
+**Rule since 2026-10-23: a published term places only what it lists.** A term
+is published once CoursePilot holds a non-empty SOC payload for it - whatever
+its coverage, registry row or not (`OfferingIndex.published`). In that term
+only `confirmed_in_term` courses are placed; a course it omits is
+`not_offered_in_term`, shown as "not listed for <term> yet", and may still be
+planned for a LATER, unpublished term on history, labelled "historically
+offered in <season> - not yet confirmed". Historical evidence is used only
+for unpublished terms (e.g. Fall 2027). 443's evidence in the reported plan:
+`historically_offered_in_season`, `target_term_coverage: partial`,
+`target_term_authority: unchecked`, same-season terms 20211/20241/20251/20261,
+rules from 20261 - exactly the gap this rule closes.
+
+**Not true duplicates.** 442, 443, 444 and 445 are distinct course numbers -
+separate topics "shells" (different credits: 442 is 4, 443/444/445 are 3),
+each carrying its own per-term topic in the section subtitle:
+
+| term | course | topic (section subtitle) | cross-listed with |
+|---|---|---|---|
+| Spring 2021 | 443 | Character Animation | 16:198:598 |
+| Fall 2022 | 443 | Quantum Computing: Programs and Systems | 16:198:583 |
+| Fall 2022 | 445 | Algorithms in the Wild | - |
+| Spring 2024 | 443 | Quantum Computing: Programs and Systems | - |
+| Spring 2025 | 443 | Economics and Computation | 16:198:673 |
+| Spring 2025 | 444 | Generative AI for Visual Computing | 16:198:671 |
+| Spring 2025 | 445 | Adv Topics in CogSci: Minds, Machines & ... | 01:185:416 |
+| Spring 2026 | 442 | Introduction to Cryptography | - |
+| Spring 2026 | 443 | (none published) | - |
+| Spring 2027 | 442 | Introduction to Cryptography | - |
+
+**True duplicates exist through cross-listing.** In Fall 2026 01:198:417 and
+16:198:545 are one class under two numbers, and the CS elective query admits
+both. The planner now never places a course whose cross-listed twin (in any
+loaded term's sections) is already planned, passed or in progress; a test
+fails on any plan holding a course twice or both twins.
+
+**Topics shown from the subtitle.** A generic topics course (SOC title
+matching `TOPICS?`/`TPCS?` - 580 loaded courses) shows that term's distinct
+section subtitles ("Topics: Introduction to Cryptography"), or "Topic not yet
+announced" when the term publishes none or is planned from history. At most
+one topics course per term by default (`max_topics_courses_per_term`, a
+planner preference); fixed-content courses are placed first.
+
+**Repeatability: not stated.** The 2026-2027 SAS catalog entry for 442 reads
+"Topics in Computer Science (3-4) Advanced topics in computer science. Topics
+vary from year to year according to the interests of students and faculty."
+(445 is identical, 3 credits); 443 and 444 are not in the catalog (2025-2026
+or 2026-2027). No SOC course/section/unit note on 442-445 mentions repeating.
+The department electives page states repeat limits only for 493/494 ("There
+is no restriction on the number of times 493/494 can be taken. However, at
+most one of a student's electives may be one of these courses."). CoursePilot
+therefore makes no repeat assumption: each course number counts once (the
+existing audit behaviour), and different-topic repeats of one number are an
+open question for CS advising - not guessed.
+
+**CS electives vs the department list.** Source:
+<https://www.cs.rutgers.edu/academics/undergraduate/electives> (read
+2026-10-23; undated), "A CS Advisor will help you make selections from this
+list". Computer Science entries: 210, 213, 214, 314, 323, 324, 334, 336, 352,
+411, 416, 417, 419, 424, 425, 428, 431, 437, 439, 440, **442, 443, 444, 445**,
+452, 460, 461, 462, 493, 494; plus Electrical Engineering (14:332:376, 423,
+424, 443, 451, 452, 453, 456, 472), Mathematics (01:640:338, 348, 354, 428,
+454, 461), Philosophy (01:730:315, 407, 408, 329, 424), Linguistics
+(01:615:441) and Statistics (01:960:384, 463, 476, 486).
+**01:198:345 (Algorithms in Society) is NOT on it.** Our encoding
+(`sas-198-ba.json` CS_ELECTIVES: `eligible_course_query` subject 198,
+number >= 300, from the catalog prose "at least two must be computer science
+courses at the 300 level or above") counts 345, graduate 16:198 courses and
+any other 198 course >= 300 not listed, and cannot count 210/213/214 or the
+EE/Math/Philosophy/Linguistics/Statistics options. Replaced on 2026-10-24 (product decision): both CS programs' CS_ELECTIVES now list exactly
+these 55 courses, keeping the catalog's constraints (at most two outside CS, at least two CS
+courses at 300+); "at most one 493/494" is recorded as not yet modeled. CS B.A. moved to
+`needs_rereview` (pending human review) as any definition change does.
+
 ### Section subtitle is a topic label, not a title override
 
 Present on 9.6% of sections (`VOICE`, `VIOLIN`, `PIANO`,
@@ -327,6 +414,138 @@ No substitute term was ingested.
 Confirms the term digits (0=Winter, 1=Spring, 7=Summer, 9=Fall) against real
 responses; previously only `9` had been verified. Summer and Winter are an
 order of magnitude smaller than Fall/Spring.
+
+### 1d. Spring 2027 published; historical terms queryable (Phase 7.3, 2026-10-22)
+
+**Spring 2027** (`2027/1`) was still `[]` on 2026-10-14, then published:
+4,520 courses / 11,233 sections on 2026-10-19 and 4,546 / 11,276 on
+2026-10-22 - still growing, so it is loaded with coverage `partial`. The
+structural check against Fall 2026 found no new or missing fields, no unknown
+`meetingDay`, the same restriction and `coreCodes` shapes, and 4 meetings with
+end <= start (Fall 2026: 3 - a known source anomaly).
+
+**History.** Probed backwards one term at a time (3 s apart, archived): every
+New Brunswick term from **Spring 2021 (20211) through Summer 2025 (20257)**
+answers with data; **Winter 2021 (20210) and everything earlier return `[]`**.
+
+| Season | Queryable terms | Courses per term |
+|---|---|---|
+| Fall | 2021, 2022, 2023, 2024 (+ loaded 2025, 2026) | 4,367-4,503 |
+| Spring | 2021, 2022, 2023, 2024, 2025 (+ loaded 2026, 2027) | 4,486-4,616 |
+| Summer | 2021, 2022, 2023, 2024, 2025 (+ loaded 2026) | 1,094-1,250 |
+| Winter | 2022, 2023, 2024, 2025 (+ loaded 2027) | 110-127 |
+
+All 18 were loaded (course stage: offerings + prerequisites) with coverage
+`complete` and the note "fetched after the term ended"; sections for finished
+terms were not loaded (offering evidence uses offerings; the archives allow it
+later).
+
+**What the history buys** (`scripts/measure_offering_evidence.py`; the 801
+requirement-pool courses of the loaded programs, before vs after):
+
+| Target (unpublished) | Kind | Before (2 same-season terms) | After (6 Falls / 7 Springs) |
+|---|---|---|---|
+| Fall 2027 | historically offered | 696 | 736 |
+| | other seasons only | 105 | 65 |
+| Spring 2028 | historically offered | 538 | 646 |
+| | other seasons only | 263 | 155 |
+
+484 courses now ran in at least 3 of the last 6 Falls (missing at most one);
+before, "2 of 2" was the strongest possible. 87 further pool courses exist only
+in older terms. Caveat: a course seen in 1 of 6 Falls is still "historically
+offered" (engine semantics unchanged; the count is now shown to the student).
+Planning: right after the backfill, the two fresh-student "large" benchmark
+plans placed fewer courses (34->31, 32->29). Cause: a historical placement took
+its prerequisite rules from the latest SAME-SEASON offering, so with six Falls
+loaded, 13 placed courses per plan were checked against 2021-2024 rules (e.g.
+01:050:240 under Fall 2023, which published no prerequisite; its current rule
+requires College Writing). Fixed: rules now come only from each course's most
+recent loaded term; history is offering evidence only (`offerings.py`,
+`engine._load_prerequisites`). Measured with `benchmark_planning.py 3 20279`
+on this data, old rule -> fixed rule:
+
+| Case | Placed | SQL statements | p50 ms |
+|---|---|---|---|
+| small (dev student, CS) | 14 -> 11 (covers all -> partial) | 352 -> 321 | 1,879 -> 1,658 |
+| what-if sas-220 | 11 -> 5 | 652 -> 600 | 1,189 -> 923 |
+| what-if sas-640 | 21 -> 18 (covers all -> partial) | 440 -> 449 | 2,837 -> 2,534 |
+| large sas-198 (nothing taken) | 31 -> 23 | 757 -> 572 | 16,480 -> 3,725 |
+| large sas-640 (nothing taken) | 29 -> 22 | 781 -> 592 | 16,305 -> 3,059 |
+
+The fixed rule places FEWER courses, honestly: the newest rows (mostly Spring
+2027) carry conditions the Fall 2026 rows lacked - 01:640:115 an uninterpreted
+`placement` condition, 01:640:025 a section-note co-requisite ("must register
+for 640:001:20") - so the remedial math chain 001->025->026->115->135/151->152
+needs confirmation for a student with no placement record, and stops. The
+`plan_quality.py` "nothing yet" plans go from 32-34 courses in 7-10 terms
+(6.6-17.7 s) to 23 courses in 5-8 terms (2.4-4.4 s). The offering threshold
+(1 of N same-season terms counts as historical) is unchanged.
+
+**Follow-up (Phase 7.3, same day): both blockers resolved, not worked around.**
+
+* *Section notes are not co-requisites.* "MUST REGISTER FOR 640:001:20",
+  "COREQ: 640:001:14" and "AUTO-REGISTERED FOR 01:160:101:E1" name a SECTION:
+  they tie one section's registration to another section. They are now
+  `section_constraint` clauses (`app.domain.corequisites`, parser v3), dropped
+  from `course_corequisite`; the Schedule Engine reads section notes itself.
+  `scripts/reload_corequisites.py` re-read all 24 archived terms (archive hash
+  = loaded payload, so no new provenance): 1-3 rows removed per term; a second
+  run changes nothing.
+* *The placement condition is a season pattern, not a format change.*
+  01:640:115's sections say "PREREQ: 640:026 OR PLACEMENT" in Spring 2021,
+  2024, 2025, 2026 and 2027; Spring 2022/2023 and every Fall, Summer and Winter
+  term carry no such note (the course prerequisite text is identical in all).
+  Only 01:640:111 and 01:640:115 name placement among math courses.
+* *Math placement on the profile* (`student.math_placement`, migration
+  `73placement01`, `PUT /api/v1/student/placement`, optional onboarding step):
+  the course the student is placed into. Revised 2026-10-23 (decisions 1-2):
+  - **Source.** Rutgers-NB Mathematics Department, "Placement Advice"
+    (<https://math.sas.rutgers.edu/academics/undergraduate/placement-advice/1061-placement-advice>,
+    read 2026-10-23, undated): "Students may not enroll in any mathematics
+    course unless they meet the prerequisites by suitable placement - that
+    is, by the placement test, an appropriate AP Calculus exam score, or with
+    a grade of C or better in an approved transferred course." Placement is
+    thus a way to MEET prerequisites; the page does not say it earns credit.
+    (A faculty page, <https://sites.math.rutgers.edu/~hirsch/mpt.html>,
+    undated and not department policy, adds that a placement names "the
+    highest math course in which they may enroll".)
+  - **Placed into X** (640 only): X's prerequisites, and those of every course
+    below X in its published prerequisite closure, are met by placement -
+    labelled "met by placement (source: <url>)". Nothing below X is planned to
+    reach X. Placement never satisfies a degree requirement: X is still
+    planned. Chemistry/language placement unchanged.
+  - **No placement stated**, rule "<prereq> OR PLACEMENT": met by the
+    prerequisite (history or plan) -> no flag. Unmet -> UNKNOWN
+    `requires_math_placement`; the planner plans the published path, and
+    places the course flagged only if that path cannot be planned.
+  - Plans carry the placement they relied on ("Based on your placement into
+    ... (151)") so a wrong entry is visible; changing it marks saved plans out
+    of date (academic fingerprint).
+* *01:940:326 rewrite* (one row, Fall 2026): raw `preReqNotes` "(01:940:202
+  ...) OR (01:940:204 ...)", section note "PREREQ: 940:202 OR 940:204". Parsed
+  tree unchanged (`any_of[202, 204]`); only `interpreted_conditions` changed,
+  `uninterpreted: ["other"]` -> `[]`. The note restates exactly the published
+  prerequisite, so it adds no condition: the new row is correct. The old one
+  came from a pre-commit build of condition parser "2" (row dated 2026-10-07
+  05:22 UTC, before 73af38e) - same version label, different output. No
+  parser regression.
+
+Back to back on the same machine and hour (`benchmark_planning.py 3 20279`;
+"before" = commit 8d74e2a on a restore of the pre-change database):
+
+| Case | Placed | SQL statements | p50 ms |
+|---|---|---|---|
+| small (dev student, CS) | 11 -> 11 | 321 -> 321 | 2,569 -> 2,563 |
+| what-if sas-220 | 5 -> 10 | 600 -> 986 | 2,283 -> 4,021 |
+| what-if sas-640 | 18 -> 18 | 449 -> 449 | 4,052 -> 4,481 |
+| large sas-198 (nothing taken) | 23 -> 30 | 572 -> 589 | 6,459 -> 7,112 |
+| large sas-640 (nothing taken) | 22 -> 28 | 592 -> 578 | 5,492 -> 8,255 |
+
+`plan_quality.py` "nothing yet": 23 courses in 5-8 terms (5.6-7.8 s) -> 30-31
+courses in 7-10 terms (7.1-9.6 s). sas-220 at 10, not the original 11: the
+missing course is 01:220:397, whose Fall listings publish no prerequisite but
+whose latest (Spring 2026) listing requires 220:102 & 103 with a C - the
+latest-term rule now applies it.
 
 ### Rutgers REUSES registration indexes across terms — verified
 
@@ -540,7 +759,7 @@ Recorded so nobody re-investigates them:
 - [ ] Authoritative source for course descriptions
 - [ ] Authoritative source for degree requirements, per school
 - [ ] Confirm the full term-code and campus-code sets
-- [ ] Whether historical terms remain queryable
+- [x] Whether historical terms remain queryable - yes, back to Spring 2021 (§1d, 2026-10-22)
 
 ---
 
@@ -682,12 +901,17 @@ A flat course -> requirement table cannot represent any of the last five.
 * **The designated elective list is NOT published in the catalog.** The prose
   defers to "a computer science adviser or the departmental website". Only the
   constraints the prose states directly are encoded; non-CS elective options
-  are deliberately absent rather than invented.
+  are deliberately absent rather than invented. **Checked 2026-10-23 against
+  the department page** - see "CS electives vs the department list" below:
+  the encoding (`subject 198, number >= 300`) admits 01:198:345 and graduate
+  16:198 courses the department does not list, and misses 210/213/214 and the
+  related-discipline options. Not changed (a definition change needs review).
 * Grade rules, exclusions, and residency are recorded in the fixture under
   `rules_not_yet_modeled` but are **not evaluated** by the engine.
 * Core Curriculum requirements are not yet ingested.
-* One program (CS B.A.) only. The B.S. variant is modeled in the prose but not
-  encoded.
+* The CS B.S. was encoded on 2026-10-23 (`sas-198-bs.json`, PENDING human review):
+  requirements 1-2 as the B.A., seven electives (at most two outside CS), and one
+  physics or chemistry sequence as the prose lists them. Quote checks 9/9.
 * No official terms of use located for the catalog site.
 
 ---
@@ -966,3 +1190,17 @@ used - these are public advising pages.
    2026 - but it is not a catalog-wide extract.
 5. `ITR`/`WC` retirement is inferred from absence, not from a Rutgers
    statement of retirement.
+
+## 1f. SAS Core attaches at the school level (2026-10-24)
+
+SAS Core (`sas-core.json`) is loaded once as the SAS school requirement set for 2026-2027
+(`school_requirement_set_version`, 18 requirements, eligibility from SOC `coreCodes` of each
+course's latest record Fall 2025 - Spring 2027: 1,230 certifications, 799 courses). Every SAS
+program composes it through its school (`app.services.academic_context.composed_requirements`
+matches school AND catalog year); no program embeds a copy. The legacy embedded copies on
+CS B.A. and Math B.A. (13 rows each, an older Core without separate QQ/QR or allocation
+scopes) were removed so nothing is counted twice. Programs of other schools (Engineering,
+Business, SEBS) never compose SAS Core; their own general education is a later prompt.
+Effect on the development data: all 18 sampled plans changed (7 majors that had no Core now
+plan it; CS B.A. and Math B.A. plan fewer separate Core courses because the current
+definition lets one certified course serve allowed areas together).

@@ -1,0 +1,590 @@
+{
+  "_README": [
+    "MANUALLY CURATED from official Rutgers catalog prose (Phase 7.3, 2026-10-23), the",
+    "B.S. option of the same Computer Science major page as sas-198-ba.json. Requirements",
+    "1 and 2 are the B.A.'s, copied node for node; category 3 asks SEVEN electives; the",
+    "science requirement is encoded as one choice among the sets the prose lists.",
+    "",
+    "Same KNOWN GAP as the B.A.: the designated elective list is not in the catalog",
+    "(the department page lists it; see docs/DATA_SOURCES.md section 1e). PENDING human",
+    "review - plans for this program always say so."
+  ],
+  "source": {
+    "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/computer-science-198",
+    "catalog_year": "2026-2027",
+    "retrieved_at": "2026-09-13",
+    "kind": "rutgers_official_catalog",
+    "curation_status": "curated_from_prose"
+  },
+  "school": {
+    "code": "SAS",
+    "name": "School of Arts and Sciences",
+    "campus_code": "NB"
+  },
+  "review_questions": [
+    "Category 3 for the B.S.: the B.A. text says 'at least two must be computer science courses at the 300 level or above'. The B.S. sentence repeats only the 'no more than two outside' limit. This encoding KEEPS the 300-level minimum (2) for the seven electives - confirm it applies to the B.S.",
+    "The physics list names '01:750:193 and 194' twice ('... or 01:750:193 and 194 ... or 01:750:193, 194'). Encoded once. Confirm no other course was meant.",
+    "Chemistry 01:160:171 appears in all three chemistry options; each option is encoded as its own all-of set.",
+    "Same elective-list gap and graduate-course question as the B.A. (sas-198-ba.json review_questions).",
+    "CS_ELECTIVES now lists the department's designated electives (2026-10-23) instead of the {subject 198, number >= 300} query. Confirm the list and that it applies to catalog year 2026-2027 (the department page is undated)."
+  ],
+  "curation": {
+    "curated_by": "manual encoding, Phase 7.3 (Claude Code session, 2026-10-23)",
+    "extractor_version": "manual-encoding/1",
+    "catalog_page": "/schools/sas/program-listing/computer-science-198",
+    "candidate_key": "major"
+  },
+  "program": {
+    "code": "198",
+    "name": "Computer Science",
+    "degree_type": "BS"
+  },
+  "program_version": {
+    "catalog_year": "2026-2027",
+    "total_credits_min": 67,
+    "total_credits_max": 72,
+    "source_prose": "The B.A. option requires 51-55 credits (depending on 3-credit or 4-credit elective options); the B.S. option requires 67-72 credits."
+  },
+  "requirements": [
+    {
+      "code": "CS_BS",
+      "name": "Computer Science B.S. Major",
+      "requirement_type": "all_of",
+      "sort_order": 0,
+      "parent": null,
+      "source_prose": "The basic major, leading to a bachelor of arts (B.A.) degree, consists of: 1) six required courses in computer science, 01:198:111, 112, 205, 206, 211, and 344; 2) three courses in mathematics, 01:640:151-152 and 01:640:250; and 3) five electives from a designated list of courses in computer science and related disciplines."
+    },
+    {
+      "code": "CS_CORE",
+      "name": "Required Computer Science Courses",
+      "requirement_type": "all_of",
+      "sort_order": 0,
+      "parent": "CS_BS",
+      "source_prose": "six required courses in computer science, 01:198:111, 112, 205, 206, 211, and 344"
+    },
+    {
+      "code": "CS_111",
+      "name": "Introduction to Computer Science",
+      "requirement_type": "course",
+      "sort_order": 0,
+      "parent": "CS_CORE",
+      "courses": [
+        "01:198:111"
+      ]
+    },
+    {
+      "code": "CS_112",
+      "name": "Data Structures",
+      "requirement_type": "course",
+      "sort_order": 1,
+      "parent": "CS_CORE",
+      "courses": [
+        "01:198:112"
+      ]
+    },
+    {
+      "code": "CS_205",
+      "name": "Introduction to Discrete Structures I",
+      "requirement_type": "course",
+      "sort_order": 2,
+      "parent": "CS_CORE",
+      "courses": [
+        "01:198:205"
+      ]
+    },
+    {
+      "code": "CS_206",
+      "name": "Introduction to Discrete Structures II",
+      "requirement_type": "course",
+      "sort_order": 3,
+      "parent": "CS_CORE",
+      "courses": [
+        "01:198:206"
+      ]
+    },
+    {
+      "code": "CS_211",
+      "name": "Computer Architecture",
+      "requirement_type": "course",
+      "sort_order": 4,
+      "parent": "CS_CORE",
+      "courses": [
+        "01:198:211"
+      ]
+    },
+    {
+      "code": "CS_344",
+      "name": "Design and Analysis of Computer Algorithms",
+      "requirement_type": "course",
+      "sort_order": 5,
+      "parent": "CS_CORE",
+      "courses": [
+        "01:198:344"
+      ]
+    },
+    {
+      "code": "CS_MATH",
+      "name": "Mathematics Requirement",
+      "requirement_type": "all_of",
+      "sort_order": 1,
+      "parent": "CS_BS",
+      "source_prose": "three courses in mathematics, 01:640:151-152 and 01:640:250"
+    },
+    {
+      "code": "MATH_151",
+      "name": "Calculus I",
+      "requirement_type": "course",
+      "sort_order": 0,
+      "parent": "CS_MATH",
+      "courses": [
+        "01:640:151"
+      ]
+    },
+    {
+      "code": "MATH_152",
+      "name": "Calculus II",
+      "requirement_type": "course",
+      "sort_order": 1,
+      "parent": "CS_MATH",
+      "courses": [
+        "01:640:152"
+      ]
+    },
+    {
+      "code": "MATH_250",
+      "name": "Introductory Linear Algebra",
+      "requirement_type": "course",
+      "sort_order": 2,
+      "parent": "CS_MATH",
+      "courses": [
+        "01:640:250"
+      ]
+    },
+    {
+      "code": "CS_ELECTIVES",
+      "name": "Computer Science Electives",
+      "requirement_type": "choose_n",
+      "sort_order": 2,
+      "parent": "CS_BS",
+      "min_count": 7,
+      "max_outside_subject": 2,
+      "constraint_subject_code": "198",
+      "min_at_level": 300,
+      "min_at_level_count": 2,
+      "notes": "Designated list from the Department of Computer Science electives page (https://www.cs.rutgers.edu/academics/undergraduate/electives, read 2026-10-23, undated), to which the catalog defers: 30 CS courses plus Electrical Engineering, Mathematics, Philosophy, Linguistics and Statistics options. Replaces the earlier query {subject 198, number >= 300}, which admitted courses the department does not list (e.g. 01:198:345). The catalog's own constraints are kept: at most two outside CS, at least two CS courses at the 300 level or above. B.S.: seven electives from this category.",
+      "source_prose": "complete seven courses from category 3, no more than two of these outside the Department of Computer Science",
+      "courses": [
+        "01:198:210",
+        "01:198:213",
+        "01:198:214",
+        "01:198:314",
+        "01:198:323",
+        "01:198:324",
+        "01:198:334",
+        "01:198:336",
+        "01:198:352",
+        "01:198:411",
+        "01:198:416",
+        "01:198:417",
+        "01:198:419",
+        "01:198:424",
+        "01:198:425",
+        "01:198:428",
+        "01:198:431",
+        "01:198:437",
+        "01:198:439",
+        "01:198:440",
+        "01:198:442",
+        "01:198:443",
+        "01:198:444",
+        "01:198:445",
+        "01:198:452",
+        "01:198:460",
+        "01:198:461",
+        "01:198:462",
+        "01:198:493",
+        "01:198:494",
+        "14:332:376",
+        "14:332:423",
+        "14:332:424",
+        "14:332:443",
+        "14:332:451",
+        "14:332:452",
+        "14:332:453",
+        "14:332:456",
+        "14:332:472",
+        "01:640:338",
+        "01:640:348",
+        "01:640:354",
+        "01:640:428",
+        "01:640:454",
+        "01:640:461",
+        "01:730:315",
+        "01:730:407",
+        "01:730:408",
+        "01:730:329",
+        "01:730:424",
+        "01:615:441",
+        "01:960:384",
+        "01:960:463",
+        "01:960:476",
+        "01:960:486"
+      ]
+    },
+    {
+      "code": "CS_BS_SCIENCE",
+      "name": "Science Requirement (B.S.)",
+      "requirement_type": "any_of",
+      "sort_order": 3,
+      "parent": "CS_BS",
+      "notes": "One complete set: a physics sequence or a chemistry sequence, as the prose lists them.",
+      "source_prose": "plus four physics courses: 01:750:203, 204, 205, and 206 (or 01:750:123, 124, 227, and 229 or 01:750:193 and 194 or 01:750:271, 272, 275, and 276 or 01:750:201 and 202 or 01:750:193, 194); or chemistry 01:160:159, 160, and 171 (or 01:160:161, 162, and 171 or 01:160:163, 164, and 171)"
+    },
+    {
+      "code": "CS_BS_PHYS_A",
+      "name": "Physics 203, 204, 205, 206",
+      "requirement_type": "all_of",
+      "sort_order": 0,
+      "parent": "CS_BS_SCIENCE"
+    },
+    {
+      "code": "CS_BS_PHYS_A_203",
+      "name": "Physics 01:750:203",
+      "requirement_type": "course",
+      "sort_order": 0,
+      "parent": "CS_BS_PHYS_A",
+      "courses": [
+        "01:750:203"
+      ]
+    },
+    {
+      "code": "CS_BS_PHYS_A_204",
+      "name": "Physics 01:750:204",
+      "requirement_type": "course",
+      "sort_order": 1,
+      "parent": "CS_BS_PHYS_A",
+      "courses": [
+        "01:750:204"
+      ]
+    },
+    {
+      "code": "CS_BS_PHYS_A_205",
+      "name": "Physics 01:750:205",
+      "requirement_type": "course",
+      "sort_order": 2,
+      "parent": "CS_BS_PHYS_A",
+      "courses": [
+        "01:750:205"
+      ]
+    },
+    {
+      "code": "CS_BS_PHYS_A_206",
+      "name": "Physics 01:750:206",
+      "requirement_type": "course",
+      "sort_order": 3,
+      "parent": "CS_BS_PHYS_A",
+      "courses": [
+        "01:750:206"
+      ]
+    },
+    {
+      "code": "CS_BS_PHYS_B",
+      "name": "Physics 123, 124, 227, 229",
+      "requirement_type": "all_of",
+      "sort_order": 1,
+      "parent": "CS_BS_SCIENCE"
+    },
+    {
+      "code": "CS_BS_PHYS_B_123",
+      "name": "Physics 01:750:123",
+      "requirement_type": "course",
+      "sort_order": 0,
+      "parent": "CS_BS_PHYS_B",
+      "courses": [
+        "01:750:123"
+      ]
+    },
+    {
+      "code": "CS_BS_PHYS_B_124",
+      "name": "Physics 01:750:124",
+      "requirement_type": "course",
+      "sort_order": 1,
+      "parent": "CS_BS_PHYS_B",
+      "courses": [
+        "01:750:124"
+      ]
+    },
+    {
+      "code": "CS_BS_PHYS_B_227",
+      "name": "Physics 01:750:227",
+      "requirement_type": "course",
+      "sort_order": 2,
+      "parent": "CS_BS_PHYS_B",
+      "courses": [
+        "01:750:227"
+      ]
+    },
+    {
+      "code": "CS_BS_PHYS_B_229",
+      "name": "Physics 01:750:229",
+      "requirement_type": "course",
+      "sort_order": 3,
+      "parent": "CS_BS_PHYS_B",
+      "courses": [
+        "01:750:229"
+      ]
+    },
+    {
+      "code": "CS_BS_PHYS_C",
+      "name": "Physics 193, 194",
+      "requirement_type": "all_of",
+      "sort_order": 2,
+      "parent": "CS_BS_SCIENCE"
+    },
+    {
+      "code": "CS_BS_PHYS_C_193",
+      "name": "Physics 01:750:193",
+      "requirement_type": "course",
+      "sort_order": 0,
+      "parent": "CS_BS_PHYS_C",
+      "courses": [
+        "01:750:193"
+      ]
+    },
+    {
+      "code": "CS_BS_PHYS_C_194",
+      "name": "Physics 01:750:194",
+      "requirement_type": "course",
+      "sort_order": 1,
+      "parent": "CS_BS_PHYS_C",
+      "courses": [
+        "01:750:194"
+      ]
+    },
+    {
+      "code": "CS_BS_PHYS_D",
+      "name": "Physics 271, 272, 275, 276",
+      "requirement_type": "all_of",
+      "sort_order": 3,
+      "parent": "CS_BS_SCIENCE"
+    },
+    {
+      "code": "CS_BS_PHYS_D_271",
+      "name": "Physics 01:750:271",
+      "requirement_type": "course",
+      "sort_order": 0,
+      "parent": "CS_BS_PHYS_D",
+      "courses": [
+        "01:750:271"
+      ]
+    },
+    {
+      "code": "CS_BS_PHYS_D_272",
+      "name": "Physics 01:750:272",
+      "requirement_type": "course",
+      "sort_order": 1,
+      "parent": "CS_BS_PHYS_D",
+      "courses": [
+        "01:750:272"
+      ]
+    },
+    {
+      "code": "CS_BS_PHYS_D_275",
+      "name": "Physics 01:750:275",
+      "requirement_type": "course",
+      "sort_order": 2,
+      "parent": "CS_BS_PHYS_D",
+      "courses": [
+        "01:750:275"
+      ]
+    },
+    {
+      "code": "CS_BS_PHYS_D_276",
+      "name": "Physics 01:750:276",
+      "requirement_type": "course",
+      "sort_order": 3,
+      "parent": "CS_BS_PHYS_D",
+      "courses": [
+        "01:750:276"
+      ]
+    },
+    {
+      "code": "CS_BS_PHYS_E",
+      "name": "Physics 201, 202",
+      "requirement_type": "all_of",
+      "sort_order": 4,
+      "parent": "CS_BS_SCIENCE"
+    },
+    {
+      "code": "CS_BS_PHYS_E_201",
+      "name": "Physics 01:750:201",
+      "requirement_type": "course",
+      "sort_order": 0,
+      "parent": "CS_BS_PHYS_E",
+      "courses": [
+        "01:750:201"
+      ]
+    },
+    {
+      "code": "CS_BS_PHYS_E_202",
+      "name": "Physics 01:750:202",
+      "requirement_type": "course",
+      "sort_order": 1,
+      "parent": "CS_BS_PHYS_E",
+      "courses": [
+        "01:750:202"
+      ]
+    },
+    {
+      "code": "CS_BS_CHEM_A",
+      "name": "Chemistry 159, 160, 171",
+      "requirement_type": "all_of",
+      "sort_order": 5,
+      "parent": "CS_BS_SCIENCE"
+    },
+    {
+      "code": "CS_BS_CHEM_A_159",
+      "name": "Chemistry 01:160:159",
+      "requirement_type": "course",
+      "sort_order": 0,
+      "parent": "CS_BS_CHEM_A",
+      "courses": [
+        "01:160:159"
+      ]
+    },
+    {
+      "code": "CS_BS_CHEM_A_160",
+      "name": "Chemistry 01:160:160",
+      "requirement_type": "course",
+      "sort_order": 1,
+      "parent": "CS_BS_CHEM_A",
+      "courses": [
+        "01:160:160"
+      ]
+    },
+    {
+      "code": "CS_BS_CHEM_A_171",
+      "name": "Chemistry 01:160:171",
+      "requirement_type": "course",
+      "sort_order": 2,
+      "parent": "CS_BS_CHEM_A",
+      "courses": [
+        "01:160:171"
+      ]
+    },
+    {
+      "code": "CS_BS_CHEM_B",
+      "name": "Chemistry 161, 162, 171",
+      "requirement_type": "all_of",
+      "sort_order": 6,
+      "parent": "CS_BS_SCIENCE"
+    },
+    {
+      "code": "CS_BS_CHEM_B_161",
+      "name": "Chemistry 01:160:161",
+      "requirement_type": "course",
+      "sort_order": 0,
+      "parent": "CS_BS_CHEM_B",
+      "courses": [
+        "01:160:161"
+      ]
+    },
+    {
+      "code": "CS_BS_CHEM_B_162",
+      "name": "Chemistry 01:160:162",
+      "requirement_type": "course",
+      "sort_order": 1,
+      "parent": "CS_BS_CHEM_B",
+      "courses": [
+        "01:160:162"
+      ]
+    },
+    {
+      "code": "CS_BS_CHEM_B_171",
+      "name": "Chemistry 01:160:171",
+      "requirement_type": "course",
+      "sort_order": 2,
+      "parent": "CS_BS_CHEM_B",
+      "courses": [
+        "01:160:171"
+      ]
+    },
+    {
+      "code": "CS_BS_CHEM_C",
+      "name": "Chemistry 163, 164, 171",
+      "requirement_type": "all_of",
+      "sort_order": 7,
+      "parent": "CS_BS_SCIENCE"
+    },
+    {
+      "code": "CS_BS_CHEM_C_163",
+      "name": "Chemistry 01:160:163",
+      "requirement_type": "course",
+      "sort_order": 0,
+      "parent": "CS_BS_CHEM_C",
+      "courses": [
+        "01:160:163"
+      ]
+    },
+    {
+      "code": "CS_BS_CHEM_C_164",
+      "name": "Chemistry 01:160:164",
+      "requirement_type": "course",
+      "sort_order": 1,
+      "parent": "CS_BS_CHEM_C",
+      "courses": [
+        "01:160:164"
+      ]
+    },
+    {
+      "code": "CS_BS_CHEM_C_171",
+      "name": "Chemistry 01:160:171",
+      "requirement_type": "course",
+      "sort_order": 2,
+      "parent": "CS_BS_CHEM_C",
+      "courses": [
+        "01:160:171"
+      ]
+    }
+  ],
+  "rules_not_yet_modeled": [
+    {
+      "rule": "At most two of the five electives may be taken outside the Department of Computer Science; at least two must be CS at the 300 level or above.",
+      "why_not": "IMPLEMENTED as group constraints on CS_ELECTIVES (max_outside_subject / min_at_level), not as a program rule."
+    },
+    {
+      "rule": "At most one of a student's electives may be 01:198:493/494 (Independent Study); whether an instance counts depends on the individual arrangement.",
+      "why_not": "No per-course-group cap in the requirement model yet; source: the department electives page (2026-10-23)."
+    }
+  ],
+  "program_rules": [
+    {
+      "code": "CS_MAX_D",
+      "name": "At most one grade of D in required major courses",
+      "rule_type": "max_grade_count",
+      "grade": "D",
+      "max_count": 1,
+      "is_evaluable": true,
+      "source_prose": "No more than one grade of D can be accepted in the courses required for the major."
+    },
+    {
+      "code": "CS_EXCLUDED",
+      "name": "Courses that earn no credit for declared CS majors",
+      "rule_type": "course_exclusion",
+      "excluded_course_strings": "01:198:105,01:198:107,01:198:110,01:198:142,01:198:170,01:198:405",
+      "is_evaluable": true,
+      "source_prose": "Declared computer science majors (198) will not receive credit (major or degree) for subsequent enrollment in computer science 105, 107,110, 142, 170, or 405."
+    },
+    {
+      "code": "CS_RESIDENCY",
+      "name": "Minimum seven courses in the Rutgers-New Brunswick CS department",
+      "rule_type": "residency",
+      "min_count": 7,
+      "subject_code": "198",
+      "offering_unit_code": "01",
+      "is_evaluable": false,
+      "not_evaluable_reason": "The rule requires knowing which courses were taken AT Rutgers-New Brunswick. StudentCourse records no transfer provenance, and a cross-listed course carries another department's code, so the count cannot be computed without guessing. Rutgers publishes no transfer-equivalence rule we could apply here.",
+      "source_prose": "A minimum of seven courses must be taken in the Rutgers University-New Brunswick Department of Computer Science."
+    }
+  ]
+}

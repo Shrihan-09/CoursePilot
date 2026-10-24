@@ -6,6 +6,7 @@ POST   /api/v1/student/onboarding/complete            "I'm done" (idempotent)
 POST   /api/v1/student/profile                        {program_key, catalog_year} -> 201 / 200
 GET    /api/v1/student/profile
 PUT    /api/v1/student/program                        {program_key, catalog_year}
+PUT    /api/v1/student/placement                      {math_placement: "01:640:151" | null}
 GET    /api/v1/student/courses
 POST   /api/v1/student/courses                        one entry
 PATCH  /api/v1/student/courses/{entry_id}
@@ -148,6 +149,14 @@ class RowPatch(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+class PlacementChoice(BaseModel):
+    """`null` clears it. Validated against the course table by the service."""
+
+    math_placement: str | None = Field(max_length=16)
+
+    model_config = {"extra": "forbid"}
+
+
 class ConfirmRequest(BaseModel):
     expected_version: int = Field(ge=1)
 
@@ -201,6 +210,8 @@ class ProfileView(BaseModel):
     program: ProgramView
     onboarding_completed_at: datetime | None
     transcript_reported_gpa: ReportedGpa | None
+    #: The math course the student's placement places them into, as stated.
+    math_placement: str | None = None
 
 
 class ProfileCreated(BaseModel):
@@ -345,7 +356,8 @@ def _profile_view(session, student) -> ProfileView:
     return ProfileView(
         program=_program_view(session, student),
         onboarding_completed_at=student.onboarding_completed_at,
-        transcript_reported_gpa=ReportedGpa(value=gpa[0], as_of=gpa[1]) if gpa else None)
+        transcript_reported_gpa=ReportedGpa(value=gpa[0], as_of=gpa[1]) if gpa else None,
+        math_placement=student.math_placement)
 
 
 def _entry_view(record, course) -> EntryView:
@@ -472,6 +484,9 @@ async def _run(work, event: str, principal: Principal):
     except import_service.ImportRefused as exc:
         logger.info(event, extra={"principal": principal.redacted(), "outcome": exc.code})
         raise _issues_error(422, str(exc), exc.issues) from None
+    except onboarding_service.PlacementInvalid as exc:
+        raise _issues_error(422, str(exc), [Issue(exc.code, "math_placement",
+                                                  IssueSeverity.INVALID, str(exc))]) from None
     except onboarding_service.OpenImportExists as exc:
         raise _issues_error(422, str(exc), [Issue(exc.code, None, IssueSeverity.INVALID,
                                                   str(exc))]) from None
@@ -584,6 +599,20 @@ async def change_program(body: ProgramChoice,
             session.commit()
             return _profile_view(session, student)
     return await _run(work, "program_change", principal)
+
+
+@router.put("/placement", response_model=ProfileView,
+            summary="State or clear my math placement (the course I am placed into)")
+async def set_placement(body: PlacementChoice,
+                        principal: Principal = Depends(enforce_request_rate_limit)
+                        ) -> ProfileView:
+    def work():
+        with _session() as session:
+            student = onboarding_service.set_math_placement(
+                session, principal.account_id, body.math_placement)
+            session.commit()
+            return _profile_view(session, student)
+    return await _run(work, "math_placement_set", principal)
 
 
 # --------------------------------------------------------------------------

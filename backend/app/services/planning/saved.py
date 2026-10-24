@@ -249,6 +249,28 @@ def delete_plan(session: Session, student: Student) -> bool:
     return True
 
 
+def offering_assumption_reasons(session: Session, row: StudentPlan) -> list[str]:
+    """Phase 7.2.4: courses placed on HISTORICAL evidence, re-checked against today's
+    term authority. A term Rutgers has since published can contradict the
+    assumption; the plan is then flagged - a course is never silently swapped."""
+    from app.domain.planning import OfferingEvidenceKind as K
+    from app.services.planning.offerings import OfferingIndex
+
+    plan = _decode(row.result_blob)
+    assumed = [(pc.course, term.term_code) for term in plan.terms for pc in term.courses
+               if pc.offering.kind is K.HISTORICAL_SAME_SEASON]
+    if not assumed:
+        return []
+    index = OfferingIndex(session, {course for course, _ in assumed})
+    now = {index.evidence(course, term).kind for course, term in assumed}
+    reasons = []
+    if K.NOT_OFFERED_IN_TERM in now:
+        reasons.append("offering_assumption_contradicted")
+    if K.TERM_DATA_PENDING in now:
+        reasons.append("target_term_published")
+    return reasons
+
+
 def stale_reasons(session: Session, student: Student, row: StudentPlan) -> list[str]:
     """Which inputs differ from the ones the saved plan was computed from."""
     reasons = []
@@ -265,6 +287,7 @@ def stale_reasons(session: Session, student: Student, row: StudentPlan) -> list[
         reasons.append("program_rules_changed")
     if dataset_identity(session) != list(row.offering_dataset):
         reasons.append("rutgers_data_changed")
+    reasons += offering_assumption_reasons(session, row)
     if (row.planning_engine_version != PLANNING_ENGINE_VERSION
             or row.audit_engine_version != AUDIT_ENGINE_VERSION):
         reasons.append("engine_updated")

@@ -84,8 +84,11 @@ def _schedule(session: Session, args) -> int:
 def _worker(factory, stop: threading.Event | None = None) -> LiveWorker:
     settings = get_settings()
     owner = f"{socket.gethostname()}:{os.getpid()}:{uuid.uuid4().hex[:6]}"
+    from coursepilot_ingestion.term_watch_cli import default_watch
+
     return LiveWorker(factory, owner=owner, archive_dir=ROOT / "data" / "raw" / "live",
-                      provider=provider_from_settings(settings), stop=stop)
+                      provider=provider_from_settings(settings), stop=stop,
+                      term_watch=default_watch())   # Phase 7.3: one loop, not two
 
 
 def main(argv: list[str] | None = None) -> int:

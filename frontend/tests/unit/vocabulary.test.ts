@@ -11,10 +11,18 @@ import {
   AUDIT_STATUS,
   availabilityText,
   blockedReasonText,
+  historicalBasis,
+  seasonRecord,
+  OFFERING_KIND,
   ELIGIBILITY_STATE,
   PLAN_SEVERITY,
   PLAN_STATUS,
+  PLACEMENT_POLICY_URL,
+  deliveryText,
+  offeringLabel,
+  placementLabel,
   planReasonText,
+  topicsText,
   REQUIREMENT_STATUS,
   RESTRICTION_OUTCOME,
   RULE_STATUS,
@@ -22,6 +30,10 @@ import {
   SCHEDULE_STATUS,
   STALE_REASON,
   termLabel,
+  upcomingTerms,
+  ROLE_LABEL,
+  WORKLOAD_LEVEL_LABEL,
+  workloadBreakdown,
 } from "@/lib/academic/vocabulary";
 import type { PlannedCourse, PlanReason } from "@/types/plan";
 
@@ -91,7 +103,27 @@ describe("every engine value has words", () => {
       ["course_eligibility_failed", "no_valid_schedule", "options_found", "search_limit_reached", "term_schedule_not_published"]);
     expect(Object.keys(SCHEDULE_REASON)).toHaveLength(8);
     expect(Object.keys(STALE_REASON).sort()).toEqual(
-      ["academic_record_changed", "engine_updated", "planning_preferences_changed", "program_changed", "program_rules_changed", "rutgers_data_changed", "start_term_passed"]);
+      ["academic_record_changed", "engine_updated", "offering_assumption_contradicted", "planning_preferences_changed",
+       "program_changed", "program_rules_changed", "rutgers_data_changed", "start_term_passed", "target_term_published"]);
+  });
+
+  it("states how often a course ran in the same season as a count, never a probability (7.3)", () => {
+    expect(seasonRecord({ target_term: "20279", same_season_offered: 4, same_season_loaded: 5 }))
+      .toBe("Rutgers offering it in 4 of the last 5 Falls CoursePilot has data for");
+    expect(seasonRecord({ target_term: "20281", same_season_offered: 1, same_season_loaded: 1 }))
+      .toMatch(/1 of the last 1 Spring CoursePilot/);
+    expect(seasonRecord({ target_term: "20279", most_recent_term: "20259" })).toBe("Rutgers offering it in Fall 2025");
+    expect(seasonRecord({ target_term: "20279", same_season_offered: 4, same_season_loaded: 5 })).not.toMatch(/%|probab|chance/i);
+  });
+
+  it("history never claims Rutgers hasn't published a term CoursePilot didn't check (7.2.4)", () => {
+    const off = { target_term: "20281" };
+    expect(historicalBasis(off)).toBe("CoursePilot has no Spring 2028 schedule from Rutgers");
+    expect(historicalBasis({ ...off, target_term_authority: "unchecked" })).not.toMatch(/hasn't published/);
+    expect(historicalBasis({ ...off, target_term_authority: "not_published", target_term_checked_at: "2026-10-19T12:00:00Z" }))
+      .toMatch(/^Rutgers hasn't published Spring 2028 yet \(checked /);
+    expect(OFFERING_KIND.target_term_data_pending).toMatch(/has published that term; CoursePilot hasn't loaded it/);
+    expect(blockedReasonText("target_term_data_pending")).toMatch(/hasn't loaded it yet/);
   });
 
   it("an unpublished term never claims a schedule exists or borrows another term", () => {
@@ -134,6 +166,7 @@ describe("placement reasons come from the course's own fields", () => {
     "satisfies_requirement", "prerequisites_satisfied_by_history", "prerequisites_conditional_on_plan",
     "no_prerequisite_published", "required_prerequisite_for", "required_corequisite_for", "unlocks_downstream_course",
     "confirmed_offering_in_term", "historically_offered_in_season", "rules_from_earlier_term", "selected_by_canonical_tie_break",
+    "ranked_by_requirement_coverage", "requires_math_placement", "prerequisites_met_by_placement",
   ];
 
   it("has a sentence for every reason", () => {
@@ -145,6 +178,48 @@ describe("placement reasons come from the course's own fields", () => {
     expect(planReasonText("required_prerequisite_for", course)).toContain("01:198:344");
     expect(planReasonText("historically_offered_in_season", course)).toContain("Spring 2026");
     expect(planReasonText("selected_by_canonical_tie_break", course)).toMatch(/One of 3 .*not by preference/);
+  });
+
+  it("shows every number behind a workload weight, never easy/hard (7.3)", () => {
+    expect(workloadBreakdown({ weight: "5.13", components: { credits: "4", contact_above_credits: "0.13", lab: "0", level: "0.00", technical: "1" } }))
+      .toBe("4 credits + 0.13 contact hours above credits + 1 technical = 5.13");
+    expect(deliveryText(["async", "in_person"])).toMatch(/asynchronous/);
+    const words = [...Object.values(WORKLOAD_LEVEL_LABEL), ...Object.values(ROLE_LABEL)].join(" ");
+    expect(words).not.toMatch(/(easy|easier|hard|harder|difficult)/i);
+  });
+
+  it("lists the semesters a pin can name, from the next one on (7.3)", () => {
+    expect(upcomingTerms(new Date(2026, 9, 23), 3)).toEqual(["20271", "20279", "20281"]);
+    expect(upcomingTerms(new Date(2026, 9, 23), 4, { summer: true, winter: true }))
+      .toEqual(["20270", "20271", "20277", "20279"]);
+    expect(upcomingTerms(new Date(2027, 5, 1), 2)).toEqual(["20279", "20281"]);
+  });
+
+  it("says plainly when a placement is history, not a published listing (7.3)", () => {
+    expect(offeringLabel({ kind: "historically_offered_in_season", target_term: "20281" }))
+      .toBe("Historically offered in Spring — not yet confirmed");
+    expect(offeringLabel({ kind: "confirmed_in_term", target_term: "20271" })).toBe("Listed for Spring 2027");
+    expect(offeringLabel({ kind: "not_offered_in_term", target_term: "20271" })).toBeNull();
+    expect(OFFERING_KIND.not_offered_in_term).toMatch(/not listed .* yet/i);
+    expect(blockedReasonText("not_offered_in_term")).toMatch(/not listed for the planned term yet/i);
+  });
+
+  it("labels a topics course with this term's announced topics (7.3)", () => {
+    expect(topicsText({ is_topics_course: true, topics: ["Deep Learning"] })).toBe("Topics: Deep Learning");
+    expect(topicsText({ is_topics_course: true, topics: ["Deep Learning", "Introduction to Cryptography"] }))
+      .toBe("Topics: Deep Learning; Introduction to Cryptography");
+    expect(topicsText({ is_topics_course: true, topics: [] })).toBe("Topic not yet announced");
+    expect(topicsText({ is_topics_course: false, topics: [] })).toBeNull();
+    expect(topicsText({})).toBeNull();
+  });
+
+  it("names its source when placement met the prerequisites, and shows the placement (7.3)", () => {
+    expect(planReasonText("prerequisites_met_by_placement", course))
+      .toBe(`Prerequisites met by placement (source: ${PLACEMENT_POLICY_URL})`);
+    expect(PLACEMENT_POLICY_URL).toMatch(/^https:\/\/math\.sas\.rutgers\.edu\//);
+    expect(placementLabel({ course: "01:640:151", title: "CALC I-MATH/PHYS" })).toBe("CALC I-MATH/PHYS (151)");
+    expect(placementLabel({ course: "01:640:151", title: null })).toBe("01:640:151");
+    expect(blockedReasonText("requires_math_placement")).not.toBe("requires_math_placement");
   });
 });
 

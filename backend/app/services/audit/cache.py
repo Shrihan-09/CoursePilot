@@ -237,6 +237,9 @@ def academic_fingerprint(session: Session, student: Student) -> str:
         f"catalog_year={student.catalog_year}|"
         f"program_version={student.program_version_id}\n".encode()
     )
+    # Phase 7.3: only when stated, so every existing fingerprint is unchanged.
+    if getattr(student, "math_placement", None):
+        hasher.update(f"math_placement={student.math_placement}\n".encode())
     rows = session.execute(
         select(
             StudentCourse.course_id,

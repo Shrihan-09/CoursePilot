@@ -107,6 +107,12 @@ class Student(Base, TimestampMixin):
     # fact that is stated, not derived; read by no academic engine.
     onboarding_completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    # Phase 7.3: the Rutgers MATH course the student's placement result
+    # places them into (e.g. "01:640:115"), as the student states it. Optional;
+    # absent, a math placement condition is never assumed met or unmet
+    # (app.services.placement).
+    math_placement: Mapped[str | None] = mapped_column(String(16), nullable=True)
+
     courses: Mapped[list[StudentCourse]] = relationship(
         back_populates="student", cascade="all, delete-orphan"
     )

@@ -96,6 +96,7 @@ def world():
             ("graded", f"({k(a)} A )", "Student needs C or better in all prerequisites.",
              "minimum_grade"),
             ("level", f"Any Course EQUAL or GREATER Than: ({k(a)} A )", None, None),
+            ("ambiguous", f"({k(a)} A  or {k(b)} B  and {k(c)} C )", None, None),
             ("none", None, None, None),
         ):
             target = _course(session, s26)
@@ -171,8 +172,18 @@ def test_a_grade_note_makes_a_met_expression_unknown(world) -> None:
 @requires_db
 def test_unsupported_rules_are_unknown_even_when_the_course_was_passed(world) -> None:
     with _session() as session:
+        _record(session, world, ("a", "20259", "completed", "A"), ("b", "20259", "completed", "A"),
+                ("c", "20259", "completed", "A"))
+        assert _check(session, world, "ambiguous").status is UNK
+
+
+@requires_db
+def test_a_minimum_course_level_is_met_by_the_named_course_or_above(world) -> None:
+    """Phase 7.3: 'Any Course EQUAL or GREATER Than: (A)' read literally."""
+    with _session() as session:
+        assert _check(session, world, "level").status is not SAT        # nothing taken yet
         _record(session, world, ("a", "20259", "completed", "A"))
-        assert _check(session, world, "level").status is UNK
+        assert _check(session, world, "level").status is SAT
 
 
 @requires_db

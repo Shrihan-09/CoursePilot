@@ -122,7 +122,10 @@ def test_a_query_never_admits_graduate_courses_unless_it_opts_in(session, tmp_pa
 
     definition = json.loads(CS_REQUIREMENTS.read_bytes())
     electives = next(r for r in definition["requirements"] if r["code"] == "CS_ELECTIVES")
-    assert "offering_unit_code" not in electives["eligible_course_query"]   # as curated
+    # Since 2026-10-24 the curated CS electives are an explicit list; this test
+    # keeps its subject with the former query, restored here (SYNTHETIC).
+    electives.pop("courses", None)
+    electives["eligible_course_query"] = {"subject_code": "198", "min_course_number": 300}
     RequirementLoader(session).load(definition, json.dumps(definition).encode())
     session.commit()
     assert "16:198:536" not in _eligible(session, "CS_ELECTIVES")

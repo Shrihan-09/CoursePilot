@@ -1,8 +1,8 @@
 # Review packet: `sas-198-ba` (2026-2027)
 
-- **Lifecycle:** `published` (basis `legacy_curated`)
+- **Lifecycle:** `needs_rereview` (basis `legacy_curated`)
 - **Encoded by:** manual encoding, Phase 3 (encoder not recorded) - encoding is not review
-- **Definition:** `data/programs/rutgers/nb-undergrad/2026-2027/sas-198-ba.json`  sha256 `fef7b1e12e54b987`
+- **Definition:** `data/programs/rutgers/nb-undergrad/2026-2027/sas-198-ba.json`  sha256 `dbdd5ef37af26886`
 - **Source:** https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/computer-science-198
 - **Archive:** `data/raw/catalog/catalog_computer-science-198_2026_2027.html`  prose sha256 `4421d9b70ef5a4f8`
 
@@ -10,13 +10,14 @@
 
 - passed: **False**, quotes found verbatim: 7/8
 - ERROR: CS_ELECTIVES: quote not found verbatim on the page: 'five electives from a designated list of courses in computer science and related disciplin'
-- 60 eligible row(s) are courses outside offering unit 01 (graduate 16:xxx, or another school's course) - check each was meant: named explicitly, or admitted by a query
+- 4 course(s) named by the definition are not in the loaded course table (reported, never created), e.g. 01:198:324, 01:198:411, 01:198:424, 14:332:453
+- 8 eligible row(s) are courses outside offering unit 01 (graduate 16:xxx, or another school's course) - check each was meant: named explicitly, or admitted by a query
 
 ## Review questions
 
 - [ ] CS_ELECTIVES source_prose omits 'For details, see a computer science adviser or the departmental website.' without marking the elision ('...'). Confirm the omission is harmless and approve adding the marker (a definition change: it moves CS to needs_rereview until re-approved).
-- [ ] CS_ELECTIVES' query (subject 198, number >= 300) also admits graduate courses (16:198:5xx/6xx): 60 rows on the development database. Should the query add offering_unit_code '01'? (Also a definition change.)
 - [ ] CS is published with basis 'legacy_curated' (no review record predates Phase 6.3). Converting it to a human_review publication requires passing through needs_rereview, during which CS reports pending_review. Decide when to do that.
+- [ ] CS_ELECTIVES now lists the department's designated electives (2026-10-23) instead of the {subject 198, number >= 300} query. Confirm the list and that it applies to catalog year 2026-2027 (the department page is undated).
 
 ## What to verify
 
@@ -43,7 +44,7 @@
 | `MATH_151` | course | CS_MATH | courses: 01:640:151 | 1 |
 | `MATH_152` | course | CS_MATH | courses: 01:640:152 | 1 |
 | `MATH_250` | course | CS_MATH | courses: 01:640:250 | 1 |
-| `CS_ELECTIVES` | choose_n | CS_BA | min_count=5<br>min_at_level=300<br>min_at_level_count=2<br>max_outside_subject=2<br>constraint_subject_code=198<br>query {"min_course_number": 300, "subject_code": "198"} | 86 |
+| `CS_ELECTIVES` | choose_n | CS_BA | min_count=5<br>min_at_level=300<br>min_at_level_count=2<br>max_outside_subject=2<br>constraint_subject_code=198<br>courses: 01:198:210, 01:198:213, 01:198:214, 01:198:314, 01:198:323, 01:198:324, 01:198:334, 01:198:336, 01:198:352, 01:198:411, 01:198:416, 01:198:417, 01:198:419, 01:198:424, 01:198:425, 01:198:428, 01:198:431, 01:198:437, 01:198:439, 01:198:440, 01:198:442, 01:198:443, 01:198:444, 01:198:445, 01:198:452, 01:198:460, 01:198:461, 01:198:462, 01:198:493, 01:198:494, 14:332:376, 14:332:423, 14:332:424, 14:332:443, 14:332:451, 14:332:452, 14:332:453, 14:332:456, 14:332:472, 01:640:338, 01:640:348, 01:640:354, 01:640:428, 01:640:454, 01:640:461, 01:730:315, 01:730:407, 01:730:408, 01:730:329, 01:730:424, 01:615:441, 01:960:384, 01:960:463, 01:960:476, 01:960:486 | 51 |
 
 ### Quotes and notes
 
@@ -51,7 +52,7 @@
 - **CS_CORE**: "six required courses in computer science, 01:198:111, 112, 205, 206, 211, and 344"
 - **CS_MATH**: "three courses in mathematics, 01:640:151-152 and 01:640:250"
 - **CS_ELECTIVES**: "five electives from a designated list of courses in computer science and related disciplines (e.g., electrical engineering, mathematics). At most, two of the five electives may be taken outside the Department of Computer Science; at least two must be computer science courses at the 300 level or above."
-  - note: The catalog defers the designated elective list to the department; only CS courses at the 300 level or above are encoded here, which the prose supports directly. Non-CS elective options are NOT encoded because the catalog does not publish them.
+  - note: Designated list from the Department of Computer Science electives page (https://www.cs.rutgers.edu/academics/undergraduate/electives, read 2026-10-23, undated), to which the catalog defers: 30 CS courses plus Electrical Engineering, Mathematics, Philosophy, Linguistics and Statistics options. Replaces the earlier query {subject 198, number >= 300}, which admitted courses the department does not list (e.g. 01:198:345). The catalog's own constraints are kept: at most two outside CS, at least two CS courses at the 300 level or above.
 
 ## Program rules
 
@@ -63,6 +64,8 @@
 
 - At most two of the five electives may be taken outside the Department of Computer Science; at least two must be CS at the 300 level or above.  
   _why:_ IMPLEMENTED as group constraints on CS_ELECTIVES (max_outside_subject / min_at_level), not as a program rule.
+- At most one of a student's electives may be 01:198:493/494 (Independent Study); whether an instance counts depends on the individual arrangement.  
+  _why:_ No per-course-group cap in the requirement model yet; source: the department electives page (2026-10-23).
 
 ## How to record your decision
 

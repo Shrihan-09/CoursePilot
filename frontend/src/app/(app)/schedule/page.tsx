@@ -192,7 +192,7 @@ function PlannedSchedule() {
             {semester && !isLoaded(semester.term_code) && (
               <Alert
                 tone="warning"
-                title={`Rutgers hasn't published ${semester.label} sections in CoursePilot's data yet`}
+                title={`CoursePilot doesn't have ${semester.label} sections from Rutgers yet`}
                 action={
                   <Button size="sm" variant="secondary" onClick={() => { setSource("custom"); setCustomCourses(semester.courses.map((c) => c.course).slice(0, 8)); setCustomTerm(""); generate.reset(); }}>
                     Explore another term

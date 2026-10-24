@@ -168,6 +168,10 @@ export const STALE_REASON: Record<StaleReason, string> = {
   engine_updated: "CoursePilot's planning engine was updated.",
   start_term_passed: "The plan's first semester has started or is already on your record.",
   planning_preferences_changed: "You changed your planning preferences.",
+  offering_assumption_contradicted:
+    "Rutgers published a semester this plan had estimated from past offerings, and a planned course isn't in it.",
+  target_term_published:
+    "Rutgers published a semester this plan had estimated from past offerings; CoursePilot is still loading it.",
 };
 
 /* ------------------------------------------------- readiness (7.2.1) */
@@ -179,10 +183,84 @@ export const READINESS_CHECK: Record<"done" | "missing" | "warning" | "info", { 
   info: { tone: "info", icon: "info", label: "Note" },
 };
 
+/** Phase 7.3: pace is the graduation target ("When do you want to graduate?"). */
 export const PACE_LABEL: Record<string, string> = {
+  balanced: "On time",
+  lighter: "No rush",
+  finish_earlier: "Early",
+};
+
+/** Phase 7.3 workload levels - CoursePilot settings, never "easy"/"hard". */
+export const WORKLOAD_LEVEL_LABEL: Record<string, string> = {
+  light: "Light",
   balanced: "Balanced",
-  lighter: "Lighter",
-  finish_earlier: "Finish earlier",
+  semi_rigorous: "Semi-rigorous",
+  challenging: "Challenging",
+};
+
+/** Why a course is in its term (Phase 7.3 fill order). */
+export const ROLE_LABEL: Record<string, string> = {
+  anchor: "Must take",
+  multi_requirement: "Counts for several requirements",
+  major: "Major course",
+  filler: "Fills the semester",
+};
+
+const WEIGHT_PART: Record<string, string> = {
+  credits: "credits",
+  contact_above_credits: "contact hours above credits",
+  lab: "lab",
+  level: "course level",
+  technical: "technical",
+};
+
+/** "4 credits + 0.25 contact hours above credits + 1 lab + 0.5 course level = 5.75". */
+export function workloadBreakdown(w: { weight: string; components: Record<string, string> }): string {
+  const parts = Object.entries(w.components)
+    .filter(([, v]) => Number(v) !== 0)
+    .map(([k, v]) => `${Number(v)} ${WEIGHT_PART[k] ?? k}`);
+  return `${parts.join(" + ")} = ${Number(w.weight)}`;
+}
+
+export function deliveryText(delivery: string[]): string {
+  if (delivery.includes("async")) return "has an asynchronous online section";
+  if (delivery.includes("online")) return "has an online section";
+  if (delivery.includes("in_person")) return "in person";
+  return "delivery not published";
+}
+
+/**
+ * The next `n` term codes from `now` (Fall/Spring, plus Summer/Winter when
+ * the student considers them) - for choosing a pin's semester.
+ */
+export function upcomingTerms(now: Date, n: number, extra: { summer?: boolean; winter?: boolean } = {}): string[] {
+  const order = ["0", "1", "7", "9"].filter((s) => (s === "7" ? extra.summer : s === "0" ? extra.winter : true));
+  let year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  // The NEXT term to plan: Jan-Apr -> this Summer (if considered) or Fall;
+  // May-Aug -> this Fall; Sep-Dec -> the coming Winter (if considered) or Spring.
+  let season: string;
+  if (month <= 4) season = extra.summer ? "7" : "9";
+  else if (month <= 8) season = "9";
+  else { year += 1; season = extra.winter ? "0" : "1"; }
+  const seasons = ["0", "1", "7", "9"] as const;
+  const out: string[] = [];
+  let i = seasons.indexOf(season as (typeof seasons)[number]);
+  while (out.length < n) {
+    if (order.includes(seasons[i]!)) out.push(`${year}${seasons[i]}`);
+    if (i === 3) { year += 1; i = 0; } else i += 1;
+  }
+  return out;
+}
+
+
+
+/** 7.2.4: ordering among courses already checked valid - never a shortcut. */
+export const STRATEGY_LABEL: Record<string, string> = {
+  balanced: "Balanced mix",
+  major_first: "Major first",
+  requirements_first: "School/Core first",
+  unlock_future_options: "Keep options open",
 };
 
 export const GOAL_KIND: Record<string, string> = {
@@ -194,6 +272,39 @@ export const GOAL_KIND: Record<string, string> = {
 const SEASONS: Record<string, string> = { "0": "Winter", "1": "Spring", "7": "Summer", "9": "Fall" };
 
 /** "20271" -> "Spring 2027". Display only (term codes are YYYYT). */
+/** Rutgers-NB Mathematics Department placement policy - the source for "met by placement". */
+export const PLACEMENT_POLICY_URL =
+  "https://math.sas.rutgers.edu/academics/undergraduate/placement-advice/1061-placement-advice";
+
+/**
+ * A generic topics course's topic for its planned term, from SOC's section
+ * subtitle: "Topics: Deep Learning", several joined, or not yet announced.
+ */
+export function topicsText(c: { is_topics_course?: boolean; topics?: string[] }): string | null {
+  if (!c.is_topics_course) return null;
+  const topics = c.topics ?? [];
+  return topics.length ? `Topics: ${topics.join("; ")}` : "Topic not yet announced";
+}
+
+/**
+ * The card label for WHERE a placement comes from (Phase 7.3): a published
+ * term places only what it lists; anything else is history, said plainly.
+ */
+export function offeringLabel(off: { kind: OfferingEvidenceKind; target_term: string }): string | null {
+  if (off.kind === "confirmed_in_term") return `Listed for ${termLabel(off.target_term)}`;
+  if (off.kind === "historically_offered_in_season") {
+    const season = SEASONS[off.target_term[4] ?? ""] ?? "this season";
+    return `Historically offered in ${season} — not yet confirmed`;
+  }
+  return null;
+}
+
+/** "Calc 151"-style label for the placement a plan relied on. */
+export function placementLabel(p: { course: string; title: string | null }): string {
+  const number = p.course.split(":")[2] ?? p.course;
+  return p.title ? `${p.title} (${number})` : p.course;
+}
+
 export function termLabel(code: string | null | undefined): string {
   if (!code || code.length !== 5) return code ?? "";
   const season = SEASONS[code[4] ?? ""];
@@ -237,25 +348,56 @@ export function planReasonText(reason: PlanReason, course: PlannedCourse): strin
     case "confirmed_offering_in_term":
       return `Rutgers lists it in the ${termLabel(off.target_term)} schedule`;
     case "historically_offered_in_season":
-      return off.most_recent_term
-        ? `${termLabel(off.target_term)} isn't published yet; Rutgers offered it in ${termLabel(off.most_recent_term)}`
-        : `${termLabel(off.target_term)} isn't published yet; Rutgers has offered it in this season before`;
+      return `${historicalBasis(off)}; likely, based on ${seasonRecord(off)}`;
     case "rules_from_earlier_term":
       return `Prerequisite rules are taken from ${termLabel(course.prerequisite.rules_term)}, the latest Rutgers published`;
     case "ranked_by_requirement_coverage":
       return "Ranks ahead on candidate requirement coverage; actual credit allocation is checked separately";
     case "selected_by_canonical_tie_break":
       return `One of ${course.interchangeable_alternatives + 1} equally suitable courses; chosen by a fixed tie-break, not by preference`;
+    case "requires_math_placement":
+      return "Requires math placement: Rutgers accepts a placement result, and your profile doesn't state one yet";
+    case "prerequisites_need_confirmation":
+      return "You pinned it here; CoursePilot can't verify its prerequisites, so confirm them before registering";
+    case "prerequisites_met_by_placement":
+      return `Prerequisites met by placement (source: ${PLACEMENT_POLICY_URL})`;
   }
 }
 
 export const OFFERING_KIND: Record<OfferingEvidenceKind, string> = {
   confirmed_in_term: "Listed in that term's Rutgers schedule",
-  not_offered_in_term: "Not in that term's (complete) Rutgers schedule",
+  not_offered_in_term: "Not listed in that term's published Rutgers schedule yet",
   historically_offered_in_season: "Offered in past terms of the same season",
   offered_in_other_seasons_only: "Only offered in other seasons",
+  target_term_data_pending: "Rutgers has published that term; CoursePilot hasn't loaded it yet",
   no_offering_evidence: "No record of Rutgers offering it",
 };
+
+/**
+ * What a HISTORICAL offering claim rests on. Never says "Rutgers hasn't
+ * published" unless CoursePilot actually checked (7.2.4): an unloaded term is
+ * a fact about CoursePilot, not about Rutgers.
+ */
+/** "Rutgers offering it in 4 of the last 5 Falls" - counts, never a probability (7.3). */
+export function seasonRecord(off: { target_term: string; most_recent_term?: string | null;
+                                    same_season_offered?: number; same_season_loaded?: number }): string {
+  const season = ({ "0": "Winter", "1": "Spring", "7": "Summer", "9": "Fall" } as Record<string, string>)[off.target_term.charAt(4)] ?? "";
+  if (off.same_season_loaded && off.same_season_offered !== undefined) {
+    const plural = off.same_season_loaded === 1 ? season : `${season}s`;
+    return `Rutgers offering it in ${off.same_season_offered} of the last ${off.same_season_loaded} ${plural} CoursePilot has data for`;
+  }
+  return `Rutgers offering it in ${off.most_recent_term ? termLabel(off.most_recent_term) : "this season before"}`;
+}
+
+export function historicalBasis(off: { target_term: string; target_term_authority?: string;
+                                       target_term_checked_at?: string | null }): string {
+  const term = termLabel(off.target_term);
+  if (off.target_term_authority === "not_published") {
+    const when = off.target_term_checked_at ? ` (checked ${new Date(off.target_term_checked_at).toLocaleDateString()})` : "";
+    return `Rutgers hasn't published ${term} yet${when}`;
+  }
+  return `CoursePilot has no ${term} schedule from Rutgers`;
+}
 
 /**
  * Why a course could not be evaluated or placed. The codes are open-ended
@@ -274,6 +416,10 @@ export function blockedReasonText(code: string): string {
       return "Co-requisite wording CoursePilot can't interpret automatically";
     case "no_corequisite_published":
       return "Rutgers publishes no co-requisite for it";
+    case "requires_math_placement":
+      return "Requires math placement";
+    case "satisfied_by_math_placement":
+      return "Met by your math placement";
     case "no_prerequisite_published":
       return "Rutgers publishes no prerequisite for it";
     case "no_offering_in_term":
@@ -289,7 +435,9 @@ export function blockedReasonText(code: string): string {
     case "offered_in_other_seasons_only":
       return "Only offered in seasons this plan doesn't include";
     case "not_offered_in_term":
-      return "Not in the published schedule for the planned term";
+      return "Not listed for the planned term yet (Rutgers has published it)";
+    case "target_term_data_pending":
+      return "Rutgers has published the planned term, but CoursePilot hasn't loaded it yet";
     case "variable_credit":
       return "Variable credits - CoursePilot won't guess a credit value";
     case "no_prerequisite_path":

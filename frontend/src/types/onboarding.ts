@@ -69,6 +69,8 @@ export interface Profile {
   program: ProgramView;
   onboarding_completed_at: string | null;
   transcript_reported_gpa: { value: string; source: string; as_of: string | null } | null;
+  /** The math course the student's placement places them into (Phase 7.3). */
+  math_placement?: string | null;
 }
 
 export type RowState = "matched" | "needs_review" | "unrecognized" | "conflict" | "invalid";

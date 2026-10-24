@@ -49,11 +49,12 @@ allocation puts it - once - and a course that adds nothing is not planned.
 
 from __future__ import annotations
 
+import re
 import uuid
 from collections import defaultdict
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.domain.attempts import Attempt
@@ -65,7 +66,9 @@ from app.domain.planning import (
     EligibilityState,
     OfferingEvidence,
     OfferingEvidenceKind,
+    GraduationTarget,
     Pace,
+    PlacementBasis,
     PlanMetadata,
     PlannedCourse,
     PlanningConstraints,
@@ -79,30 +82,68 @@ from app.domain.planning import (
     RequirementContribution,
     RequirementProjection,
     Severity,
+    Strategy,
+    TermWorkload,
+    WorkloadEvidence,
 )
 from app.domain.prerequisites import ConcurrentReq, PrereqStatus, course_keys, from_json
 from app.domain.scenario import ScenarioAssumption, ScenarioTarget
 from app.models import (
     Course,
     CourseCorequisite,
+    CourseOffering,
     CoursePrerequisite,
+    CourseSection,
     ProgramRule,
     ProgramVersion,
     Requirement,
     RequirementCourseOption,
+    SectionCrossListing,
     Student,
     StudentCourse,
 )
 from app.services.audit.cache import AUDIT_ENGINE_VERSION, academic_fingerprint, rules_fingerprint
 from app.services.audit.engine import DegreeAuditEngine, constraint_counts
 from app.services.course_eligibility import EligibilityCheck, check_proposal
+from app.services.placement import (
+    MET_BY_PLACEMENT,
+    PLACEMENT_POLICY_URL,
+    REQUIRES_PLACEMENT,
+    is_math,
+)
+from app.services.placement import covered as placement_covered
 from app.services.planning.dependencies import UNREADABLE, DependencyPlanner
 from app.services.planning.offerings import PLACEABLE, OfferingIndex
 from app.services.planning.ranking import rank_key
 from app.services.planning.terms import label, planning_terms
+from app.services.planning.workload import LEVELS, WorkloadIndex, filler_rank
 from app.services.prerequisites import attempts_by_course
 
 LEAF_TYPES = ("course", "choose_n", "credits")
+
+#: Phase 7.3: regular (Fall/Spring) semesters from entry to graduation per
+#: graduation target. CoursePilot settings, not Rutgers policy.
+GRADUATION_SEMESTERS = {Pace.BALANCED: 8, Pace.FINISH_EARLIER: 7, Pace.LIGHTER: 10}
+
+
+def _next_regular(term: str) -> str:
+    year, s = int(term[:4]), term[4]
+    return f"{year}9" if s in ("0", "1", "7") else f"{year + 1}1"
+
+
+def _regular(term: str) -> str:
+    """The term itself when Fall/Spring, else the next Fall/Spring."""
+    return term if term[4] in ("1", "9") else _next_regular(term)
+
+#: Phase 7.3: a GENERIC topics course - one course number whose content is a
+#: per-term topic (SOC section subtitle), e.g. "TOPICS IN COMP SCI",
+#: "TPCS IN COMPUTER SCI", "TPC COMPUTER SCIENCE", "SPECIAL TOPICS". Read from
+#: the SOC title only; 580 of the loaded courses match.
+_TOPICS_TITLE = re.compile(r"\b(TOPICS?|TPCS?)\b", re.I)
+
+
+def is_topics_title(title: str | None) -> bool:
+    return bool(title and _TOPICS_TITLE.search(title))
 MET = (RequirementStatus.SATISFIED, RequirementStatus.PROVISIONALLY_SATISFIED)
 
 
@@ -116,7 +157,11 @@ def active_leaves(results: list[RequirementResult]) -> list[RequirementResult]:
 
     An ANY_OF node that is not met plans only as many of its unmet children
     as it still needs - the least-unmet first, then by code - instead of
-    every alternative.
+    every alternative. Phase 7.3: while NO alternative has any progress, all
+    stay open - the code order used to pick one blindly (the CS B.S. science
+    choice opened chemistry 159/160/171 just because "CHEM" sorts before
+    "PHYS", even where only physics was offered). The first course the plan
+    places then gives one alternative progress, and only it remains.
     """
     out: list[RequirementResult] = []
 
@@ -131,7 +176,8 @@ def active_leaves(results: list[RequirementResult]) -> list[RequirementResult]:
             need = max((node.needed_count or 1) - sum(c.status in MET for c in children), 0)
             open_ = sorted((c for c in children if c.status not in MET),
                            key=lambda c: (-_progress_of(c), c.requirement_code))
-            children = open_[:need]
+            started = any(_progress_of(c) > 0 for c in open_)
+            children = open_[:need] if started else open_
         for child in children:
             walk(child)
 
@@ -238,6 +284,11 @@ class PlanningEngine:
                 .where(Requirement.id.in_([r.id for r in self.requirements.values()]))).all():
             self.pools[code].add(course.course_string)
             self.course_info[course.course_string] = course
+        # Phase 7.3 workload weights. A Rutgers major's program code is its
+        # subject code (198 Computer Science, 640 Mathematics, 220 Economics).
+        self.major_subject = version.program.code if version.program else None
+        self.workload_index = WorkloadIndex(s, major_subject=self.major_subject,
+                                            natural_science=set(self.pools.get("CORE_NS", ())))
         self.excluded: set[str] = set()
         for rule in s.scalars(select(ProgramRule).where(
                 ProgramRule.program_version_id == version.id,
@@ -248,6 +299,12 @@ class PlanningEngine:
         self._closed: set[str] = set()       # prerequisite closure already loaded
         self.prereq_rows: dict[str, dict[str, CoursePrerequisite]] = defaultdict(dict)
         self._load_prerequisites(set(self.course_info))
+        self._breadth: dict[str, int] | None = None
+        self.placement_covers: frozenset[str] = frozenset()     # set per student (_history)
+        #: course -> courses it is cross-listed with (the SAME class under
+        #: another number, e.g. 01:198:417 / 16:198:545 in Fall 2026).
+        self.twins: dict[str, set[str]] = defaultdict(set)
+        self._load_twins(set(self.course_info))
 
     def _load_courses(self, keys: set[str]) -> None:
         missing = sorted(k for k in keys if k not in self.course_info and k not in self._looked_up)
@@ -258,6 +315,40 @@ class PlanningEngine:
                 self.course_info.setdefault(course.course_string, course)
             self.offerings.extend(self.session, set(missing))
             self._load_prerequisites(set(missing))
+            self._load_twins(set(missing))
+
+    def _load_twins(self, keys: set[str]) -> None:
+        """Cross-listings of `keys` in any loaded term, both directions, one query."""
+        partner = func.concat(SectionCrossListing.offering_unit_code, ":",
+                              SectionCrossListing.subject_code, ":",
+                              SectionCrossListing.course_number)
+        for key, other in self.session.execute(
+                select(Course.course_string, partner)
+                .join(CourseOffering, CourseOffering.course_id == Course.id)
+                .join(CourseSection, CourseSection.offering_id == CourseOffering.id)
+                .join(SectionCrossListing, SectionCrossListing.section_id == CourseSection.id)
+                .where(Course.course_string.in_(sorted(keys)) | partner.in_(sorted(keys)))
+                .distinct()):
+            if other and other != key:
+                self.twins[key].add(other)
+                self.twins[other].add(key)
+
+    def _twin_taken(self, key: str, planned: dict[str, str]) -> bool:
+        """Its cross-listed twin is already planned, passed or in progress."""
+        return any(t in planned or t in self.passed or t in self.in_progress
+                   for t in self.twins.get(key, ()))
+
+    def _is_topics(self, key: str) -> bool:
+        course = self.course_info.get(key)
+        return course is not None and is_topics_title(course.title)
+
+    def _topics(self, key: str, term: str) -> list[str]:
+        """The topic labels (section subtitles) Rutgers published for `term`."""
+        return sorted({(t or "").strip() for t in self.session.scalars(
+            select(CourseSection.subtitle)
+            .join(CourseOffering, CourseOffering.id == CourseSection.offering_id)
+            .join(Course, Course.id == CourseOffering.course_id)
+            .where(Course.course_string == key, CourseSection.term_code == term))} - {""})
 
     def _load_closure(self, keys: set[str]) -> None:
         """Courses `keys` may need, transitively - one batch per prerequisite
@@ -275,11 +366,41 @@ class PlanningEngine:
             frontier = referenced - self._closed
 
     def _load_prerequisites(self, keys: set[str]) -> None:
+        """Each course's MOST RECENT published prerequisite row only - older
+        terms are offering evidence, never a source of rules (Phase 7.3)."""
+        latest = (select(CoursePrerequisite.course_id,
+                         func.max(CoursePrerequisite.term_code).label("term_code"))
+                  .join(Course, Course.id == CoursePrerequisite.course_id)
+                  .where(Course.course_string.in_(sorted(keys)))
+                  .group_by(CoursePrerequisite.course_id).subquery())
         for key, row in self.session.execute(
                 select(Course.course_string, CoursePrerequisite)
                 .join(Course, Course.id == CoursePrerequisite.course_id)
-                .where(Course.course_string.in_(sorted(keys)))).all():
+                .join(latest, (latest.c.course_id == CoursePrerequisite.course_id)
+                      & (latest.c.term_code == CoursePrerequisite.term_code))).all():
             self.prereq_rows[key][row.term_code] = row
+
+    def _system(self, code: str) -> str:
+        req = self.requirements.get(code)
+        return (req.allocation_scope or req.requirement_system) if req is not None else "major"
+
+    def _unlock_breadth(self) -> dict[str, int]:
+        """How many requirement-pool courses cite each course in their latest
+        published prerequisites (7.2.4 UNLOCK_FUTURE_OPTIONS evidence). Counts
+        published rules only - never a guess about future offerings."""
+        if self._breadth is None:
+            counts: dict[str, int] = defaultdict(int)
+            for course in sorted(set().union(*self.pools.values()) if self.pools else ()):
+                rows = self.prereq_rows.get(course)
+                if not rows:
+                    continue
+                row = rows[max(rows)]
+                if row.expression is None:
+                    continue
+                for ref in set(course_keys(from_json(row.expression))) - {course}:
+                    counts[ref] += 1
+            self._breadth = dict(counts)
+        return self._breadth
 
     def _expression_of(self, course: str):
         """Latest published prerequisite IR (for dependency PATHS only)."""
@@ -288,6 +409,8 @@ class PlanningEngine:
         if not rows:
             return None
         row = rows[max(rows)]
+        if course in self.placement_covers and is_math(course):
+            return None         # prerequisites met by placement: nothing below it is needed
         if row.expression is None:
             return UNREADABLE
         return from_json(row.expression)
@@ -306,6 +429,7 @@ class PlanningEngine:
 
     def _history(self, student: Student) -> None:
         self.history = attempts_by_course(self.session, student)
+        self.placement_covers = placement_covered(self.session, student.math_placement)
         self.passed: set[str] = set()
         self.in_progress: dict[str, str] = {}
         for key, attempts in self.history.items():
@@ -378,6 +502,30 @@ class PlanningEngine:
             return EligibilityState.NEEDS_CONFIRMATION
         return EligibilityState.UNSATISFIED
 
+    @staticmethod
+    def _awaits_placement(b: EligibilityCheck | None) -> bool:
+        """Unknown ONLY because no math placement is stated (app.services.placement):
+        placed and marked needs-confirmation, never a blocked chain."""
+        return (b is not None and b.status is PrereqStatus.UNKNOWN
+                and b.prerequisite.reasons == [REQUIRES_PLACEMENT]
+                and (not b.corequisite.has_corequisite
+                     or b.corequisite.status is PrereqStatus.SATISFIED))
+
+    def _settle(self, key: str, state: EligibilityState, b: EligibilityCheck | None,
+                planner: DependencyPlanner) -> EligibilityState:
+        """A course awaiting a placement nobody stated: when its published
+        prerequisite path can be planned, plan THAT (it is unmet for now);
+        only when it cannot is the course placed, flagged needs-confirmation."""
+        if (state is EligibilityState.NEEDS_CONFIRMATION and self._awaits_placement(b)
+                and planner.path_for(key).feasible):
+            return EligibilityState.UNSATISFIED
+        return state
+
+    def _placeable_state(self, state: EligibilityState, b: EligibilityCheck | None) -> bool:
+        return state in (EligibilityState.SATISFIED_BY_HISTORY,
+                         EligibilityState.CONDITIONAL_ON_PLAN) or (
+            state is EligibilityState.NEEDS_CONFIRMATION and self._awaits_placement(b))
+
     def _prereq_evidence(self, a, b, state, planned, term) -> PrerequisiteEvidence:
         ev = PrerequisiteEvidence(state=state)
         if b is None:
@@ -391,7 +539,7 @@ class PlanningEngine:
         unknown = state is EligibilityState.NEEDS_CONFIRMATION
         ev.unknown_reasons = sorted(set(pre.reasons)
                                     | set(b.corequisite.reasons if unknown else ()))
-        if state is EligibilityState.CONDITIONAL_ON_PLAN:
+        if state is EligibilityState.CONDITIONAL_ON_PLAN or self._awaits_placement(b):
             minimum = (pre.interpreted_conditions or {}).get("minimum_grade") or {}
             named = set(minimum.get("courses", ()))
             used = set(pre.evidence.satisfied_courses) if pre.evidence else set()
@@ -421,6 +569,7 @@ class PlanningEngine:
         self._load_static(version)
         self._history(student)
         issues: list[PlanningIssue] = []
+        self._pin_issues: list[PlanningIssue] = []
         planned: dict[str, str] = {}                 # course -> term
         info: dict[str, dict] = {}                   # course -> planning facts
         dependency_targets: dict[str, set[str]] = defaultdict(set)
@@ -430,8 +579,23 @@ class PlanningEngine:
 
         before = self.audit_engine.audit(student, program_version=version)
         current = before
-        terms = planning_terms(start_term, c.max_terms, include_summer=c.include_summer,
-                               include_winter=c.include_winter)
+        graduation = self._graduation_target(start_term)
+        if graduation is None:
+            terms = planning_terms(start_term, c.max_terms, include_summer=c.include_summer,
+                                   include_winter=c.include_winter)
+        else:
+            # Phase 7.3: the horizon ends at the graduation target - counted
+            # from the student's entry term, or their stated expected term.
+            terms = [t for t in planning_terms(start_term, 16, include_summer=c.include_summer,
+                                               include_winter=c.include_winter)
+                     if t <= graduation.term_code]
+            if not terms:
+                issues.append(PlanningIssue(
+                    severity=Severity.WARNING, code="GRADUATION_TARGET_PASSED",
+                    message=(f"Your graduation target ({label(graduation.term_code)}) is before "
+                             f"{label(start_term)}, the first semester planned. Plan from an "
+                             "earlier semester or choose a later target."),
+                    details={"graduation_term": graduation.term_code}))
         plan_terms: list[PlanTerm] = []
         empty_streak = 0
         stalled = False
@@ -452,13 +616,35 @@ class PlanningEngine:
                     break
 
         final = self._prune(student, version, plan_terms, planned, info, current)
-        if c.pace is not None and plan_terms:
+        if c.pace is not None and plan_terms and c.workload_level is None:
+            # With a workload level each term is already shaped by its budget;
+            # levelling would move anchors and break the term's explanation.
             final = self._level(student, version, terms, plan_terms, planned, info, final)
         self._finalize_courses(plan_terms, final, info, planned)
+        if c.workload_level is not None:
+            # Pruning may have removed courses after a term was summarised.
+            for term_plan in plan_terms:
+                term_plan.workload = self._term_workload(
+                    term_plan.term_code, term_plan,
+                    {pc.course: pc.role for pc in term_plan.courses})
         remaining = active_leaves(final.requirements)
         issues += self._diagnose(remaining, needs_confirmation, unplaceable, cycles,
                                  horizon=bool(remaining) and not stalled)
         issues += self._rule_issues(final)
+        issues += self._pin_issues
+        if graduation is not None and terms and remaining and not stalled:
+            # Never silently push graduation later: say so and suggest fixes.
+            level = (f" at a {c.workload_level.value.replace('_', '-')} workload"
+                     if c.workload_level is not None else "")
+            issues.append(PlanningIssue(
+                severity=Severity.WARNING, code="GRADUATION_TARGET_NOT_MET",
+                message=(f"The remaining requirements do not fit by {label(graduation.term_code)}"
+                         f"{level} ({graduation.basis}). Your plan has not been changed: you "
+                         "could add a summer term, take more in some semesters, or choose a "
+                         "later graduation target."),
+                details={"graduation_term": graduation.term_code, "terms": len(terms),
+                         "workload_level": c.workload_level.value if c.workload_level else None,
+                         "remaining": sorted(n.requirement_code for n in remaining)}))
         if self.in_progress:
             issues.append(PlanningIssue(
                 severity=Severity.WARNING, code="IN_PROGRESS_OUTCOME_ASSUMED_PENDING",
@@ -497,6 +683,8 @@ class PlanningEngine:
             status = PlanStatus.PARTIAL
         return PlanResult(
             target=target, status=status, terms=plan_terms,
+            placement=self._placement_basis(student),
+            graduation_target=graduation,
             issues=sorted(issues, key=lambda i: (i.severity.value, i.code,
                                                  i.requirement_code or "", i.course or "")),
             requirements=projections, assumptions=assumptions,
@@ -528,21 +716,47 @@ class PlanningEngine:
                 serves[key].append(leaf.requirement_code)
         dependencies = sorted(k for k in dependency_targets
                               if k not in planned and (k not in self.passed or k in self.retakes))
-        self._load_closure(set(serves) | set(dependencies))
-        keys = sorted(set(serves) | set(dependencies))
+        # Phase 7.3 pins: a pinned course goes in ITS term or nowhere.
+        pins_here = sorted({p.course for p in c.pins if p.term_code == term} - set(planned))
+        elsewhere = {p.course for p in c.pins if p.term_code != term}
+        for k in elsewhere:
+            serves.pop(k, None)
+        dependencies = [k for k in dependencies if k not in elsewhere]
+        self._load_courses(set(pins_here))
+        self._load_closure(set(serves) | set(dependencies) | set(pins_here))
+        keys = sorted(set(serves) | set(dependencies)
+                      | {k for k in pins_here if k in self.course_info})
         evaluated = self._evaluate(student, keys, term, planned)
 
-        states = {k: self._state(a, b) for k, (a, b, _) in evaluated.items()}
+        planner = DependencyPlanner(
+            expression_of=self._expression_of,
+            available=self.passed | set(self.in_progress) | set(planned),
+            contributes=lambda k: k in serves,
+            plannable=self._plannable)
+        states = {k: self._settle(k, self._state(a, b), b, planner)
+                  for k, (a, b, _) in evaluated.items()}
         ready = {k for k, s in states.items()
-                 if s in (EligibilityState.SATISFIED_BY_HISTORY,
-                          EligibilityState.CONDITIONAL_ON_PLAN)
+                 if self._placeable_state(s, evaluated[k][1])
                  and evaluated[k][2].kind in PLACEABLE
                  and self.course_info[k].credits is not None}
+        pins_ok = []
+        for key in pins_here:
+            why = self._pin_check(student, term, key, evaluated, states, planned, serves)
+            if why is None:
+                pins_ok.append(key)
+                ready.add(key)
+            else:
+                self._pin_issues.append(PlanningIssue(
+                    severity=Severity.BLOCKER, code="PIN_NOT_POSSIBLE", course=key,
+                    message=f"{key} cannot be placed in {label(term)} as pinned: {why}.",
+                    details={"term": term, "reason": why}))
 
         # Record why candidates cannot be placed (per requirement), for diagnosis.
         for key in keys:
             for code in serves.get(key, ()):
                 ev = evaluated[key][2]
+                if key in ready:
+                    continue
                 if states[key] is EligibilityState.NEEDS_CONFIRMATION:
                     b = evaluated[key][1]
                     needs_confirmation[code][key] = sorted(
@@ -554,11 +768,6 @@ class PlanningEngine:
 
         # Dependency expansion: requirements whose ready candidates cannot
         # cover their need get prerequisite paths for the cheapest targets.
-        planner = DependencyPlanner(
-            expression_of=self._expression_of,
-            available=self.passed | set(self.in_progress) | set(planned),
-            contributes=lambda k: k in serves,
-            plannable=self._plannable)
         for code in sorted(leaf_by_code):
             leaf = leaf_by_code[code]
             pool = [k for k in sorted(serves) if code in serves[k]]
@@ -601,9 +810,9 @@ class PlanningEngine:
             evaluated.update(self._evaluate(student, new, term, planned))
         for k in sorted(k for k in dependency_targets if k in evaluated and k not in planned):
             if k in new:
-                states[k] = self._state(*evaluated[k][:2])
-            if (states[k] in (EligibilityState.SATISFIED_BY_HISTORY,
-                              EligibilityState.CONDITIONAL_ON_PLAN)
+                states[k] = self._settle(k, self._state(*evaluated[k][:2]), evaluated[k][1],
+                                         planner)
+            if (self._placeable_state(states[k], evaluated[k][1])
                     and evaluated[k][2].kind in PLACEABLE
                     and self.course_info[k].credits is not None):
                 ready.add(k)
@@ -637,6 +846,7 @@ class PlanningEngine:
                        - deficit(leaf_by_code[code]) for code in codes)
 
         def ranking_evidence(key):
+            systems = {self._system(code) for code in serves.get(key, ())}
             return CourseRankingEvidence(
                 required_dependency=key in dependency_targets and key not in planned,
                 downstream_targets=len(dependency_targets.get(key, ())),
@@ -644,34 +854,68 @@ class PlanningEngine:
                 confirmed_offering=(evaluated[key][2].kind is
                                     OfferingEvidenceKind.CONFIRMED_IN_TERM),
                 prerequisites_met_by_history=(states[key] is EligibilityState.SATISFIED_BY_HISTORY),
-                candidate_requirement_coverage=len(set(serves.get(key, ()))))
+                candidate_requirement_coverage=len(set(serves.get(key, ()))),
+                serves_major="major" in systems,
+                serves_school=bool(systems & {"core", "school"}),
+                # Computed only when the student's strategy uses it (performance).
+                unlock_breadth=(self._unlock_breadth().get(key, 0)
+                                if c.strategy is Strategy.UNLOCK_FUTURE_OPTIONS else 0))
 
         def rank(key):
-            return rank_key(key, ranking_evidence(key))
+            return rank_key(key, ranking_evidence(key), c.strategy)
 
-        order = sorted(ready | coreq_pending, key=rank)
+        workload_mode = c.workload_level is not None
+        stop_at, hard_cap = self._caps()
+        budget = LEVELS[c.workload_level][2] if workload_mode else None
+        roles: dict[str, tuple[str, str]] = {}
+        if workload_mode:
+            ranked = self._workload_order(term, ready | coreq_pending, pins_ok, serves,
+                                          dependency_targets, rank, budget)
+            order = [k for k, _, _ in ranked]
+            roles = {k: (role, why) for k, role, why in ranked}
+        else:
+            # Fixed-content courses before generic topics courses (Phase 7.3).
+            order = sorted(ready | coreq_pending, key=lambda k: (self._is_topics(k), rank(k)))
         credits = Decimal(0)
         count = 0
-        stop_at, hard_cap = self._caps()
+        topics_here = 0
+        weight_total = Decimal(0)
         latest = current
         score = progress(current, self.requirements)
         open_codes = {leaf.requirement_code for leaf in active_leaves(current.requirements)}
-        for key in order:
-            if count >= c.max_courses_per_term or credits >= stop_at:
-                break
-            if key in planned:
-                continue
+        def place(key, companion_of: str | None = None) -> str:
+            """Try one candidate (and its co-requisite partner): "placed", "skip"
+            (this one does not fit) or "stop" (the term is full). A companion -
+            a lab joining its lecture placed this term - takes that course's
+            role for the floor and budget checks."""
+            nonlocal credits, count, topics_here, weight_total, latest, score, open_codes
+            role = roles.get(companion_of or key, (None, None))[0]
+            if count >= c.max_courses_per_term or credits >= hard_cap:
+                return "stop"
+            if not workload_mode and credits >= stop_at:
+                return "stop"
+            if workload_mode and role == "filler" and credits >= stop_at:
+                return "skip"            # fillers only fill up to the level's credit floor
+            if key in planned or self._twin_taken(key, planned):
+                return "skip"            # never the same class twice, under any number
             is_dep = key in dependency_targets
+            pinned = key in pins_ok
             # A requirement course whose requirements the engine already
             # reports met (by earlier picks) cannot add progress: no audit.
-            if not is_dep and not set(serves.get(key, ())) & open_codes:
-                continue
+            if not is_dep and not pinned and not set(serves.get(key, ())) & open_codes:
+                return "skip"
+            if workload_mode and is_dep and not pinned and not set(serves.get(key, ())) & open_codes                     and not any(set(serves.get(t, ())) & open_codes
+                                for t in dependency_targets.get(key, ())):
+                # Phase 7.3: a prerequisite path opened for an alternative the
+                # plan has since moved away from (Physics 193 -> 194 once the
+                # 203/204 sequence is under way) leads nowhere open: skip it.
+                return "skip"
             group = [key]
             coreq_partner = None
             if key in coreq_pending:
                 partner = self._partner(student, key, evaluated[key][1], term, planned)
                 if partner is None:
-                    continue
+                    return "skip"
                 coreq_partner = partner
                 if partner not in planned:      # else it is already in THIS term
                     group.append(partner)
@@ -681,25 +925,38 @@ class PlanningEngine:
             group_credits = sum((self.course_info[g].credits for g in group), Decimal(0))
             if count + len(group) > c.max_courses_per_term or \
                     credits + group_credits > hard_cap:
-                continue
-            if c.pace is Pace.BALANCED and c.target_credits_per_term is not None and count:
+                return "skip"
+            group_topics = sum(1 for g in group if self._is_topics(g))
+            if group_topics and topics_here + group_topics > c.max_topics_courses_per_term:
+                return "skip"
+            if any(self._twin_taken(g, planned) or (set(group) - {g}) & self.twins.get(g, set())
+                   for g in group):
+                return "skip"
+            group_weight = (sum((self.workload_index.weight(self.course_info[g], term).weight
+                                 for g in group), Decimal(0)) if workload_mode else Decimal(0))
+            if workload_mode and role != "anchor" and weight_total + group_weight > budget:
+                return "skip"            # only must-take courses may go over the budget
+            if not workload_mode and c.pace is Pace.BALANCED \
+                    and c.target_credits_per_term is not None and count:
                 # "Aim for the target": go past it only when that lands CLOSER
                 # to it (14 + 4 = 18 against 15 is refused; 12 + 4 = 16 is not).
                 aim, after_add = c.target_credits_per_term, credits + group_credits
                 if after_add > aim and after_add - aim >= aim - credits:
-                    continue
+                    return "skip"
             trial = {**planned, **{g: term for g in group}}
             if serves.get(key) or not is_dep:
                 result = self._audit(student, version, trial)
                 after = progress(result, self.requirements)
-                if after <= score and not is_dep:
-                    continue
+                if after <= score and not is_dep and not pinned:
+                    return "skip"
                 score, latest = max(after, score), result
                 open_codes = {leaf.requirement_code for leaf in active_leaves(result.requirements)}
             ranked_evidence = {g: ranking_evidence(g) for g in group if g in states}
             planned.update({g: term for g in group})
             credits += group_credits
             count += len(group)
+            topics_here += group_topics
+            weight_total += group_weight
             members = sorted(set(group) | ({coreq_partner} if coreq_partner else set()))
             if coreq_partner and coreq_partner not in group:
                 # The partner was already placed this term on its own merits.
@@ -722,11 +979,236 @@ class PlanningEngine:
                     "alternatives": self._alternatives(g, serves, ready, rank, planned),
                     "ranking_evidence": ranked_evidence.get(g),
                 }
+                if workload_mode:
+                    g_role, g_why = roles.get(g, roles.get(key, (None, None)))
+                    if g != key:
+                        g_why = f"taken together with {key} ({g_why})"
+                    elif coreq_partner and coreq_partner not in group \
+                            and info.get(coreq_partner, {}).get("role"):
+                        # A lab/co-requisite joining a course placed this term
+                        # shares that course's reason ("Gen Physics with lab").
+                        g_role = info[coreq_partner]["role"]
+                        g_why = (f"taken together with {coreq_partner} "
+                                 f"({info[coreq_partner]['role_reason']})")
+                    info[g] |= {"workload": self._workload(g, term), "role": g_role,
+                                "role_reason": g_why}
                 term_plan.courses.append(self._planned_course(g, info[g]))
                 term_plan.credits += self.course_info[g].credits
+            return "placed"
+
+        if workload_mode:
+            # Anchors, multi-requirement and the major course in order; then
+            # fillers one at a time against the term AS IT NOW STANDS: the
+            # preferred delivery mode first, then one that reaches the credit
+            # floor within the budget, then the lowest weight (Phase 7.3).
+            pool = [k for k in order if roles[k][0] == "filler"]
+            for key in [k for k in order if roles[k][0] != "filler"]:
+                outcome = place(key)
+                if outcome == "stop":
+                    break
+                if outcome == "placed":
+                    for k in [k for k in pool if k in coreq_pending]:
+                        if self._partner(student, k, evaluated[k][1], term, planned) == key:
+                            pool.remove(k)
+                            place(k, companion_of=key)
+            while pool and credits < stop_at:
+                def choice(k):
+                    w = self.workload_index.weight(self.course_info[k], term)
+                    reaches = (credits + self.course_info[k].credits >= stop_at
+                               and weight_total + w.weight <= budget)
+                    return (filler_rank(w.delivery, c.filler_preference.value), not reaches,
+                            w.weight, self._is_topics(k), rank(k))
+                pick = min(pool, key=choice)
+                pool.remove(pick)
+                if place(pick) == "stop":
+                    break
+        else:
+            for key in order:
+                if place(key) == "stop":
+                    break
+        for key in pins_ok:
+            if key not in planned:
+                self._pin_issues.append(PlanningIssue(
+                    severity=Severity.BLOCKER, code="PIN_NOT_POSSIBLE", course=key,
+                    message=(f"{key} could not be placed in {label(term)} as pinned: it does "
+                             "not fit this term's course or credit limits.")))
+        if workload_mode:
+            term_plan.workload = self._term_workload(
+                term, term_plan, {g: info[g].get("role") for g in planned if planned[g] == term})
         if latest is current and planned != before_planned:
             latest = self._audit(student, version, planned)
         return latest
+
+    # ---- Phase 7.3: pins and workload levels ------------------------------
+
+    def _pin_check(self, student, term: str, key: str, evaluated, states,
+                   planned: dict[str, str], serves) -> str | None:
+        """Why `key` CANNOT be placed in `term` as pinned (None: it can).
+        Warnings that do not prevent it (won't count, may be restricted) are
+        recorded as issues here."""
+        if key not in self.course_info or key not in evaluated:
+            return "CoursePilot has no record of this course"
+        a, b, ev = evaluated[key]
+        if key in self.passed and key not in self.retakes:
+            return "you have already completed it"
+        if self._twin_taken(key, planned):
+            return "the same class (cross-listed under another number) is already in your plan or record"
+        if ev.kind not in PLACEABLE:
+            return {
+                OfferingEvidenceKind.NOT_OFFERED_IN_TERM: f"it is not listed for {label(term)}",
+                OfferingEvidenceKind.TERM_DATA_PENDING:
+                    f"Rutgers has published {label(term)} but CoursePilot has not loaded it yet",
+                OfferingEvidenceKind.OTHER_SEASONS_ONLY: "it has only been offered in other seasons",
+                OfferingEvidenceKind.NO_EVIDENCE: "there is no record of Rutgers offering it",
+            }.get(ev.kind, f"offering evidence: {ev.kind.value}")
+        if states[key] is EligibilityState.NEEDS_CONFIRMATION and not self._placeable_state(
+                states[key], b):
+            # Decided 2026-10-23: an explicit pin may place a course whose
+            # prerequisite CoursePilot cannot VERIFY - flagged, never hidden.
+            reasons = sorted(set(b.prerequisite.reasons)) if b is not None else []
+            self._pin_issues.append(PlanningIssue(
+                severity=Severity.NEEDS_CONFIRMATION, code="PIN_PREREQUISITES_UNVERIFIED",
+                course=key, details={"reasons": reasons},
+                message=(f"{key} is placed in {label(term)} because you pinned it, but "
+                         "CoursePilot cannot verify its prerequisites - confirm them before "
+                         "registering.")))
+        elif not self._placeable_state(states[key], b):
+            text = b.prerequisite.canonical_text if b is not None else None
+            return "its prerequisites are not met by then" + (f" ({text})" if text else "")
+        restricted = self._pin_restriction(student, term, key)
+        if restricted == "not_satisfied":
+            return f"every {label(term)} section is restricted to other majors or schools"
+        if restricted == "unknown":
+            self._pin_issues.append(PlanningIssue(
+                severity=Severity.NEEDS_CONFIRMATION, code="PIN_MAY_BE_RESTRICTED", course=key,
+                message=(f"{key} in {label(term)}: its sections list enrollment restrictions "
+                         "CoursePilot cannot check against your record.")))
+        if key in self.excluded:
+            self._pin_issues.append(PlanningIssue(
+                severity=Severity.WARNING, code="PIN_WILL_NOT_COUNT", course=key,
+                message=(f"{key} is placed as you pinned it, but your program gives no credit "
+                         "for it (a published course exclusion), so it will not count.")))
+        elif not serves.get(key):
+            self._pin_issues.append(PlanningIssue(
+                severity=Severity.WARNING, code="PIN_WILL_NOT_COUNT", course=key,
+                message=(f"{key} is placed as you pinned it, but it completes no remaining "
+                         "requirement.")))
+        return None
+
+    def _pin_restriction(self, student, term: str, key: str) -> str | None:
+        """'not_satisfied' when EVERY section of the term excludes the student,
+        'unknown' when restrictions exist that cannot be checked, else None."""
+        from app.domain.schedule import RestrictionEntry, RestrictionOutcome
+        from app.models import SectionRestriction
+        from app.services.scheduling.candidates import evaluate_restriction, student_attributes
+
+        by_section: dict = defaultdict(list)
+        sections = set()
+        for section_id, kind, code, unit in self.session.execute(
+                select(CourseSection.id, SectionRestriction.kind, SectionRestriction.code,
+                       SectionRestriction.unit_code)
+                .join(CourseOffering, CourseOffering.id == CourseSection.offering_id)
+                .join(Course, Course.id == CourseOffering.course_id)
+                .outerjoin(SectionRestriction, SectionRestriction.section_id == CourseSection.id)
+                .where(Course.course_string == key, CourseSection.term_code == term)):
+            sections.add(section_id)
+            if kind:
+                by_section[section_id].append(RestrictionEntry(kind=kind, code=code,
+                                                               unit_code=unit))
+        if not sections:
+            return None
+        attrs = student_attributes(self.session, student)
+        outcomes = {evaluate_restriction(by_section.get(s, []), attrs).outcome for s in sections}
+        if outcomes == {RestrictionOutcome.NOT_SATISFIED}:
+            return "not_satisfied"
+        if not outcomes & {RestrictionOutcome.UNRESTRICTED, RestrictionOutcome.SATISFIED}:
+            return "unknown"
+        return None
+
+    def _workload(self, key: str, term: str) -> WorkloadEvidence:
+        w = self.workload_index.weight(self.course_info[key], term)
+        return WorkloadEvidence(weight=w.weight, credits=w.credits, contact_hours=w.contact_hours,
+                                has_lab=w.has_lab, level=w.level, technical=w.technical,
+                                components=w.components, delivery=w.delivery,
+                                basis_term=w.basis_term)
+
+    def _workload_order(self, term, ready_or_pending, pins, serves, dependency_targets,
+                        rank, budget_left) -> list[tuple[str, str, str]]:
+        """(course, role, why) in the Phase 7.3 fill order: anchors (pins,
+        then needed retakes), multi-requirement, ONE major course, prerequisite
+        paths, then fillers by the student's filler preference - lowest weight
+        first when the budget is nearly used. Every pick is still re-validated
+        by the caller (audit, caps, budget)."""
+        c = self.constraints
+        names = {code: self.requirements[code].name for code in self.requirements}
+        out: list[tuple[str, str, str]] = []
+        used: set[str] = set()
+
+        def take(keys, role, why):
+            for k in keys:
+                if k not in used:
+                    used.add(k)
+                    out.append((k, role, why(k)))
+
+        take(pins, "anchor", lambda k: "you pinned it to this term")
+        retakes = sorted((k for k in ready_or_pending if serves.get(k) and (
+            k in self.retakes or (k in self.history and k not in self.passed))), key=rank)
+        take(retakes, "anchor", lambda k: "a retake you need (your recorded attempt does not "
+                                         "count yet)")
+        multi = sorted((k for k in ready_or_pending if len(set(serves.get(k, ()))) >= 2), key=rank)
+        take(multi, "multi_requirement", lambda k: "counts toward " + " and ".join(
+            sorted({names.get(code, code) for code in serves[k]})))
+        major = sorted((k for k in ready_or_pending if k.split(":")[1] == self.major_subject
+                        and any(self._system(code) == "major" for code in serves.get(k, ()))),
+                       key=lambda k: (self._is_topics(k), rank(k)))       # fixed content first
+        take(major[:1], "major", lambda k: f"a {self.major_subject} course that counts toward "
+                                           "your major")
+        nearly_used = budget_left <= Decimal(8)
+
+        def filler_key(k):
+            w = self.workload_index.weight(self.course_info[k], term)
+            return (filler_rank(w.delivery, c.filler_preference.value),
+                    w.weight if nearly_used else Decimal(0), self._is_topics(k), rank(k))
+
+        # Fillers: everything else that completes a remaining requirement or
+        # opens one (a prerequisite path), chosen by the filler preference.
+        fillers = sorted((k for k in ready_or_pending
+                          if serves.get(k) or k in dependency_targets), key=filler_key)
+
+        def filler_why(k):
+            w = self.workload_index.weight(self.course_info[k], term)
+            mode = ("an asynchronous online section" if "async" in w.delivery
+                    else "an online section" if "online" in w.delivery else "in-person sections")
+            what = (f"completes {', '.join(sorted({names.get(x, x) for x in serves[k]}))}"
+                    if serves.get(k) else
+                    f"a prerequisite for {', '.join(sorted(dependency_targets[k]))}")
+            return f"{what}; has {mode}"
+
+        take(fillers, "filler", filler_why)
+        return out
+
+    def _term_workload(self, term: str, term_plan: PlanTerm, roles: dict[str, str]) -> TermWorkload:
+        c = self.constraints
+        floor, cap, budget = LEVELS[c.workload_level]
+        total = sum((pc.workload.weight for pc in term_plan.courses if pc.workload), Decimal(0))
+        hours = sum((pc.workload.contact_hours or Decimal(0) for pc in term_plan.courses
+                     if pc.workload), Decimal(0))
+        notes = []
+        anchors = [pc for pc in term_plan.courses if roles.get(pc.course) == "anchor"]
+        anchor_weight = sum((pc.workload.weight for pc in anchors if pc.workload), Decimal(0))
+        if anchors and anchor_weight > budget:
+            notes.append(f"{' + '.join(pc.title for pc in anchors)} make this a heavier term: "
+                         f"the courses you must take weigh {anchor_weight} against a "
+                         f"{budget} budget.")
+        elif total > budget:
+            notes.append(f"Over the {budget} workload budget ({total}) because of the courses "
+                         "this term must hold.")
+        if term_plan.courses and term_plan.credits < floor:
+            notes.append(f"Below the {floor}-credit floor ({term_plan.credits}): no further "
+                         "eligible course fit the workload budget and the per-term limits.")
+        return TermWorkload(level=c.workload_level, budget=budget, total=total,
+                            credit_floor=floor, credit_max=cap, contact_hours=hours,
+                            notes=notes)
 
     def _partner(self, student, key, b, term, planned) -> str | None:
         """Deterministic same-term partner satisfying `key`'s co-requisite:
@@ -791,14 +1273,57 @@ class PlanningEngine:
         return sum(1 for k in ready if k != key and k not in planned
                    and set(serves.get(k, ())) == codes and rank(k)[:-1] == mine)
 
+    def _graduation_target(self, start_term: str) -> GraduationTarget | None:
+        """The last term a personalized plan may use (Phase 7.3).
+
+        An expected graduation term the student states wins. Otherwise the
+        graduation target pace counts REGULAR semesters (Fall/Spring) from
+        the student's entry term - their first Rutgers semester on record,
+        else the first planned one: On time 8, Early 7, No rush 10. A
+        stateless request (no pace) keeps the plain horizon."""
+        c = self.constraints
+        if c.expected_graduation_term:
+            return GraduationTarget(term_code=c.expected_graduation_term,
+                                    basis="your expected graduation term")
+        if c.pace is None:
+            return None
+        seen = sorted(a.term_code for atts in self.history.values() for a in atts
+                      if a.credit_origin == "rutgers" and a.term_code
+                      and a.term_code[4:] in ("1", "9"))
+        entry = seen[0] if seen else _regular(start_term)
+        semesters = GRADUATION_SEMESTERS[c.pace]
+        end = entry
+        for _ in range(semesters - 1):
+            end = _next_regular(end)
+        source = (f"your first semester, {label(entry)}" if seen
+                  else "the first planned semester")
+        return GraduationTarget(term_code=end, entry_term=entry, semesters=semesters,
+                                basis=f"{semesters} semesters counted from {source}")
+
+    def _placement_basis(self, student: Student) -> PlacementBasis | None:
+        """The stated math placement the plan relied on - shown, so a wrong
+        entry is easy to spot."""
+        if not student.math_placement:
+            return None
+        title = self.session.scalar(select(Course.title).where(
+            Course.course_string == student.math_placement, Course.supplement_code == ""))
+        return PlacementBasis(course=student.math_placement, title=title,
+                              source_url=PLACEMENT_POLICY_URL)
+
     def _planned_course(self, key, facts) -> PlannedCourse:
         course = self.course_info[key]
         ev: OfferingEvidence = facts["evidence"]
         pre: PrerequisiteEvidence = facts["prereq"]
         reasons = []
-        if pre.state is EligibilityState.SATISFIED_BY_HISTORY:
+        if (pre.state is EligibilityState.SATISFIED_BY_HISTORY
+                and MET_BY_PLACEMENT in pre.unknown_reasons):
+            reasons.append(Reason.PREREQUISITES_MET_BY_PLACEMENT)
+        elif pre.state is EligibilityState.SATISFIED_BY_HISTORY:
             reasons.append(Reason.PREREQUISITES_SATISFIED_BY_HISTORY if pre.raw_text or
                            pre.corequisite_text else Reason.NO_PREREQUISITE_PUBLISHED)
+        elif pre.state is EligibilityState.NEEDS_CONFIRMATION:
+            reasons.append(Reason.REQUIRES_MATH_PLACEMENT if REQUIRES_PLACEMENT
+                           in pre.unknown_reasons else Reason.PREREQUISITES_NEED_CONFIRMATION)
         else:
             reasons.append(Reason.PREREQUISITES_CONDITIONAL_ON_PLAN)
         if facts["dependency_for"]:
@@ -819,7 +1344,14 @@ class PlanningEngine:
             ranking_evidence=evidence, course=key, title=course.title, credits=course.credits, term_code=facts["term"],
             reasons=reasons, prerequisite=pre, offering=ev, corequisite_group=facts["group"],
             unlocks=sorted(set(facts["dependency_for"]) | set(facts["corequisite_for"])),
-            interchangeable_alternatives=facts["alternatives"])
+            interchangeable_alternatives=facts["alternatives"],
+            is_topics_course=self._is_topics(key),
+            # Only the term's OWN published sections name its topic; a term
+            # planned from history has none yet ("topic not yet announced").
+            topics=(self._topics(key, facts["term"]) if self._is_topics(key)
+                    and ev.kind is OfferingEvidenceKind.CONFIRMED_IN_TERM else []),
+            workload=facts.get("workload"), role=facts.get("role"),
+            role_reason=facts.get("role_reason"))
 
     # ---- Phase 7.2.1: pace, target load, levelling -----------------------
 
@@ -831,6 +1363,9 @@ class PlanningEngine:
         go past it. FINISH_EARLIER fills toward the maximum. The maximum is never
         exceeded by any pace."""
         c = self.constraints
+        if c.workload_level is not None:
+            floor, cap, _budget = LEVELS[c.workload_level]
+            return floor, cap
         target = c.target_credits_per_term
         if c.pace in (Pace.BALANCED, Pace.LIGHTER) and target is not None:
             hard = target if c.pace is Pace.LIGHTER else c.max_credits_per_term
@@ -1067,9 +1602,10 @@ class PlanningEngine:
             return {a.course.course_string for a in result.allocation}
 
         score = progress(final, self.requirements)
+        pinned = {(p.course, p.term_code) for p in self.constraints.pins}
         for key in sorted(planned, key=lambda k: (planned[k], k), reverse=True):
-            if key in credited(final):
-                continue
+            if key in credited(final) or (key, planned[key]) in pinned:
+                continue            # a pin is the student's hard constraint
             needed_by = any(key in {d.course for d in info[o]["prereq"].conditional_on}
                             or key in info[o]["group"]
                             for o in planned if o != key)

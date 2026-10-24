@@ -11,7 +11,14 @@ import {
   PLAN_SEVERITY,
   PACE_LABEL,
   PLAN_STATUS,
+  deliveryText,
+  offeringLabel,
+  placementLabel,
+  ROLE_LABEL,
+  WORKLOAD_LEVEL_LABEL,
+  workloadBreakdown,
   planReasonText,
+  topicsText,
   STALE_REASON,
   termLabel,
 } from "@/lib/academic/vocabulary";
@@ -117,7 +124,29 @@ function CourseCard({ course: c, index }: { course: PlannedCourse; index: number
           {c.credits} cr
         </span>
       </div>
-      <p className="text-sm leading-snug text-fg [overflow-wrap:anywhere]">{c.title}</p>
+      <p className="text-sm leading-snug text-fg [overflow-wrap:anywhere]">
+        {c.title}
+        {topicsText(c) && <span className="text-fg-secondary"> — {topicsText(c)}</span>}
+      </p>
+      {offeringLabel(c.offering) && (
+        <p className={cn("text-xs font-medium",
+          c.offering.kind === "confirmed_in_term" ? "text-success" : "text-warning")}>
+          {offeringLabel(c.offering)}
+        </p>
+      )}
+      {c.role && (
+        <p className="text-xs text-fg-secondary">
+          <span className="font-medium text-fg">{ROLE_LABEL[c.role] ?? c.role}</span>
+          {c.role_reason ? <span> — {c.role_reason}</span> : null}
+        </p>
+      )}
+      {c.workload && (
+        <p className="tabular text-2xs text-fg-muted" title={workloadBreakdown(c.workload)}>
+          Workload {Number(c.workload.weight)} ({workloadBreakdown(c.workload)})
+          {c.workload.contact_hours ? ` · ${Number(c.workload.contact_hours)} contact hrs/week` : ""}
+          {` · ${deliveryText(c.workload.delivery)}`}
+        </p>
+      )}
       {toward.length > 0 && (
         <p className="flex flex-wrap justify-end gap-x-2 gap-y-0.5 text-xs text-fg-secondary">
           <span className="sr-only">Toward: </span>
@@ -156,6 +185,16 @@ export function SemesterCard({
         <div>
           <h3 id={`term-${term.term_code}`} className="text-lg font-bold tracking-tight text-fg">{term.label}</h3>
           <p className="tabular text-xs text-fg-muted">{term.courses.length} courses · {term.credits} credits</p>
+          {term.workload && (
+            <p className="tabular text-xs text-fg-secondary">
+              {WORKLOAD_LEVEL_LABEL[term.workload.level] ?? term.workload.level}: workload {Number(term.workload.total)} of{" "}
+              {Number(term.workload.budget)} · {Number(term.workload.contact_hours)} contact hrs/week ·{" "}
+              {Number(term.workload.credit_floor)}-{Number(term.workload.credit_max)} credits
+            </p>
+          )}
+          {term.workload?.notes.map((n) => (
+            <p key={n} className="text-xs text-warning">{n}</p>
+          ))}
         </div>
         {maxCredits ? (
           <Progress value={Math.min(credits, maxCredits)} max={maxCredits}
@@ -267,6 +306,17 @@ export function PlanView({
               {r.terms.length} {r.terms.length === 1 ? "semester" : "semesters"} from {termLabel(plan.start_term)}
             </h2>
             <p className="text-sm text-fg-secondary">{status.meaning}</p>
+            {r.graduation_target && (
+              <p className="text-sm text-fg-secondary">
+                Planned to graduate by {termLabel(r.graduation_target.term_code)} ({r.graduation_target.basis}).
+              </p>
+            )}
+            {r.placement && (
+              <p className="text-sm text-fg-secondary">
+                Based on your placement into {placementLabel(r.placement)}.{" "}
+                <Link href="/profile" className="underline underline-offset-2">Wrong? Change it</Link>
+              </p>
+            )}
           </div>
           <StateBadge state={status} className="shrink-0" />
         </div>

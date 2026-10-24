@@ -73,7 +73,7 @@ def test_the_raw_soc_text_is_stored_verbatim_with_provenance(session, tmp_path, 
     assert "<em>" in row.raw_text or " or " in row.raw_text
     assert row.canonical_text == "(01:198:111 or 14:332:252)"
     assert row.classification == "parsed"
-    assert row.parser_version == "1"
+    assert row.parser_version == "2"
 
     source = session.get(DataSource, row.source_id)
     assert (source.kind, source.term_code) == ("rutgers_official_api", "20269")
@@ -104,12 +104,13 @@ def test_a_minimum_grade_note_is_kept_beside_the_expression(session, tmp_path, r
     assert "C" in row.condition_note
 
 
-def test_unsupported_forms_are_stored_not_guessed(session, tmp_path, records) -> None:
+def test_a_minimum_course_level_is_stored_as_its_literal_reading(session, tmp_path, records) -> None:
+    """Phase 7.3 (product decision): stored as the literal node; the raw text stays verbatim."""
     _write(tmp_path, FALL_26, records)
     _load(session, tmp_path, FALL_26)
     row = _prereq(session, "01:640:250", "20269")
-    assert row.classification == "unsupported_minimum_course_level"
-    assert row.expression["unsupported"] == "minimum_course_level"
+    assert row.classification == "parsed"
+    assert row.expression == {"min_course": "01:640:112"}
     assert row.raw_text.startswith("Any Course EQUAL or GREATER Than")
 
 
