@@ -107,7 +107,8 @@ def test_violated_grade_rule_blocks_completion(cs_session) -> None:
     student = _student(cs_session)
     for cs in CORE + MATH:
         _enroll(cs_session, student, cs, grade="A")
-    for cs in ["01:198:314", "01:198:323", "01:198:334", "01:198:336", "01:198:345"]:
+    # 352, not 345: the department's elective list (2026-10-24) omits 345.
+    for cs in ["01:198:314", "01:198:323", "01:198:334", "01:198:336", "01:198:352"]:
         _enroll(cs_session, student, cs, grade="A")
     # Downgrade two of them to D.
     for cs in ("01:198:111", "01:198:112"):
@@ -160,14 +161,20 @@ def test_excluded_course_still_exists_in_the_database(cs_session) -> None:
     assert course is not None
     assert course.title  # untouched by the exclusion
 
-    # It is even still ELIGIBLE for the elective requirement - eligibility is
-    # curriculum-level. Only allocation and credit counting exclude it.
+    # Since 2026-10-24 CS electives are the department's designated list, which
+    # does not include 405 - so it is not elective-eligible for a reason that
+    # has nothing to do with the exclusion. The exclusion itself still lives
+    # on the program version and never touches the course row.
+    from app.models import ProgramRule
+
     options = cs_session.scalars(
         select(RequirementCourseOption).where(
             RequirementCourseOption.course_id == course.id
         )
     ).all()
-    assert options, "405 should remain eligible; exclusion is applied at audit time"
+    assert options == []
+    rule = cs_session.scalar(select(ProgramRule).where(ProgramRule.rule_type == "course_exclusion"))
+    assert "01:198:405" in rule.excluded_courses
 
 
 def test_excluded_course_cannot_satisfy_a_requirement(cs_session) -> None:
@@ -234,7 +241,8 @@ def test_not_evaluable_rule_prevents_complete(cs_session) -> None:
     student = _student(cs_session)
     for cs in CORE + MATH:
         _enroll(cs_session, student, cs)
-    for cs in ["01:198:314", "01:198:323", "01:198:334", "01:198:336", "01:198:345"]:
+    # 352, not 345: the department's elective list (2026-10-24) omits 345.
+    for cs in ["01:198:314", "01:198:323", "01:198:334", "01:198:336", "01:198:352"]:
         _enroll(cs_session, student, cs)
     result = _audit(cs_session, student)
 

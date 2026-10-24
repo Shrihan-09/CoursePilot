@@ -2,13 +2,15 @@
 
 - **Lifecycle:** `validated`
 - **Encoded by:** manual encoding, Phase 7.3 (Claude Code session, 2026-10-23) - encoding is not review
-- **Definition:** `data/programs/rutgers/nb-undergrad/2026-2027/sas-198-bs.json`  sha256 `e55095cdd4f410c0`
+- **Definition:** `data/programs/rutgers/nb-undergrad/2026-2027/sas-198-bs.json`  sha256 `d9273af9ca55323f`
 - **Source:** https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/computer-science-198
 - **Archive:** `data/raw/catalog/catalog_computer-science-198_2026_2027.html`  prose sha256 `4421d9b70ef5a4f8`
 
 ## Machine checks (not review)
 
 - passed: **True**, quotes found verbatim: 9/9
+- 4 course(s) named by the definition are not in the loaded course table (reported, never created), e.g. 01:198:324, 01:198:411, 01:198:424, 14:332:453
+- 8 eligible row(s) are courses outside offering unit 01 (graduate 16:xxx, or another school's course) - check each was meant: named explicitly, or admitted by a query
 
 ## Review questions
 
@@ -16,6 +18,7 @@
 - [ ] The physics list names '01:750:193 and 194' twice ('... or 01:750:193 and 194 ... or 01:750:193, 194'). Encoded once. Confirm no other course was meant.
 - [ ] Chemistry 01:160:171 appears in all three chemistry options; each option is encoded as its own all-of set.
 - [ ] Same elective-list gap and graduate-course question as the B.A. (sas-198-ba.json review_questions).
+- [ ] CS_ELECTIVES now lists the department's designated electives (2026-10-23) instead of the {subject 198, number >= 300} query. Confirm the list and that it applies to catalog year 2026-2027 (the department page is undated).
 
 ## What to verify
 
@@ -42,7 +45,7 @@
 | `MATH_151` | course | CS_MATH | courses: 01:640:151 | 1 |
 | `MATH_152` | course | CS_MATH | courses: 01:640:152 | 1 |
 | `MATH_250` | course | CS_MATH | courses: 01:640:250 | 1 |
-| `CS_ELECTIVES` | choose_n | CS_BS | min_count=7<br>min_at_level=300<br>min_at_level_count=2<br>max_outside_subject=2<br>constraint_subject_code=198<br>query {"min_course_number": 300, "subject_code": "198"} | 32 |
+| `CS_ELECTIVES` | choose_n | CS_BS | min_count=7<br>min_at_level=300<br>min_at_level_count=2<br>max_outside_subject=2<br>constraint_subject_code=198<br>courses: 01:198:210, 01:198:213, 01:198:214, 01:198:314, 01:198:323, 01:198:324, 01:198:334, 01:198:336, 01:198:352, 01:198:411, 01:198:416, 01:198:417, 01:198:419, 01:198:424, 01:198:425, 01:198:428, 01:198:431, 01:198:437, 01:198:439, 01:198:440, 01:198:442, 01:198:443, 01:198:444, 01:198:445, 01:198:452, 01:198:460, 01:198:461, 01:198:462, 01:198:493, 01:198:494, 14:332:376, 14:332:423, 14:332:424, 14:332:443, 14:332:451, 14:332:452, 14:332:453, 14:332:456, 14:332:472, 01:640:338, 01:640:348, 01:640:354, 01:640:428, 01:640:454, 01:640:461, 01:730:315, 01:730:407, 01:730:408, 01:730:329, 01:730:424, 01:615:441, 01:960:384, 01:960:463, 01:960:476, 01:960:486 | 51 |
 | `CS_BS_SCIENCE` | any_of | CS_BS |  | 0 |
 | `CS_BS_PHYS_A` | all_of | CS_BS_SCIENCE |  | 0 |
 | `CS_BS_PHYS_A_203` | course | CS_BS_PHYS_A | courses: 01:750:203 | 1 |
@@ -84,7 +87,7 @@
 - **CS_CORE**: "six required courses in computer science, 01:198:111, 112, 205, 206, 211, and 344"
 - **CS_MATH**: "three courses in mathematics, 01:640:151-152 and 01:640:250"
 - **CS_ELECTIVES**: "complete seven courses from category 3, no more than two of these outside the Department of Computer Science"
-  - note: B.S.: seven electives from category 3 (the B.A.'s designated list), at most two outside CS. The 300-level minimum is kept from the category's definition - a REVIEW QUESTION. Non-CS options are not encoded (list not in the catalog).
+  - note: Designated list from the Department of Computer Science electives page (https://www.cs.rutgers.edu/academics/undergraduate/electives, read 2026-10-23, undated), to which the catalog defers: 30 CS courses plus Electrical Engineering, Mathematics, Philosophy, Linguistics and Statistics options. Replaces the earlier query {subject 198, number >= 300}, which admitted courses the department does not list (e.g. 01:198:345). The catalog's own constraints are kept: at most two outside CS, at least two CS courses at the 300 level or above. B.S.: seven electives from this category.
 - **CS_BS_SCIENCE**: "plus four physics courses: 01:750:203, 204, 205, and 206 (or 01:750:123, 124, 227, and 229 or 01:750:193 and 194 or 01:750:271, 272, 275, and 276 or 01:750:201 and 202 or 01:750:193, 194); or chemistry 01:160:159, 160, and 171 (or 01:160:161, 162, and 171 or 01:160:163, 164, and 171)"
   - note: One complete set: a physics sequence or a chemistry sequence, as the prose lists them.
 
@@ -98,6 +101,8 @@
 
 - At most two of the five electives may be taken outside the Department of Computer Science; at least two must be CS at the 300 level or above.  
   _why:_ IMPLEMENTED as group constraints on CS_ELECTIVES (max_outside_subject / min_at_level), not as a program rule.
+- At most one of a student's electives may be 01:198:493/494 (Independent Study); whether an instance counts depends on the individual arrangement.  
+  _why:_ No per-course-group cap in the requirement model yet; source: the department electives page (2026-10-23).
 
 ## How to record your decision
 

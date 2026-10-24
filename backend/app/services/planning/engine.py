@@ -66,6 +66,7 @@ from app.domain.planning import (
     EligibilityState,
     OfferingEvidence,
     OfferingEvidenceKind,
+    GraduationTarget,
     Pace,
     PlacementBasis,
     PlanMetadata,
@@ -119,6 +120,20 @@ from app.services.planning.workload import LEVELS, WorkloadIndex, filler_rank
 from app.services.prerequisites import attempts_by_course
 
 LEAF_TYPES = ("course", "choose_n", "credits")
+
+#: Phase 7.3: regular (Fall/Spring) semesters from entry to graduation per
+#: graduation target. CoursePilot settings, not Rutgers policy.
+GRADUATION_SEMESTERS = {Pace.BALANCED: 8, Pace.FINISH_EARLIER: 7, Pace.LIGHTER: 10}
+
+
+def _next_regular(term: str) -> str:
+    year, s = int(term[:4]), term[4]
+    return f"{year}9" if s in ("0", "1", "7") else f"{year + 1}1"
+
+
+def _regular(term: str) -> str:
+    """The term itself when Fall/Spring, else the next Fall/Spring."""
+    return term if term[4] in ("1", "9") else _next_regular(term)
 
 #: Phase 7.3: a GENERIC topics course - one course number whose content is a
 #: per-term topic (SOC section subtitle), e.g. "TOPICS IN COMP SCI",
@@ -564,8 +579,23 @@ class PlanningEngine:
 
         before = self.audit_engine.audit(student, program_version=version)
         current = before
-        terms = planning_terms(start_term, c.max_terms, include_summer=c.include_summer,
-                               include_winter=c.include_winter)
+        graduation = self._graduation_target(start_term)
+        if graduation is None:
+            terms = planning_terms(start_term, c.max_terms, include_summer=c.include_summer,
+                                   include_winter=c.include_winter)
+        else:
+            # Phase 7.3: the horizon ends at the graduation target - counted
+            # from the student's entry term, or their stated expected term.
+            terms = [t for t in planning_terms(start_term, 16, include_summer=c.include_summer,
+                                               include_winter=c.include_winter)
+                     if t <= graduation.term_code]
+            if not terms:
+                issues.append(PlanningIssue(
+                    severity=Severity.WARNING, code="GRADUATION_TARGET_PASSED",
+                    message=(f"Your graduation target ({label(graduation.term_code)}) is before "
+                             f"{label(start_term)}, the first semester planned. Plan from an "
+                             "earlier semester or choose a later target."),
+                    details={"graduation_term": graduation.term_code}))
         plan_terms: list[PlanTerm] = []
         empty_streak = 0
         stalled = False
@@ -602,16 +632,18 @@ class PlanningEngine:
                                  horizon=bool(remaining) and not stalled)
         issues += self._rule_issues(final)
         issues += self._pin_issues
-        if c.workload_level is not None and remaining and not stalled:
+        if graduation is not None and terms and remaining and not stalled:
             # Never silently push graduation later: say so and suggest fixes.
+            level = (f" at a {c.workload_level.value.replace('_', '-')} workload"
+                     if c.workload_level is not None else "")
             issues.append(PlanningIssue(
-                severity=Severity.WARNING, code="WORKLOAD_VS_GRADUATION_TARGET",
-                message=(f"At a {c.workload_level.value.replace('_', '-')} workload every term, "
-                         f"the remaining requirements do not fit in the {len(terms)} terms of "
-                         "your graduation target. Your plan has not been changed: you could "
-                         "add a summer term, raise one term's workload level, or choose a "
+                severity=Severity.WARNING, code="GRADUATION_TARGET_NOT_MET",
+                message=(f"The remaining requirements do not fit by {label(graduation.term_code)}"
+                         f"{level} ({graduation.basis}). Your plan has not been changed: you "
+                         "could add a summer term, take more in some semesters, or choose a "
                          "later graduation target."),
-                details={"workload_level": c.workload_level.value, "terms": len(terms),
+                details={"graduation_term": graduation.term_code, "terms": len(terms),
+                         "workload_level": c.workload_level.value if c.workload_level else None,
                          "remaining": sorted(n.requirement_code for n in remaining)}))
         if self.in_progress:
             issues.append(PlanningIssue(
@@ -652,6 +684,7 @@ class PlanningEngine:
         return PlanResult(
             target=target, status=status, terms=plan_terms,
             placement=self._placement_basis(student),
+            graduation_target=graduation,
             issues=sorted(issues, key=lambda i: (i.severity.value, i.code,
                                                  i.requirement_code or "", i.course or "")),
             requirements=projections, assumptions=assumptions,
@@ -1239,6 +1272,33 @@ class PlanningEngine:
         mine = rank(key)[:-1]
         return sum(1 for k in ready if k != key and k not in planned
                    and set(serves.get(k, ())) == codes and rank(k)[:-1] == mine)
+
+    def _graduation_target(self, start_term: str) -> GraduationTarget | None:
+        """The last term a personalized plan may use (Phase 7.3).
+
+        An expected graduation term the student states wins. Otherwise the
+        graduation target pace counts REGULAR semesters (Fall/Spring) from
+        the student's entry term - their first Rutgers semester on record,
+        else the first planned one: On time 8, Early 7, No rush 10. A
+        stateless request (no pace) keeps the plain horizon."""
+        c = self.constraints
+        if c.expected_graduation_term:
+            return GraduationTarget(term_code=c.expected_graduation_term,
+                                    basis="your expected graduation term")
+        if c.pace is None:
+            return None
+        seen = sorted(a.term_code for atts in self.history.values() for a in atts
+                      if a.credit_origin == "rutgers" and a.term_code
+                      and a.term_code[4:] in ("1", "9"))
+        entry = seen[0] if seen else _regular(start_term)
+        semesters = GRADUATION_SEMESTERS[c.pace]
+        end = entry
+        for _ in range(semesters - 1):
+            end = _next_regular(end)
+        source = (f"your first semester, {label(entry)}" if seen
+                  else "the first planned semester")
+        return GraduationTarget(term_code=end, entry_term=entry, semesters=semesters,
+                                basis=f"{semesters} semesters counted from {source}")
 
     def _placement_basis(self, student: Student) -> PlacementBasis | None:
         """The stated math placement the plan relied on - shown, so a wrong

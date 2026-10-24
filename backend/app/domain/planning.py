@@ -206,6 +206,9 @@ class PlanningConstraints(BaseModel):
     workload_level: WorkloadLevel | None = None
     filler_preference: FillerPreference = FillerPreference.NO_PREFERENCE
     pins: list[CoursePin] = Field(default_factory=list, max_length=24)
+    #: Phase 7.3: the term the student expects to graduate in; overrides the
+    #: graduation target pace (On time / Early / No rush) when set.
+    expected_graduation_term: str | None = Field(default=None, pattern=r"^\d{4}[0179]$")
 
     @model_validator(mode="after")
     def _target_within_max(self) -> "PlanningConstraints":
@@ -382,6 +385,15 @@ class PlanMetadata(BaseModel):
     offering_dataset: list[str]
 
 
+class GraduationTarget(BaseModel):
+    """Phase 7.3: the last term the plan may use, and why (shown on the plan)."""
+
+    term_code: str
+    basis: str
+    entry_term: str | None = None
+    semesters: int | None = None
+
+
 class PlacementBasis(BaseModel):
     """Phase 7.3: the student's stated math placement this plan relied on."""
 
@@ -395,6 +407,7 @@ class PlanResult(BaseModel):
     status: PlanStatus
     terms: list[PlanTerm] = Field(default_factory=list)
     placement: PlacementBasis | None = None
+    graduation_target: GraduationTarget | None = None
     issues: list[PlanningIssue] = Field(default_factory=list)
     requirements: list[RequirementProjection] = Field(default_factory=list)
     assumptions: list[ScenarioAssumption] = Field(default_factory=list)
@@ -408,7 +421,8 @@ class PlanResult(BaseModel):
 
 __all__ = ["CONSTRAINTS_SOURCE", "PLANNING_ENGINE_VERSION",
            "ConditionalDependency", "EligibilityState",
-           "OfferingEvidence", "OfferingEvidenceKind", "PlacementBasis", "PlanMetadata",
+           "GraduationTarget", "OfferingEvidence", "OfferingEvidenceKind", "PlacementBasis",
+           "PlanMetadata",
            "PlanResult", "PlanStatus", "Pace", "PlanObservation", "PlanTerm", "PlannedCourse",
            "PlanningConstraints", "PlanningIssue",
            "PrerequisiteEvidence", "Reason", "RequirementContribution", "RequirementProjection",

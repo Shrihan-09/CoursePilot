@@ -245,3 +245,12 @@ flexible -> Spring 2027 = Calc II (anchor, retake) + Gen Physics 203 with
 lab 205 (Core NS and the B.S. science) + 01:198:211 (major) + 01:810:135
 (asynchronous, Core AHq) = 16 credits, workload 22.0 of 24.
 
+## 9. Graduation target from the entry term (2026-10-24)
+
+The graduation target counts Fall/Spring semesters from the student's ENTRY term - the first
+Rutgers semester on record, else the first planned semester: On time 8, Early 7, No rush 10.
+An optional expected graduation term (onboarding, preferences) overrides it. The plan ends at
+that term (summer/winter included only if the student allows them) and states the basis; when
+the remaining requirements do not fit, `GRADUATION_TARGET_NOT_MET` says so with fixes and the
+plan is never extended. Example: entered Fall 2024 (class of 2028), planning from Spring 2027
+-> Spring 2027, Fall 2027, Spring 2028. Stateless requests (no pace) keep the plain horizon.

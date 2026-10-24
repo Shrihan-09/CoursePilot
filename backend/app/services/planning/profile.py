@@ -45,6 +45,7 @@ def profile_input(row: StudentPlanningProfile) -> PlanningProfileInput:
         "workload_level": row.workload_level,
         "filler_preference": row.filler_preference or "no_preference",
         "pins": row.pins or [],
+        "expected_graduation_term": row.expected_graduation_term,
     })
 
 
@@ -68,6 +69,7 @@ def confirm_profile(session: Session, student: Student, data: PlanningProfileInp
     row.workload_level = data.workload_level.value if data.workload_level else None
     row.filler_preference = data.filler_preference.value
     row.pins = [p.model_dump(mode="json") for p in data.pins]
+    row.expected_graduation_term = data.expected_graduation_term
     row.source = source
     row.confirmed_at = now
     session.flush()

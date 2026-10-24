@@ -64,6 +64,7 @@ export function PreferencesForm({
   const [level, setLevel] = useState<WorkloadLevel | null>(initial.workload_level ?? null);
   const [filler, setFiller] = useState<FillerPreference>(initial.filler_preference ?? "no_preference");
   const [pins, setPins] = useState<CoursePin[]>(initial.pins ?? []);
+  const [gradTerm, setGradTerm] = useState(initial.expected_graduation_term ?? "");
   const termsAhead = upcomingTerms(new Date(), 8, { summer: initial.include_summer, winter: initial.include_winter });
   const [pinCourse, setPinCourse] = useState("");
   const [pinTerm, setPinTerm] = useState(termsAhead[0] ?? "");
@@ -92,12 +93,22 @@ export function PreferencesForm({
           schedule: { ...initial.schedule, earliest_start: early || null, latest_end: late || null, avoid_days: avoid },
           additional_goals: goals,
           workload_level: level, filler_preference: filler, pins,
+          expected_graduation_term: gradTerm || null,
         });
       }}
     >
       <fieldset className="space-y-2">
         <legend className="text-base font-semibold text-fg">When do you want to graduate?</legend>
-        <p className="text-sm text-fg-muted">This sets how many semesters your plan has. On time is the default; CoursePilot never assumes you want to finish early.</p>
+        <p className="text-sm text-fg-muted">This sets how many semesters your plan has, counted from your first semester. On time is the default; CoursePilot never assumes you want to finish early.</p>
+        <Field label="Expected graduation term (optional)" hint="Overrides the choice below when set.">
+          {({ id, describedBy }) => (
+            <Select id={id} aria-describedby={describedBy} value={gradTerm} onChange={(e) => setGradTerm(e.target.value)}>
+              <option value="">Not sure</option>
+              {upcomingTerms(new Date(), 14).filter((t) => t.endsWith("1") || t.endsWith("9"))
+                .map((t) => <option key={t} value={t}>{termLabel(t)}</option>)}
+            </Select>
+          )}
+        </Field>
         <div className="space-y-1">
           {meta.paces.map((p) => (
             <Radio key={p.value} name="pace" label={p.label} description={p.description}

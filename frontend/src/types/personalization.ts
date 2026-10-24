@@ -45,6 +45,8 @@ export interface PlanningProfileInput {
   workload_level?: WorkloadLevel | null;
   filler_preference?: FillerPreference;
   pins?: CoursePin[];
+  /** Phase 7.3: overrides the graduation target pace, e.g. "20281". */
+  expected_graduation_term?: string | null;
 }
 
 export interface PlanningProfile extends PlanningProfileInput {

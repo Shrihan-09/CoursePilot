@@ -172,11 +172,13 @@ def test_pins_hold_their_term_and_heavy_anchors_are_said(world):
 
 
 def test_a_level_that_misses_the_graduation_target_is_said_not_hidden(world):
+    # Entered Fall 2025; Early = 7 semesters -> Fall 2028 is the last one.
     plan = _plan(world, _student(world), workload_level=WorkloadLevel.LIGHT,
-                 pace=Pace.FINISH_EARLIER, max_terms=2)
-    issue = next(i for i in plan.issues if i.code == "WORKLOAD_VS_GRADUATION_TARGET")
+                 pace=Pace.FINISH_EARLIER)
+    issue = next(i for i in plan.issues if i.code == "GRADUATION_TARGET_NOT_MET")
     assert "has not been changed" in issue.message and "summer" in issue.message
-    assert len(plan.terms) <= 2                       # graduation is never pushed later
+    assert "light workload" in issue.message
+    assert all(t.term_code <= "20289" for t in plan.terms)   # never pushed later
 
 
 def test_without_a_level_nothing_changes(world):

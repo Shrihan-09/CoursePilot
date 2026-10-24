@@ -181,6 +181,8 @@ export interface PlanResult {
   metadata: PlanMetadata;
   /** Phase 7.3: the stated math placement the plan relied on. */
   placement?: { course: string; title: string | null; source_url: string } | null;
+  /** Phase 7.3: the last semester the plan may use, and why. */
+  graduation_target?: { term_code: string; basis: string; entry_term: string | null; semesters: number | null } | null;
 }
 
 export type StaleReason =

@@ -117,9 +117,9 @@ def test_cross_listed_twins_are_never_both_planned(session, tmp_path):
     assert_no_duplicates(session, plan)
 
 
-def _topics_world(session, tmp_path, numbers=("442", "443")):
+def _topics_world(session, tmp_path, numbers=("442", "443"), fixed=(), drop=()):
     every = _records("soc_cs_courses_sample.json")
-    records = [r for r in every if r["courseString"] not in TOPICS_DROP]
+    records = [r for r in every if r["courseString"] not in TOPICS_DROP | set(drop)]
     base = next(r for r in every if r["courseString"] == "01:198:345")     # prereq: 112
 
     def clone(number, title, subtitles):
@@ -138,6 +138,7 @@ def _topics_world(session, tmp_path, numbers=("442", "443")):
     records += [clone(first, "TOPICS IN COMP SCI", ["Introduction to Cryptography",
                                                     "Deep Learning", "Deep Learning"]),
                 clone(second, "TPCS IN COMPUTER SCI", [""])]
+    records += [clone(number, title, [""]) for number, title in fixed]
     _terms(session, tmp_path, records,
            spring27={"01:198:314", "01:198:336", f"01:198:{first}", f"01:198:{second}"})
     RequirementLoader(session).load_file(CS_REQUIREMENTS)
@@ -176,14 +177,19 @@ def test_the_cap_is_a_preference_the_student_can_raise(session, tmp_path):
 
 
 def test_fixed_content_electives_come_before_topics_courses(session, tmp_path):
-    # SYNTHETIC numbers 300/301 sort BEFORE 314/336, so only the topics
-    # ordering (not the canonical tie-break) can put the fixed courses first.
-    # One course a term makes the choice order visible as the term order.
-    s = _topics_world(session, tmp_path, numbers=("300", "301"))
+    # Listed electives only (the department list): topics 442/443 against
+    # SYNTHETIC fixed-content 452/460 (titles from the list), which sort AFTER
+    # the topics courses - so only the topics ordering, not the canonical
+    # tie-break, can put the fixed ones first. 314/336 are removed so they
+    # cannot stand in. One course a term makes the choice order the term order.
+    s = _topics_world(session, tmp_path,
+                      fixed=(("452", "FORMAL LANGUAGES AND AUTOMATA"),
+                             ("460", "INTRO COMPUTATIONAL ROBOTICS")),
+                      drop=("01:198:314", "01:198:336"))
     plan = _plan(s, _student(s, ELECTIVES_LEFT), start_term="20279",
                  constraints=PlanningConstraints(max_courses_per_term=1, max_terms=10))
     placed = _placed(plan)
-    fixed = [placed[k].term_code for k in ("01:198:314", "01:198:336") if k in placed]
+    fixed = [placed[k].term_code for k in ("01:198:452", "01:198:460") if k in placed]
     topics = [pc.term_code for pc in placed.values() if pc.is_topics_course]
     assert fixed and topics
     assert max(fixed) < min(topics)

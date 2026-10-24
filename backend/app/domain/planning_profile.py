@@ -104,6 +104,8 @@ class PlanningProfileInput(BaseModel):
     workload_level: WorkloadLevel | None = None
     filler_preference: FillerPreference = FillerPreference.NO_PREFERENCE
     pins: list[CoursePin] = Field(default_factory=list, max_length=24)
+    #: Optional: overrides the graduation target pace (e.g. "20281" Spring 2028).
+    expected_graduation_term: str | None = Field(default=None, pattern=r"^\d{4}[0179]$")
 
     @model_validator(mode="after")
     def _load(self) -> "PlanningProfileInput":
@@ -126,7 +128,8 @@ def to_constraints(profile: PlanningProfileInput) -> PlanningConstraints:
         strategy=profile.strategy,
         workload_level=profile.workload_level,
         filler_preference=profile.filler_preference,
-        pins=profile.pins)
+        pins=profile.pins,
+        expected_graduation_term=profile.expected_graduation_term)
 
 
 __all__ = ["AdditionalGoal", "DEFAULT_MAX_TERMS", "GRADUATION_TARGET_TERMS", "PlanningProfileInput",

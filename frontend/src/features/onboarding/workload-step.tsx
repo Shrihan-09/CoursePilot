@@ -6,7 +6,8 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Alert, Skeleton } from "@/components/ui/feedback";
-import { Radio } from "@/components/ui/field";
+import { Field, Radio, Select } from "@/components/ui/field";
+import { termLabel, upcomingTerms } from "@/lib/academic/vocabulary";
 import { ApiError, api } from "@/lib/api";
 import type { FillerPreference, WorkloadLevel } from "@/types/personalization";
 import type { Pace } from "@/types/plan";
@@ -23,6 +24,7 @@ export function WorkloadStep({ onDone }: { onDone: () => void }) {
   const [pace, setPace] = useState<Pace | null>(null);
   const [level, setLevel] = useState<WorkloadLevel | null>(null);
   const [filler, setFiller] = useState<FillerPreference | null>(null);
+  const [gradTerm, setGradTerm] = useState<string | null | undefined>(undefined);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,6 +36,8 @@ export function WorkloadStep({ onDone }: { onDone: () => void }) {
   const chosenPace = pace ?? base.pace;
   const chosenLevel = level ?? base.workload_level ?? "balanced";
   const chosenFiller = filler ?? base.filler_preference ?? "no_preference";
+  const chosenGrad = gradTerm === undefined ? (base.expected_graduation_term ?? null) : gradTerm;
+  const gradChoices = upcomingTerms(new Date(), 14).filter((t) => t.endsWith("1") || t.endsWith("9"));
 
   async function save() {
     setSaving(true);
@@ -41,6 +45,7 @@ export function WorkloadStep({ onDone }: { onDone: () => void }) {
     try {
       await api.confirmPlanningProfile({
         ...base!, pace: chosenPace, workload_level: chosenLevel, filler_preference: chosenFiller,
+        expected_graduation_term: chosenGrad,
       });
       onDone();
     } catch (e) {
@@ -63,6 +68,16 @@ export function WorkloadStep({ onDone }: { onDone: () => void }) {
             checked={chosenPace === p.value} onChange={() => setPace(p.value)} />
         ))}
       </fieldset>
+      <Field label="Expected graduation term (optional)"
+             hint="If you know it, this overrides the choice above. Otherwise On time counts 8 semesters from your first one.">
+        {({ id, describedBy }) => (
+          <Select id={id} aria-describedby={describedBy} value={chosenGrad ?? ""}
+                  onChange={(e) => setGradTerm(e.target.value || null)}>
+            <option value="">Not sure</option>
+            {gradChoices.map((t) => <option key={t} value={t}>{termLabel(t)}</option>)}
+          </Select>
+        )}
+      </Field>
       <fieldset className="space-y-2">
         <legend className="text-base font-semibold text-fg">How intense should each semester be?</legend>
         {(meta.data.workload_levels ?? []).map((w) => (

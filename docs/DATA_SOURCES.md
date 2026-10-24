@@ -367,8 +367,10 @@ list". Computer Science entries: 210, 213, 214, 314, 323, 324, 334, 336, 352,
 number >= 300, from the catalog prose "at least two must be computer science
 courses at the 300 level or above") counts 345, graduate 16:198 courses and
 any other 198 course >= 300 not listed, and cannot count 210/213/214 or the
-EE/Math/Philosophy/Linguistics/Statistics options. Replacing the query with
-this list is a program-definition change awaiting review.
+EE/Math/Philosophy/Linguistics/Statistics options. Replaced on 2026-10-24 (product decision): both CS programs' CS_ELECTIVES now list exactly
+these 55 courses, keeping the catalog's constraints (at most two outside CS, at least two CS
+courses at 300+); "at most one 493/494" is recorded as not yet modeled. CS B.A. moved to
+`needs_rereview` (pending human review) as any definition change does.
 
 ### Section subtitle is a topic label, not a title override
 
@@ -1188,3 +1190,17 @@ used - these are public advising pages.
    2026 - but it is not a catalog-wide extract.
 5. `ITR`/`WC` retirement is inferred from absence, not from a Rutgers
    statement of retirement.
+
+## 1f. SAS Core attaches at the school level (2026-10-24)
+
+SAS Core (`sas-core.json`) is loaded once as the SAS school requirement set for 2026-2027
+(`school_requirement_set_version`, 18 requirements, eligibility from SOC `coreCodes` of each
+course's latest record Fall 2025 - Spring 2027: 1,230 certifications, 799 courses). Every SAS
+program composes it through its school (`app.services.academic_context.composed_requirements`
+matches school AND catalog year); no program embeds a copy. The legacy embedded copies on
+CS B.A. and Math B.A. (13 rows each, an older Core without separate QQ/QR or allocation
+scopes) were removed so nothing is counted twice. Programs of other schools (Engineering,
+Business, SEBS) never compose SAS Core; their own general education is a later prompt.
+Effect on the development data: all 18 sampled plans changed (7 majors that had no Core now
+plan it; CS B.A. and Math B.A. plan fewer separate Core courses because the current
+definition lets one certified course serve allowed areas together).

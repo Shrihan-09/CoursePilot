@@ -31,6 +31,7 @@ from app.domain.planning_profile import (
     PlanningProfileInput,
 )
 from app.domain.schedule import SectionChoice
+from app.services.planning.engine import GRADUATION_SEMESTERS
 from app.services.planning.profile import confirm_profile, get_profile, profile_input
 from app.services.planning.readiness import readiness
 from app.services.planning.terms import label as term_label
@@ -54,15 +55,12 @@ COURSE = r"^\d{2}:\d{3}:\d{3}$"
 #: and sets only the plan's horizon; the workload level sets each term's load.
 #: Stored values are unchanged (balanced / finish_earlier / lighter).
 PACES = [
-    {"value": Pace.BALANCED.value, "label": "On time",
-     "description": f"Plan up to {GRADUATION_TARGET_TERMS[Pace.BALANCED]} semesters."},
-    {"value": Pace.FINISH_EARLIER.value, "label": "Early",
-     "description": f"Plan up to {GRADUATION_TARGET_TERMS[Pace.FINISH_EARLIER]} semesters. "
-                    "If your workload level can't fit that, the plan says so - it never "
-                    "silently pushes graduation later."},
-    {"value": Pace.LIGHTER.value, "label": "No rush",
-     "description": f"Plan up to {GRADUATION_TARGET_TERMS[Pace.LIGHTER]} semesters."},
-]
+    {"value": pace.value, "label": label,
+     "description": (f"Graduate within {GRADUATION_SEMESTERS[pace]} Fall/Spring semesters, counted "
+                     "from your first semester at Rutgers. If the remaining requirements don't "
+                     "fit, the plan says so - it never silently pushes graduation later.")}
+    for pace, label in ((Pace.BALANCED, "On time"), (Pace.FINISH_EARLIER, "Early"),
+                        (Pace.LIGHTER, "No rush"))]
 
 #: Phase 7.3: per-term intensity. Numbers are CoursePilot settings, shown as is.
 WORKLOAD_LEVELS = [

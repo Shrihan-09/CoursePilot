@@ -336,6 +336,34 @@ def test_core_is_composed_for_both_majors_without_cloning(session, two_programs)
     assert core_ids[0] == core_ids[1] and core_ids[0]
 
 
+@pytest.mark.parametrize("school_code", ["ENG", "RBS", "SEBS"])
+def test_other_schools_never_get_sas_core(session, two_programs, school_code):
+    """Phase 7.3: SAS Core attaches at the SCHOOL level - every SAS program gets
+    it through its school, no program embeds a copy, and Engineering, Business
+    or SEBS programs never get it (their own gen-ed comes later)."""
+    from app.models import School
+
+    sas = _version(session, "198")
+    other = School(code=school_code, name=f"SYNTHETIC {school_code}", campus_code="NB",
+                   source_id=sas.program.source_id)
+    session.add(other)
+    session.flush()
+    program = Program(school_id=other.id, code="332", name="SYNTHETIC program", degree_type="BS",
+                      source_id=sas.program.source_id)
+    session.add(program)
+    session.flush()
+    version = ProgramVersion(program_id=program.id, catalog_year=sas.catalog_year,
+                             source_id=sas.program.source_id)
+    session.add(version)
+    session.flush()
+    assert not [r for r in composed_requirements(session, version)
+                if r.requirement_system == "core" or r.code.startswith("CORE_")]
+    # ...and the SAS major's Core is the school's set, never its own copy.
+    core = [r for r in composed_requirements(session, sas) if r.requirement_system == "core"]
+    assert core and all(r.program_version_id is None and r.school_requirement_set_version_id
+                        for r in core)
+
+
 def test_core_target_override_is_validated(session, tmp_path) -> None:
     archive = tmp_path / "soc.json"
     archive.write_text("[]", encoding="utf-8")

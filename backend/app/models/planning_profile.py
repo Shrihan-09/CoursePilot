@@ -47,6 +47,8 @@ class StudentPlanningProfile(Base, TimestampMixin):
     filler_preference: Mapped[str] = mapped_column(String(16), default="no_preference",
                                                    server_default="no_preference")
     pins: Mapped[list] = mapped_column(JSON, default=list)
+    #: Phase 7.3: optional expected graduation term ("20281"), overriding the pace.
+    expected_graduation_term: Mapped[str | None] = mapped_column(String(5), nullable=True)
     source: Mapped[str] = mapped_column(String(32), default="student_form")
     confirmed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 

@@ -306,6 +306,11 @@ export function PlanView({
               {r.terms.length} {r.terms.length === 1 ? "semester" : "semesters"} from {termLabel(plan.start_term)}
             </h2>
             <p className="text-sm text-fg-secondary">{status.meaning}</p>
+            {r.graduation_target && (
+              <p className="text-sm text-fg-secondary">
+                Planned to graduate by {termLabel(r.graduation_target.term_code)} ({r.graduation_target.basis}).
+              </p>
+            )}
             {r.placement && (
               <p className="text-sm text-fg-secondary">
                 Based on your placement into {placementLabel(r.placement)}.{" "}
