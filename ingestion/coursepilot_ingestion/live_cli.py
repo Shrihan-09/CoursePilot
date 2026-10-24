@@ -6,6 +6,8 @@ Usage:
     python -m coursepilot_ingestion.live_cli schedule list
     python -m coursepilot_ingestion.live_cli tick                 # one pass, then exit
     python -m coursepilot_ingestion.live_cli run [--idle 5]       # the production loop
+    python -m coursepilot_ingestion.live_cli demand [--term 20271 --date 2026-11-09]
+                                  # daily demand rollup (7.3): due days, or one day again
 
 `run` is the ONE long-lived process production needs (DATA_MODEL 45.3): it
 polls each active term at its cadence, turns openings into events and inbox
@@ -49,6 +51,9 @@ def build_parser() -> argparse.ArgumentParser:
     sched.add_argument("--interval", type=int, default=90, help="seconds (>= 30)")
     sched.add_argument("--backoff-cap", type=int, default=900, help="seconds")
     sub.add_parser("tick", help="one pass of the loop, then exit")
+    demand = sub.add_parser("demand", help="roll up course_demand_snapshot (no Rutgers request)")
+    demand.add_argument("--term", help="YYYYT; with --date, recompute that one day")
+    demand.add_argument("--date", help="YYYY-MM-DD (America/New_York day)")
     run = sub.add_parser("run", help="the production loop")
     run.add_argument("--idle", type=float, default=5.0, help="seconds between ticks")
     run.add_argument("--max-ticks", type=int, default=None)
@@ -81,6 +86,28 @@ def _schedule(session: Session, args) -> int:
     return 0
 
 
+def _demand(session: Session, args) -> int:
+    from datetime import UTC, date, datetime
+
+    from app.services.demand import day_bounds, rollup_day, rollup_due
+    now = datetime.now(UTC)
+    if args.date:
+        if not args.term:
+            raise SystemExit("--date needs --term")
+        day = date.fromisoformat(args.date)
+        if day_bounds(day)[1] > now:        # a partial day would be skipped later as "done"
+            raise SystemExit(f"{day} is not over yet (America/New_York)")
+        rolled = [rollup_day(session, args.term, day, now=now)]
+        session.commit()
+    else:
+        rolled = rollup_due(session, now=now)
+    for r in rolled:
+        print(f"{r.term_code} {r.day}: ok {r.ok}  insufficient_data {r.insufficient} {r.reasons}")
+    if not rolled:
+        print("no day due")
+    return 0
+
+
 def _worker(factory, stop: threading.Event | None = None) -> LiveWorker:
     settings = get_settings()
     owner = f"{socket.gethostname()}:{os.getpid()}:{uuid.uuid4().hex[:6]}"
@@ -101,6 +128,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "schedule":
             with factory() as s:
                 return _schedule(s, args)
+        if args.command == "demand":
+            with factory() as s:
+                return _demand(s, args)
         if args.command == "tick":
             report = _worker(factory).tick()
             print(f"polled {report.polled}  openings {report.openings}  events {report.events}"

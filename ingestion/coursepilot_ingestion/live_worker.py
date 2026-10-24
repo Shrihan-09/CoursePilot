@@ -11,6 +11,9 @@ One tick:
     fan_out            (deliveries per active endpoint)
     deliver_due        (provider sends, outside any transaction) - if configured
     expire_live_activities
+    term watcher         (7.3, every 6 h)
+    demand rollup        (7.3, hourly: completed days -> course_demand_snapshot;
+                          reads the change log only, never Rutgers)
 
 The Rutgers request count depends only on the active terms and the cadence:
 never on users, watches, endpoints or Live Activities. Any number of
@@ -32,6 +35,7 @@ from datetime import UTC, datetime, timedelta
 
 import httpx
 from app.services.availability import apply_refresh
+from app.services.demand import rollup_due
 from app.services.live import (
     claim_term,
     deliver_due,
@@ -73,6 +77,7 @@ class TickReport:
     suppressed: int = 0
     activities_expired: int = 0
     term_watch: dict[str, str] = field(default_factory=dict)   # term -> watcher action (7.3)
+    demand_days: int = 0                                       # snapshot days rolled up (7.3)
     errors: list[str] = field(default_factory=list)            # step names, never secrets
 
 
@@ -84,7 +89,8 @@ class LiveWorker:
                  lease: timedelta = TERM_LEASE, deliver_limit: int = 100,
                  stop: threading.Event | None = None,
                  term_watch: Callable[[Session], list] | None = None,
-                 term_watch_every: timedelta = timedelta(hours=6)) -> None:
+                 term_watch_every: timedelta = timedelta(hours=6),
+                 demand_every: timedelta | None = timedelta(hours=1)) -> None:
         self.session_factory = session_factory
         self.owner = owner
         self.archive_dir = archive_dir
@@ -100,6 +106,9 @@ class LiveWorker:
         self.term_watch = term_watch
         self.term_watch_every = term_watch_every
         self._term_watch_last: datetime | None = None
+        #: Phase 7.3 demand rollup (None disables it). Database-only.
+        self.demand_every = demand_every
+        self._demand_last: datetime | None = None
 
     # ---------------------------------------------------------------- refresh
 
@@ -194,6 +203,11 @@ class LiveWorker:
             self._term_watch_last = now
             watched = self._step(report, "term_watch", self.term_watch) or []
             report.term_watch = {o.term_code: o.action for o in watched}
+        if self.demand_every is not None and (
+                self._demand_last is None or now - self._demand_last >= self.demand_every):
+            self._demand_last = now
+            rolled = self._step(report, "demand_rollup", lambda s: rollup_due(s, now=now))
+            report.demand_days = len(rolled or [])
         logger.info("live_tick", extra={
             "terms_polled": len(report.polled), "openings": report.openings,
             "events": report.events, "deliveries_created": report.deliveries_created,

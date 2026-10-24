@@ -10,12 +10,12 @@ WORKDIR /app
 
 # Dependency layer first, so source edits don't invalidate the install cache.
 COPY pyproject.toml ./
-RUN pip install --upgrade pip && pip install ".[dev]" || true
+RUN pip install --upgrade pip && pip install ".[dev,postgres]" || true
 
 COPY . .
 
 # Installed again after source is present, so the `app` package resolves.
-RUN pip install -e ".[dev]"
+RUN pip install -e ".[dev,postgres]"
 
 EXPOSE 8000
 

@@ -9674,3 +9674,141 @@ structure, validated by the server exactly like the form.
 - Plans still cannot be hand-edited; there are no pins or exclusions.
 - "Lighter" on an empty record takes ~12 s.
 - Spring 2027 sections remain unpublished in local data.
+
+## 50. Course demand collection (Phase 7.3)
+
+> Collect only. This phase records how fast sections fill so that a later
+> phase can compare courses by demand with real data. No ranking, label or
+> UI reads these rows yet, and nothing here describes a course as more or
+> less demanding to take.
+
+### 50.1 The change log: `section_availability_change`
+
+The task spec asked for a new `section_status_change` table with these
+columns: term_code, index_number, from_open, to_open, observed_at and
+data_source_id. That information was already recorded, one row per state
+change, by the Phase 6.7 refresh. It is reused rather than duplicated:
+
+| spec column      | recorded as                                                    |
+|------------------|----------------------------------------------------------------|
+| `term_code`      | `section_availability_change.term_code`                        |
+| `index_number`   | `section_availability_change.index_number` (+ `section_id`)    |
+| `from_open`      | `from_status` (`open` / `closed` / `unknown`; NULL = first observation) |
+| `to_open`        | `to_status`                                                    |
+| `observed_at`    | `observed_at`: CoursePilot's fetch time (Rutgers publishes none) |
+| `data_source_id` | `refresh_id` → `availability_refresh` (URL, payload SHA-256, verdict, archive path) |
+
+A row is written ONLY when a section's state changes. An identical payload
+applied again writes a new `availability_refresh` row (the "as of" time
+moves) and zero change rows. The writes come from the live worker's
+existing openSections refresh: no extra Rutgers request.
+
+### 50.2 Cadence: registration windows
+
+`app.core.registration_windows` holds the windows, each copied from a
+published Rutgers source:
+
+| term  | window (America/New_York)                     | source |
+|-------|-----------------------------------------------|--------|
+| 20271 | Mon 2026-11-09 09:00 → Fri 2026-11-20 02:00   | Office of the Registrar, "Spring 2027 Registration Schedule", https://nbregistrar.rutgers.edu/undergrad/S27prereg.htm (updated 2026-10-15) |
+
+Registration runs by credit tier from November 9 through November 19, and
+WebReg is open until 2:00 am. Registration then continues through add/drop,
+whose dates no readable source published, so that window is not configured.
+Spring 2027 classes begin on 2027-01-19
+(https://scheduling.rutgers.edu/academic-calendar/).
+
+`next_due` (`app.services.live`) polls a term:
+
+- every 90 s inside its window;
+- every 30 minutes outside it, or the schedule's own interval if that is
+  slower.
+
+Either way it makes one openSections request per term per poll. Failure
+backoff is capped at the larger of `backoff_cap_seconds` and the interval,
+so backoff never polls faster than the cadence.
+
+Over the 10.7-day window that is about 10,300 requests for 20271, and 48 a
+day outside it.
+
+### 50.3 `course_demand_snapshot`
+
+One row per (term, course, America/New_York day), built by
+`app.services.demand.rollup_day` from `availability_refresh`,
+`section_availability_change` and the term's sections only.
+
+| column | meaning |
+|---|---|
+| `section_count` | sections of the course in the SOC load |
+| `observed_count`, `open_count`, `closed_count` | state at the END of the day, from the latest change at or before it |
+| `closed_share` | closed / (open + closed), 4 decimals |
+| `first_closed` | per index, see 50.4 |
+| `window_opens_at` | the term's first configured window (NULL: none configured) |
+| `refreshes` | accepted refreshes of the term that day |
+| `max_refresh_gap_seconds` | the longest part of the day with no accepted refresh, edges included (laptop sleep, outages) |
+| `status`, `insufficient_reason` | `ok`, or `insufficient_data` with a reason |
+
+- **Insufficient data, never imputed.** `insufficient_data` has two
+  reasons:
+  - `no_accepted_refresh_that_day`: nothing was observed that day, and
+    yesterday's state is not carried forward;
+  - `no_section_observed`: none of the course's sections has an observed
+    open or closed state.
+
+  In both cases `observed_count`, `open_count`, `closed_count` and
+  `closed_share` are NULL. A CHECK constraint (`insufficient_not_imputed`)
+  enforces this for `closed_share`.
+- **Idempotent.** Rows are upserted on (term_code, course_id,
+  snapshot_date), so rolling up a day again yields identical rows.
+- **When rollups run.** The live worker rolls up hourly. Each run covers
+  every completed day of each active term that has no snapshot yet: from
+  the term's first accepted refresh, at most 14 days back. The rollup is
+  database-only.
+
+  For a manual run, `python -m coursepilot_ingestion.live_cli demand`
+  rolls up all due days. Add `--term T --date YYYY-MM-DD` to recompute one
+  day. A day that is not over is refused, because a partial day would
+  later be skipped as done.
+
+### 50.4 First-closed times
+
+From the moment the window opens, `first_closed[index]` takes one of these
+forms:
+
+- `closed_after_window`:
+  - `observed_at` is the first accepted refresh that saw the section closed;
+  - `not_before` is the accepted refresh before it.
+
+  The true moment lies in (`not_before`, `observed_at`]. At the 90 s cadence
+  that interval is about 90 s, plus any gap.
+- `closed_before_window`: the section was already closed before the window
+  opened and has not closed again since.
+- `closed_when_first_observed`: the section was first seen after the window
+  opened and was already closed then. No time is given.
+- absent: the section has not closed since the window opened.
+
+Before the window opens, or for a term with no configured window,
+`first_closed` is `{}`.
+
+### 50.5 Keeping the worker running
+
+Start the worker:
+
+```
+docker compose up -d live-worker
+```
+
+Before that, run `alembic upgrade head`. The worker container restarts
+`unless-stopped`.
+
+Check it with `docker logs -f coursepilot-live-worker` and
+`live_cli schedule list`.
+
+If the host sleeps, the container is paused with it. On wake, every term
+is overdue, so it is polled on the next tick. The sleep becomes a gap in
+the data:
+- `max_refresh_gap_seconds` grows;
+- `not_before` widens;
+- a fully missed day is `insufficient_data`.
+
+Nothing is backfilled, because openSections has no history.
