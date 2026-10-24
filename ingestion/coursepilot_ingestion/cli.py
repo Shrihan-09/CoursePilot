@@ -20,11 +20,13 @@ import sys
 from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import Session
 
+from coursepilot_ingestion.fetchers.soc import SocFetcher
 from coursepilot_ingestion.pipelines.courses import CourseIngestionPipeline
 from coursepilot_ingestion.pipelines.sections import SectionIngestionPipeline
 from coursepilot_ingestion.schemas import IngestionStats
 from coursepilot_ingestion.section_schemas import SectionIngestionStats
 from coursepilot_ingestion.sources.soc import SocQuery
+from coursepilot_ingestion.term_discovery import register_full_load
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
 DEFAULT_CACHE = ROOT / "data" / "raw"
@@ -256,6 +258,14 @@ def main(argv: list[str] | None = None) -> int:
                 use_cache=not args.refetch,
             )
             _print_section_stats(section_stats)
+
+        if args.stage == "both" and args.all and not args.subject:
+            # A full load is planning evidence: register and validate it
+            # exactly as the term watcher would (term_discovery).
+            content = SocFetcher(cache_dir).fetch_courses(query, use_cache=True).content
+            outcome = register_full_load(session, query, content, stats, section_stats)
+            print(f"term registry: {query.term_code} "
+                  f"{'ingested (READY)' if outcome.ok else 'NOT ready: ' + str(outcome.error)}")
 
         show_contents(session)
 

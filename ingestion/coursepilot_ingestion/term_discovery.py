@@ -246,6 +246,25 @@ def ingest_term(session: Session, row: RutgersTerm, *,
     return IngestOutcome(row.term_code, True, detail=detail)
 
 
+def register_full_load(session: Session, query: SocQuery, content: bytes, course_stats,
+                       section_stats, *,
+                       now: Callable[[], datetime] = lambda: datetime.now(UTC)) -> IngestOutcome:
+    """Record a FULL manual load (cli `--stage both --all`) in the term registry.
+
+    Phase 7.3 finding: Spring 2027 was loaded by the manual CLI, which never
+    touched `rutgers_term`; its source is 'partial', so term_authority saw an
+    UNCHECKED term and let history fill it (01:198:443, not offered in Spring
+    2027, was planned there). The loaded payload is the same evidence the
+    watcher gathers, so it goes through the same probe bookkeeping and the
+    same `ingest_term` validation - with the stats already computed: nothing
+    is loaded twice and nothing is fetched."""
+    probe = probe_term(query.term_code, query.campus, lambda _q: (content, sha256(content)), None)
+    row = record_probe(session, probe, campus=query.campus, now=now())
+    session.commit()
+    return ingest_term(session, row, run_courses=lambda _q: course_stats,
+                       run_sections=lambda _q: section_stats, now=now)
+
+
 def _failed(session: Session, row: RutgersTerm, error: str, detail: dict) -> IngestOutcome:
     # Keep any EARLIER validated load: ingested_hash still names it, and
     # term_authority keeps an already-ready term ready.
@@ -261,4 +280,4 @@ def sha256(content: bytes) -> str:
 
 
 __all__ = ["IngestOutcome", "Probe", "candidate_terms", "compare_sources", "discover",
-           "ingest_term", "previous_term", "probe_term", "record_probe"]
+           "ingest_term", "previous_term", "probe_term", "record_probe", "register_full_load"]

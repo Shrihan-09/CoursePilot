@@ -111,3 +111,51 @@ def test_restriction_without_a_public_name_shows_only_its_code(session):
     row = SectionRestriction(ordinal=1, kind="major", code="006", unit_code=None)
     [name] = restriction_names(session, [row])
     assert (name.code, name.name, name.name_source) == ("006", None, None)
+
+
+def test_a_full_manual_load_registers_the_term_as_ready(session, tmp_path):
+    """Phase 7.3 finding: Spring 2027 loaded by the manual CLI stayed out of the
+    term registry, so history placed 01:198:443 there although Rutgers was not
+    offering it. A full load is now registered and validated like the watcher's."""
+    from app.domain.planning import OfferingEvidenceKind as Kind
+    from app.services.term_authority import TermAuthority, authority_of, term_states
+
+    from coursepilot_ingestion.term_discovery import register_full_load
+
+    records = _records("soc_cs_courses_sample.json")
+    gone = records[0]["courseString"]
+    _load_term(session, tmp_path, records, 2026, "1")                 # history: offered
+    spring = [r for r in records if r["courseString"] != gone]       # not offered in 2027
+    folder = tmp_path / "20271"
+    folder.mkdir()
+    archive = folder / "soc_courses_2027_1_NB.json"
+    archive.write_text(json.dumps(spring), "utf-8")
+    query = SocQuery(year=2027, term="1", campus="NB")
+    courses = CourseIngestionPipeline(session, folder).run(query, coverage="partial")
+    sections = SectionIngestionPipeline(session, folder).run(query)
+    outcome = register_full_load(session, query, archive.read_bytes(), courses, sections)
+    assert outcome.ok, outcome.error
+    assert authority_of(term_states(session), "20271").authority is TermAuthority.READY
+    ev = OfferingIndex(session, {gone}).evidence(gone, "20271")
+    assert ev.kind is Kind.NOT_OFFERED_IN_TERM          # history decides nothing now
+    source = session.scalar(select(DataSource).where(DataSource.term_code == "20271"))
+    assert source.coverage == "partial"                  # validated, never "complete"
+
+
+def test_a_course_missing_from_a_published_term_is_never_placed_there(cs):  # noqa: F811
+    """Phase 7.3 rule: once Rutgers has published a term (CoursePilot holds a
+    non-empty SOC payload for it), only courses it LISTS are placed there -
+    whatever the coverage, registry row or not. The CS world's Spring 2027 is a
+    PARTIAL payload listing only 314 and 336, with no registry row (the shape
+    that let history place 01:198:443 in the real Spring 2027)."""
+    student = _student(cs, [c for c in CS_DONE if c[0] not in ("01:198:314", "01:198:336")]
+                       + [])
+    plan = generate_plan(cs, student, start_term=START)
+    spring = [pc for t in plan.terms if t.term_code == START for pc in t.courses]
+    assert spring and {pc.course for pc in spring} <= {"01:198:314", "01:198:336"}
+    assert all(pc.offering.kind is K.CONFIRMED_IN_TERM for pc in spring)
+    # Not listed for Spring 2027 yet - but still plannable LATER, on labelled history.
+    later = [pc for t in plan.terms if t.term_code > START for pc in t.courses]
+    assert any(pc.offering.kind is K.HISTORICAL_SAME_SEASON for pc in later)
+    absent = OfferingIndex(cs, {"01:198:344"}).evidence("01:198:344", START)
+    assert absent.kind is K.NOT_OFFERED_IN_TERM

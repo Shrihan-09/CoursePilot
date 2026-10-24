@@ -63,7 +63,8 @@ def _historical_spring_course(index: OfferingIndex) -> str:
 def test_published_target_term_overrides_history(cs):  # noqa: F811
     course = _historical_spring_course(OfferingIndex(cs))
     before = OfferingIndex(cs).evidence(course, SPRING27)
-    assert before.kind is K.HISTORICAL_SAME_SEASON          # control: today's behaviour
+    # Phase 7.3: the loaded (partial) payload alone already proves publication.
+    assert before.kind is K.NOT_OFFERED_IN_TERM and before.target_term_authority == "unchecked"
     _registry(cs, SPRING27)
     after = OfferingIndex(cs).evidence(course, SPRING27)
     assert after.kind is K.NOT_OFFERED_IN_TERM and after.kind not in PLACEABLE
@@ -110,17 +111,19 @@ def test_unpublished_future_term_uses_labelled_history(cs):  # noqa: F811
 
 # D. Newly published term invalidates a historical assumption --------------
 def test_saved_plan_goes_stale_when_publication_contradicts_history(cs):  # noqa: F811
+    # Spring 2028 is unpublished in this world, so history places there
+    # (Spring 2027 is published and places only what it lists - Phase 7.3).
     student = _student(cs, CS_DONE)
-    plan = generate_plan(cs, student, start_term=SPRING27, constraints=PlanningConstraints())
-    assumed = [pc for t in plan.terms if t.term_code == SPRING27 for pc in t.courses
+    plan = generate_plan(cs, student, start_term=SPRING28, constraints=PlanningConstraints())
+    assumed = [pc for t in plan.terms if t.term_code == SPRING28 for pc in t.courses
                if pc.offering.kind is K.HISTORICAL_SAME_SEASON]
-    assert assumed, "the fixture must place something in Spring 2027 on history"
+    assert assumed, "the fixture must place something in Spring 2028 on history"
     row = StudentPlan(result_blob=_encode(plan))
     assert offering_assumption_reasons(cs, row) == []
-    _registry(cs, SPRING27, ingested=False)
+    _registry(cs, SPRING28, ingested=False)
     assert offering_assumption_reasons(cs, row) == ["target_term_published"]
     cs.query(RutgersTerm).delete()
-    _registry(cs, SPRING27)
+    _registry(cs, SPRING28)
     assert offering_assumption_reasons(cs, row) == ["offering_assumption_contradicted"]
 
 

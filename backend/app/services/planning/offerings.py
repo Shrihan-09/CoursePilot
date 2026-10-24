@@ -7,13 +7,19 @@ This module never turns history into a promise:
 | situation | kind | placeable |
 |---|---|---|
 | SOC data for the target term lists the course | `confirmed_in_term` | yes |
-| the target term's data is AUTHORITATIVE (READY) and omits it | `not_offered_in_term` | no |
+| the target term is PUBLISHED (2) and omits it - "not listed for <term> yet" | `not_offered_in_term` | no |
 | term published, not validly loaded by CoursePilot | `target_term_data_pending` | no |
-| term unpublished/unchecked; offered earlier in the SAME season | `historically_offered_in_season` | yes (1) |
+| term not published yet; offered earlier in the SAME season | `historically_offered_in_season` | yes (1) |
 | offered, but only in other seasons | `offered_in_other_seasons_only` | no |
 | never observed | `no_offering_evidence` | no |
 
 (1) placeable as labelled EVIDENCE, never reported as a confirmed offering.
+(2) READY (services.term_authority), OR CoursePilot holds a non-empty SOC
+    payload for the term - whatever its coverage. Phase 7.3 finding: Spring
+    2027 was loaded (partial, outside the term registry), so it counted as
+    unchecked and history placed 01:198:443 there although the published
+    listing goes 442 -> 452. A published term places ONLY what it lists; a
+    course it omits may still be planned for a LATER, unpublished term.
 
 Phase 7.2.4 (services.term_authority): once a target term's data is
 authoritative - or merely known to be published - history no longer decides
@@ -65,12 +71,16 @@ class OfferingIndex:
             self.terms[key].sort()
         #: term -> coverage ("complete" | "partial") of the loaded SOC data.
         self.coverage: dict[str, str] = {}
-        for term, coverage in session.execute(
-                select(DataSource.term_code, DataSource.coverage)
+        #: Terms with a NON-EMPTY loaded SOC payload: published, any coverage.
+        self.published: set[str] = set()
+        for term, coverage, records in session.execute(
+                select(DataSource.term_code, DataSource.coverage, DataSource.record_count)
                 .where(DataSource.kind == "rutgers_official_api",
                        DataSource.term_code.is_not(None))).all():
             if coverage == "complete" or term not in self.coverage:
                 self.coverage[term] = coverage or "partial"
+            if records:
+                self.published.add(term)
         self.authority = term_states(session)
 
     def extend(self, session: Session, course_keys: set[str]) -> None:
@@ -105,7 +115,11 @@ class OfferingIndex:
         if state.authority is TermAuthority.READY:
             return OfferingEvidence(kind=OfferingEvidenceKind.NOT_OFFERED_IN_TERM, **base)
         if state.authority is TermAuthority.PUBLISHED_PENDING:
+            # A NEWER payload than the one loaded: say so, never "not listed".
             return OfferingEvidence(kind=OfferingEvidenceKind.TERM_DATA_PENDING, **base)
+        if target_term in self.published:
+            # A loaded non-empty payload IS publication (Phase 7.3): "not listed yet".
+            return OfferingEvidence(kind=OfferingEvidenceKind.NOT_OFFERED_IN_TERM, **base)
         if same:
             return OfferingEvidence(kind=OfferingEvidenceKind.HISTORICAL_SAME_SEASON,
                                     rules_term=observed[-1], **base)

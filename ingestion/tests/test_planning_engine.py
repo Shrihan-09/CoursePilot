@@ -199,7 +199,7 @@ def test_a_cs_student_plan(cs) -> None:
     assert all(r.provisional for pc in placed.values() for r in pc.requirements)
     codes = {i.code for i in plan.issues}
     assert "IN_PROGRESS_OUTCOME_ASSUMED_PENDING" in codes
-    assert plan.metadata.planning_engine_version == "7.3.0"
+    assert plan.metadata.planning_engine_version == "7.3.1"
     assert plan.metadata.constraints_source.endswith("not_rutgers_policy")
 
 
@@ -386,12 +386,16 @@ def test_l_m_confirmed_and_historical_offerings(cs) -> None:
 def test_n_offering_evidence_kinds(cs) -> None:
     index = OfferingIndex(cs)
     assert index.evidence("01:198:314", START).kind is OfferingEvidenceKind.CONFIRMED_IN_TERM
-    assert index.evidence("01:198:345", START).kind is OfferingEvidenceKind.HISTORICAL_SAME_SEASON
-    assert index.evidence("01:198:352", START).kind is OfferingEvidenceKind.OTHER_SEASONS_ONLY
+    # Spring 2027 is published (a partial payload lists only 314/336): 345 is
+    # "not listed yet" there (Phase 7.3), and labelled history for Spring 2028.
+    assert index.evidence("01:198:345", START).kind is OfferingEvidenceKind.NOT_OFFERED_IN_TERM
+    assert index.evidence("01:198:345", "20281").kind is OfferingEvidenceKind.HISTORICAL_SAME_SEASON
+    assert index.evidence("01:198:352", START).kind is OfferingEvidenceKind.NOT_OFFERED_IN_TERM
+    assert index.evidence("01:198:352", "20281").kind is OfferingEvidenceKind.OTHER_SEASONS_ONLY
     assert index.evidence("01:198:352", "20279").kind is OfferingEvidenceKind.HISTORICAL_SAME_SEASON
     # complete SOC data for a term that omits the course: not offered then.
     assert index.evidence("01:198:352", "20261").kind is OfferingEvidenceKind.NOT_OFFERED_IN_TERM
-    assert index.evidence("01:999:999", START).kind is OfferingEvidenceKind.NO_EVIDENCE
+    assert index.evidence("01:999:999", "20281").kind is OfferingEvidenceKind.NO_EVIDENCE
 
 
 def test_fall_only_course_is_never_placed_in_spring(cs) -> None:
@@ -426,8 +430,10 @@ def test_r_dead_end_and_horizon(cs) -> None:
     plan = _plan(cs, student)
     blockers = {i.requirement_code for i in plan.issues if i.severity is Severity.BLOCKER}
     assert {"CS_111", "CS_112", "CS_211"} <= blockers            # everything behind 111
+    # Fall 2027 (unpublished): history may place there; Spring 2027 lists
+    # only courses this student cannot take yet.
     short = _plan(cs, _student(cs, [("01:198:111", "20259"), ("01:640:151", "20259")]),
-                  constraints=PlanningConstraints(max_terms=1))
+                  start_term="20279", constraints=PlanningConstraints(max_terms=1))
     assert len(short.terms) == 1
     assert any(i.code == "PLAN_HORIZON_REACHED" for i in short.issues)
 

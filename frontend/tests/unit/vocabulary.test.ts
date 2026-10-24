@@ -18,8 +18,10 @@ import {
   PLAN_SEVERITY,
   PLAN_STATUS,
   PLACEMENT_POLICY_URL,
+  offeringLabel,
   placementLabel,
   planReasonText,
+  topicsText,
   REQUIREMENT_STATUS,
   RESTRICTION_OUTCOME,
   RULE_STATUS,
@@ -171,6 +173,24 @@ describe("placement reasons come from the course's own fields", () => {
     expect(planReasonText("required_prerequisite_for", course)).toContain("01:198:344");
     expect(planReasonText("historically_offered_in_season", course)).toContain("Spring 2026");
     expect(planReasonText("selected_by_canonical_tie_break", course)).toMatch(/One of 3 .*not by preference/);
+  });
+
+  it("says plainly when a placement is history, not a published listing (7.3)", () => {
+    expect(offeringLabel({ kind: "historically_offered_in_season", target_term: "20281" }))
+      .toBe("Historically offered in Spring — not yet confirmed");
+    expect(offeringLabel({ kind: "confirmed_in_term", target_term: "20271" })).toBe("Listed for Spring 2027");
+    expect(offeringLabel({ kind: "not_offered_in_term", target_term: "20271" })).toBeNull();
+    expect(OFFERING_KIND.not_offered_in_term).toMatch(/not listed .* yet/i);
+    expect(blockedReasonText("not_offered_in_term")).toMatch(/not listed for the planned term yet/i);
+  });
+
+  it("labels a topics course with this term's announced topics (7.3)", () => {
+    expect(topicsText({ is_topics_course: true, topics: ["Deep Learning"] })).toBe("Topics: Deep Learning");
+    expect(topicsText({ is_topics_course: true, topics: ["Deep Learning", "Introduction to Cryptography"] }))
+      .toBe("Topics: Deep Learning; Introduction to Cryptography");
+    expect(topicsText({ is_topics_course: true, topics: [] })).toBe("Topic not yet announced");
+    expect(topicsText({ is_topics_course: false, topics: [] })).toBeNull();
+    expect(topicsText({})).toBeNull();
   });
 
   it("names its source when placement met the prerequisites, and shows the placement (7.3)", () => {

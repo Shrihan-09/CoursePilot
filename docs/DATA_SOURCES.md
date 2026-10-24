@@ -285,6 +285,91 @@ SELECT count(*) FROM (
   GROUP BY section_id HAVING count(DISTINCT campus_name) > 1) x;  -- 830
 ```
 
+## 1e. Topics courses, cross-listings and the CS elective list (Phase 7.3, 2026-10-23)
+
+Investigated after a Spring 2027 plan listed 01:198:442 "TOPICS IN COMPUTER
+SCIENCE" and 01:198:443 "TPCS IN COMPUTER SCI" in the same term.
+
+**Root cause of that plan: Spring 2027 was not in the term registry.** It
+was loaded with the manual CLI (`--stage both --all`), which never wrote
+`rutgers_term`; its source is `partial`, so `term_authority` called the term
+UNCHECKED and history filled it - 443 (offered Spring 2025/2026, *not*
+Spring 2027) was placed there. Fixed: a full manual load now registers and
+validates the term through the watcher's own `record_probe`/`ingest_term`
+(`term_discovery.register_full_load`); Spring 2027 re-registered from the
+archive (no network): READY, coverage still `partial`.
+
+**Rule since 2026-10-23: a published term places only what it lists.** A term
+is published once CoursePilot holds a non-empty SOC payload for it - whatever
+its coverage, registry row or not (`OfferingIndex.published`). In that term
+only `confirmed_in_term` courses are placed; a course it omits is
+`not_offered_in_term`, shown as "not listed for <term> yet", and may still be
+planned for a LATER, unpublished term on history, labelled "historically
+offered in <season> - not yet confirmed". Historical evidence is used only
+for unpublished terms (e.g. Fall 2027). 443's evidence in the reported plan:
+`historically_offered_in_season`, `target_term_coverage: partial`,
+`target_term_authority: unchecked`, same-season terms 20211/20241/20251/20261,
+rules from 20261 - exactly the gap this rule closes.
+
+**Not true duplicates.** 442, 443, 444 and 445 are distinct course numbers -
+separate topics "shells" (different credits: 442 is 4, 443/444/445 are 3),
+each carrying its own per-term topic in the section subtitle:
+
+| term | course | topic (section subtitle) | cross-listed with |
+|---|---|---|---|
+| Spring 2021 | 443 | Character Animation | 16:198:598 |
+| Fall 2022 | 443 | Quantum Computing: Programs and Systems | 16:198:583 |
+| Fall 2022 | 445 | Algorithms in the Wild | - |
+| Spring 2024 | 443 | Quantum Computing: Programs and Systems | - |
+| Spring 2025 | 443 | Economics and Computation | 16:198:673 |
+| Spring 2025 | 444 | Generative AI for Visual Computing | 16:198:671 |
+| Spring 2025 | 445 | Adv Topics in CogSci: Minds, Machines & ... | 01:185:416 |
+| Spring 2026 | 442 | Introduction to Cryptography | - |
+| Spring 2026 | 443 | (none published) | - |
+| Spring 2027 | 442 | Introduction to Cryptography | - |
+
+**True duplicates exist through cross-listing.** In Fall 2026 01:198:417 and
+16:198:545 are one class under two numbers, and the CS elective query admits
+both. The planner now never places a course whose cross-listed twin (in any
+loaded term's sections) is already planned, passed or in progress; a test
+fails on any plan holding a course twice or both twins.
+
+**Topics shown from the subtitle.** A generic topics course (SOC title
+matching `TOPICS?`/`TPCS?` - 580 loaded courses) shows that term's distinct
+section subtitles ("Topics: Introduction to Cryptography"), or "Topic not yet
+announced" when the term publishes none or is planned from history. At most
+one topics course per term by default (`max_topics_courses_per_term`, a
+planner preference); fixed-content courses are placed first.
+
+**Repeatability: not stated.** The 2026-2027 SAS catalog entry for 442 reads
+"Topics in Computer Science (3-4) Advanced topics in computer science. Topics
+vary from year to year according to the interests of students and faculty."
+(445 is identical, 3 credits); 443 and 444 are not in the catalog (2025-2026
+or 2026-2027). No SOC course/section/unit note on 442-445 mentions repeating.
+The department electives page states repeat limits only for 493/494 ("There
+is no restriction on the number of times 493/494 can be taken. However, at
+most one of a student's electives may be one of these courses."). CoursePilot
+therefore makes no repeat assumption: each course number counts once (the
+existing audit behaviour), and different-topic repeats of one number are an
+open question for CS advising - not guessed.
+
+**CS electives vs the department list.** Source:
+<https://www.cs.rutgers.edu/academics/undergraduate/electives> (read
+2026-10-23; undated), "A CS Advisor will help you make selections from this
+list". Computer Science entries: 210, 213, 214, 314, 323, 324, 334, 336, 352,
+411, 416, 417, 419, 424, 425, 428, 431, 437, 439, 440, **442, 443, 444, 445**,
+452, 460, 461, 462, 493, 494; plus Electrical Engineering (14:332:376, 423,
+424, 443, 451, 452, 453, 456, 472), Mathematics (01:640:338, 348, 354, 428,
+454, 461), Philosophy (01:730:315, 407, 408, 329, 424), Linguistics
+(01:615:441) and Statistics (01:960:384, 463, 476, 486).
+**01:198:345 (Algorithms in Society) is NOT on it.** Our encoding
+(`sas-198-ba.json` CS_ELECTIVES: `eligible_course_query` subject 198,
+number >= 300, from the catalog prose "at least two must be computer science
+courses at the 300 level or above") counts 345, graduate 16:198 courses and
+any other 198 course >= 300 not listed, and cannot count 210/213/214 or the
+EE/Math/Philosophy/Linguistics/Statistics options. Replacing the query with
+this list is a program-definition change awaiting review.
+
 ### Section subtitle is a topic label, not a title override
 
 Present on 9.6% of sections (`VOICE`, `VIOLIN`, `PIANO`,
@@ -814,7 +899,11 @@ A flat course -> requirement table cannot represent any of the last five.
 * **The designated elective list is NOT published in the catalog.** The prose
   defers to "a computer science adviser or the departmental website". Only the
   constraints the prose states directly are encoded; non-CS elective options
-  are deliberately absent rather than invented.
+  are deliberately absent rather than invented. **Checked 2026-10-23 against
+  the department page** - see "CS electives vs the department list" below:
+  the encoding (`subject 198, number >= 300`) admits 01:198:345 and graduate
+  16:198 courses the department does not list, and misses 210/213/214 and the
+  related-discipline options. Not changed (a definition change needs review).
 * Grade rules, exclusions, and residency are recorded in the fixture under
   `rules_not_yet_modeled` but are **not evaluated** by the engine.
 * Core Curriculum requirements are not yet ingested.

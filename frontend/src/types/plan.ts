@@ -103,6 +103,9 @@ export interface PlannedCourse {
   corequisite_group: string[];
   unlocks: string[];
   interchangeable_alternatives: number;
+  /** Phase 7.3: generic topics course; `topics` = this term's section subtitles. */
+  is_topics_course?: boolean;
+  topics?: string[];
 }
 
 export interface PlanTerm {

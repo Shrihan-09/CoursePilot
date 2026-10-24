@@ -11,8 +11,10 @@ import {
   PLAN_SEVERITY,
   PACE_LABEL,
   PLAN_STATUS,
+  offeringLabel,
   placementLabel,
   planReasonText,
+  topicsText,
   STALE_REASON,
   termLabel,
 } from "@/lib/academic/vocabulary";
@@ -118,7 +120,16 @@ function CourseCard({ course: c, index }: { course: PlannedCourse; index: number
           {c.credits} cr
         </span>
       </div>
-      <p className="text-sm leading-snug text-fg [overflow-wrap:anywhere]">{c.title}</p>
+      <p className="text-sm leading-snug text-fg [overflow-wrap:anywhere]">
+        {c.title}
+        {topicsText(c) && <span className="text-fg-secondary"> — {topicsText(c)}</span>}
+      </p>
+      {offeringLabel(c.offering) && (
+        <p className={cn("text-xs font-medium",
+          c.offering.kind === "confirmed_in_term" ? "text-success" : "text-warning")}>
+          {offeringLabel(c.offering)}
+        </p>
+      )}
       {toward.length > 0 && (
         <p className="flex flex-wrap justify-end gap-x-2 gap-y-0.5 text-xs text-fg-secondary">
           <span className="sr-only">Toward: </span>

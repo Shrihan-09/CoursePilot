@@ -33,7 +33,7 @@ from app.domain.course_ranking import CourseRankingEvidence
 from app.domain.scenario import ScenarioAssumption, ScenarioTarget
 
 #: Bumped whenever the same inputs could produce a different plan.
-PLANNING_ENGINE_VERSION = "7.3.0"   # 7.3: latest-term rules, section constraints, placement
+PLANNING_ENGINE_VERSION = "7.3.1"   # 7.3: latest-term rules, placement, no twins, topics cap
 
 
 class EligibilityState(StrEnum):
@@ -163,6 +163,10 @@ class PlanningConstraints(BaseModel):
     target_credits_per_term: Decimal | None = Field(default=None, ge=1, le=24)
     pace: Pace | None = None
     strategy: Strategy = Strategy.BALANCED
+    #: Phase 7.3: generic topics courses ("TOPICS IN ...", "TPCS ...") placed
+    #: per term. Their content is announced late and varies by term, so one is
+    #: the default; fixed-content electives are always preferred first.
+    max_topics_courses_per_term: int = Field(default=1, ge=0, le=8)
 
     @model_validator(mode="after")
     def _target_within_max(self) -> "PlanningConstraints":
@@ -242,6 +246,11 @@ class PlannedCourse(BaseModel):
     #: How many other equally ranked candidates existed (a canonical tie-break chose).
     interchangeable_alternatives: int = 0
     ranking_evidence: CourseRankingEvidence | None = None
+    #: Phase 7.3: a generic topics course. `topics` are the distinct section
+    #: subtitles (SOC's topic label) of THIS term's sections - empty when
+    #: Rutgers has not announced one (or the term is planned from history).
+    is_topics_course: bool = False
+    topics: list[str] = Field(default_factory=list)
 
 
 class PlanTerm(BaseModel):
@@ -326,8 +335,8 @@ class PlanResult(BaseModel):
 
 __all__ = ["CONSTRAINTS_SOURCE", "PLANNING_ENGINE_VERSION",
            "ConditionalDependency", "EligibilityState",
-           "OfferingEvidence", "OfferingEvidenceKind", "PlacementBasis", "PlanMetadata", "PlanResult",
-           "PlanStatus",
-           "Pace", "PlanObservation", "PlanTerm", "PlannedCourse", "PlanningConstraints", "PlanningIssue",
+           "OfferingEvidence", "OfferingEvidenceKind", "PlacementBasis", "PlanMetadata",
+           "PlanResult", "PlanStatus", "Pace", "PlanObservation", "PlanTerm", "PlannedCourse",
+           "PlanningConstraints", "PlanningIssue",
            "PrerequisiteEvidence", "Reason", "RequirementContribution", "RequirementProjection",
            "Severity"]

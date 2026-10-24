@@ -210,6 +210,29 @@ const SEASONS: Record<string, string> = { "0": "Winter", "1": "Spring", "7": "Su
 export const PLACEMENT_POLICY_URL =
   "https://math.sas.rutgers.edu/academics/undergraduate/placement-advice/1061-placement-advice";
 
+/**
+ * A generic topics course's topic for its planned term, from SOC's section
+ * subtitle: "Topics: Deep Learning", several joined, or not yet announced.
+ */
+export function topicsText(c: { is_topics_course?: boolean; topics?: string[] }): string | null {
+  if (!c.is_topics_course) return null;
+  const topics = c.topics ?? [];
+  return topics.length ? `Topics: ${topics.join("; ")}` : "Topic not yet announced";
+}
+
+/**
+ * The card label for WHERE a placement comes from (Phase 7.3): a published
+ * term places only what it lists; anything else is history, said plainly.
+ */
+export function offeringLabel(off: { kind: OfferingEvidenceKind; target_term: string }): string | null {
+  if (off.kind === "confirmed_in_term") return `Listed for ${termLabel(off.target_term)}`;
+  if (off.kind === "historically_offered_in_season") {
+    const season = SEASONS[off.target_term[4] ?? ""] ?? "this season";
+    return `Historically offered in ${season} — not yet confirmed`;
+  }
+  return null;
+}
+
 /** "Calc 151"-style label for the placement a plan relied on. */
 export function placementLabel(p: { course: string; title: string | null }): string {
   const number = p.course.split(":")[2] ?? p.course;
@@ -275,7 +298,7 @@ export function planReasonText(reason: PlanReason, course: PlannedCourse): strin
 
 export const OFFERING_KIND: Record<OfferingEvidenceKind, string> = {
   confirmed_in_term: "Listed in that term's Rutgers schedule",
-  not_offered_in_term: "Not in that term's (complete) Rutgers schedule",
+  not_offered_in_term: "Not listed in that term's published Rutgers schedule yet",
   historically_offered_in_season: "Offered in past terms of the same season",
   offered_in_other_seasons_only: "Only offered in other seasons",
   target_term_data_pending: "Rutgers has published that term; CoursePilot hasn't loaded it yet",
@@ -344,7 +367,7 @@ export function blockedReasonText(code: string): string {
     case "offered_in_other_seasons_only":
       return "Only offered in seasons this plan doesn't include";
     case "not_offered_in_term":
-      return "Not in the published schedule for the planned term";
+      return "Not listed for the planned term yet (Rutgers has published it)";
     case "target_term_data_pending":
       return "Rutgers has published the planned term, but CoursePilot hasn't loaded it yet";
     case "variable_credit":

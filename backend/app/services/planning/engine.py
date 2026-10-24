@@ -49,6 +49,7 @@ allocation puts it - once - and a course that adds nothing is not planned.
 
 from __future__ import annotations
 
+import re
 import uuid
 from collections import defaultdict
 from decimal import Decimal
@@ -87,11 +88,14 @@ from app.domain.scenario import ScenarioAssumption, ScenarioTarget
 from app.models import (
     Course,
     CourseCorequisite,
+    CourseOffering,
     CoursePrerequisite,
+    CourseSection,
     ProgramRule,
     ProgramVersion,
     Requirement,
     RequirementCourseOption,
+    SectionCrossListing,
     Student,
     StudentCourse,
 )
@@ -112,6 +116,16 @@ from app.services.planning.terms import label, planning_terms
 from app.services.prerequisites import attempts_by_course
 
 LEAF_TYPES = ("course", "choose_n", "credits")
+
+#: Phase 7.3: a GENERIC topics course - one course number whose content is a
+#: per-term topic (SOC section subtitle), e.g. "TOPICS IN COMP SCI",
+#: "TPCS IN COMPUTER SCI", "TPC COMPUTER SCIENCE", "SPECIAL TOPICS". Read from
+#: the SOC title only; 580 of the loaded courses match.
+_TOPICS_TITLE = re.compile(r"\b(TOPICS?|TPCS?)\b", re.I)
+
+
+def is_topics_title(title: str | None) -> bool:
+    return bool(title and _TOPICS_TITLE.search(title))
 MET = (RequirementStatus.SATISFIED, RequirementStatus.PROVISIONALLY_SATISFIED)
 
 
@@ -259,6 +273,10 @@ class PlanningEngine:
         self._load_prerequisites(set(self.course_info))
         self._breadth: dict[str, int] | None = None
         self.placement_covers: frozenset[str] = frozenset()     # set per student (_history)
+        #: course -> courses it is cross-listed with (the SAME class under
+        #: another number, e.g. 01:198:417 / 16:198:545 in Fall 2026).
+        self.twins: dict[str, set[str]] = defaultdict(set)
+        self._load_twins(set(self.course_info))
 
     def _load_courses(self, keys: set[str]) -> None:
         missing = sorted(k for k in keys if k not in self.course_info and k not in self._looked_up)
@@ -269,6 +287,40 @@ class PlanningEngine:
                 self.course_info.setdefault(course.course_string, course)
             self.offerings.extend(self.session, set(missing))
             self._load_prerequisites(set(missing))
+            self._load_twins(set(missing))
+
+    def _load_twins(self, keys: set[str]) -> None:
+        """Cross-listings of `keys` in any loaded term, both directions, one query."""
+        partner = func.concat(SectionCrossListing.offering_unit_code, ":",
+                              SectionCrossListing.subject_code, ":",
+                              SectionCrossListing.course_number)
+        for key, other in self.session.execute(
+                select(Course.course_string, partner)
+                .join(CourseOffering, CourseOffering.course_id == Course.id)
+                .join(CourseSection, CourseSection.offering_id == CourseOffering.id)
+                .join(SectionCrossListing, SectionCrossListing.section_id == CourseSection.id)
+                .where(Course.course_string.in_(sorted(keys)) | partner.in_(sorted(keys)))
+                .distinct()):
+            if other and other != key:
+                self.twins[key].add(other)
+                self.twins[other].add(key)
+
+    def _twin_taken(self, key: str, planned: dict[str, str]) -> bool:
+        """Its cross-listed twin is already planned, passed or in progress."""
+        return any(t in planned or t in self.passed or t in self.in_progress
+                   for t in self.twins.get(key, ()))
+
+    def _is_topics(self, key: str) -> bool:
+        course = self.course_info.get(key)
+        return course is not None and is_topics_title(course.title)
+
+    def _topics(self, key: str, term: str) -> list[str]:
+        """The topic labels (section subtitles) Rutgers published for `term`."""
+        return sorted({(t or "").strip() for t in self.session.scalars(
+            select(CourseSection.subtitle)
+            .join(CourseOffering, CourseOffering.id == CourseSection.offering_id)
+            .join(Course, Course.id == CourseOffering.course_id)
+            .where(Course.course_string == key, CourseSection.term_code == term))} - {""})
 
     def _load_closure(self, keys: set[str]) -> None:
         """Courses `keys` may need, transitively - one batch per prerequisite
@@ -726,9 +778,11 @@ class PlanningEngine:
         def rank(key):
             return rank_key(key, ranking_evidence(key), c.strategy)
 
-        order = sorted(ready | coreq_pending, key=rank)
+        # Fixed-content courses before generic topics courses (Phase 7.3).
+        order = sorted(ready | coreq_pending, key=lambda k: (self._is_topics(k), rank(k)))
         credits = Decimal(0)
         count = 0
+        topics_here = 0
         stop_at, hard_cap = self._caps()
         latest = current
         score = progress(current, self.requirements)
@@ -736,8 +790,8 @@ class PlanningEngine:
         for key in order:
             if count >= c.max_courses_per_term or credits >= stop_at:
                 break
-            if key in planned:
-                continue
+            if key in planned or self._twin_taken(key, planned):
+                continue            # never the same class twice, under any number
             is_dep = key in dependency_targets
             # A requirement course whose requirements the engine already
             # reports met (by earlier picks) cannot add progress: no audit.
@@ -759,6 +813,12 @@ class PlanningEngine:
             if count + len(group) > c.max_courses_per_term or \
                     credits + group_credits > hard_cap:
                 continue
+            group_topics = sum(1 for g in group if self._is_topics(g))
+            if group_topics and topics_here + group_topics > c.max_topics_courses_per_term:
+                continue
+            if any(self._twin_taken(g, planned) or (set(group) - {g}) & self.twins.get(g, set())
+                   for g in group):
+                continue
             if c.pace is Pace.BALANCED and c.target_credits_per_term is not None and count:
                 # "Aim for the target": go past it only when that lands CLOSER
                 # to it (14 + 4 = 18 against 15 is refused; 12 + 4 = 16 is not).
@@ -777,6 +837,7 @@ class PlanningEngine:
             planned.update({g: term for g in group})
             credits += group_credits
             count += len(group)
+            topics_here += group_topics
             members = sorted(set(group) | ({coreq_partner} if coreq_partner else set()))
             if coreq_partner and coreq_partner not in group:
                 # The partner was already placed this term on its own merits.
@@ -911,7 +972,12 @@ class PlanningEngine:
             ranking_evidence=evidence, course=key, title=course.title, credits=course.credits, term_code=facts["term"],
             reasons=reasons, prerequisite=pre, offering=ev, corequisite_group=facts["group"],
             unlocks=sorted(set(facts["dependency_for"]) | set(facts["corequisite_for"])),
-            interchangeable_alternatives=facts["alternatives"])
+            interchangeable_alternatives=facts["alternatives"],
+            is_topics_course=self._is_topics(key),
+            # Only the term's OWN published sections name its topic; a term
+            # planned from history has none yet ("topic not yet announced").
+            topics=(self._topics(key, facts["term"]) if self._is_topics(key)
+                    and ev.kind is OfferingEvidenceKind.CONFIRMED_IN_TERM else []))
 
     # ---- Phase 7.2.1: pace, target load, levelling -----------------------
 
