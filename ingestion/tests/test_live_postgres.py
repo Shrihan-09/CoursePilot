@@ -133,6 +133,17 @@ def _open_and_fan_out(engine, *indexes, at=T1):
         svc.fan_out(s, now=at)
 
 
+@pytest.fixture(autouse=True)
+def _inside_a_registration_window(monkeypatch):
+    """The lease tests assume the 90 s in-window cadence (Phase 7.3 made the
+    outside-window cadence 30 minutes - see test_course_demand.py)."""
+    from app.core import registration_windows as rw
+
+    monkeypatch.setattr(rw, "REGISTRATION_WINDOWS", (rw.RegistrationWindow(
+        FALL26, T0 - timedelta(days=1), T0 + timedelta(days=60), "SYNTHETIC test window",
+        "synthetic://test"),))
+
+
 def _count(engine, model, *where):
     with Session(engine) as s:
         return s.scalar(select(func.count()).select_from(model).where(*where))

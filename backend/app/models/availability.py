@@ -14,6 +14,9 @@ docs/investigations/phase-6-7-live-availability.md.
     section_availability_change   append-only: one row per state TRANSITION -
                                   what a future notification ("closed -> open")
                                   or predictor (time-to-close) needs
+    course_demand_snapshot        Phase 7.3: one row per course per term per
+                                  (Eastern) day, rolled up from the change log -
+                                  demand DATA only; nothing ranks with it yet
 
 Why not one row per section per poll: 12,012 sections x a 2-minute cadence is
 ~8.6 M rows/day for information that is almost entirely "unchanged". "Still
@@ -23,16 +26,20 @@ closed as of T" is recoverable from the refresh log instead.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy import (
+    JSON,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     String,
     Text,
+    UniqueConstraint,
     Uuid,
     text,
 )
@@ -132,5 +139,53 @@ class SectionAvailabilityChange(Base, TimestampMixin):
     )
 
 
-__all__ = ["AVAILABILITY_STATUSES", "REFRESH_VERDICTS", "AvailabilityRefresh",
-           "SectionAvailability", "SectionAvailabilityChange"]
+DEMAND_STATUSES = ("ok", "insufficient_data")
+
+
+class CourseDemandSnapshot(Base, TimestampMixin):
+    """One course's availability on one day of one term (Phase 7.3 demand data).
+
+    Rolled up by app.services.demand from `section_availability_change` and
+    `availability_refresh` only - no extra Rutgers request. A day without an
+    accepted refresh, or a course none of whose sections has been observed, is
+    `insufficient_data` with its measured columns NULL: never imputed.
+    """
+
+    __tablename__ = "course_demand_snapshot"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    term_code: Mapped[str] = mapped_column(String(16))
+    course_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("course.id", ondelete="CASCADE"))
+    course_string: Mapped[str] = mapped_column(String(32))          # denormalized for reading
+    #: The America/New_York calendar day; state is as of the END of this day.
+    snapshot_date: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(24))
+    insufficient_reason: Mapped[str | None] = mapped_column(String(64))
+    section_count: Mapped[int] = mapped_column(Integer)              # sections in the SOC load
+    observed_count: Mapped[int | None] = mapped_column(Integer)      # with an observed state
+    open_count: Mapped[int | None] = mapped_column(Integer)
+    closed_count: Mapped[int | None] = mapped_column(Integer)
+    #: closed / (open + closed) over OBSERVED sections; NULL when insufficient.
+    closed_share: Mapped[float | None] = mapped_column(Numeric(5, 4))
+    #: index -> {"kind", "observed_at", "not_before"} (DATA_MODEL 50.4).
+    first_closed: Mapped[dict] = mapped_column(JSON, default=dict)
+    window_opens_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    refreshes: Mapped[int] = mapped_column(Integer)                  # accepted, that day
+    #: Longest stretch of the day without an accepted refresh (sleep, outage):
+    #: the uncertainty of any time measured that day.
+    max_refresh_gap_seconds: Mapped[int | None] = mapped_column(Integer)
+    computed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        CheckConstraint("status IN ('" + "','".join(DEMAND_STATUSES) + "')",
+                        name="demand_status_known"),
+        CheckConstraint("status = 'ok' OR closed_share IS NULL",
+                        name="insufficient_not_imputed"),
+        UniqueConstraint("term_code", "course_id", "snapshot_date",
+                         name="uq_demand_term_course_day"),
+        Index("ix_demand_term_day", "term_code", "snapshot_date"),
+    )
+
+
+__all__ = ["AVAILABILITY_STATUSES", "DEMAND_STATUSES", "REFRESH_VERDICTS", "AvailabilityRefresh",
+           "CourseDemandSnapshot", "SectionAvailability", "SectionAvailabilityChange"]

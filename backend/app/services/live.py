@@ -25,6 +25,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.observability import redact_id
+from app.core.registration_windows import poll_interval
 from app.domain.live import (
     EVENT_TTL,
     LEASE,
@@ -730,16 +731,25 @@ def consecutive_fetch_failures(session: Session, term_code: str, *, limit: int =
     return count
 
 
-def next_due(session: Session, schedule: AvailabilityPollSchedule) -> datetime | None:
+def next_due(session: Session, schedule: AvailabilityPollSchedule,
+             now: datetime | None = None, windows=None) -> datetime | None:
     """When the term should next be polled, from the REFRESH LOG (so restarts
     and manual runs never double-poll). Fetch failures back off exponentially,
-    capped; other rejections keep the normal cadence (data, not transport)."""
+    capped; other rejections keep the normal cadence (data, not transport).
+
+    Phase 7.3: the cadence is 90 s inside the term's Rutgers registration
+    window and 30 minutes outside (app.core.registration_windows) - still ONE
+    openSections request per term per poll. Backoff never makes a failing
+    term poll FASTER than its normal cadence."""
     last = session.scalar(select(func.max(AvailabilityRefresh.observed_at)).where(
         AvailabilityRefresh.term_code == schedule.term_code))
     if last is None:
         return None
+    moment = now or datetime.now(UTC)
+    interval = poll_interval(schedule.term_code, schedule.interval_seconds, moment,
+                             windows).total_seconds()
     k = consecutive_fetch_failures(session, schedule.term_code)
-    seconds = min(schedule.backoff_cap_seconds, schedule.interval_seconds * (2 ** k))
+    seconds = min(max(schedule.backoff_cap_seconds, interval), interval * (2 ** k))
     return _utc(last) + timedelta(seconds=seconds)
 
 
@@ -758,7 +768,7 @@ def claim_term(session: Session, term_code: str, *, owner: str, now: datetime,
         return None
     schedule = session.get(AvailabilityPollSchedule, term_code)
     session.refresh(schedule)
-    due = next_due(session, schedule)
+    due = next_due(session, schedule, now)
     if due is not None and now < due:
         release_term(session, term_code, owner=owner, now=now, outcome=None)
         return None

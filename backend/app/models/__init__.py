@@ -92,6 +92,7 @@ from app.models.sections import (
 )
 from app.models.availability import (
     AvailabilityRefresh,
+    CourseDemandSnapshot,
     SectionAvailability,
     SectionAvailabilityChange,
 )
@@ -119,6 +120,7 @@ __all__ = [
     "NotificationEvent",
     "SectionWatch",
     "AvailabilityRefresh",
+    "CourseDemandSnapshot",
     "SectionAvailability",
     "SectionAvailabilityChange",
     "CREDENTIAL_TYPES",

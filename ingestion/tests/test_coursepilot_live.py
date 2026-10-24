@@ -96,6 +96,17 @@ def _deliveries(s, account=None):
     return s.scalars(q.order_by(NotificationDelivery.channel, NotificationDelivery.id)).all()
 
 
+@pytest.fixture(autouse=True)
+def _inside_a_registration_window(monkeypatch):
+    """These tests are about the 90 s in-window cadence and its backoff (Phase
+    7.3 made the outside-window cadence 30 minutes - tested separately)."""
+    from app.core import registration_windows as rw
+
+    monkeypatch.setattr(rw, "REGISTRATION_WINDOWS", (rw.RegistrationWindow(
+        FALL26, T0 - timedelta(days=1), T0 + timedelta(days=60), "SYNTHETIC test window",
+        "synthetic://test"),))
+
+
 @pytest.fixture
 def armed(world):  # noqa: F811
     assert _refresh(world).verdict == "accepted"             # real first observation at T0
