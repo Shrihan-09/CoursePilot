@@ -36,7 +36,7 @@ from __future__ import annotations
 import re
 import zlib
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -271,6 +271,21 @@ def offering_assumption_reasons(session: Session, row: StudentPlan) -> list[str]
     return reasons
 
 
+def _degree_navigator_confirmed_since(session: Session, student: Student,
+                                      row: StudentPlan) -> bool:
+    """Phase 7.4: a Degree Navigator audit confirmed after this plan was saved."""
+    from app.models.degree_audit import DegreeAuditImport
+
+    latest = session.scalar(select(DegreeAuditImport.confirmed_at).where(
+        DegreeAuditImport.student_id == student.id, DegreeAuditImport.state == "confirmed")
+        .order_by(DegreeAuditImport.confirmed_at.desc()).limit(1))
+    if latest is None or row.updated_at is None:
+        return False
+    def aware(v):
+        return v if v.tzinfo else v.replace(tzinfo=UTC)
+    return aware(latest) > aware(row.updated_at)
+
+
 def stale_reasons(session: Session, student: Student, row: StudentPlan) -> list[str]:
     """Which inputs differ from the ones the saved plan was computed from."""
     reasons = []
@@ -283,6 +298,8 @@ def stale_reasons(session: Session, student: Student, row: StudentPlan) -> list[
     # its echo.
     elif academic_fingerprint(session, student) != row.academic_fingerprint:
         reasons.append("academic_record_changed")
+        if _degree_navigator_confirmed_since(session, student, row):
+            reasons.append("degree_navigator_audit_imported")
     if rules_fingerprint(session, row.program_version_id) != row.rules_fingerprint:
         reasons.append("program_rules_changed")
     if dataset_identity(session) != list(row.offering_dataset):

@@ -262,10 +262,17 @@ def _walk(results):
 
 
 class PlanningEngine:
-    def __init__(self, session: Session, constraints: PlanningConstraints | None = None) -> None:
+    def __init__(self, session: Session, constraints: PlanningConstraints | None = None,
+                 status_overlay=None) -> None:
         self.session = session
         self.constraints = constraints or PlanningConstraints()
-        self.audit_engine = DegreeAuditEngine(session)
+        if status_overlay:
+            # Phase 7.4: a confirmed Degree Navigator audit decides the STATUS of
+            # its mapped requirements in every audit this plan reads.
+            from app.services.degree_audit.overlay import OverlaidAuditEngine
+            self.audit_engine = OverlaidAuditEngine(session, status_overlay)
+        else:
+            self.audit_engine = DegreeAuditEngine(session)
         self.audit_engine.baseline_memo = {}
 
     # ---- data, loaded in bulk ------------------------------------------

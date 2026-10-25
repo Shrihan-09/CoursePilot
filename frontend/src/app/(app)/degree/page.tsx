@@ -3,11 +3,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { BadgeCheck, Clock3 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Alert, ErrorState, PageHeader, Skeleton, StatusBadge } from "@/components/ui/feedback";
 import { Tabs } from "@/components/ui/overlay";
+import { DegreeNavigatorImport, DnNodeSource, DnSourceNotice, dnLookup, useDnProgress } from "@/features/degree/degree-navigator";
 import { DegreeView } from "@/features/degree/degree-view";
 import { WhatIf } from "@/features/degree/what-if";
 import { ApiError, api } from "@/lib/api";
@@ -18,7 +19,9 @@ import { ApiError, api } from "@/lib/api";
  * rendered as returned. The page decides nothing about any requirement.
  */
 export default function DegreePage() {
-  const [view, setView] = useState<"mine" | "whatif">("mine");
+  const [view, setView] = useState<"mine" | "whatif" | "dn">("mine");
+  const dn = useDnProgress();
+  const dnRow = useMemo(() => dnLookup(dn.data), [dn.data]);
   const profile = useQuery({ queryKey: ["profile"], queryFn: api.profile });
   const onboarding = useQuery({ queryKey: ["onboarding"], queryFn: api.onboarding });
   const audit = useQuery({ queryKey: ["audit"], queryFn: api.audit, staleTime: 0 });
@@ -68,7 +71,11 @@ export default function DegreePage() {
         label="Degree view"
         value={view}
         onChange={setView}
-        items={[{ value: "mine", label: "My program" }, { value: "whatif", label: "What-if" }]}
+        items={[
+          { value: "mine", label: "My program" },
+          { value: "dn", label: "Degree Navigator" },
+          { value: "whatif", label: "What-if" },
+        ]}
       />
       {view === "mine" ? (
         <>
@@ -81,8 +88,17 @@ export default function DegreePage() {
               Every requirement below shows as still needed until you add your transcript or courses.
             </Alert>
           )}
-          <DegreeView audit={audit.data} program={program} />
+          <DnSourceNotice progress={dn.data} onImport={() => setView("dn")} />
+          <DegreeView
+            audit={audit.data}
+            program={program}
+            source={(code) => (
+              <DnNodeSource row={dnRow(code)} hasImport={dn.data?.source === "degree_navigator"} />
+            )}
+          />
         </>
+      ) : view === "dn" ? (
+        <DegreeNavigatorImport />
       ) : (
         <WhatIf currentKey={program.program_key} />
       )}

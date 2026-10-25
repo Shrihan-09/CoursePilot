@@ -30,6 +30,13 @@ silently resolved. CoursePilot's Degree Engine stays CoursePilot's engine: a
 confirmed DN status is a **student-provided comparison and status record**,
 not a replacement for the deterministic audit.
 
+> **Revised 2026-10-24 (Phase 7.4, §10 decision 5).** Once the student
+> confirms a DN audit, DN's status **drives planning** for every *mapped*
+> requirement - DN reflects exceptions and equivalencies CoursePilot cannot
+> see. It decides a requirement's STATUS only; it never changes a CoursePilot
+> requirement rule. CoursePilot's own audit stays the cross-check, and every
+> disagreement is shown as NEEDS REVIEW.
+
 ### 1a. Revision after discovery (2026-10-22): CSP is not adopted
 
 Discovery compared **962 Spring 2027 sections** captured from CSP against
@@ -254,3 +261,70 @@ that term (summer/winter included only if the student allows them) and states th
 the remaining requirements do not fit, `GRADUATION_TARGET_NOT_MET` says so with fixes and the
 plan is never extended. Example: entered Fall 2024 (class of 2028), planning from Spring 2027
 -> Spring 2027, Fall 2027, Spring 2028. Stateless requests (no pace) keep the plain horizon.
+
+## 10. Phase 7.4: Degree Navigator PDF import - decisions (2026-10-24)
+
+Answers to the Step 4 open questions, recorded as given by the product owner
+(they override Prompt 03 where the two conflict). Implementation:
+`app.services.degree_audit`, DATA_MODEL section 51.
+
+1. **Mapping DN requirements to CoursePilot nodes.** A reviewed mapping table
+   per track and catalog year:
+   `data/programs/rutgers/nb-undergrad/<year>/dn-mapping/<program-key>.json`.
+   It maps DN `Requirement R<n> : Title [CODE]` (exact printed heading) to a
+   CoursePilot requirement node id, each with a `review_status`. The CS BA
+   and SAS Core tables are to be built from the developer's real audit. Names
+   are never matched. A DN requirement with no entry is `unmapped` - kept and
+   shown, never guessed.
+2. **"In Progress or Planned"** is provisional and split deterministically.
+   If every course behind it is in the student's confirmed current schedule
+   for the current term, it is **in progress** (satisfied-if-passed for
+   next-term prerequisites). Otherwise it is **planned**, which counts as
+   not satisfied. The status shown says which rule decided.
+3. **Transfer/AP and exceptions** are not supported yet. A row the parser
+   cannot classify is `needs_review` with its raw text kept. No format is
+   invented; one is added when a real audit containing them is available.
+4. **Several degrees in one audit.** The student picks which degree block to
+   import. Its heading/program code is checked against their CoursePilot
+   track. A mismatch blocks confirmation ("this audit is for X, your
+   CoursePilot track is Y"). Each block can be imported separately (what-if).
+5. **A confirmed DN status drives planning** for mapped requirements; this
+   reverses the "comparison record only" stance (§1). CoursePilot's own audit
+   is the cross-check. Disagreements are shown on the Degree page (per
+   requirement), in the plan's reasons, and in an anonymous developer report
+   for encoding review. Unmapped requirements use CoursePilot's audit,
+   labelled "estimated".
+6. **Freshness.** The audit's "as of" is the Chrome print timestamp in the
+   PDF header, else the upload time. It is stale if it predates the last
+   term's final grades or is older than 30 days. A newly confirmed import
+   marks saved plans out of date.
+7. **Core goal codes** map through the same reviewed table. Every DN goal
+   code is checked against `sas-core.json`; one that does not match a node
+   one-to-one stays `unmapped` until reviewed.
+8. **Retention** follows the transcript import's staging, expiry and cleanup
+   rules exactly. The original PDF is deleted after confirmation or expiry,
+   leaving only extracted rows and the file hash. Grades are never logged.
+
+Parsing notes from discovery that the importer handles:
+
+- **Status icons:** status is an icon image, classified only by comparison
+  with DN's legend images *in the same PDF*. An icon that matches nothing is
+  `unknown` and goes to review.
+- **Two courses per line:** numbered lists put two courses on one line;
+  they are split on the `n.` items as `course ( credits, Season YYYY, grade )`.
+- **No text layer:** image-only PDFs are refused with "This PDF has no text.
+  In Chrome, use Print → Destination: Save as PDF (not Microsoft Print to
+  PDF)."
+
+### 10a. What the implementation found or did differently (for review)
+
+| Point | What happened | Why |
+|---|---|---|
+| CS mapping (decision 1) | **Not built.** `sas-198-ba.json` / `sas-198-bs.json` exist with no entries, so every CS DN requirement is `unmapped`. | The developer's real audit has ONE degree block - "The SAS Core Curriculum (NB) (Summer 2019)" - and no CS block. A CS mapping without a CS print would be name-matching. |
+| SAS Core mapping | 6 requirements (R1-R6 → CORE_CC, CORE_NS, CORE_HSA, CORE_AH, CORE_WC, CORE_QFR) and 9 goal codes mapped, `review_status: pending_review` (used, and labelled "mapping not yet reviewed"). | Built from the real audit's exact headings; needs a named reviewer to mark `reviewed`. |
+| Goal codes (decision 7) | The real audit has **14** goal codes (CCO, CCD, NS, HST, SCL, AHo, AHp, AHq, AHr, WC, WCr, WCd, QQ, QR) plus the requirement code CC - not 13. AHo/AHp/AHq/AHr are `unmapped` (CoursePilot has one CORE_AH node for all four). NS is `unmapped` as a goal (it is R2's own multi-course pool; R2 carries CORE_NS). | One-to-one rule. |
+| DN "not satisfied" vs CoursePilot "met" | Shown as NEEDS REVIEW everywhere, but planning does **not** lower CoursePilot's status. | DN's "Needs" line does not say which course is missing, so planning would have to guess. DN "satisfied" and "in progress" do lift a node. |
+| Final-grade dates (decision 6) | A cited table (`app/core/grade_calendar.py`) from the Registrar's Spring and Fall 2026 calendars. A term without a published date is not used. | Never estimated. |
+| Print timestamp time zone | Read as America/New_York. | Chrome prints the student's local time; Rutgers NB students are assumed Eastern. |
+| Document retention | The PDF is deleted as soon as extraction ends (success or failure) - the transcript rule. | Stricter than "after confirmation or expiry". |
+| Course history | Staged as a linked `transcript_import` (`source_document = degree_navigator_audit`) and confirmed by the existing `confirm_import`; the transcript API never lists it. | "Do not build a second path." |

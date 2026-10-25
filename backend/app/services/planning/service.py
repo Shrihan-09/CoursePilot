@@ -62,6 +62,39 @@ def pending_term_assumptions(session: Session, start_term: str,
         if state.authority is TermAuthority.PUBLISHED_PENDING and start_term <= code <= last]
 
 
+def degree_navigator_overlay(session: Session, student: Student, version: ProgramVersion,
+                             key: str) -> tuple:
+    """(overlay for this program and its school Core, plan notes) - Phase 7.4.
+
+    No confirmed DN audit: CoursePilot's own audit decides, labelled
+    "estimated". With one: DN's status decides mapped requirements, and every
+    disagreement with CoursePilot's own check is stated as NEEDS REVIEW."""
+    from app.services.academic_context import school_requirement_sets
+    from app.services.degree_audit.overlay import DISAGREE_LABEL, ESTIMATED_LABEL, active_overlay
+
+    keys = {key} | {s.code for s in school_requirement_sets(session, version)}
+    overlay = active_overlay(session, student).for_keys(keys)
+    if not overlay:
+        return None, [ScenarioAssumption(
+            code="requirement_status_estimated",
+            message=f"Requirement status: {ESTIMATED_LABEL}.")]
+    dates = sorted({s.as_of.date().isoformat() for s in overlay.statuses.values() if s.as_of})
+    notes = [ScenarioAssumption(
+        code="requirement_status_from_degree_navigator",
+        message=(f"Requirement status for {len(overlay.statuses)} requirement(s) comes from your "
+                 f"Degree Navigator audit (as of {', '.join(dates) or 'unknown date'}); "
+                 "CoursePilot's own audit is the cross-check. Unmapped requirements are "
+                 "estimated by CoursePilot."))]
+    for status in sorted(overlay.statuses.values(), key=lambda s: s.requirement_code):
+        if status.disagrees:
+            notes.append(ScenarioAssumption(
+                code="degree_navigator_disagreement",
+                message=(f"NEEDS REVIEW - {status.name or status.requirement_code}: "
+                         f"{DISAGREE_LABEL}. Planning uses Degree Navigator's status: "
+                         f"{status.rule}")))
+    return overlay, notes
+
+
 def generate_plan(session: Session, student: Student, *, start_term: str,
                   program_key_: str | None = None, catalog_year: str | None = None,
                   constraints: PlanningConstraints | None = None) -> PlanResult:
@@ -83,8 +116,10 @@ def generate_plan(session: Session, student: Student, *, start_term: str,
     if not target.is_current_program:
         assumptions += _assumptions(session, student, target)
 
-    result = PlanningEngine(session, constraints).plan(student, version, target, start_term,
-                                                       assumptions)
+    overlay, dn_notes = degree_navigator_overlay(session, student, version, key)
+    assumptions += dn_notes
+    result = PlanningEngine(session, constraints, overlay).plan(student, version, target,
+                                                                start_term, assumptions)
     result.assumptions += pending_term_assumptions(session, start_term, result)
     if session.new or session.dirty or session.deleted:
         session.rollback()
@@ -92,4 +127,5 @@ def generate_plan(session: Session, student: Student, *, start_term: str,
     return result
 
 
-__all__ = ["InvalidStartTerm", "generate_plan", "latest_history_term"]
+__all__ = ["InvalidStartTerm", "degree_navigator_overlay", "generate_plan",
+           "latest_history_term"]

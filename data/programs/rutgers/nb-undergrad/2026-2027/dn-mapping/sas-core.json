@@ -1,0 +1,131 @@
+{
+  "_README": [
+    "Degree Navigator -> CoursePilot requirement-node mapping (Phase 7.4; docs/DATA_MODEL.md section 51).",
+    "A DN requirement maps by its EXACT printed heading; a Core goal by its exact bracketed code. Names are never fuzzy-matched.",
+    "Built 2026-10-24 from the developer's own DN audit print (kept local, never committed): every heading and goal code below appeared in it.",
+    "review_status: pending_review = built, not yet checked by a named reviewer (used, and shown as such); reviewed = checked; unmapped = no one-to-one CoursePilot node (never used).",
+    "A mapping decides only WHICH node a DN status belongs to. It never changes a CoursePilot requirement rule.",
+    "A goal maps only where DN's goal set is a one-course goal (a choose-1 node); a goal set that is a multi-course requirement's own pool (NS) is left to its requirement row."
+  ],
+  "mapping_version": "1",
+  "program_key": "sas-core",
+  "scope": "school_core",
+  "dn_subject": "The SAS Core Curriculum (NB)",
+  "dn_versions": [
+    "Summer 2019"
+  ],
+  "built_from": {
+    "kind": "developer_dn_audit_print",
+    "captured": "2026-10-22",
+    "committed": false
+  },
+  "requirements": [
+    {
+      "dn_heading": "Requirement R1 : Contemporary Challenges [CC]",
+      "requirement_code": "CORE_CC",
+      "review_status": "pending_review"
+    },
+    {
+      "dn_heading": "Requirement R2 : Areas of Inquiry: Natural Sciences [NS]",
+      "requirement_code": "CORE_NS",
+      "review_status": "pending_review"
+    },
+    {
+      "dn_heading": "Requirement R3 : Areas of Inquiry: Social [SCL] and Historical [HST] Analysis",
+      "requirement_code": "CORE_HSA",
+      "review_status": "pending_review"
+    },
+    {
+      "dn_heading": "Requirement R4 : Areas of Inquiry: Arts and Humanities [AHo], [AHp], [AHq], [AHr]",
+      "requirement_code": "CORE_AH",
+      "review_status": "pending_review"
+    },
+    {
+      "dn_heading": "Requirement R5 : Cognitive Skills and Processes: Writing and Communication [WC], [WCr], [WCd]",
+      "requirement_code": "CORE_WC",
+      "review_status": "pending_review"
+    },
+    {
+      "dn_heading": "Requirement R6 : Cognitive Skills and Processes: Quantitative and Formal Reasoning [QQ], [QR]",
+      "requirement_code": "CORE_QFR",
+      "review_status": "pending_review"
+    }
+  ],
+  "goals": [
+    {
+      "dn_code": "CCO",
+      "requirement_code": "CORE_CCO",
+      "review_status": "pending_review"
+    },
+    {
+      "dn_code": "CCD",
+      "requirement_code": "CORE_CCD",
+      "review_status": "pending_review"
+    },
+    {
+      "dn_code": "NS",
+      "requirement_code": null,
+      "review_status": "unmapped",
+      "reason": "NS is requirement R2's own node (CORE_NS, 6 credits / 2 courses). DN's NS goal set only lists the courses counted so far, so 'a course is listed' is not 'NS is met'; R2 carries CORE_NS's status."
+    },
+    {
+      "dn_code": "HST",
+      "requirement_code": "CORE_HST",
+      "review_status": "pending_review"
+    },
+    {
+      "dn_code": "SCL",
+      "requirement_code": "CORE_SCL",
+      "review_status": "pending_review"
+    },
+    {
+      "dn_code": "WC",
+      "requirement_code": "CORE_COLLEGE_WRITING",
+      "review_status": "pending_review"
+    },
+    {
+      "dn_code": "WCr",
+      "requirement_code": "CORE_WCR",
+      "review_status": "pending_review"
+    },
+    {
+      "dn_code": "WCd",
+      "requirement_code": "CORE_WCD",
+      "review_status": "pending_review"
+    },
+    {
+      "dn_code": "QQ",
+      "requirement_code": "CORE_QQ",
+      "review_status": "pending_review"
+    },
+    {
+      "dn_code": "QR",
+      "requirement_code": "CORE_QR",
+      "review_status": "pending_review"
+    },
+    {
+      "dn_code": "AHo",
+      "requirement_code": null,
+      "review_status": "unmapped",
+      "reason": "CoursePilot encodes Arts and Humanities as ONE node (CORE_AH, choose 2 courses over goals AHo/AHp/AHq/AHr); there is no one-to-one node for a single AH goal. R4 carries the requirement's status."
+    },
+    {
+      "dn_code": "AHp",
+      "requirement_code": null,
+      "review_status": "unmapped",
+      "reason": "CoursePilot encodes Arts and Humanities as ONE node (CORE_AH, choose 2 courses over goals AHo/AHp/AHq/AHr); there is no one-to-one node for a single AH goal. R4 carries the requirement's status."
+    },
+    {
+      "dn_code": "AHq",
+      "requirement_code": null,
+      "review_status": "unmapped",
+      "reason": "CoursePilot encodes Arts and Humanities as ONE node (CORE_AH, choose 2 courses over goals AHo/AHp/AHq/AHr); there is no one-to-one node for a single AH goal. R4 carries the requirement's status."
+    },
+    {
+      "dn_code": "AHr",
+      "requirement_code": null,
+      "review_status": "unmapped",
+      "reason": "CoursePilot encodes Arts and Humanities as ONE node (CORE_AH, choose 2 courses over goals AHo/AHp/AHq/AHr); there is no one-to-one node for a single AH goal. R4 carries the requirement's status."
+    }
+  ]
+}

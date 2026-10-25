@@ -113,7 +113,12 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: "complete", label: "Complete" },
 ];
 
-export function DegreeView({ audit, program }: { audit: DegreeAudit; program: ProgramView }) {
+export function DegreeView({ audit, program, source }: {
+  audit: DegreeAudit;
+  program: ProgramView;
+  /** Phase 7.4: per requirement, "from your Degree Navigator audit" or "estimated". */
+  source?: (code: string) => React.ReactNode;
+}) {
   const [filter, setFilter] = useState<Filter>("all");
   const evidence = useMemo(() => {
     const cache = new Map<string, ReturnType<typeof evidenceFor>>();
@@ -156,7 +161,7 @@ export function DegreeView({ audit, program }: { audit: DegreeAudit; program: Pr
         {groups.some((g) => matchesFilter(g, filter)) ? (
           <ul className="space-y-2">
             {groups.map((g) => (
-              <RequirementNode key={g.requirement_code} node={g} evidence={evidence} filter={filter} />
+              <RequirementNode key={g.requirement_code} node={g} evidence={evidence} filter={filter} source={source} />
             ))}
           </ul>
         ) : (

@@ -182,3 +182,8 @@ __all__ = [
 from app.models.schedule_import import ScheduleImport, StudentRegistration
 from app.models.terms import RutgersTerm
 from app.models.feedback import CourseFeedback, InstructorExternalIdentity
+from app.models.degree_audit import (  # noqa: E402 - Phase 7.4
+    DegreeAuditCourseRow,
+    DegreeAuditImport,
+    DegreeAuditRequirementRow,
+)

@@ -261,6 +261,23 @@ def academic_fingerprint(session: Session, student: Student) -> str:
         )
     ).all()
     _hash_tuples(hasher, rows)
+    # Phase 7.4: a confirmed Degree Navigator audit decides requirement STATUS
+    # for planning, so a new one makes saved plans out of date. Only when one
+    # exists, so every other fingerprint is unchanged.
+    from app.models.degree_audit import DegreeAuditImport, DegreeAuditRequirementRow
+    dn = session.execute(
+        select(DegreeAuditImport.id, DegreeAuditImport.confirmed_at,
+               DegreeAuditRequirementRow.requirement_code, DegreeAuditRequirementRow.dn_status,
+               DegreeAuditRequirementRow.excluded)
+        .join(DegreeAuditRequirementRow,
+              DegreeAuditRequirementRow.import_id == DegreeAuditImport.id)
+        .where(DegreeAuditImport.student_id == student.id,
+               DegreeAuditImport.state == "confirmed",
+               DegreeAuditImport.superseded_at.is_(None))
+        .order_by(DegreeAuditImport.confirmed_at, DegreeAuditRequirementRow.row_index)).all()
+    if dn:
+        hasher.update(b"degree_navigator|")
+        _hash_tuples(hasher, dn)
     from app.services.academic_context import academic_evidence
     for claim in academic_evidence(session, student):
         _hash_entity(hasher, claim)
