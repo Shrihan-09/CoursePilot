@@ -123,4 +123,14 @@ A confirmed DN status decides **status** only and never changes a CoursePilot re
 2. Docker: `docker compose up -d --build backend`. The new read-only mount `./data/programs:/data/programs` and `DN_MAPPING_ROOT` are needed.
 3. No backfill.
 
+## Follow-up commit: requirement-by-requirement check against 03 and 03a
+
+- **WebReg schedule counts (03a #2).** The "In Progress or Planned" split now reads the confirmed current schedule from BOTH the WebReg schedule import (`student_registration`) and hand-confirmed sections. Before, it read only the latter.
+- **Each recommendation's reason (03a #5).** `PlannedCourse.notes` says when the requirement a recommendation counts toward, or a group above it, takes its status from DN, and starts "NEEDS REVIEW" on a disagreement. The plan card renders the notes.
+- **Testable review UI.** The Degree-page review was refactored into `DnReviewBody`, `BlockPicker`, `ExportInstructions`, `RequirementTable` and `HistoryRow`.
+- **New tests:**
+  - Frontend, 13 (`tests/unit/degree-navigator.test.tsx`): import step; review table; reconciliation badges; NEEDS REVIEW; conflict actions; confirm disabled until ready; track mismatch; estimated vs from-DN labels; stale nudge; block picker; plan-card notes.
+  - Backend, 5: WebReg in-progress split; anonymous developer report (subprocess); no identity, course or grade in logs; a saved plan goes stale on a DN confirmation; recommendation notes through ancestors.
+- **Suites:** backend 1,107 passed / 4 skipped; ingestion 1,057 passed / 1 skipped; frontend 93 passed; `tsc` clean.
+
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

@@ -238,3 +238,29 @@ def test_a_shifted_column_is_flagged(inject):
 def test_the_undamaged_audit_flags_nothing():
     block = _parse(audit_layout(sas_core_model()))
     assert [r.problems for r in block.requirements] == [[]] * 6 and block.warnings == []
+
+
+# --------------------------------------------------------------------------
+# decision 5: each recommendation's reason names DN status and disagreements
+# --------------------------------------------------------------------------
+
+
+def test_each_recommendation_notes_dn_status_through_its_ancestors():
+    from app.services.planning.service import annotate_recommendations
+
+    def course(*codes):
+        return SimpleNamespace(notes=[], requirements=[SimpleNamespace(requirement_code=c)
+                                                       for c in codes])
+
+    under_group, plain, agreeing = course("LEAF"), course("OTHER"), course("AGREE_LEAF")
+    result = SimpleNamespace(terms=[SimpleNamespace(courses=[under_group, plain, agreeing])])
+    overlay = DnOverlay({"GROUP": _status("GROUP", "planned", "cp_satisfied_dn_not"),
+                         "AGREE_LEAF": _status("AGREE_LEAF", "in_progress", "agrees")})
+    parents = {"LEAF": "GROUP", "GROUP": "ROOT", "ROOT": None, "OTHER": "ROOT",
+               "AGREE_LEAF": "ROOT"}
+    annotate_recommendations(result, overlay, parents)
+    [note] = under_group.notes
+    assert note.startswith("NEEDS REVIEW - GROUP: ") and DISAGREE_LABEL in note
+    assert plain.notes == []                                  # no DN status above it
+    [info] = agreeing.notes
+    assert "status from your Degree Navigator audit" in info and "NEEDS REVIEW" not in info

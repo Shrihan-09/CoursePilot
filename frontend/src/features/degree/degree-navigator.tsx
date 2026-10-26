@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import type {
   DnHistoryRow,
   DnImportDetail,
+  DnImportSummary,
   DnProgress,
   DnRequirementRow,
   Reconciliation,
@@ -133,23 +134,36 @@ export function DegreeNavigatorImport() {
       <ExportInstructions />
       <DnUpload onUploaded={(id) => { setOpenId(id); refresh(); }} />
       {imports.isPending && <Skeleton className="h-24" />}
-      {open.length > 1 && (
-        <label className="block space-y-1 text-sm">
-          <span className="text-fg-secondary">Degree block to review</span>
-          <Select value={current ?? ""} onChange={(e) => setOpenId(e.target.value)}>
-            {open.map((i) => (
-              <option key={i.id} value={i.id}>{i.dn_subject ?? "Unnamed degree"} (block {i.block_index + 1} of {i.block_count})</option>
-            ))}
-          </Select>
-        </label>
-      )}
+      <BlockPicker blocks={open} value={current} onChange={setOpenId} />
       {current && <DnReview id={current} onChanged={refresh} />}
       <ImportHistory imports={imports.data?.imports ?? []} />
     </div>
   );
 }
 
-function ExportInstructions() {
+/** 03a #4: one PDF may hold several degree blocks; the student picks which to review. */
+export function BlockPicker({ blocks, value, onChange }: {
+  blocks: Pick<DnImportSummary, "id" | "dn_subject" | "block_index" | "block_count" | "track_check">[];
+  value: string | null;
+  onChange: (id: string) => void;
+}) {
+  if (blocks.length < 2) return null;
+  return (
+    <label className="block space-y-1 text-sm">
+      <span className="text-fg-secondary">This PDF holds {blocks.length} degree audits. Choose one to review:</span>
+      <Select value={value ?? ""} onChange={(e) => onChange(e.target.value)}>
+        {blocks.map((i) => (
+          <option key={i.id} value={i.id}>
+            {i.dn_subject ?? "Unnamed degree"} (block {i.block_index + 1} of {i.block_count})
+            {i.track_check === "mismatch" ? " - not your track" : ""}
+          </option>
+        ))}
+      </Select>
+    </label>
+  );
+}
+
+export function ExportInstructions() {
   return (
     <section aria-labelledby="dn-how" className="space-y-2 rounded border border-border bg-surface-elevated p-4 text-sm">
       <h2 id="dn-how" className="font-semibold text-fg">Export your audit from Degree Navigator</h2>
@@ -238,12 +252,34 @@ function DnReview({ id, onChanged }: { id: string; onChanged: () => void }) {
 
   if (detail.isPending) return <Skeleton className="h-64" />;
   if (detail.isError || !detail.data) return <Alert tone="danger" title="This import couldn't be loaded" />;
-  const d = detail.data;
-  const busy = resolve.isPending || confirm.isPending;
   const error = (resolve.error ?? confirm.error) as unknown;
+  return (
+    <DnReviewBody
+      detail={detail.data}
+      busy={resolve.isPending || confirm.isPending}
+      confirming={confirm.isPending}
+      error={error instanceof ApiError ? { message: error.message, issues: error.issues } : null}
+      onResolve={(rowId, body) => resolve.mutate({ rowId, body })}
+      onConfirm={() => confirm.mutate()}
+      onDiscard={() => discard.mutate()}
+    />
+  );
+}
+
+/** The staged review and reconciliation view, rendered from the API's detail only. */
+export function DnReviewBody({ detail: d, busy, confirming = false, error, onResolve, onConfirm, onDiscard }: {
+  detail: DnImportDetail;
+  busy: boolean;
+  confirming?: boolean;
+  error: { message: string; issues: { code: string; message: string }[] } | null;
+  onResolve: (rowId: string, body: Record<string, unknown>) => void;
+  onConfirm: () => void;
+  onDiscard: () => void;
+}) {
   const requirements = d.requirements.filter((r) => r.kind === "requirement");
   const goals = d.requirements.filter((r) => r.kind === "goal");
   const lines = d.courses.filter((c) => c.state === "needs_review");
+  const editable = d.state === "extracted";
 
   return (
     <section aria-labelledby="dn-review" className="space-y-5">
@@ -259,15 +295,15 @@ function DnReview({ id, onChanged }: { id: string; onChanged: () => void }) {
           {d.track_message}
         </Alert>
       )}
-      {error instanceof ApiError && (
+      {error && (
         <Alert tone="danger" title={error.message}>
           {error.issues.map((i) => <span key={i.code} className="block">{i.message}</span>)}
         </Alert>
       )}
 
-      <RequirementTable title="Requirements" rows={requirements} busy={busy} onResolve={(rowId, body) => resolve.mutate({ rowId, body })} editable={d.state === "extracted"} />
+      <RequirementTable title="Requirements" rows={requirements} busy={busy} onResolve={onResolve} editable={editable} />
       {goals.length > 0 && (
-        <RequirementTable title="Core goals" rows={goals} busy={busy} onResolve={(rowId, body) => resolve.mutate({ rowId, body })} editable={d.state === "extracted"} />
+        <RequirementTable title="Core goals" rows={goals} busy={busy} onResolve={onResolve} editable={editable} />
       )}
 
       <section aria-labelledby="dn-history" className="space-y-2">
@@ -278,7 +314,7 @@ function DnReview({ id, onChanged }: { id: string; onChanged: () => void }) {
         </p>
         <ul className="divide-y divide-border rounded border border-border bg-surface-elevated">
           {d.history.map((h) => (
-            <HistoryRow key={h.id} row={h} busy={busy} editable={d.state === "extracted"} onResolve={(body) => resolve.mutate({ rowId: h.id, body })} />
+            <HistoryRow key={h.id} row={h} busy={busy} editable={editable} onResolve={(body) => onResolve(h.id, body)} />
           ))}
         </ul>
         {d.history_outcome && (
@@ -290,7 +326,7 @@ function DnReview({ id, onChanged }: { id: string; onChanged: () => void }) {
 
       {lines.length > 0 && (
         <section aria-labelledby="dn-lines" className="space-y-2">
-          <h3 id="dn-lines" className="text-sm font-semibold text-fg">Lines CoursePilot couldn't classify</h3>
+          <h3 id="dn-lines" className="text-sm font-semibold text-fg">Lines CoursePilot couldn&apos;t classify</h3>
           <ul className="divide-y divide-border rounded border border-border bg-surface-elevated">
             {lines.map((c) => (
               <li key={c.id} className="flex flex-col gap-2 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
@@ -298,8 +334,8 @@ function DnReview({ id, onChanged }: { id: string; onChanged: () => void }) {
                   <p className="code text-fg [overflow-wrap:anywhere]">{c.raw_text}</p>
                   {c.issues.map((i) => <p key={i.code} className="text-xs text-fg-muted">{i.message}</p>)}
                 </div>
-                {d.state === "extracted" && (
-                  <Button size="sm" variant="secondary" disabled={busy} onClick={() => resolve.mutate({ rowId: c.id, body: { excluded: !c.excluded } })}>
+                {editable && (
+                  <Button size="sm" variant="secondary" disabled={busy} onClick={() => onResolve(c.id, { excluded: !c.excluded })}>
                     {c.excluded ? "Include" : "Exclude"}
                   </Button>
                 )}
@@ -309,14 +345,14 @@ function DnReview({ id, onChanged }: { id: string; onChanged: () => void }) {
         </section>
       )}
 
-      {d.state === "extracted" ? (
+      {editable ? (
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-fg-secondary">
             {d.readiness.ready ? "Ready to confirm." : `${d.readiness.blocking} row(s) need your review${d.readiness.track_blocks ? ", and this audit is for a different program" : ""}.`}
           </p>
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => discard.mutate()} disabled={busy}>Discard</Button>
-            <Button variant="primary" onClick={() => confirm.mutate()} disabled={!d.readiness.ready || busy} loading={confirm.isPending}>
+            <Button variant="secondary" onClick={onDiscard} disabled={busy}>Discard</Button>
+            <Button variant="primary" onClick={onConfirm} disabled={!d.readiness.ready || busy} loading={confirming}>
               <CheckCircle2 aria-hidden className="size-4" /> Confirm
             </Button>
           </div>
@@ -328,7 +364,7 @@ function DnReview({ id, onChanged }: { id: string; onChanged: () => void }) {
   );
 }
 
-function RequirementTable({ title, rows, busy, editable, onResolve }: {
+export function RequirementTable({ title, rows, busy, editable, onResolve }: {
   title: string;
   rows: DnRequirementRow[];
   busy: boolean;
@@ -387,7 +423,7 @@ function RequirementTable({ title, rows, busy, editable, onResolve }: {
   );
 }
 
-function HistoryRow({ row, busy, editable, onResolve }: {
+export function HistoryRow({ row, busy, editable, onResolve }: {
   row: DnHistoryRow;
   busy: boolean;
   editable: boolean;

@@ -9951,7 +9951,7 @@ planner runs, both the base audit and each projection.
 | DN status | Planning status |
 |---|---|
 | satisfied | **SATISFIED** |
-| in progress or planned, every course behind it in the confirmed current schedule (`student_current_section`) for its term | **in progress**: PROVISIONALLY_SATISFIED |
+| in progress or planned, every course behind it in the confirmed current schedule for its term - a WebReg schedule import (`student_registration`) or a hand-confirmed section (`student_current_section`) | **in progress**: PROVISIONALLY_SATISFIED |
 | in progress or planned, otherwise | **planned**: not satisfied, and the rule says which course is missing from the schedule |
 | not satisfied | CoursePilot's status stands |
 | unknown, excluded or unmapped | CoursePilot's status stands, labelled "estimated" |
@@ -9968,6 +9968,11 @@ Plans carry notes in every case:
 - `degree_navigator_disagreement` (NEEDS REVIEW), one per disagreement;
 - or, with no import, `requirement_status_estimated` ("Estimated - import
   your Degree Navigator audit for accuracy").
+
+Each recommendation also carries notes (`PlannedCourse.notes`). The
+requirement it counts toward, or a group above it, may take its status from
+the DN audit; the note says so, and starts "NEEDS REVIEW" when DN and
+CoursePilot disagree.
 
 `academic_fingerprint` includes confirmed DN rows, so a new confirmation
 marks saved plans out of date (`degree_navigator_audit_imported`).

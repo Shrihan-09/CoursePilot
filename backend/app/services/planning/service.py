@@ -95,6 +95,43 @@ def degree_navigator_overlay(session: Session, student: Student, version: Progra
     return overlay, notes
 
 
+def requirement_parents(session: Session, version: ProgramVersion) -> dict[str, str | None]:
+    """code -> parent code over the program and its school Core."""
+    from app.services.academic_context import composed_requirements
+
+    reqs = composed_requirements(session, version)
+    by_id = {r.id: r.code for r in reqs}
+    return {r.code: by_id.get(r.parent_id) for r in reqs}
+
+
+def annotate_recommendations(result: PlanResult, overlay, parents: dict[str, str | None]) -> None:
+    """Phase 7.4 (decision 5): every recommendation says when the requirement it
+    counts toward - or a group containing it - takes its status from the
+    student's Degree Navigator audit, and says NEEDS REVIEW where DN and
+    CoursePilot disagree."""
+    from app.services.degree_audit.overlay import DISAGREE_LABEL
+
+    for term in result.terms:
+        for course in term.courses:
+            seen: set[str] = set()
+            for contribution in course.requirements:
+                code: str | None = contribution.requirement_code
+                while code is not None and code not in seen:
+                    seen.add(code)
+                    status = overlay.statuses.get(code)
+                    if status is not None:
+                        name = status.name or code
+                        if status.disagrees:
+                            note = (f"NEEDS REVIEW - {name}: {DISAGREE_LABEL}. Planning uses "
+                                    f"Degree Navigator's status: {status.rule}")
+                        else:
+                            note = (f"{name}: status from your Degree Navigator audit - "
+                                    f"{status.rule}")
+                        if note not in course.notes:
+                            course.notes.append(note)
+                    code = parents.get(code)
+
+
 def generate_plan(session: Session, student: Student, *, start_term: str,
                   program_key_: str | None = None, catalog_year: str | None = None,
                   constraints: PlanningConstraints | None = None) -> PlanResult:
@@ -121,11 +158,14 @@ def generate_plan(session: Session, student: Student, *, start_term: str,
     result = PlanningEngine(session, constraints, overlay).plan(student, version, target,
                                                                 start_term, assumptions)
     result.assumptions += pending_term_assumptions(session, start_term, result)
+    if overlay:
+        annotate_recommendations(result, overlay, requirement_parents(session, version))
     if session.new or session.dirty or session.deleted:
         session.rollback()
         raise ScenarioWouldWrite("plan generation attempted to modify state")
     return result
 
 
-__all__ = ["InvalidStartTerm", "degree_navigator_overlay", "generate_plan",
+__all__ = ["InvalidStartTerm", "annotate_recommendations", "degree_navigator_overlay",
+           "generate_plan", "requirement_parents",
            "latest_history_term"]

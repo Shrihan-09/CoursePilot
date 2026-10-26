@@ -111,6 +111,8 @@ export interface PlannedCourse {
   workload?: WorkloadEvidence | null;
   role?: "anchor" | "multi_requirement" | "major" | "filler" | null;
   role_reason?: string | null;
+  /** Phase 7.4: e.g. the requirement's status comes from Degree Navigator, or NEEDS REVIEW. */
+  notes?: string[];
 }
 
 export interface WorkloadEvidence {

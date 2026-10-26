@@ -20,11 +20,9 @@ from sqlalchemy import func, select
 
 from app.models import ProgramVersion, Student, StudentCourse
 from app.models.degree_audit import (
-    DegreeAuditCourseRow,
     DegreeAuditImport,
-    DegreeAuditRequirementRow,
 )
-from app.models.onboarding import TranscriptImport, TranscriptImportRow
+from app.models.onboarding import TranscriptImport
 from app.services.degree_audit.pdf_worker import extract_audit_layout
 from app.services.transcripts.extract import ExtractedText, ExtractionFailed
 from app.services.transcripts.storage import MemoryTranscriptStorage
@@ -97,7 +95,8 @@ def model(ob, *, r2_courses=None, r2_status="fulfilled", grade_a="A", printed="1
              "intro": "1 course from", "join": None,
              "needs": None if r2_status != "not_fulfilled" else
              "1 more course is needed to satisfy this requirement.",
-             "goals": [("Course B Set", "RB", [(c, "completed") for c, *_ in r2])],
+             "goals": [("Course B Set", "RB", [(c, "current" if g == "current" else "completed")
+                                               for c, _, _, g in r2])],
              "courses": r2},
             {"title": "Elective Studies [RX]", "status": "not_fulfilled", "total": 1,
              "intro": "1 course from", "join": None,
@@ -190,12 +189,16 @@ async def test_the_identity_block_is_never_stored(ob, storage, mapping):
         await _profile(ac, ob)
         [imp] = await _upload(ac, build_audit_pdf(model(ob)))
     with _session() as s:
-        texts = []
-        for table in (DegreeAuditImport, DegreeAuditRequirementRow, DegreeAuditCourseRow,
-                      TranscriptImport, TranscriptImportRow):
-            for row in s.scalars(select(table)):
-                texts += [str(v) for v in row.__dict__.values()]
-        blob = " ".join(texts)
+        student = s.scalar(select(Student.id).where(Student.user_id == ob["account"]))
+        rows = []
+        mine = select(DegreeAuditImport).where(DegreeAuditImport.student_id == student)
+        for dn in s.scalars(mine):
+            rows += [dn, *dn.requirement_rows, *dn.course_rows]
+            linked = s.get(TranscriptImport, dn.transcript_import_id)
+            rows += [linked, *linked.rows]
+        assert len(rows) > 10
+        blob = " ".join(str(v) for row in rows for k, v in row.__dict__.items()
+                        if not k.startswith("_"))
     assert "TEST STUDENT" not in blob and "000000000" not in blob
     assert "TEST STUDENT" not in json.dumps(imp) and "000000000" not in json.dumps(imp)
 
@@ -282,12 +285,12 @@ async def test_confirmed_dn_status_overrides_coursepilot_for_planning(ob, storag
     cannot see (C is not an option of REQ_B). After confirmation planning
     treats REQ_B as satisfied, the disagreement is NEEDS REVIEW, and
     CoursePilot's own audit (the rules) still says unsatisfied."""
+    from app.services.audit.engine import DegreeAuditEngine
     from app.services.degree_audit.overlay import (
         DISAGREE_LABEL,
         OverlaidAuditEngine,
         active_overlay,
     )
-    from app.services.audit.engine import DegreeAuditEngine
     from app.services.planning.engine import PlanningEngine, active_leaves
     from app.services.planning.service import degree_navigator_overlay
 
@@ -340,8 +343,8 @@ async def test_without_an_import_requirement_status_is_estimated(ob, storage, ma
         assert progress["label"].startswith("Estimated")
     with _session() as s:
         student = s.scalar(select(Student).where(Student.user_id == ob["account"]))
-        overlay, notes = degree_navigator_overlay(s, student, s.get(ProgramVersion, student.program_version_id),
-                                                  ob["keys"]["pub"])
+        version = s.get(ProgramVersion, student.program_version_id)
+        overlay, notes = degree_navigator_overlay(s, student, version, ob["keys"]["pub"])
         assert overlay is None and notes[0].code == "requirement_status_estimated"
 
 
@@ -463,3 +466,79 @@ async def test_a_flipped_status_icon_needs_review_and_the_student_resolves_it(
         assert s.scalar(select(func.count()).select_from(DegreeAuditImport)
                         .where(DegreeAuditImport.state == "confirmed",
                                DegreeAuditImport.id == uuid.UUID(imp["id"]))) == 1
+
+
+# --------------------------------------------------------------------------
+# 03a #2 with the WebReg schedule; the developer report; logs
+# --------------------------------------------------------------------------
+
+
+@requires_db
+async def test_in_progress_counts_only_with_a_confirmed_webreg_schedule(ob, storage, mapping):
+    """DN "In Progress or Planned" is IN PROGRESS only when its current course is
+    in the student's confirmed current schedule - here a WebReg schedule import
+    (`student_registration`) - and PLANNED (not satisfied) before that."""
+    import datetime as dt
+
+    from app.models.schedule_import import StudentRegistration
+    from app.services.degree_audit.overlay import active_overlay
+
+    b = ob["code"]["B"]
+    async with _client(_app(storage), ob["account"]) as ac:
+        await _profile(ac, ob)
+        [imp] = await _upload(ac, build_audit_pdf(model(
+            ob, r2_status="in_progress_or_planned", r2_courses=[(b, 3, "Fall 2026", "current")])))
+        assert next(h for h in imp["history"] if h["course_code"] == b)["status"] == "in_progress"
+        done = await _confirm(ac, imp)
+        r2 = _req(done, 2)
+        assert r2["planning_status"] == "planned"
+        assert "is not in your confirmed current schedule" in r2["planning_rule"]
+    with _session() as s:
+        student = s.scalar(select(Student).where(Student.user_id == ob["account"]))
+        assert active_overlay(s, student).statuses["REQ_B"].planning_status == "planned"
+        s.add(StudentRegistration(student_id=student.id, term_code="20269", course_string=b,
+                                  section_number="01", confirmed_at=dt.datetime.now(dt.UTC)))
+        s.commit()
+        status = active_overlay(s, student).statuses["REQ_B"]
+        assert status.planning_status == "in_progress"
+        assert "confirmed current schedule" in status.rule
+
+
+@requires_db
+async def test_the_developer_report_is_per_node_and_anonymous(ob, storage, mapping):
+    import os
+    import pathlib
+    import subprocess
+    import sys
+
+    c = ob["code"]["C"]
+    async with _client(_app(storage), ob["account"]) as ac:
+        await _profile(ac, ob)
+        [imp] = await _upload(ac, build_audit_pdf(model(ob, r2_courses=[
+            (c, 3, "Spring 2026", "A")])))
+        await _confirm(ac, imp)
+    root = pathlib.Path(__file__).resolve().parents[2]
+    out = subprocess.run([sys.executable, str(root / "scripts" / "dn_disagreement_report.py")],
+                         capture_output=True, text=True, timeout=120, check=True,
+                         env={**os.environ})
+    lines = [ln for ln in out.stdout.splitlines() if ob["keys"]["pub"] in ln]
+    assert any("REQ_B" in ln and "dn_satisfied_cp_not" in ln for ln in lines), out.stdout
+    for secret in (str(ob["account"]), ob["code"]["A"], ob["code"]["B"], c, "TEST STUDENT",
+                   "000000000", "Spring 2026"):
+        assert secret not in out.stdout
+
+
+@requires_db
+async def test_no_identity_course_or_grade_reaches_the_logs(ob, storage, mapping, caplog):
+    import logging
+
+    caplog.set_level(logging.DEBUG)
+    async with _client(_app(storage), ob["account"]) as ac:
+        await _profile(ac, ob)
+        [imp] = await _upload(ac, build_audit_pdf(model(ob, grade_a="B+")))
+        await _confirm(ac, imp)
+    logged = " ".join(f"{r.getMessage()} {r.__dict__}" for r in caplog.records)
+    assert "dn_import_confirmed" in logged                     # the events were captured
+    for secret in ("TEST STUDENT", "000000000", ob["code"]["A"], ob["code"]["B"],
+                   "B+", "Fall 2025", "Course A Requirement"):
+        assert secret not in logged

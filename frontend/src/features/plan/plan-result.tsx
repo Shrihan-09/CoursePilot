@@ -158,6 +158,11 @@ function CourseCard({ course: c, index }: { course: PlannedCourse; index: number
           ))}
         </p>
       )}
+      {(c.notes ?? []).map((note) => (
+        <p key={note} className={cn("text-xs", note.startsWith("NEEDS REVIEW") ? "font-medium text-warning" : "text-fg-secondary")}>
+          {note}
+        </p>
+      ))}
       <WhyHere course={c} />
     </li>
   );

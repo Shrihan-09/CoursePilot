@@ -88,10 +88,18 @@ def _utc(value: datetime | None) -> datetime | None:
 
 
 def current_schedule(session: Session, student_id: uuid.UUID) -> set[tuple[str, str]]:
-    """(term, course) the student CONFIRMED a section for (WebReg import or manual)."""
-    return {(t, c) for t, c in session.execute(
+    """(term, course) of the student's CONFIRMED current schedule: sections
+    confirmed from a WebReg schedule import (`student_registration`, 7.2.2)
+    and sections confirmed by hand (`student_current_section`, 7.2.1)."""
+    from app.models.schedule_import import StudentRegistration
+
+    manual = session.execute(
         select(StudentCurrentSection.term_code, StudentCurrentSection.course_string)
-        .where(StudentCurrentSection.student_id == student_id))}
+        .where(StudentCurrentSection.student_id == student_id))
+    webreg = session.execute(
+        select(StudentRegistration.term_code, StudentRegistration.course_string)
+        .where(StudentRegistration.student_id == student_id))
+    return {(t, c) for t, c in [*manual, *webreg]}
 
 
 def planning_status(row: DegreeAuditRequirementRow,
