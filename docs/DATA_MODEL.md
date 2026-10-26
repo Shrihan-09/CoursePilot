@@ -10020,3 +10020,100 @@ student's is "not found".
   `UNRECOGNIZED_COURSE_LIST` for review, never dropped.
 - **CS mapping:** not built (§10a).
 - **Mapping review:** pending a named reviewer.
+
+## 52. WebReg current-schedule PDF import (Phase 7.4, Prompt 04)
+
+> The student uploads their own WebReg "View / Print Schedule" PDF. After
+> review and confirmation, CoursePilot records two things:
+>
+> - the courses they are taking now, as in-progress history for that term
+>   (so next term's prerequisites are "satisfied if passed");
+> - the exact sections, as `student_current_section` rows (§49.6).
+>
+> The importer was built in Phase 7.2.2. Prompt 04 added the record writes.
+
+### 52.1 Pipeline
+
+```
+upload -> extract (child process, positioned text) -> parse -> normalize
+       -> validate -> STAGING -> review -> confirm
+```
+
+- **Parse** (`domain/webreg.py`, `webreg-layout-3`). This needs a text
+  layer; image-only PDFs (e.g. "Microsoft Print to PDF") are refused. Rows are read
+  by weekday column and the by-arrangement region. Anything the parser
+  cannot explain is refused, never dropped:
+  - unexplained course text (`UNSUPPORTED_LAYOUT`);
+  - one identity printed with two indexes (`SCHEDULE_IDENTIFIERS_CONFLICT`);
+  - two terms on one print (`SCHEDULE_TERM_AMBIGUOUS`).
+- **Normalize** (`services/scheduling/imports.py`).
+  - Each row is matched by **(term, index)** against the term's published
+    SOC sections; it falls back to (course, section) only when the print
+    shows no index. SOC is the combined data view, since CSP is out (§1a).
+  - The printed course and section must agree with the section that index
+    names. If they don't, the row is `conflict` (`IDENTIFIERS_DISAGREE`),
+    e.g. an index reused or a section changed.
+  - A row with no section is `metadata_unavailable`, Prompt 04's
+    "unrecognized". It is never retargeted to another section.
+- **Pre-selected, not written.** A matched row carries its section
+  (`section_id`, `resolved_index`) and, since 7.4, what confirming will do:
+  - `history_effect`: `add_in_progress`, `already_in_progress`,
+    `planned_to_in_progress`, `keep_completed` or `record_says_completed`
+    (a conflict);
+  - `section_effect`: `add`, `already_confirmed`, `replace` or `differs`
+    (a conflict).
+
+  Nothing is written until the student confirms (the `current.py` rule).
+
+### 52.2 Confirmation (one transaction)
+
+For each matched, not excluded row, in the caller's single transaction:
+
+1. **`student_course`** for the course and term:
+   - none → inserted as `in_progress` (`source_kind =
+     student_uploaded_schedule`);
+   - `planned` → becomes `in_progress`;
+   - already `in_progress` → skipped, not duplicated;
+   - `completed` → a conflict. The student may keep the record
+     (`keep_record`), and then nothing else is written for that row.
+2. **`student_current_section`** for the exact section (component and
+   supplement from the term's candidates, `source =
+   webreg_schedule_import`). The same index is skipped. A different
+   confirmed index needs `replace_existing`.
+3. **`student_registration`**, the identity record, as in 7.2.2.
+
+Each row gets an `outcome`. A failure anywhere rolls back every row; the
+import stays `extracted`. A `metadata_unavailable` row records only its
+registration identity: no history, no section, no invented meetings.
+
+### 52.3 Dropped courses
+
+A course confirmed earlier for the term (registration or current section)
+that a newer import does not list is reported as "not on your latest WebReg
+schedule - dropped?". It shows up in three places:
+
+- staged review (`possibly_dropped`);
+- registrations (`on_latest_import: false`);
+- My current schedule (`not_on_latest_webreg`).
+
+Nothing is ever deleted.
+
+### 52.4 Storage, API, retention
+
+- **Storage:** `schedule_import` holds the import. Its rows are a JSON
+  column with each row's `extracted` original values kept beside the
+  normalized ones (7.2.2's design; Prompt 04 named a separate
+  `schedule_import_row` table, see `PHASE_7_3_PLAN.md` §11). There is no raw
+  text and no name.
+- **The PDF** is never stored on disk: the bounded bytes go straight to the
+  isolated extractor.
+- **API** (`/api/v1/student/schedule-imports`): upload, list, get, `PATCH
+  rows/{id}` (`excluded`, `index_number`, `replace_existing`, `keep_record`),
+  confirm, discard. Owner-only: another student's import is 404.
+- **Not stored from the print:**
+  - credits per row and total credits (SOC credits are authoritative);
+  - printed meeting days and times, campus and building-room (meetings come
+    from the exact SOC match only);
+  - the "Location:" note (modality evidence only).
+
+  The print has no instructor field.

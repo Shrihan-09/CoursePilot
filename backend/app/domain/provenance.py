@@ -33,6 +33,9 @@ class SourceKind(StrEnum):
     #: self-reported data, never with Rutgers sources (it is not RUTGERS_PDF:
     #: CoursePilot cannot verify the document).
     STUDENT_UPLOADED_TRANSCRIPT = "student_uploaded_transcript"
+    #: Phase 7.4: an in-progress row the student confirmed from their own
+    #: WebReg schedule print (Prompt 04). Student-provided, like a transcript.
+    STUDENT_UPLOADED_SCHEDULE = "student_uploaded_schedule"
     MANUAL_CURATION = "manual_curation"
     DERIVED = "derived"  # computed by CoursePilot from other sourced records
 

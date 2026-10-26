@@ -144,6 +144,9 @@ function CurrentScheduleContent() {
               ) : (
                 <p className="text-fg-muted">Section not chosen{c.sections_available ? ` · ${c.sections_available} Rutgers sections` : ""}</p>
               )}
+              {c.not_on_latest_webreg && (
+                <p className="text-warning">Not on your latest WebReg schedule - dropped? Nothing was removed; if you dropped it, update your record.</p>
+              )}
               {c.unavailable.map((u) => (
                 <p key={u.index_number} className="text-warning">
                   Confirmed section {c.confirmed_identities?.find((identity) => identity.index_number === u.index_number)?.section_number ?? "number unavailable"}, index {u.index_number}: public metadata is no longer available. Your confirmation is preserved; choose again only if your registration changed.

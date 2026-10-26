@@ -139,6 +139,8 @@ class CurrentCourseView(BaseModel):
     unavailable: list[dict]
     sections_available: int
     confirmed_identities: list[dict] = Field(default_factory=list)
+    #: Phase 7.4: not on the newest confirmed WebReg import of this term ("dropped?").
+    not_on_latest_webreg: bool = False
 
 
 class CurrentScheduleView(BaseModel):

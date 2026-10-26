@@ -329,3 +329,39 @@ Parsing notes from discovery that the importer handles:
 | Document retention | The PDF is deleted as soon as extraction ends (success or failure) - the transcript rule. | Stricter than "after confirmation or expiry". |
 | Course history | Staged as a linked `transcript_import` (`source_document = degree_navigator_audit`) and confirmed by the existing `confirm_import`; the transcript API never lists it. | "Do not build a second path." |
 | Undeclared audits | The second real print ("Undeclared (NB)") has no Requirements section and lists every course under "Courses Do Not Apply for this Program". The parser first returned **no** rows for it; it now reads all 21. A course row under any unrecognized list title is kept and sent to review (`UNRECOGNIZED_COURSE_LIST`), never dropped. | Found on real evidence; covered by synthetic tests. |
+
+## 11. Phase 7.4 part 2: WebReg schedule import - against Prompt 04 (2026-10-26)
+
+The WebReg importer was built in Phase 7.2.2. Prompt 04 was checked against
+it item by item; only the missing parts were built. Implementation:
+DATA_MODEL section 52.
+
+- **Reverses the 7.2.2 rule.** Phase 7.2.2's rule was "a schedule import
+  never writes academic history". Per Prompt 04, a CONFIRMED import now
+  writes, in one transaction:
+  - the in-progress `student_course` row;
+  - the exact `student_current_section` row.
+
+  Existing in-progress rows are skipped, a planned row becomes in progress,
+  and a completed row is a conflict the student resolves. A different
+  confirmed section needs explicit replacement.
+- **Dropped courses** are flagged ("not on your latest WebReg schedule -
+  dropped?") and never deleted.
+- **Left as built (for review):**
+  - **Rows are a JSON column on `schedule_import`, not a
+    `schedule_import_row` table.** Original values (`extracted`) are kept
+    per row. Moving them to a table would change no behaviour; owner's call.
+  - **The routes stay at `/api/v1/student/schedule-imports`**, not
+    `/api/v1/schedule-imports`, to match every other student-owned route.
+  - **A row with no section is called `metadata_unavailable`**, not
+    `unrecognized`, so the shipped UI and types keep their names. It is
+    never retargeted and writes only its identity.
+
+**Owner decisions (2026-10-26):**
+
+1. Keep the JSON row column; no `schedule_import_row` table.
+2. Keep the routes at `/api/v1/student/schedule-imports`.
+3. A completed record on a current schedule is resolved only by "keep my
+   record" (or excluding the row); there is no replace option. The conflict
+   is shown on the row, Confirm stays disabled until it is resolved, and the
+   row says what keeping does.

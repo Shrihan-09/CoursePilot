@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/feedback";
 import { termLabel } from "@/lib/academic/vocabulary";
-import type { Registration, ScheduleImport, ScheduleImportRow } from "@/types/schedule-import";
+import type { DroppedCourse, Registration, ScheduleImport, ScheduleImportRow } from "@/types/schedule-import";
 import type { SectionChoice } from "@/types/schedule";
 import { asOption, WeekCalendar } from "./week-calendar";
 
@@ -49,9 +49,60 @@ const MATCH_LABEL: Record<ScheduleImportRow["match_status"], string> = {
 };
 const ISSUE_LABEL: Record<string, string> = {
   IDENTIFIERS_DISAGREE: "the index and the course/section point to different sections",
-  CONFIRM_REPLACE_EXISTING: "differs from a registration you already confirmed",
+  CONFIRM_REPLACE_EXISTING: "differs from a section you already confirmed",
   DUPLICATE_REGISTRATION: "listed more than once",
+  RECORD_SAYS_COMPLETED: "your record shows this course COMPLETED in this term",
 };
+
+const HISTORY_EFFECT: Record<string, string> = {
+  add_in_progress: "adds it to your record as in progress",
+  already_in_progress: "it is already in progress on your record (unchanged)",
+  planned_to_in_progress: "changes it from planned to in progress",
+  keep_completed: "keeps your completed record; no section is recorded",
+  record_says_completed: "needs your decision: your record says completed",
+};
+const SECTION_EFFECT: Record<string, string> = {
+  add: "records this section as your current section",
+  already_confirmed: "this section is already your confirmed section",
+  replace: "replaces the section you confirmed before",
+  differs: "differs from the section you confirmed before",
+};
+
+/** Phase 7.4: the pre-selected section and what confirming will do - before it does it. */
+export function rowEffectText(row: ScheduleImportRow): string | null {
+  if (row.excluded || row.state !== "matched" && row.state !== "conflict") return null;
+  if (!row.history_effect) return null;
+  const pre = row.resolved_index ? `Pre-selected: section ${row.section_number}, index ${row.resolved_index}. ` : "";
+  const parts = [HISTORY_EFFECT[row.history_effect], row.section_effect ? SECTION_EFFECT[row.section_effect] : null].filter(Boolean);
+  return `${pre}Confirming ${parts.join(" and ")}.`;
+}
+
+/** Courses confirmed earlier that this newer schedule does not list. Never deleted. */
+export function DroppedList({ courses }: { courses: DroppedCourse[] }) {
+  if (!courses.length) return null;
+  return (
+    <Alert tone="warning" title="Not on your latest WebReg schedule - dropped?">
+      <ul className="list-disc pl-5">
+        {courses.map((c) => (
+          <li key={`${c.term_code}-${c.course_string}`}>{termLabel(c.term_code)} · {c.course_string}{c.index_number ? ` · index ${c.index_number}` : ""}</li>
+        ))}
+      </ul>
+      <span className="block">CoursePilot removes nothing. If you dropped a course, update your record.</span>
+    </Alert>
+  );
+}
+
+/** Numbered export steps for the WebReg print (Prompt 04 import step). */
+export function WebRegExportSteps() {
+  return (
+    <ol className="list-decimal space-y-1 pl-5 text-sm text-fg-secondary">
+      <li>Sign in to WebReg yourself - CoursePilot never asks for your NetID.</li>
+      <li>Open <span className="font-medium">View / Print Schedule</span> for the term.</li>
+      <li>In Chrome, choose Print → Destination <span className="font-medium">Save as PDF</span> (not Microsoft Print to PDF) and save it.</li>
+      <li>Upload that PDF here. It&apos;s read, then discarded; only the rows you review are kept.</li>
+    </ol>
+  );
+}
 
 /** The student-facing match state; internal row states are never shown raw. */
 export function matchText(row: ScheduleImportRow): string {
@@ -89,7 +140,8 @@ export function ScheduleImportReview() {
   const busy = upload.isPending || edit.isPending || confirm.isPending || discard.isPending;
   return <section aria-labelledby="schedule-import-title" className="space-y-4 rounded-lg border border-border p-4">
     <h3 id="schedule-import-title" className="font-semibold text-fg">Import my registered schedule</h3>
-    <p className="text-sm text-fg-secondary">Upload a WebReg View / Print Schedule PDF with a reliable text layer. Image-only PDFs are unsupported; OCR is not used. Review every identity before confirming. This records your schedule; it does not register you, change academic history, or prove eligibility. Raw PDFs are not retained.</p>
+    <WebRegExportSteps />
+    <p className="text-sm text-fg-secondary">Review every row before confirming. Confirming records these courses as in progress for the term and these sections as your current schedule. It does not register you or prove eligibility. Image-only PDFs are unsupported; OCR is not used.</p>
     <label className="block text-sm text-fg">Schedule PDF
       <input type="file" accept="application/pdf" disabled={busy || staged?.state === "extracted"} className="mt-2 block min-h-11 w-full text-sm file:mr-3 file:min-h-11 file:rounded file:border file:border-border file:bg-surface file:px-3 file:text-fg"
         onChange={(event) => { const file = event.target.files?.[0]; if (file) upload.mutate(file); event.target.value = ""; }} />
@@ -103,6 +155,8 @@ export function ScheduleImportReview() {
       <ul className="space-y-3">{staged.rows.map((row) => <li key={row.id} className="space-y-2 rounded border border-border p-3 text-sm">
         <p className="text-fg">{termLabel(row.term_code)} · {row.course_string} · Section {row.section_number} · Index {row.index_number ?? "not supplied"}</p>
         <p className="text-fg-secondary" data-match={row.match_status}>{matchText(row)}</p>
+        {rowEffectText(row) && <p className="text-fg">{rowEffectText(row)}</p>}
+        {row.outcome && <p className="text-fg-muted">Recorded: {[row.outcome.history && HISTORY_EFFECT[row.outcome.history], row.outcome.section && (SECTION_EFFECT[row.outcome.section] ?? row.outcome.section)].filter(Boolean).join("; ")}</p>}
         {staged.state === "extracted" && <>
           <label className="flex items-center gap-2"><input type="checkbox" checked={row.excluded} disabled={busy} onChange={(e) => edit.mutate({row, changes: {excluded: e.target.checked}})} />Exclude this row</label>
           <label className="block">Correct registration index (five digits)
@@ -110,9 +164,11 @@ export function ScheduleImportReview() {
               disabled={busy} onBlur={(e) => { const value = e.target.value; if (value !== (row.index_number ?? "")) edit.mutate({row, changes: {index_number: value || null}}); }} />
           </label>
           {row.issues.includes("CONFIRM_REPLACE_EXISTING") && <label className="flex items-center gap-2"><input type="checkbox" checked={row.replace_existing} disabled={busy} onChange={(e) => edit.mutate({row, changes: {replace_existing: e.target.checked}})} />Replace the previously confirmed identity for this section</label>}
-          {row.state === "metadata_unavailable" && <p className="text-fg-secondary">Public section metadata is unavailable. Confirmation preserves only the identity you reviewed and does not invent meetings.</p>}
+          {row.issues.includes("RECORD_SAYS_COMPLETED") || row.keep_record ? <label className="flex items-center gap-2"><input type="checkbox" checked={!!row.keep_record} disabled={busy} onChange={(e) => edit.mutate({row, changes: {keep_record: e.target.checked}})} />Keep my completed record (record no section for this course)</label> : null}
+          {row.state === "metadata_unavailable" && <p className="text-fg-secondary">No published Rutgers section has this index. Confirmation preserves only the identity you reviewed - nothing is added to your history or current schedule, and no meetings are invented.</p>}
         </>}
       </li>)}</ul>
+      {staged.state === "extracted" && <DroppedList courses={staged.possibly_dropped ?? []} />}
       {staged.state === "extracted" && <div className="flex flex-wrap gap-2">
         <Button disabled={busy || !staged.ready} onClick={() => confirm.mutate()}>Confirm reviewed registrations</Button>
         <Button variant="secondary" disabled={busy} onClick={() => api.scheduleImport(staged.id).then(setStaged).catch(() => setError("Import could not be reloaded."))}>Reload review</Button>
@@ -125,6 +181,7 @@ export function ScheduleImportReview() {
       <ul className="space-y-3 text-sm">{registrations.data!.registrations.map((r) => <li key={r.id} className="rounded border border-border p-3">
         <p className="text-fg">{termLabel(r.term_code)} · {r.course_string} · Section {r.section_number} · Index {r.index_number ?? "not supplied"}</p>
         <p className="text-fg-secondary">Confirmed by you from schedule PDF · Public metadata {r.metadata_state}</p>
+        {r.on_latest_import === false && <p className="text-warning">Not on your latest WebReg schedule - dropped? Nothing was removed.</p>}
         {r.meetings.map((m, i) => <p key={i} className="text-fg-secondary">{m.day ?? "Day not published"} {m.start && m.end ? `${m.start}–${m.end}` : "No published meeting time"} · {[m.mode, m.campus, m.building, m.room].filter(Boolean).join(" · ")}</p>)}
         {r.metadata_state === "unavailable" && <p className="text-fg-secondary">Registration identity preserved; meeting details cannot be verified.</p>}
       </li>)}</ul>
