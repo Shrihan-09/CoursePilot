@@ -194,6 +194,15 @@ class Settings(BaseSettings):
     transcript_max_text_chars: int = 200_000
     transcript_extraction_timeout_seconds: float = 20.0
 
+    # --- Degree Navigator audit import (Phase 7.4; DATA_MODEL section 51) ---
+    # The reviewed DN -> requirement-node mapping tables live beside the program
+    # definitions: <root>/<catalog year>/dn-mapping/<program key>.json. None =
+    # the repository's data/programs/rutgers/nb-undergrad.
+    dn_mapping_root: str | None = None
+    # An audit older than this is labelled stale (plus: older than the last
+    # term's final grades).
+    dn_audit_stale_days: int = 30
+
     # --- CoursePilot Live: push delivery (Phase 6.9; DATA_MODEL section 45) ---
     # none (default: deliveries stay pending and visible) | fake | apns
     push_provider: str = "none"

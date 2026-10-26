@@ -125,6 +125,21 @@ export const api = {
 
   /* Phase 7.2 - each returns an engine's result unchanged. */
   audit: () => request<DegreeAudit>("/student/audit"),
+  // Phase 7.4: Degree Navigator audit import.
+  dnImports: () => request<{ imports: import("@/types/degree-audit").DnImportSummary[] }>("/degree-audit-imports"),
+  uploadDegreeAudit: (file: File) =>
+    request<{ imports: import("@/types/degree-audit").DnImportDetail[] }>("/degree-audit-imports", {
+      method: "POST",
+      headers: { "content-type": "application/pdf" },
+      body: file,
+    }),
+  dnImport: (id: string) => request<import("@/types/degree-audit").DnImportDetail>(`/degree-audit-imports/${id}`),
+  resolveDnRow: (id: string, rowId: string, body: Record<string, unknown>) =>
+    request<import("@/types/degree-audit").DnImportDetail>(`/degree-audit-imports/${id}/rows/${rowId}`, json("PATCH", body)),
+  confirmDn: (id: string, expected_version: number) =>
+    request<import("@/types/degree-audit").DnImportDetail>(`/degree-audit-imports/${id}/confirm`, json("POST", { expected_version })),
+  discardDn: (id: string) => request<import("@/types/degree-audit").DnImportSummary>(`/degree-audit-imports/${id}`, { method: "DELETE" }),
+  dnProgress: () => request<import("@/types/degree-audit").DnProgress>("/degree-audit-imports/progress"),
   progress: () => request<ProgressResponse>("/student/progress"),
   scenarioAudit: (program_key: string, catalog_year: string | null) =>
     request<ScenarioAudit>("/student/scenarios/audit", json("POST", { program_key, catalog_year })),

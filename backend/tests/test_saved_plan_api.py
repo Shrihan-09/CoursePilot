@@ -495,3 +495,27 @@ async def test_time_passing_makes_the_plan_stale(world, monkeypatch) -> None:  #
     finally:
         monkeypatch.delenv("ACADEMIC_TODAY")
         get_settings.cache_clear()
+
+
+@requires_db
+async def test_confirming_a_degree_navigator_audit_makes_the_plan_stale(world) -> None:  # noqa: F811
+    """Phase 7.4 (03 section 3, 03a #6): a confirmed DN audit decides requirement
+    status for planning, so it is part of the plan fingerprint."""
+    from app.models.degree_audit import DegreeAuditImport, DegreeAuditRequirementRow
+
+    await _save(world)
+    assert (await _freshness(world))["state"] == "current"
+    now = dt.datetime.now(dt.UTC)
+    with _session() as session:
+        imp = DegreeAuditImport(student_id=world["a"], state="confirmed",
+                                content_sha256="0" * 64, byte_size=1, warnings=[],
+                                confirmed_at=now, as_of=now, mapping_key="synthetic")
+        imp.requirement_rows.append(DegreeAuditRequirementRow(
+            row_index=0, kind="requirement", page_number=1, line_number=1, dn_number=1,
+            dn_heading="Requirement R1 : SYNTHETIC [SY]", extracted_codes=[], extracted_courses=[],
+            extraction_problems=[], requirement_code="SYNTHETIC", dn_status="satisfied",
+            state="matched", issues=[], cp_courses=[]))
+        session.add(imp)
+        session.commit()
+    assert await _freshness(world) == {
+        "state": "stale", "reasons": ["academic_record_changed", "degree_navigator_audit_imported"]}

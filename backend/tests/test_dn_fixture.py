@@ -1,71 +1,124 @@
-"""Phase 7.3 Step 3: the committed SYNTHETIC Degree Navigator audit fixture.
+"""The committed SYNTHETIC Degree Navigator audit fixture (Phase 7.3 Step 3, 7.4).
 
 It copies the real Chrome "Save as PDF" audit layout (measured on the
 developer's own export, never committed) with invented data. These tests pin
-the layout characteristics a future DN importer must handle.
+the layout characteristics the DN importer handles, and the parser's
+accuracy on the fixture against the generator's own model.
 """
 
 from __future__ import annotations
 
-import io
 import pathlib
 import re
 
-from pypdf import PdfReader
+from app.domain.degree_audit import parse_audit
+from app.services.degree_audit.pdf_worker import extract_audit_layout
 
-from app.services.scheduling.pdf_worker import extract_layout
-
-from .support.synthetic_dn import ICONS, build_audit_pdf
+from .support.synthetic_dn import (
+    ICONS,
+    REQUIREMENT_ICON,
+    audit_layout,
+    build_audit_pdf,
+    render_pdf,
+    sas_core_model,
+    undeclared_model,
+)
 
 FIXTURE = pathlib.Path(__file__).parent / "fixtures" / "synthetic" / "dn_audit.SYNTHETIC.pdf"
 COURSE = r"\d\d:\d{3}:\d{3}"
+STATUS = {v: k for k, v in REQUIREMENT_ICON.items()}
 
 
-def _text():
-    result = extract_layout(FIXTURE.read_bytes(), 40, 400000)
-    assert result[0] == "ok"
-    return "\n".join(result[1])
+def _layout(data=None):
+    out = extract_audit_layout(data or FIXTURE.read_bytes(), 40, 400_000)
+    assert out[0] == "ok", out
+    return out[3]
 
 
 def test_fixture_is_regenerable_and_synthetic():
     assert FIXTURE.read_bytes() == build_audit_pdf()
-    assert set(re.findall(COURSE, _text())) <= {f"01:999:{n}" for n in range(100, 1000)}
+    text = " ".join(f["text"] for page in _layout() for f in page["fragments"])
+    assert set(re.findall(COURSE, text)) <= {f"01:999:{n}" for n in range(100, 1000)}
+    assert "TEST STUDENT" in text and "000000000" in text          # invented identity
 
 
-def test_status_lives_in_icons_beside_requirement_headings():
-    """DN status is an IMAGE on the heading's baseline, not text."""
-    kinds = {(w, h): name for name, (w, h, _) in ICONS.items() if (w, h) != (13, 9)}
-    seen = []
-    for page in PdfReader(io.BytesIO(FIXTURE.read_bytes())).pages:
-        xo = page["/Resources"]["/XObject"]
-        draws, ys = [], []
-
-        def before(op, args, cm, tm, xo=xo, draws=draws):
-            if op == b"Do":
-                draws.append((xo[args[0]].get_object(), cm[5]))
-
-        def vtext(t, cm, tm, font, size, ys=ys):
-            if t.strip():
-                ys.append(tm[5])
-
-        page.extract_text(visitor_operand_before=before, visitor_text=vtext)
-        for obj, y in draws:
-            size = (obj["/Width"], obj["/Height"])
-            seen.append(kinds.get(size, "check_or_x"))
-            assert any(abs(y - t) <= 8 for t in ys), "every icon sits on a text baseline"
-    assert {"current", "planned", "in_progress_or_planned", "check_or_x"} <= set(seen)
+def test_status_lives_in_icons_on_heading_baselines():
+    """DN status is an IMAGE on the heading's baseline, not text; legend icons
+    are the same images (same pixel digest) as the ones they explain."""
+    layout = _layout()
+    sizes = {(i["width"], i["height"]) for page in layout for i in page["images"]}
+    assert sizes == {(w, h) for w, h, _ in ICONS.values()}
+    for page in layout:
+        heads = [f for f in page["fragments"] if re.match(r"^R\d+ : ", f["text"])]
+        for head in heads:
+            assert [i for i in page["images"] if abs(i["y"] - head["y"]) < 1.5
+                    and i["x"] < head["x"]], "every heading has its icon on its baseline"
 
 
 def test_two_numbered_course_rows_share_one_line():
-    """The reading-order hazard: a line holds TWO courses; split on 'n.' items."""
-    row = rf"{COURSE} \( \d+, (?:Fall|Spring) \d{{4}}, [^)]+\)"
-    assert re.search(rf"\d\. {row} \d\. {row}", _text())
-    assert re.search(rf"{COURSE} \( \d+, (?:Fall|Spring) \d{{4}}, current\)", _text())
+    page = next(p for p in _layout() if any(f["text"] == "Courses Used for this Program"
+                                            for f in p["fragments"]))
+    numbers = [f for f in page["fragments"] if f["text"] in ("1.", "2.")]
+    assert len(numbers) >= 2 and abs(numbers[0]["y"] - numbers[1]["y"]) < 1.5
 
 
-def test_needs_core_rules_and_disclaimer_are_present():
-    text = _text()
-    assert re.search(r"^Requirement R\d : .+\[[A-Za-z]+\]$", text, re.M)
-    assert re.search(r"\{ .*\[[A-Za-z]+\] \( " + COURSE + r" \) \}", text)
-    assert re.search(r"^Needs: \d", text, re.M) and "Needs: In Progress:" in text
-    assert "not an official transcript" in text
+def test_parser_reads_every_field_of_the_fixture():
+    """Extraction accuracy on the synthetic fixture = 100% of the model's fields."""
+    model = sas_core_model()
+    block = parse_audit(_layout()).blocks[0]
+    assert (block.subject, block.version_label, block.printed_at, block.degree_id) == (
+        model["subject"], model["version"], model["printed_at"], model["degree_id"])
+    assert block.report_date == model["report_date"]
+    assert len(block.requirements) == len(model["requirements"])
+    for req, want in zip(block.requirements, model["requirements"], strict=True):
+        assert req.title == want["title"]
+        assert req.icon == want["status"]
+        assert req.problems == []
+        assert [(c.course_code, c.term_label, c.grade or "current") for c in req.courses] == \
+            [(c, t, g) for c, _, t, g in want["courses"]]
+        assert [(g.code, g.courses) for g in req.goals] == \
+            [(code, list(courses)) for _, code, courses in want["goals"]]
+    listed = {(c.list_kind, c.course_code) for c in block.courses}
+    assert listed == {("used", c[0]) for c in model["used"]} | \
+        {("unused", c[0]) for c in model["unused"]} | \
+        {("below_minimum_grade", c[0]) for c in model["below_minimum"]}
+
+
+def test_identity_lines_are_never_returned():
+    parsed = parse_audit(_layout())
+    dump = repr(parsed)
+    assert "TEST STUDENT" not in dump and "000000000" not in dump
+
+
+def test_an_icon_that_matches_no_legend_icon_is_unknown():
+    pages = audit_layout(sas_core_model())
+    # SYNTHETIC: drop the legend's icons; the heading icons then match nothing.
+    first = pages[0]
+    first["icons"] = [i for i in first["icons"] if i[1] < 470 or i[0] not in (37.5, 314.2)]
+    block = parse_audit(_layout(render_pdf(pages))).blocks[0]
+    assert {r.icon for r in block.requirements} == {"unknown"}
+    assert "LEGEND_INCOMPLETE" in block.warnings
+    assert all("ICON_UNKNOWN" in r.problems for r in block.requirements)
+
+
+def test_an_undeclared_audit_has_no_requirements_and_keeps_every_course():
+    """Layout seen on a real "Undeclared (NB)" print: no Requirements section,
+    one Condition, every course under "Courses Do Not Apply for this Program"."""
+    block = parse_audit(_layout(build_audit_pdf(undeclared_model()))).blocks[0]
+    assert (block.subject, block.completed_requirements) == ("Undeclared (NB)", "0 of 0")
+    assert block.requirements == [] and block.warnings == []
+    assert [(c.list_kind, c.course_code, c.kind, c.problems) for c in block.courses] == [
+        ("below_minimum_grade", "01:999:801", "course", []),
+        ("not_applicable", "01:999:101", "course", []),
+        ("not_applicable", "01:999:102", "current", []),
+        ("not_applicable", "XX:999:ABC", "placement", [])]
+
+
+def test_rows_under_an_unknown_list_title_are_kept_for_review_never_dropped():
+    model = sas_core_model()
+    model["extra_lists"] = [("Courses Taken Elsewhere (SYNTHETIC)",
+                             [("01:999:901", 3, "Fall 2025", "A")])]
+    block = parse_audit(_layout(build_audit_pdf(model))).blocks[0]
+    [row] = [c for c in block.courses if c.course_code == "01:999:901"]
+    assert (row.list_kind, row.problems) == ("unrecognized", ["UNRECOGNIZED_COURSE_LIST"])
+    assert all(c.problems == [] for c in block.courses if c.course_code != "01:999:901")

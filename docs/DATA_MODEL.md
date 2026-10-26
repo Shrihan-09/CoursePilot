@@ -9812,3 +9812,211 @@ the data:
 - a fully missed day is `insufficient_data`.
 
 Nothing is backfilled, because openSections has no history.
+
+## 51. Degree Navigator audit import (Phase 7.4)
+
+> A student uploads their own Degree Navigator (DN) audit PDF. Once
+> confirmed, it becomes their **progress record**. Its completed and current
+> courses join their history through the existing transcript path. Its
+> requirement statuses decide what planning treats as done, for every
+> requirement mapped to a CoursePilot node. It never changes a requirement
+> rule. Decisions: `PHASE_7_3_PLAN.md` §10.
+
+### 51.1 Pipeline
+
+```
+upload -> extract (child process: text + status icons) -> parse -> normalize
+       -> validate -> STAGING -> reconciliation -> student review -> confirm
+```
+
+- **Extract** (`services/degree_audit/pdf_worker.py`). This runs in the
+  same disposable, killable child as every uploaded PDF. It reports text
+  fragments, and each drawn image's position, size and SHA-256. Nothing
+  else from the document leaves the child: no pixels, no exception text.
+  Text positions are the text matrix composed with Chrome's flipped CTM, so
+  icons and text share baselines. A PDF with no text layer is refused with
+  "This PDF has no text. In Chrome, use Print → Destination: Save as PDF
+  (not Microsoft Print to PDF)."
+- **Parse** (`domain/degree_audit.py`, parser `dn-audit-1`).
+  - The document splits into degree blocks, one per "Degree Audit" heading.
+  - Each block gives the subject and DN version as printed, the report
+    date, the Chrome print timestamp, `degreeID`, and "Completed
+    Requirements: k of n".
+  - Each requirement gives its heading, status icon, Total/Completed counts,
+    Needs line, Core goal sets `{Title [CODE] (courses + icons)}` and its
+    "Completed Courses:" rows.
+  - The block's course lists are parsed too: used, unused, and below the
+    minimum grade. Numbered lines are split on their `n.` items.
+  - The identity block (name, RUID) is skipped and never returned.
+  - **Status icons are classified only by pixel identity with DN's own
+    legend in the same document.** An icon that matches nothing is
+    `unknown`.
+- **Consistency checks.** Each becomes a problem code and NEEDS REVIEW:
+
+  | Code | Raised when |
+  |---|---|
+  | `STATUS_TEXT_MISMATCH` | the icon contradicts the "Needs:" line |
+  | `ALLOCATION_COUNT_MISMATCH` | "Completed: n" differs from the courses read |
+  | `COMPLETED_COUNT_MISMATCH` | "k of n" differs from the statuses read |
+  | `PAGES_MISSING` | the "i / N" footers have gaps |
+  | `COURSE_LINE_UNREADABLE`, `READING_ORDER_UNRELIABLE` | a course code and its details split across lines |
+  | `ICON_MISSING`, `ICON_UNKNOWN`, `ICONS_MULTIPLE` | the heading has no usable status icon |
+  | `UNCLASSIFIED_COURSE_ROW` | a row of unknown shape, e.g. transfer/AP (raw text kept) |
+
+  `scripts/inject_dn_failures.py` damages a synthetic audit three ways (a
+  flipped marker, a dropped allocation, a shifted column). Each is caught.
+
+### 51.2 Tables (migration `74dnimport01`, additive)
+
+| table | one row per | notes |
+|---|---|---|
+| `degree_audit_import` | degree block of an uploaded print | the printed subject, version, report date, print timestamp and degreeID; `as_of` and its source; the mapping key and version; `track_check`; the linked `transcript_import_id`; state, version, expiry |
+| `degree_audit_requirement_row` | DN requirement heading or Core goal set | **as printed:** heading, codes, icon, counts, Needs, the courses DN listed, problems. **Normalized:** `requirement_code` (from the mapping), `dn_status`. **Review:** `state` ∈ matched / needs_review / unmapped, `issues`, `excluded`, `edited`. **Reconciliation:** label, `cp_status`, `cp_courses` |
+| `degree_audit_course_row` | course line as DN printed it | its list, raw text, extracted values, kind (course / current / planned / placement / unclassified), state, link to the staged history row |
+
+`transcript_import.source_document` was added, with default
+`rutgers_unofficial_transcript`. A DN block stages one
+`transcript_import_row` per (course, term) it lists as graded or current,
+in a `transcript_import` with source `degree_navigator_audit`. Those rows
+go through the transcript path unchanged:
+
+- `normalize_row`;
+- `ALREADY_RECORDED` → skipped;
+- different values → `conflict`, resolved by `keep_existing` or
+  `replace_existing`;
+- the version-checked, re-validating `confirm_import`.
+
+The transcript API never lists or confirms a DN-owned staging.
+
+Placement records and DN plan entries are kept as information and never
+become history.
+
+A confirmed import supersedes earlier confirmed imports of the same
+mapping. The newest one is the record.
+
+### 51.3 Mapping (`data/programs/rutgers/nb-undergrad/<year>/dn-mapping/`)
+
+- **Matching** is exact only: a block's printed subject, a requirement's
+  printed heading, a goal's code. There is no fuzzy match.
+- **`review_status`:**
+  - `reviewed` and `pending_review` are used; `pending_review` is
+    labelled "mapping not yet reviewed";
+  - `unmapped` is kept and shown, never used.
+- **A DN version** the table was not built for leaves every requirement
+  unmapped.
+- **The track check:**
+  - the table's `program_key` is the student's track → `matches_track`;
+  - it is their school Core (e.g. `sas-core`) → `matches_school_core`;
+  - it is anything else → `mismatch`, which **blocks confirmation**;
+  - no table for the subject → `no_mapping`: the courses can still be
+    imported, and every requirement is unmapped.
+- **SAS Core:** R1-R6 and 9 one-to-one goal codes are mapped (pending
+  review). AHo, AHp, AHq, AHr and NS stay unmapped.
+- **CS B.A. and B.S.:** not built. No real CS audit print exists yet (§10a).
+- **Docker:** the backend reads the tables from `DN_MAPPING_ROOT`
+  (docker-compose mounts `./data/programs` read-only).
+
+### 51.4 Reconciliation
+
+Each row is compared with CoursePilot's own Degree Engine audit of the
+record as it is now. This runs at staging, after each review edit, and at
+confirmation.
+
+| label | meaning |
+|---|---|
+| `agrees` | same verdict and same allocated courses |
+| `dn_satisfied_cp_not` | DN met or in progress; CoursePilot not met |
+| `cp_satisfied_dn_not` | CoursePilot met; DN not met |
+| `allocation_differs` | same verdict, different courses |
+| `unmapped` | no usable mapping for the row |
+| `unknown` | DN's status unreadable, or the node is not in the audit |
+
+The three disagreements are shown as "Degree Navigator and CoursePilot
+disagree; confirm with your advisor" in three places:
+
+- the review;
+- the Degree page;
+- the plan's notes.
+
+At confirmation they are also logged anonymously: mapping, node, kind and
+label, with no student, course or grade. `scripts/dn_disagreement_report.py`
+aggregates them per requirement node for encoding review.
+
+### 51.5 What planning uses (`services/degree_audit/overlay.py`)
+
+`PlanningEngine` receives a `DnOverlay` built from the confirmed, current
+imports. Its `OverlaidAuditEngine` applies the overlay to every audit the
+planner runs, both the base audit and each projection.
+
+| DN status | Planning status |
+|---|---|
+| satisfied | **SATISFIED** |
+| in progress or planned, every course behind it in the confirmed current schedule for its term - a WebReg schedule import (`student_registration`) or a hand-confirmed section (`student_current_section`) | **in progress**: PROVISIONALLY_SATISFIED |
+| in progress or planned, otherwise | **planned**: not satisfied, and the rule says which course is missing from the schedule |
+| not satisfied | CoursePilot's status stands |
+| unknown, excluded or unmapped | CoursePilot's status stands, labelled "estimated" |
+
+- A lifted node re-derives its `all_of` / `any_of` ancestors. Its reason
+  states the DN rule and CoursePilot's own verdict.
+- A DN "not satisfied" against a CoursePilot "met" is shown as NEEDS REVIEW,
+  but it is not lowered: DN does not name the missing course.
+- Requirement rows take precedence over goal rows on the same node.
+
+Plans carry notes in every case:
+
+- `requirement_status_from_degree_navigator`;
+- `degree_navigator_disagreement` (NEEDS REVIEW), one per disagreement;
+- or, with no import, `requirement_status_estimated` ("Estimated - import
+  your Degree Navigator audit for accuracy").
+
+Each recommendation also carries notes (`PlannedCourse.notes`). The
+requirement it counts toward, or a group above it, may take its status from
+the DN audit; the note says so, and starts "NEEDS REVIEW" when DN and
+CoursePilot disagree.
+
+`academic_fingerprint` includes confirmed DN rows, so a new confirmation
+marks saved plans out of date (`degree_navigator_audit_imported`).
+
+### 51.6 Freshness and retention
+
+- **As of:** Chrome's header print time, read as America/New_York, or else
+  the upload time.
+- **Stale:** older than `dn_audit_stale_days` (30), or before the latest
+  term's published final-grades date (`core/grade_calendar.py`, cited from
+  the Registrar's 2026 calendars).
+- **Nudge:** when stale, `/degree-audit-imports/progress` nudges the student
+  to re-import.
+- **Retention** follows the transcript rules:
+  - the PDF is deleted as soon as extraction ends;
+  - staging expires after 7 days;
+  - a crashed `processing` row is failed;
+  - at most 3 open documents per student;
+  - no file name, name, RUID or grade is logged.
+
+### 51.7 API (`/api/v1/degree-audit-imports`)
+
+`POST` (PDF body) → one import per degree block. The other routes:
+
+- `GET` lists imports;
+- `GET /progress` returns the record, the labels and the nudge;
+- `GET /{id}`;
+- `PATCH /{id}/rows/{row_id}` resolves a row:
+  - requirement row: `excluded`, or `dn_status` as DN shows it;
+  - DN line: `excluded`;
+  - staged history row: the transcript fields plus `resolution`;
+- `POST /{id}/confirm {expected_version}`;
+- `DELETE /{id}`.
+
+Only the authenticated student's own imports exist for them; another
+student's is "not found".
+
+### 51.8 Limitations
+
+- **Verified layout:** two real prints, "The SAS Core Curriculum (NB)" and
+  "Undeclared (NB)". The latter has no requirements and a "Courses Do Not
+  Apply for this Program" list. Transfer/AP, exceptions, waivers, planned
+  courses, a declared major and other schools' layouts have not been seen.
+- **Unrecognized list titles:** a course row under one is kept and flagged
+  `UNRECOGNIZED_COURSE_LIST` for review, never dropped.
+- **CS mapping:** not built (§10a).
+- **Mapping review:** pending a named reviewer.

@@ -11,6 +11,7 @@ from fastapi import APIRouter
 from app.api.v1.routes import (
     account,
     admin,
+    degree_audit_imports,
     explanations,
     health,
     meta,
@@ -35,6 +36,7 @@ api_router.include_router(account.router)
 api_router.include_router(student.router)
 api_router.include_router(progress.router)
 api_router.include_router(onboarding.router)
+api_router.include_router(degree_audit_imports.router)
 api_router.include_router(programs.router)
 api_router.include_router(scenarios.router)
 api_router.include_router(plans.router)

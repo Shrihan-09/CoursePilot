@@ -65,11 +65,14 @@ export function RequirementNode({
   evidence,
   filter,
   depth = 0,
+  source,
 }: {
   node: RequirementResult;
   evidence: (code: string) => Evidence;
   filter: Filter;
   depth?: number;
+  /** Phase 7.4: which source decided this node's status (Degree Navigator or estimate). */
+  source?: (code: string) => React.ReactNode;
 }) {
   if (!matchesFilter(node, filter)) return null;
   const state = REQUIREMENT_STATUS[node.status];
@@ -105,6 +108,7 @@ export function RequirementNode({
             <p className="text-xs font-medium uppercase tracking-wide text-fg-muted">Why</p>
             <p className="text-sm text-fg">{node.reason}</p>
             <p className="text-xs text-fg-muted">{state.meaning}</p>
+            {source?.(node.requirement_code)}
           </div>
 
           {own.allocations.length > 0 && (
@@ -157,7 +161,7 @@ export function RequirementNode({
           {children.length > 0 && (
             <ul className="space-y-2" aria-label={`Parts of ${node.requirement_name}`}>
               {children.map((child) => (
-                <RequirementNode key={child.requirement_code} node={child} evidence={evidence} filter={filter} depth={depth + 1} />
+                <RequirementNode key={child.requirement_code} node={child} evidence={evidence} filter={filter} depth={depth + 1} source={source} />
               ))}
             </ul>
           )}

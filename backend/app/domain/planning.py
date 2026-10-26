@@ -314,6 +314,10 @@ class PlannedCourse(BaseModel):
     workload: WorkloadEvidence | None = None
     role: str | None = None
     role_reason: str | None = None
+    #: Phase 7.4: plain-language notes on this recommendation - e.g. that the
+    #: requirement it counts toward has its status from the student's Degree
+    #: Navigator audit, or that DN and CoursePilot disagree (NEEDS REVIEW).
+    notes: list[str] = Field(default_factory=list)
 
 
 class TermWorkload(BaseModel):

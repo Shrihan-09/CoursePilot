@@ -88,6 +88,11 @@ STAGING_TTL = timedelta(days=7)
 PROCESSING_TIMEOUT = timedelta(minutes=10)
 #: Open (processing/extracted) imports per student.
 MAX_OPEN_IMPORTS = 3
+#: Phase 7.4: the document a staging belongs to. The transcript API sees only
+#: its own; a Degree Navigator audit's course staging is reached only through
+#: the DN import that owns it (app.services.degree_audit).
+TRANSCRIPT_SOURCE = "rutgers_unofficial_transcript"
+DN_AUDIT_SOURCE = "degree_navigator_audit"
 
 
 class TranscriptImportError(Exception):
@@ -138,6 +143,7 @@ def _utc(value: datetime) -> datetime:
 def open_imports(session: Session, student_id: uuid.UUID, now: datetime) -> list:
     rows = session.scalars(select(TranscriptImport).where(
         TranscriptImport.student_id == student_id,
+        TranscriptImport.source_document == TRANSCRIPT_SOURCE,
         TranscriptImport.state.in_((ImportState.PROCESSING, ImportState.EXTRACTED)))
         .order_by(TranscriptImport.created_at))
     return [r for r in rows if effective_state(r, now) in (ImportState.PROCESSING,
@@ -146,15 +152,19 @@ def open_imports(session: Session, student_id: uuid.UUID, now: datetime) -> list
 
 def list_imports(session: Session, student_id: uuid.UUID) -> list[TranscriptImport]:
     return list(session.scalars(select(TranscriptImport).where(
-        TranscriptImport.student_id == student_id)
+        TranscriptImport.student_id == student_id,
+        TranscriptImport.source_document == TRANSCRIPT_SOURCE)
         .order_by(TranscriptImport.created_at.desc()).limit(50)))
 
 
 def get_import(session: Session, student_id: uuid.UUID, import_id: uuid.UUID,
-               *, lock: bool = False) -> TranscriptImport:
-    """The owner's import. Another student's is 'not found', never 'forbidden'."""
+               *, lock: bool = False, source_document: str = TRANSCRIPT_SOURCE,
+               ) -> TranscriptImport:
+    """The owner's import. Another student's is 'not found', never 'forbidden'
+    (and so is one staged for a different document kind)."""
     q = select(TranscriptImport).where(TranscriptImport.id == import_id,
-                                       TranscriptImport.student_id == student_id)
+                                       TranscriptImport.student_id == student_id,
+                                       TranscriptImport.source_document == source_document)
     if lock:
         q = q.with_for_update().execution_options(populate_existing=True)
     imp = session.scalar(q)
@@ -224,7 +234,13 @@ _PARSE_PROBLEMS = {
     "COURSE_LINE_UNREADABLE": ("raw_text", IssueSeverity.NEEDS_REVIEW,
                                "A course code was found but the rest of its line could not "
                                "be read. Enter its term, credits and grade, or exclude it."),
+    # Phase 7.4: course rows read from a Degree Navigator audit print.
+    "DN_ROWS_DISAGREE": ("raw_text", IssueSeverity.NEEDS_REVIEW,
+                         "Degree Navigator lists this course and term more than once with "
+                         "different credits or grade. Check it against your transcript."),
     # Informational: never blocks.
+    "DN_CURRENT_COURSE": ("status", IssueSeverity.INFO,
+                          "Degree Navigator shows this course as current (in progress)."),
     "TERM_NOT_YET_GRADED": ("status", IssueSeverity.INFO,
                             "The transcript shows no average for this term yet; the course "
                             "is probably in progress. Confirm its status."),
@@ -559,11 +575,12 @@ ROW_EDITABLE = ("course_code", "supplement_code", "term_code", "status", "grade"
 
 
 def _open_for_review(session: Session, account_id: uuid.UUID, import_id: uuid.UUID,
-                     now: datetime):
+                     now: datetime, source_document: str = TRANSCRIPT_SOURCE):
     student = lock_student(session, account_id)
     if student is None:
         raise ProfileMissing("No academic record exists for this account.")
-    imp = get_import(session, student.id, import_id, lock=True)
+    imp = get_import(session, student.id, import_id, lock=True,
+                     source_document=source_document)
     state = effective_state(imp, now)
     if state != ImportState.EXTRACTED:
         raise ImportRefused("IMPORT_NOT_EDITABLE",
@@ -573,11 +590,11 @@ def _open_for_review(session: Session, account_id: uuid.UUID, import_id: uuid.UU
 
 def edit_row(session: Session, account_id: uuid.UUID, import_id: uuid.UUID,
              row_id: uuid.UUID, changes: dict, *, expected_version: int,
-             now: datetime) -> TranscriptImport:
+             now: datetime, source_document: str = TRANSCRIPT_SOURCE) -> TranscriptImport:
     """Correct a staged row's normalized values, exclude/include it, or
     resolve a conflict. Bumps the import version; the row is re-normalized
     (and every row's in-import duplicate check re-run)."""
-    _student, imp = _open_for_review(session, account_id, import_id, now)
+    _student, imp = _open_for_review(session, account_id, import_id, now, source_document)
     if imp.version != expected_version:
         raise ImportRefused("IMPORT_VERSION_STALE",
                             "This import changed since you loaded it; reload and review again.")
@@ -643,13 +660,15 @@ class ConfirmResult:
 
 
 def confirm_import(session: Session, account_id: uuid.UUID, import_id: uuid.UUID, *,
-                   expected_version: int, now: datetime) -> ConfirmResult:
+                   expected_version: int, now: datetime,
+                   source_document: str = TRANSCRIPT_SOURCE) -> ConfirmResult:
     """Write the reviewed rows to the record. Transactional and idempotent;
     the caller commits (or, on any exception, rolls back everything)."""
     student = lock_student(session, account_id)
     if student is None:
         raise ProfileMissing("No academic record exists for this account.")
-    imp = get_import(session, student.id, import_id, lock=True)
+    imp = get_import(session, student.id, import_id, lock=True,
+                     source_document=source_document)
     if imp.state == ImportState.CONFIRMED:
         return ConfirmResult(imp, True)
     state = effective_state(imp, now)
@@ -745,7 +764,8 @@ def count_rows(session: Session, import_id: uuid.UUID) -> int:
         TranscriptImportRow.import_id == import_id)) or 0
 
 
-__all__ = ["MAX_OPEN_IMPORTS", "PROCESSING_TIMEOUT", "ROW_EDITABLE", "STAGING_TTL",
+__all__ = ["DN_AUDIT_SOURCE", "MAX_OPEN_IMPORTS", "PROCESSING_TIMEOUT", "TRANSCRIPT_SOURCE",
+           "ROW_EDITABLE", "STAGING_TTL",
            "ConfirmResult", "ImportNotFound", "ImportRefused", "Readiness", "confirm_import",
            "discard_import", "edit_row", "effective_state", "get_import", "latest_reported_gpa",
            "list_imports", "normalize_row", "open_imports", "readiness", "renormalize",

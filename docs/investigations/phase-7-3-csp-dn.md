@@ -215,7 +215,7 @@ repository; only kinds, counts and masked shapes recorded).
 | Disclaimer | yes | "not an official transcript …" | shown to the student, as DN does |
 
 **Synthetic fixture:** `backend/tests/fixtures/synthetic/dn_audit.SYNTHETIC.pdf`
-(`tests/support/synthetic_dn.py`; subject 999, terms in 2098, invented
+(`tests/support/synthetic_dn.py`; subject 999, invented
 titles, icons at DN's sizes and colours). It reproduces all 17 element kinds
 measured in the real audit, none missing or extra; `tests/test_dn_fixture.py`
 pins the status-as-image, two-courses-per-line and Needs/Core shapes.

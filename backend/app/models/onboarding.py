@@ -129,6 +129,12 @@ class TranscriptImport(Base, TimestampMixin):
     rows_replaced: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     rows_skipped: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     rows_excluded: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    #: Phase 7.4: which kind of document the rows were read from. A Degree
+    #: Navigator audit stages its courses here too, so they go through this
+    #: same review and confirmation path ('degree_navigator_audit').
+    source_document: Mapped[str] = mapped_column(
+        String(32), default="rutgers_unofficial_transcript",
+        server_default="rutgers_unofficial_transcript")
 
     rows: Mapped[list[TranscriptImportRow]] = relationship(
         back_populates="transcript_import", cascade="all, delete-orphan",

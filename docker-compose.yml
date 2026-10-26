@@ -44,6 +44,7 @@ services:
       # Override host-oriented values from .env for the container network.
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-coursepilot}:${POSTGRES_PASSWORD:-coursepilot}@db:5432/${POSTGRES_DB:-coursepilot}
       DATABASE_URL_SYNC: postgresql+psycopg://${POSTGRES_USER:-coursepilot}:${POSTGRES_PASSWORD:-coursepilot}@db:5432/${POSTGRES_DB:-coursepilot}
+      DN_MAPPING_ROOT: /data/programs/rutgers/nb-undergrad
     ports:
       - "${API_PORT:-8000}:8000"
     volumes:
@@ -51,6 +52,8 @@ services:
       # Skills are read by the backend at runtime but authored at the repo
       # root, so they are mounted read-only rather than copied into the image.
       - ./skills:/skills:ro
+      # Phase 7.4: the reviewed Degree Navigator mapping tables (read-only).
+      - ./data/programs:/data/programs:ro
     depends_on:
       db:
         condition: service_healthy
