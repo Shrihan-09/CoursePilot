@@ -41,6 +41,14 @@ taken by this key, smallest first, while the load limits allow:
     6. more candidate requirement groups served (allocation still rechecked);
     7. the course string (canonical tie-break).
 
+Phase 7.6 adds two validity gates before ranking - section restrictions
+(every section of the term closed to the student: excluded, with the reason)
+and the term's SOC coreCodes (a Core goal the term's listing does not
+certify is not a reason to plan the course) - and two sequencing keys after
+the dependency keys: the longest chain of open-requirement courses a course
+starts, then "offered in one regular season only". Every planned course
+carries a structured `RecommendationTrace`.
+
 A requirement candidate is ACCEPTED only if the Degree Engine, re-run with it,
 shows strict progress (more requirement slots/credits met). A course eligible
 for two requirements is therefore credited wherever the engine's own
@@ -63,6 +71,12 @@ from app.domain.course_ranking import CourseRankingEvidence
 from app.domain.grades import Tri, earns_credit
 from app.domain.planning import (
     ConditionalDependency,
+    CoreCodeEvidence,
+    OfferingPattern,
+    RecommendationTrace,
+    RestrictionCheck,
+    SourceLabel,
+    TracedRequirement,
     EligibilityState,
     OfferingEvidence,
     OfferingEvidenceKind,
@@ -124,6 +138,9 @@ LEAF_TYPES = ("course", "choose_n", "credits")
 #: Phase 7.3: regular (Fall/Spring) semesters from entry to graduation per
 #: graduation target. CoursePilot settings, not Rutgers policy.
 GRADUATION_SEMESTERS = {Pace.BALANCED: 8, Pace.FINISH_EARLIER: 7, Pace.LIGHTER: 10}
+
+
+SEASON = {"1": "Spring", "9": "Fall"}
 
 
 def _next_regular(term: str) -> str:
@@ -200,7 +217,8 @@ def deficit(node: RequirementResult) -> Decimal:
     return Decimal(max(missing, 1))
 
 
-def progress(result: DegreeAuditResult, requirements: dict | None = None) -> tuple:
+def progress(result: DegreeAuditResult, requirements: dict | None = None, *,
+             useful_only: bool = False) -> tuple:
     """Measure of degree progress, used to accept a candidate.
 
     (leaf requirements met, USEFUL units toward them): courses or credits
@@ -214,9 +232,9 @@ def progress(result: DegreeAuditResult, requirements: dict | None = None) -> tup
     300 level" and leave no slot for the 300-level ones.
     """
     met, amount = 0, Decimal(0)
-    for node in _walk(result.requirements):
-        if node.requirement_type not in LEAF_TYPES:
-            continue
+    leaves = (_useful_leaves(result.requirements) if useful_only else
+              (n for n in _walk(result.requirements) if n.requirement_type in LEAF_TYPES))
+    for node in leaves:
         met += node.status in MET
         units = _progress_of(node)
         if node.needed_distinct_categories and node.needed_count:
@@ -240,6 +258,39 @@ def progress(result: DegreeAuditResult, requirements: dict | None = None) -> tup
                 units -= max(0, counts["outside"] - req.max_outside_subject)
         amount += units
     return (met, amount)
+
+
+def _leaf_units(node: RequirementResult) -> tuple:
+    return (int(node.status in MET), _progress_of(node))
+
+
+def _subtree_score(node: RequirementResult) -> tuple:
+    """(leaves met, units) of the leaves `progress` would count under `node`."""
+    met, units = 0, Decimal(0)
+    for leaf in _useful_leaves([node]):
+        m, u = _leaf_units(leaf)
+        met, units = met + m, units + u
+    return (met, units)
+
+
+def _useful_leaves(results):
+    """Leaves whose progress is USEFUL in a finished plan (Phase 7.6). Once an
+    ANY_OF is MET, only the met alternatives it needs count, so a course
+    credited only to another alternative (Physics 193 or Chemistry 161 beside a
+    completed Physics 203-206 sequence) is pruned. An unmet ANY_OF keeps every
+    alternative: the search must stay free to finish another one when the
+    first is a dead end (an unplannable lab)."""
+    for node in results:
+        if node.requirement_type in LEAF_TYPES:
+            yield node
+            continue
+        children = node.children
+        if node.requirement_type == "any_of" and node.status in MET and children:
+            need = node.needed_count or 1
+            met = [c for c in children if c.status in MET]
+            children = sorted(met, key=lambda c: (
+                tuple(-x for x in _subtree_score(c)), c.requirement_code))[:need]
+        yield from _useful_leaves(children)
 
 
 def _partner_may_help(co) -> bool:
@@ -266,6 +317,8 @@ class PlanningEngine:
                  status_overlay=None) -> None:
         self.session = session
         self.constraints = constraints or PlanningConstraints()
+        #: Phase 7.6: the DN overlay, read again for each recommendation's trace.
+        self.overlay = status_overlay or None
         if status_overlay:
             # Phase 7.4: a confirmed Degree Navigator audit decides the STATUS of
             # its mapped requirements in every audit this plan reads.
@@ -283,14 +336,33 @@ class PlanningEngine:
         self.requirements = {r.code: r for r in composed_requirements(s, version)}
         self.pools: dict[str, set[str]] = defaultdict(set)
         self.course_info: dict[str, Course] = {}
-        for code, course in s.execute(
-                select(Requirement.code, Course)
+        #: Phase 7.6: (requirement, course) -> the certifying categories (SAS
+        #: Core goal codes; '' for a major requirement).
+        self.pool_categories: dict[tuple[str, str], set[str]] = defaultdict(set)
+        for code, category, course in s.execute(
+                select(Requirement.code, RequirementCourseOption.category, Course)
                 .join(RequirementCourseOption,
                       RequirementCourseOption.requirement_id == Requirement.id)
                 .join(Course, Course.id == RequirementCourseOption.course_id)
                 .where(Requirement.id.in_([r.id for r in self.requirements.values()]))).all():
             self.pools[code].add(course.course_string)
+            self.pool_categories[(code, course.course_string)].add(category or "")
             self.course_info[course.course_string] = course
+        # Phase 7.6: the Degree Engine's own sharing rule (one course may count
+        # once per allocation scope only when the program or its school Core
+        # set shares across systems).
+        from app.models.requirements import SharingPolicy
+        from app.services.academic_context import school_requirement_sets
+        shared = SharingPolicy.SHARE_ACROSS_SYSTEMS.value
+        self.share = (version.sharing_policy == shared
+                      or any(v.sharing_policy == shared
+                             for v in school_requirement_sets(s, version)))
+        self.by_id_code = {r.id: r.code for r in self.requirements.values()}
+        self._restriction_cache: dict[tuple[str, str], RestrictionCheck] = {}
+        self._core_cache: dict[tuple[str, str], object] = {}
+        self._chain: dict[str, int] | None = None
+        self._required: set[str] = set()
+        self._offering_sources: dict[tuple[str, str], object] | None = None
         # Phase 7.3 workload weights. A Rutgers major's program code is its
         # subject code (198 Computer Science, 640 Mathematics, 220 Economics).
         self.major_subject = version.program.code if version.program else None
@@ -390,6 +462,12 @@ class PlanningEngine:
     def _system(self, code: str) -> str:
         req = self.requirements.get(code)
         return (req.allocation_scope or req.requirement_system) if req is not None else "major"
+
+    def _is_core(self, code: str) -> bool:
+        """A school Core node. Its ALLOCATION scope is finer ("core:writing",
+        "core:natural-sciences"), so `_system` is not the test (Phase 7.6)."""
+        req = self.requirements.get(code)
+        return req is not None and req.requirement_system == "core"
 
     def _unlock_breadth(self) -> dict[str, int]:
         """How many requirement-pool courses cite each course in their latest
@@ -575,8 +653,14 @@ class PlanningEngine:
         c = self.constraints
         self._load_static(version)
         self._history(student)
+        from app.services.scheduling.candidates import student_attributes
+        self.attributes = student_attributes(self.session, student)
+        self.undeclared = student.declaration_status == "undeclared"
         issues: list[PlanningIssue] = []
         self._pin_issues: list[PlanningIssue] = []
+        #: Phase 7.6: course -> (term, RestrictionCheck) of its first exclusion.
+        self._restricted: dict[str, tuple[str, RestrictionCheck]] = {}
+        self._trace_issues: list[PlanningIssue] = []
         planned: dict[str, str] = {}                 # course -> term
         info: dict[str, dict] = {}                   # course -> planning facts
         dependency_targets: dict[str, set[str]] = defaultdict(set)
@@ -586,6 +670,7 @@ class PlanningEngine:
 
         before = self.audit_engine.audit(student, program_version=version)
         current = before
+        self._open_at_start = {leaf.requirement_code for leaf in active_leaves(before.requirements)}
         graduation = self._graduation_target(start_term)
         if graduation is None:
             terms = planning_terms(start_term, c.max_terms, include_summer=c.include_summer,
@@ -639,6 +724,8 @@ class PlanningEngine:
                                  horizon=bool(remaining) and not stalled)
         issues += self._rule_issues(final)
         issues += self._pin_issues
+        issues += self._restriction_issues()
+        issues += self._trace_issues
         if graduation is not None and terms and remaining and not stalled:
             # Never silently push graduation later: say so and suggest fixes.
             level = (f" at a {c.workload_level.value.replace('_', '-')} workload"
@@ -735,6 +822,45 @@ class PlanningEngine:
                       | {k for k in pins_here if k in self.course_info})
         evaluated = self._evaluate(student, keys, term, planned)
 
+        # Phase 7.6 gate: the term's SOC coreCodes. A Core goal the listing
+        # read for this term does not certify is no reason to plan the course.
+        self._prefetch_core(term, {k: evaluated[k][2] for k in serves
+                                   if k in evaluated and evaluated[k][2].kind in PLACEABLE
+                                   and any(self._is_core(c) for c in serves[k])})
+        self._prefetch_restrictions(term, [k for k in keys if evaluated[k][2].kind in PLACEABLE])
+        for key in sorted(serves):
+            for code in list(serves[key]):
+                if not self._is_core(code) or key not in evaluated \
+                        or evaluated[key][2].kind not in PLACEABLE:
+                    continue
+                verdict = self._core_supported(key, code, term, evaluated[key][2])
+                if verdict is False:
+                    serves[key].remove(code)
+                    ev = self._core_evidence(key, term, evaluated[key][2])
+                    unplaceable[code][key] = f"core_code_not_listed:{ev.term_code}"
+            if not serves[key]:
+                del serves[key]
+        # Phase 7.6 gate: section restrictions. Every section of the term
+        # closed to the student -> the course is excluded, with the reason.
+        restricted = set()
+        for key in keys:
+            if key in pins_here or evaluated[key][2].kind not in PLACEABLE:
+                continue                 # a pin has its own restriction check
+            check = self._restriction(term, key)
+            if check.outcome == "not_satisfied":
+                restricted.add(key)
+                # Reported as an issue for a major-side course or a needed
+                # prerequisite; a restricted Core alternative among hundreds
+                # is only excluded (its reason stays in the diagnosis).
+                if key in dependency_targets or any(
+                        not self._is_core(c) for c in serves.get(key, ())):
+                    self._restricted.setdefault(key, (term, check))
+                for code in serves.get(key, ()):
+                    unplaceable[code][key] = "restricted_sections"
+                for target in sorted(dependency_targets.get(key, ())):
+                    for code in serves.get(target, ()):
+                        unplaceable[code][target] = f"dependency_restricted_sections:{key}"
+
         planner = DependencyPlanner(
             expression_of=self._expression_of,
             available=self.passed | set(self.in_progress) | set(planned),
@@ -745,7 +871,8 @@ class PlanningEngine:
         ready = {k for k, s in states.items()
                  if self._placeable_state(s, evaluated[k][1])
                  and evaluated[k][2].kind in PLACEABLE
-                 and self.course_info[k].credits is not None}
+                 and self.course_info[k].credits is not None
+                 and k not in restricted}
         pins_ok = []
         for key in pins_here:
             why = self._pin_check(student, term, key, evaluated, states, planned, serves)
@@ -819,14 +946,19 @@ class PlanningEngine:
             if k in new:
                 states[k] = self._settle(k, self._state(*evaluated[k][:2]), evaluated[k][1],
                                          planner)
-            if (self._placeable_state(states[k], evaluated[k][1])
+            check = self._restriction(term, k)
+            if check.outcome == "not_satisfied":
+                self._restricted.setdefault(k, (term, check))
+            elif (self._placeable_state(states[k], evaluated[k][1])
                     and evaluated[k][2].kind in PLACEABLE
                     and self.course_info[k].credits is not None):
                 ready.add(k)
                 continue
             # A prerequisite the plan needs cannot be placed this term: say
             # so under every requirement whose candidate it would unlock.
-            why = (f"dependency_{states[k].value}" if evaluated[k][2].kind in PLACEABLE
+            why = ("dependency_restricted_sections" if k in self._restricted
+                   and self._restricted[k][0] == term
+                   else f"dependency_{states[k].value}" if evaluated[k][2].kind in PLACEABLE
                    else f"dependency_{evaluated[k][2].kind.value}")
             for target in sorted(dependency_targets[k]):
                 for code in serves.get(target, ()):
@@ -842,7 +974,8 @@ class PlanningEngine:
             and _partner_may_help(evaluated[k][1].corequisite)
             and (evaluated[k][1].prerequisite.status is not PrereqStatus.UNSATISFIED
                  or " OR " in evaluated[k][1].combination)
-            and evaluated[k][2].kind in PLACEABLE and self.course_info[k].credits is not None}
+            and evaluated[k][2].kind in PLACEABLE and self.course_info[k].credits is not None
+            and k not in restricted}
 
         # Ranking (see the module docstring).
         def scarcity(key):
@@ -852,21 +985,38 @@ class PlanningEngine:
             return min(sum(1 for k in ready if code in serves.get(k, ()))
                        - deficit(leaf_by_code[code]) for code in codes)
 
+        def live_targets(key):
+            """Phase 7.6: dependency targets that still serve an open
+            requirement this term - a path opened for an alternative the plan
+            has since moved away from no longer counts."""
+            return [t for t in dependency_targets.get(key, ()) if serves.get(t)]
+
         def ranking_evidence(key):
-            systems = {self._system(code) for code in serves.get(key, ())}
+            # The requirement SYSTEM ("major", "core"), not the allocation
+            # scope: SAS Core scopes are "core:<area>" (Phase 7.6 fix - before
+            # it, serves_school was never true for a scoped Core node).
+            systems = {self.requirements[code].requirement_system
+                       if code in self.requirements else "major"
+                       for code in serves.get(key, ())}
             return CourseRankingEvidence(
-                required_dependency=key in dependency_targets and key not in planned,
-                downstream_targets=len(dependency_targets.get(key, ())),
+                required_dependency=(key in dependency_targets and key not in planned
+                                     and bool(live_targets(key))),
+                downstream_targets=len(live_targets(key)),
                 scarcity=scarcity(key),
                 confirmed_offering=(evaluated[key][2].kind is
                                     OfferingEvidenceKind.CONFIRMED_IN_TERM),
                 prerequisites_met_by_history=(states[key] is EligibilityState.SATISFIED_BY_HISTORY),
-                candidate_requirement_coverage=len(set(serves.get(key, ()))),
+                candidate_requirement_coverage=self._usable(serves.get(key, ())),
                 serves_major="major" in systems,
                 serves_school=bool(systems & {"core", "school"}),
                 # Computed only when the student's strategy uses it (performance).
                 unlock_breadth=(self._unlock_breadth().get(key, 0)
-                                if c.strategy is Strategy.UNLOCK_FUTURE_OPTIONS else 0))
+                                if c.strategy is Strategy.UNLOCK_FUTURE_OPTIONS else 0),
+                unlock_chain_depth=self._chain_depths().get(key, 0),
+                # only a course the student MUST take: a one-season Core option
+                # among hundreds is no reason to come first
+                season_only=(key in self._required_courses()
+                             and self._pattern(key, term).only_season is not None))
 
         def rank(key):
             return rank_key(key, ranking_evidence(key), c.strategy)
@@ -911,7 +1061,8 @@ class PlanningEngine:
             # reports met (by earlier picks) cannot add progress: no audit.
             if not is_dep and not pinned and not set(serves.get(key, ())) & open_codes:
                 return "skip"
-            if workload_mode and is_dep and not pinned and not set(serves.get(key, ())) & open_codes                     and not any(set(serves.get(t, ())) & open_codes
+            if is_dep and not pinned and not set(serves.get(key, ())) & open_codes \
+                    and not any(set(serves.get(t, ())) & open_codes
                                 for t in dependency_targets.get(key, ())):
                 # Phase 7.3: a prerequisite path opened for an alternative the
                 # plan has since moved away from (Physics 193 -> 194 once the
@@ -1162,7 +1313,10 @@ class PlanningEngine:
             k in self.retakes or (k in self.history and k not in self.passed))), key=rank)
         take(retakes, "anchor", lambda k: "a retake you need (your recorded attempt does not "
                                          "count yet)")
-        multi = sorted((k for k in ready_or_pending if len(set(serves.get(k, ()))) >= 2), key=rank)
+        # Phase 7.6: "multi-requirement" only where the sharing policy lets one
+        # course count in two open requirements (one per allocation scope).
+        multi = sorted((k for k in ready_or_pending if self._usable(serves.get(k, ())) >= 2),
+                       key=rank)
         take(multi, "multi_requirement", lambda k: "counts toward " + " and ".join(
             sorted({names.get(code, code) for code in serves[k]})))
         major = sorted((k for k in ready_or_pending if k.split(":")[1] == self.major_subject
@@ -1247,6 +1401,8 @@ class PlanningEngine:
                 continue
             self._load_courses({partner})
             if self.course_info.get(partner) is None or self.course_info[partner].credits is None:
+                continue
+            if self._restriction(term, partner).outcome == "not_satisfied":
                 continue
             if self.offerings.evidence(partner, term).kind not in PLACEABLE:
                 continue
@@ -1407,6 +1563,8 @@ class PlanningEngine:
         if load + credits > cap or count + 1 > self.constraints.max_courses_per_term:
             return None
         if self.offerings.evidence(key, term).kind not in PLACEABLE:
+            return None
+        if self._restriction(term, key).outcome == "not_satisfied":
             return None
         trial = {**planned, key: term}
         # Eligibility in `term` depends only on what is planned BEFORE it
@@ -1606,9 +1764,16 @@ class PlanningEngine:
         the Degree Engine confirms progress does not drop without it.
         """
         def credited(result):
-            return {a.course.course_string for a in result.allocation}
+            # Phase 7.6: credited where it is USEFUL - a course the allocation
+            # puts only on an ANY_OF alternative the plan no longer needs
+            # (Physics 193 once the 203/204 sequence fills the B.S. science)
+            # is a removal candidate like an uncredited one.
+            useful = {n.requirement_code for n in _useful_leaves(result.requirements)}
+            return {a.course.course_string for a in result.allocation
+                    if a.requirement_code in useful or a.requirement_code not in self.requirements
+                    or self.requirements[a.requirement_code].requirement_type not in LEAF_TYPES}
 
-        score = progress(final, self.requirements)
+        score = progress(final, self.requirements, useful_only=True)
         pinned = {(p.course, p.term_code) for p in self.constraints.pins}
         for key in sorted(planned, key=lambda k: (planned[k], k), reverse=True):
             if key in credited(final) or (key, planned[key]) in pinned:
@@ -1621,7 +1786,7 @@ class PlanningEngine:
             trial = {k: t for k, t in planned.items() if k != key}
             result = self._audit(student, version, trial) if trial else \
                 self.audit_engine.audit(student, program_version=version)
-            if progress(result, self.requirements) < score:
+            if progress(result, self.requirements, useful_only=True) < score:
                 continue
             del planned[key]
             info.pop(key, None)
@@ -1658,7 +1823,379 @@ class PlanningEngine:
                     pc.unlocks = sorted(set(pc.unlocks) | unlocked_by[pc.course])
                     if Reason.UNLOCKS_DOWNSTREAM_COURSE not in pc.reasons:
                         pc.reasons.append(Reason.UNLOCKS_DOWNSTREAM_COURSE)
+                self._trace(pc)
             term.courses.sort(key=lambda pc: pc.course)
+
+    # ---- Phase 7.6: requirement-aware recommendations ----------------------
+
+    def _usable(self, codes) -> int:
+        """How many of these open requirements ONE course can count toward at
+        once: one per allocation scope when the program shares across systems,
+        else one."""
+        codes = set(codes)
+        if not codes:
+            return 0
+        return len({self._system(c) for c in codes}) if self.share else 1
+
+    def _prefetch_core(self, term: str, evidence: dict) -> None:
+        """One coreCodes read per listing term for many candidates."""
+        from app.services.sources.sections import core_codes
+
+        wanted: dict[str, set[str]] = defaultdict(set)
+        for key, ev in evidence.items():
+            basis = (term if ev.kind is OfferingEvidenceKind.CONFIRMED_IN_TERM
+                     else ev.most_recent_term)
+            if basis is not None and (key, basis) not in self._core_cache:
+                wanted[basis].add(key)
+        for basis, keys in sorted(wanted.items()):
+            found = core_codes(self.session, basis, keys)
+            for key in keys:
+                self._core_cache[(key, basis)] = found.get(key)
+
+    def _prefetch_restrictions(self, term: str, keys) -> None:
+        """Restriction verdicts for many courses of one term, in one query."""
+        from app.models import SectionRestriction
+
+        todo = sorted({k for k in keys if (term, k) not in self._restriction_cache})
+        if not todo:
+            return
+        rows: dict[str, dict] = defaultdict(lambda: defaultdict(list))
+        for key, section_id, row in self.session.execute(
+                select(Course.course_string, CourseSection.id, SectionRestriction)
+                .join(CourseOffering, CourseOffering.course_id == Course.id)
+                .join(CourseSection, CourseSection.offering_id == CourseOffering.id)
+                .outerjoin(SectionRestriction, SectionRestriction.section_id == CourseSection.id)
+                .where(Course.course_string.in_(todo), CourseSection.term_code == term,
+                       Course.supplement_code == "")):
+            bucket = rows[key][section_id]
+            if row is not None:
+                bucket.append(row)
+        for key in todo:
+            self._restriction_cache[(term, key)] = self._judge(term, rows.get(key, {}))
+
+    def _restriction(self, term: str, key: str) -> RestrictionCheck:
+        """The term's sections against the student's record. Cached per plan."""
+        if (term, key) not in self._restriction_cache:
+            self._prefetch_restrictions(term, [key])
+        return self._restriction_cache[(term, key)]
+
+    def _judge(self, term: str, sections: dict) -> RestrictionCheck:
+        """The verdict from {section id: [SectionRestriction rows]}."""
+        from app.domain.schedule import RestrictionEntry, RestrictionOutcome
+        from app.services.scheduling.candidates import evaluate_restriction
+        from app.services.sources.sections import restriction_names
+
+        if not sections:
+            return RestrictionCheck(
+                outcome="sections_not_published",
+                message=(f"{label(term)} sections are not published yet, so their "
+                         "enrollment restrictions are unknown."))
+        rows_by_section = {sid: rows for sid, rows in sections.items() if rows}
+        verdicts = {sid: evaluate_restriction(
+                        [RestrictionEntry(kind=r.kind, code=r.code, unit_code=r.unit_code)
+                         for r in rows], self.attributes)
+                    for sid, rows in sections.items()}
+        outcomes = {v.outcome for v in verdicts.values()}
+        open_ = sum(1 for v in verdicts.values() if v.outcome in (
+            RestrictionOutcome.UNRESTRICTED, RestrictionOutcome.SATISFIED))
+        names: list[str] = []
+        if open_ < len(sections):
+            for sid in sorted(rows_by_section, key=str):
+                for n in restriction_names(self.session, rows_by_section[sid]):
+                    text = (f"{n.kind.replace('_', '/')} "
+                            f"{n.unit_code + '/' if n.unit_code else ''}{n.code}"
+                            + (f" ({n.name})" if n.name else ""))
+                    if text not in names:
+                        names.append(text)
+        reasons = sorted({r for v in verdicts.values() for r in v.reasons})
+        if outcomes == {RestrictionOutcome.UNRESTRICTED}:
+            outcome, message = "unrestricted", None
+        elif open_:
+            outcome = "satisfied"
+            message = (None if open_ == len(sections) else
+                       f"{open_} of {len(sections)} {label(term)} sections are open to you; "
+                       "the others are restricted.")
+        elif outcomes == {RestrictionOutcome.NOT_SATISFIED}:
+            outcome = "not_satisfied"
+            mine = self.undeclared and any(
+                r.kind in ("major", "unit_major") and r.code == self.major_subject
+                for rows in rows_by_section.values() for r in rows)
+            message = (f"Every {label(term)} section is open only to: {', '.join(names)}"
+                       + (" - you are planning toward this major but have not declared it yet."
+                          if mine else "."))
+        else:
+            outcome = "unknown"
+            mine = self.undeclared and any(
+                r.kind in ("major", "unit_major") and r.code == self.major_subject
+                for rows in rows_by_section.values() for r in rows)
+            message = (f"Every {label(term)} section lists restrictions CoursePilot cannot "
+                       f"check against your record (open to: {', '.join(names) or 'see SOC'})"
+                       + ("; you have not declared this major yet, so confirm you can enroll."
+                          if mine else "; confirm before registering."))
+        return RestrictionCheck(outcome=outcome, sections=len(sections), open_sections=open_,
+                                open_to=names, reasons=reasons, message=message)
+
+    def _restriction_issues(self) -> list[PlanningIssue]:
+        out = []
+        for key, (term, check) in sorted(self._restricted.items()):
+            out.append(PlanningIssue(
+                severity=Severity.NEEDS_CONFIRMATION, code="SECTION_RESTRICTED", course=key,
+                message=f"{key} was not planned for {label(term)}: {check.message}",
+                details={"term": term, "open_to": check.open_to, "reasons": check.reasons}))
+        return out
+
+    def _core_evidence(self, key: str, term: str, ev: OfferingEvidence):
+        """The coreCodes listing a Core contribution in `term` rests on: the
+        term's own when Rutgers published it (confirmed offering), else the
+        course's latest loaded offering - labelled. None: nothing to read."""
+        from app.services.sources.sections import core_codes
+
+        basis_term = (term if ev.kind is OfferingEvidenceKind.CONFIRMED_IN_TERM
+                      else ev.most_recent_term)
+        if basis_term is None:
+            return None
+        if (key, basis_term) not in self._core_cache:
+            self._core_cache[(key, basis_term)] = core_codes(
+                self.session, basis_term, [key]).get(key)
+        listed = self._core_cache[(key, basis_term)]
+        if listed is None:
+            return None
+        return CoreCodeEvidence(
+            term_code=basis_term,
+            basis="planned_term" if basis_term == term else "latest_offering",
+            codes=list(listed.codes))
+
+    def _core_supported(self, key: str, code: str, term: str, ev: OfferingEvidence):
+        """True/False: does the term's listing certify a goal this Core
+        requirement accepts the course for? None: cannot be checked."""
+        goals = self.pool_categories.get((code, key), set()) - {""}
+        evidence = self._core_evidence(key, term, ev)
+        if not goals or evidence is None:
+            return None
+        return bool(goals & set(evidence.codes))
+
+    def _pattern(self, key: str, term: str) -> OfferingPattern:
+        """Regular seasons the loaded schedules show the course in. "Only
+        Fall" needs two or more Fall offerings and none in Spring while two or
+        more Spring terms were loaded since its first offering."""
+        observed = [t for t in self.offerings.terms.get(key, []) if t[4] in "19"]
+        if not observed:
+            return OfferingPattern()
+        seasons = sorted({SEASON[t[4]] for t in observed})
+        out = OfferingPattern(seasons=seasons)
+        if len(seasons) != 1:
+            return out
+        season = observed[0][4]
+        other = "9" if season == "1" else "1"
+        loaded_other = [t for t in self.offerings.coverage if t[4] == other and t >= observed[0]]
+        if len(observed) < 2 or len(loaded_other) < 2:
+            return out
+        out.only_season = SEASON[season]
+        if term[4] == season:
+            out.next_chance = f"{int(term[:4]) + 1}{season}"
+            out.message = (f"Offered only in {SEASON[season]} in the schedules CoursePilot has "
+                           f"loaded ({len(observed)} {SEASON[season]} terms, none in "
+                           f"{SEASON[other]}); after {label(term)} the next chance is "
+                           f"{label(out.next_chance)}.")
+        else:
+            out.message = (f"Offered only in {SEASON[season]} in the schedules CoursePilot has "
+                           f"loaded ({len(observed)} {SEASON[season]} terms).")
+        return out
+
+    def _required_courses(self) -> set[str]:
+        """Courses every remaining path must include (see `_chain_depths`)."""
+        self._chain_depths()
+        return self._required
+
+    def _chain_depths(self) -> dict[str, int]:
+        """course -> the longest chain of REQUIRED open courses (not yet
+        passed) whose latest published prerequisites lead back to it. A
+        course nothing required cites has depth 0. Published rules only.
+
+        "Required": a single-course requirement, or a choose-N whose remaining
+        pool is no larger than N - every course in it must be taken. A pool
+        with alternatives (Core Natural Sciences, CS electives) is left out:
+        a chain inside it (Chemistry 161 -> 162) says nothing about what the
+        student must take, and counting it made such courses outrank the
+        major's own sequence (measured with plan_quality.py)."""
+        if self._chain is not None:
+            return self._chain
+        open_codes = getattr(self, "_open_at_start", set(self.pools))
+        required: set[str] = set()
+        by_id = {r.id: r for r in self.requirements.values()}
+
+        def under_alternative(req) -> bool:
+            # A leaf inside an ANY_OF is one alternative (Chemistry 161 in the
+            # B.S. science choice), not something every path must include;
+            # ranking it by its chain made the plan abandon a sequence it had
+            # started (measured: B.S. full-coverage plans 3 -> 0).
+            parent = by_id.get(req.parent_id)
+            while parent is not None:
+                if parent.requirement_type == "any_of":
+                    return True
+                parent = by_id.get(parent.parent_id)
+            return False
+
+        for code in open_codes:
+            req = self.requirements.get(code)
+            courses = set(self.pools.get(code, ())) - self.passed
+            if req is None or not courses or under_alternative(req):
+                continue
+            if req.requirement_type == "course" or (
+                    req.requirement_type == "choose_n" and req.min_count
+                    and len(courses) <= req.min_count):
+                required |= courses
+        self._required = required
+        pool = sorted(required)
+        cited_by: dict[str, set[str]] = defaultdict(set)
+        for course in pool:
+            rows = self.prereq_rows.get(course)
+            if not rows:
+                continue
+            row = rows[max(rows)]
+            if row.expression is None:
+                continue
+            for ref in set(course_keys(from_json(row.expression))) - {course}:
+                cited_by[ref].add(course)
+        memo: dict[str, int] = {}
+
+        def depth(course: str, stack: frozenset) -> int:
+            if course in memo:
+                return memo[course]
+            best = 0
+            for nxt in sorted(cited_by.get(course, ())):
+                if nxt not in stack:
+                    best = max(best, 1 + depth(nxt, stack | {nxt}))
+            memo[course] = best
+            return best
+
+        self._chain = {k: d for k in sorted(cited_by) if (d := depth(k, frozenset({k})))}
+        return self._chain
+
+    def _source_of(self, key: str, term: str | None):
+        """The SOC `data_source` row the course's offering in `term` came from."""
+        if term is None:
+            return None
+        if self._offering_sources is None:
+            self._offering_sources = {}
+        if (key, term) not in self._offering_sources:
+            from app.models import DataSource
+            row = self.session.execute(
+                select(DataSource.id, DataSource.retrieved_at)
+                .join(CourseOffering, CourseOffering.source_id == DataSource.id)
+                .join(Course, Course.id == CourseOffering.course_id)
+                .where(Course.course_string == key, CourseOffering.term_code == term,
+                       Course.supplement_code == "")).first()
+            self._offering_sources[(key, term)] = row
+        return self._offering_sources[(key, term)]
+
+    def _status_source(self, code: str) -> tuple[str, str | None]:
+        """degree_navigator (with DN's rule) when the node or a group containing
+        it takes its status from the student's DN audit; else estimated."""
+        seen = set()
+        current: str | None = code
+        while current is not None and current not in seen:
+            seen.add(current)
+            status = self.overlay.statuses.get(current) if self.overlay else None
+            if status is not None:
+                return "degree_navigator", status.rule
+            req = self.requirements.get(current)
+            current = self.by_id_code.get(req.parent_id) if req is not None else None
+        return "estimated", None
+
+    def _trace(self, pc: PlannedCourse) -> None:
+        """Attach the structured reason (RecommendationTrace) to a planned course."""
+        ev, pre = pc.offering, pc.prerequisite
+        offering_term = (pc.term_code if ev.kind is OfferingEvidenceKind.CONFIRMED_IN_TERM
+                         else (ev.same_season_terms[-1] if ev.same_season_terms
+                               else ev.most_recent_term or pc.term_code))
+        traced, sources = [], []
+        dn_dates = set()
+        for contribution in pc.requirements:
+            source, rule = self._status_source(contribution.requirement_code)
+            traced.append(TracedRequirement(
+                requirement_code=contribution.requirement_code,
+                requirement_name=contribution.requirement_name,
+                requirement_system=contribution.requirement_system,
+                status_source=source, status_rule=rule))
+            if source == "degree_navigator":
+                dn_dates |= {s.as_of.date().isoformat() for s in self.overlay.statuses.values()
+                             if s.as_of}
+        row = self._source_of(pc.course, offering_term)
+        sources.append(SourceLabel(
+            fact="offering", source="soc_courses_json", term_code=offering_term,
+            data_source_id=str(row[0]) if row else None, fetched_at=row[1] if row else None,
+            detail=("listed in this term's published schedule"
+                    if ev.kind is OfferingEvidenceKind.CONFIRMED_IN_TERM else
+                    "historical evidence: offered in the same season before")))
+        if pre.rules_term:
+            rules = self._source_of(pc.course, pre.rules_term)
+            sources.append(SourceLabel(
+                fact="prerequisite_rules", source="soc_courses_json", term_code=pre.rules_term,
+                data_source_id=str(rules[0]) if rules else None,
+                fetched_at=rules[1] if rules else None,
+                detail=pre.canonical_text or pre.raw_text or "no prerequisite published"))
+        core = None
+        core_codes_here = [c for c in pc.requirements if c.requirement_system == "core"]
+        if core_codes_here:
+            core = self._core_evidence(pc.course, pc.term_code, ev)
+            if core is not None:
+                for c in core_codes_here:
+                    goals = self.pool_categories.get((c.requirement_code, pc.course), set()) - {""}
+                    for g in sorted(goals):
+                        core.goals[g] = g in core.codes
+                    if goals and not goals & set(core.codes):
+                        note = (f"{c.requirement_name}: the {label(core.term_code)} SOC listing "
+                                f"does not list {', '.join(sorted(goals))} for this course - "
+                                "confirm it will count before relying on it.")
+                        pc.notes.append(note)
+                        self._trace_issues.append(PlanningIssue(
+                            severity=Severity.NEEDS_CONFIRMATION,
+                            code="CORE_CODE_NOT_LISTED_FOR_TERM", course=pc.course,
+                            requirement_code=c.requirement_code, message=note,
+                            details={"term": core.term_code, "codes": core.codes}))
+                listed = self._core_cache.get((pc.course, core.term_code))
+                sources.append(SourceLabel(
+                    fact="core_codes", source="soc_courses_json", term_code=core.term_code,
+                    data_source_id=listed.provenance.data_source_id if listed else None,
+                    fetched_at=listed.provenance.fetched_at if listed else None,
+                    detail=("coreCodes " + (", ".join(core.codes) or "none")
+                            + ("" if core.basis == "planned_term"
+                               else " (latest loaded offering; the planned term is not "
+                                    "published yet)"))))
+        restriction = self._restriction(pc.term_code, pc.course)
+        if restriction.outcome != "sections_not_published":
+            sources.append(SourceLabel(
+                fact="restrictions", source="soc_courses_json", term_code=pc.term_code,
+                data_source_id=str(row[0]) if row and offering_term == pc.term_code else None,
+                fetched_at=row[1] if row and offering_term == pc.term_code else None,
+                detail=restriction.outcome))
+        if restriction.outcome == "unknown" and restriction.message:
+            pc.notes.append(restriction.message)
+            self._trace_issues.append(PlanningIssue(
+                severity=Severity.NEEDS_CONFIRMATION, code="SECTION_RESTRICTION_UNCONFIRMED",
+                course=pc.course, message=f"{pc.course}: {restriction.message}",
+                details={"term": pc.term_code, "open_to": restriction.open_to}))
+        if traced:
+            sources.append(SourceLabel(
+                fact="requirement_status",
+                source=("degree_navigator_audit" if any(t.status_source == "degree_navigator"
+                                                        for t in traced) else "coursepilot_audit"),
+                detail=(f"Degree Navigator audit as of {', '.join(sorted(dn_dates))}"
+                        if dn_dates else "estimated by CoursePilot's own audit")))
+        pattern = self._pattern(pc.course, pc.term_code)
+        if pattern.message and pattern.only_season and pattern.next_chance:
+            pc.notes.append(pattern.message)
+        if pc.role == "multi_requirement" and len(pc.requirements) < 2:
+            names = ", ".join(c.requirement_name for c in pc.requirements) or "no requirement"
+            pc.role_reason = (f"{pc.role_reason}; the final allocation credits it only to "
+                              f"{names} (the sharing policy lets a course count once per area)")
+        pc.trace = RecommendationTrace(
+            requirements=traced, unlocks_for=list(pc.unlocks), offering_kind=ev.kind,
+            offering_term=offering_term, prerequisite_state=pre.state,
+            prerequisite_rules_term=pre.rules_term, core_codes=core,
+            restriction=restriction, pattern=pattern,
+            unlock_chain_depth=self._chain_depths().get(pc.course, 0), sources=sources)
 
     # ---- issues ----------------------------------------------------------
 

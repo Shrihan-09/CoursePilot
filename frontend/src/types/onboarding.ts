@@ -71,6 +71,8 @@ export interface Profile {
   transcript_reported_gpa: { value: string; source: string; as_of: string | null } | null;
   /** The math course the student's placement places them into (Phase 7.3). */
   math_placement?: string | null;
+  /** Phase 7.6: "undeclared" = the program is the major the student intends to declare. */
+  declaration_status?: "declared" | "undeclared" | null;
 }
 
 export type RowState = "matched" | "needs_review" | "unrecognized" | "conflict" | "invalid";

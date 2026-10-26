@@ -447,6 +447,9 @@ async def test_no_path_parameterised_student_route_exists(app) -> None:
         "/api/v1/student/courses/{entry_id}",
         "/api/v1/student/current-schedule",
         "/api/v1/student/current-schedule/sections",
+        # Phase 7.6: the student's own declared/undeclared statement (body has
+        # no identity field; extra fields are a 422 - test_onboarding_api).
+        "/api/v1/student/declaration",
         "/api/v1/student/onboarding",
         "/api/v1/student/onboarding/complete",
         "/api/v1/student/placement",

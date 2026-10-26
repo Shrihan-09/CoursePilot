@@ -16,4 +16,9 @@ class CourseRankingEvidence(BaseModel):
     serves_major: bool = False                 # an open primary-major requirement
     serves_school: bool = False                # an open school/Core requirement
     unlock_breadth: int = Field(default=0, ge=0)   # requirement courses citing it as a prerequisite
-    policy_version: str = "1.1.0"
+    # 7.6 sequencing evidence: the longest chain of open-requirement courses
+    # whose published prerequisites lead back to it, and whether the loaded
+    # schedules show it in ONE regular season only.
+    unlock_chain_depth: int = Field(default=0, ge=0)
+    season_only: bool = False
+    policy_version: str = "1.2.0"

@@ -187,3 +187,4 @@ from app.models.degree_audit import (  # noqa: E402 - Phase 7.4
     DegreeAuditImport,
     DegreeAuditRequirementRow,
 )
+from app.models.core_codes import OfferingCoreCode  # noqa: E402 - Phase 7.6

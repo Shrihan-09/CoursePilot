@@ -223,6 +223,35 @@ async def test_math_placement_is_optional_validated_and_clearable(ob) -> None:
         assert cleared.status_code == 200 and cleared.json()["math_placement"] is None
 
 
+@requires_db
+async def test_declaration_status_is_stated_validated_and_clearable(ob) -> None:
+    """Phase 7.6: "I'm undeclared, planning toward this program." Only the
+    student's statement sets it; a plan then says so, and - with no official
+    source on file for the (synthetic) program - invents no requirements."""
+    from app.models import ProgramVersion
+    from app.services.planning.service import declaration_of
+
+    url = "/api/v1/student/declaration"
+    async with _client(_app(), ob["account"]) as ac:
+        await _profile(ac, ob)
+        assert (await ac.get(PROFILE)).json()["declaration_status"] is None
+        ok = await ac.put(url, json={"declaration_status": "undeclared"})
+        assert ok.status_code == 200 and ok.json()["declaration_status"] == "undeclared"
+        for bad in ({"declaration_status": "maybe"}, {"declaration_status": "undeclared",
+                                                      "student_id": str(uuid.uuid4())}):
+            assert (await ac.put(url, json=bad)).status_code == 422
+        assert (await ac.get(PROFILE)).json()["declaration_status"] == "undeclared"
+        with _session() as session:
+            student = session.scalar(select(Student).where(Student.user_id == ob["account"]))
+            version = session.get(ProgramVersion, student.program_version_id)
+            d = declaration_of(session, student, version, ob["keys"]["pub"])
+            assert d.label.startswith("Planning toward OB Program")
+            assert d.label.endswith("(not yet declared)")
+            assert d.requirements == [] and "no official source" in d.message
+        cleared = await ac.put(url, json={"declaration_status": None})
+        assert cleared.status_code == 200 and cleared.json()["declaration_status"] is None
+
+
 # --------------------------------------------------------------------------
 # manual history
 # --------------------------------------------------------------------------

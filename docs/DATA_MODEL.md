@@ -10117,3 +10117,134 @@ Nothing is ever deleted.
   - the "Location:" note (modality evidence only).
 
   The print has no instructor field.
+
+## 53. Requirement-aware recommendations (Phase 7.6, Prompt 05)
+
+Every course a plan recommends is justified by the student's open
+requirements and carries a structured `RecommendationTrace`
+(`app/domain/planning.py`). Prompt 05 was checked against the 7.3/7.4 code
+item by item; only the missing parts were built.
+
+### 53.1 Where open requirements come from
+
+| Source | How | Already there |
+|---|---|---|
+| Track (program, variant, catalog year) | `composed_requirements(version)` | yes (6.0/6.5) |
+| School Core | the PROGRAM's school + catalog year (`school_requirement_sets`) | yes (7.3) |
+| School Core not encoded (SEBS, SOE...) | `PlanResult.school_core.status = "unknown"`, issue `SCHOOL_CORE_UNKNOWN`; SAS Core never substituted | **new** |
+| Confirmed DN audit | the overlay drives mapped nodes (7.4) | yes |
+| DN requirement with no mapping | issue `DN_REQUIREMENT_OPEN_UNMAPPED`: "Degree Navigator says this is still open, and CoursePilot can't map it yet." Requirement headings only; nothing is planned for it | **new** |
+| No DN audit | CoursePilot's audit, labelled "estimated" | yes |
+| WebReg in-progress courses | satisfied-if-passed for next-term prerequisites | yes (7.4 part 2) |
+
+DN "not satisfied" where CoursePilot says met is still shown as NEEDS
+REVIEW and does not reopen the node (the 7.4 decision, PHASE_7_3_PLAN
+section 10a). Prompt 05's "exactly what DN marks not satisfied" would
+reverse it; left for the owner.
+
+### 53.2 Term-scoped Core codes (`offering_core_code`, migration 76recs01)
+
+SOC publishes, in each course of a term's `courses.json`, the Core codes the
+course carries FOR THAT TERM. Phase 4 loaded SAS Core certifications from one
+payload with no term. The new table keeps every term's codes per offering
+(`offering_id`, `course_id`, `term_code`, `code`, `description`,
+`effective`, `unit_code`, `source_id`). The course pipeline loads it
+(`CoreCodeLoader`, same payload and source row as the courses);
+`scripts/backfill_core_codes.py` reads the archives for terms loaded before,
+and only an archive whose hash matches a loaded `data_source` row. The section
+data view exposes it: `app.services.sources.sections.core_codes(term,
+courses)`, with provenance.
+
+Planning gate: a course is a Core-goal candidate in term T only when the
+listing read for T certifies a goal the requirement accepts it for - T's own
+listing when Rutgers published it, else the course's latest loaded offering
+(`basis: latest_offering`). Where the Degree Engine (term-less
+certifications) still credits a placed course to a goal the term does not
+list, the recommendation says so (`CORE_CODE_NOT_LISTED_FOR_TERM`).
+
+### 53.3 Validity gates and sequencing
+
+Before ranking, a candidate must be offered (confirmed, or labelled
+historical), meet its prerequisites and co-requisites, not be taken, not be
+excluded and fit the load - all from 6.5-7.3 - and now:
+
+- **Section restrictions.** Every section of the term closed to the student
+  (`evaluate_restriction` says NOT_SATISFIED): excluded. `SECTION_RESTRICTED`
+  names who the sections are open to, for major-side courses and needed
+  prerequisites; a restricted Core alternative is only excluded. Sections
+  listing restrictions CoursePilot cannot check (a minor): placed with a note
+  and `SECTION_RESTRICTION_UNCONFIRMED`. Unpublished sections:
+  `sections_not_published`. Levelling never moves a course into a term where
+  it is restricted.
+- **Sharing.** "Counts toward several requirements" (ranking coverage and the
+  `multi_requirement` role) counts at most one requirement per allocation
+  scope, and only when the program or its school Core set shares across
+  systems - the Degree Engine's own rule.
+
+Ranking key (`ranking.rank_key`, policy 1.2.0): needed dependency, strategy,
+downstream targets, **longest chain of REQUIRED courses it starts**,
+**offered in one regular season only (a required course)**, scarcity,
+confirmed offering, eligibility from history, requirements counted at once,
+course string. "Required" means a single-course requirement, or a choose-N
+whose remaining pool is no larger than N, that is not inside an ANY_OF. Pools
+with alternatives (Core Natural Sciences, CS electives, the B.S. science
+sequences) are left out of both keys. Ranking alternatives by their chains
+made B.S. plans abandon a started Physics 193-194 sequence for Chemistry. Counting chains
+and seasons inside them made Chemistry 161 and one-season Core options outrank
+CS 344, and moving "requirements counted at once" up front-loaded Core. Both
+were measured with plan_quality.py and reverted. A one-season course of any
+kind still says "after Spring 2027 the next chance is Spring 2028".
+
+ANY_OF alternatives (the CS B.S. science requirement, an ANY_OF of ALL_OF
+sequences):
+
+- the search keeps every alternative open, as in 7.3. Closing the others once
+  one had progress stranded B.S. plans: the started sequence can be a dead end
+  (the Physics 206 and Chemistry 171 labs have co-requisite wording
+  CoursePilot cannot evaluate), and full-coverage plans fell from 3 to 0;
+- once an ANY_OF is MET, pruning counts only its met alternatives
+  (`progress(useful_only=True)`), so a course credited only to another
+  alternative is removed;
+- a prerequisite path opened for an alternative the plan moved away from no
+  longer ranks as a needed dependency or gets placed (the 7.3 workload-mode
+  rule, now in every mode).
+
+### 53.4 The trace
+
+`PlannedCourse.trace` holds:
+
+- the requirement nodes it fills, each with `status_source`
+  (`degree_navigator` with DN's rule, or `estimated`);
+- the courses it unlocks;
+- offering kind and term, prerequisite state and rules term;
+- Core-code evidence, the restriction verdict, the offering pattern and the
+  chain depth;
+- `sources`: `{fact, source, term_code, data_source_id, fetched_at, detail}`
+  for the offering, prerequisite rules, Core codes, restrictions and the
+  requirement status.
+
+### 53.5 Undeclared students (`student.declaration_status`)
+
+`NULL` (not stated, read as declared), `declared` or `undeclared`. Set only by
+the student (`PUT /api/v1/student/declaration`); never inferred, not even from
+a DN "Undeclared (NB)" audit. With `undeclared`, the record's program is the
+INTENDED major:
+
+- the plan says "Planning toward Computer Science B.S. (not yet declared)";
+- `PlanResult.declaration` lists the major's declaration requirements from a
+  reviewed file, `data/programs/rutgers/nb-undergrad/<year>/declaration/*.json`.
+  Every condition is a verbatim quote from an official page, with its URL,
+  retrieval date and the archive's hash. A "C or better in these courses"
+  condition is checked against the record (met, in progress, below the
+  minimum, not taken); grades are not repeated. Disagreeing sources are both
+  shown. With no file: "CoursePilot has no official source stating the
+  requirements to declare this major", and nothing is invented;
+- section restrictions: no declared major (major-only sections are closed),
+  the school unit known, so the attributes are complete; minor and honors
+  entries stay unknown.
+
+CS (198, both degrees) cites the department's Admission to the Major page and
+the 2026-2027 catalog's Entry Requirements. They agree on C or better in
+01:640:151, 01:640:152, 01:198:111, 01:198:112 and 01:198:205. They differ on
+students with transfer or equivalent credit (two New Brunswick CS courses vs
+three).

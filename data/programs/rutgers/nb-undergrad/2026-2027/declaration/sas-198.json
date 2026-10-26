@@ -1,0 +1,76 @@
+{
+  "_README": [
+    "Requirements to DECLARE the Computer Science major (SAS, New Brunswick), quoted from the official pages. Phase 7.6.",
+    "Every `quote` is verbatim from the archived page named by its source (data/raw/..., gitignored local evidence; sha256 prefixes below). Nothing is paraphrased into a rule that the sources do not state.",
+    "The two sources disagree on students with transfer or equivalent credit (two courses vs three). Both are shown and the disagreement is recorded under `conflicts`; CoursePilot does not pick one.",
+    "Neither source states a GPA minimum, a separate rule for the B.S., or how many times a course may be repeated for declaration. None is added.",
+    "Applies to both CS degree options: the department page and the catalog state one set of entry requirements for the major."
+  ],
+  "program_code": "198",
+  "school": "SAS",
+  "catalog_year": "2026-2027",
+  "applies_to": ["sas-198-ba", "sas-198-bs"],
+  "review_status": "pending_review",
+  "sources": [
+    {
+      "id": "cs_department",
+      "title": "Rutgers Department of Computer Science - Admission to the Major",
+      "url": "https://www.cs.rutgers.edu/undergraduate/admission-major",
+      "kind": "rutgers_department_page",
+      "retrieved_at": "2026-10-26",
+      "archive": "data/raw/declaration/cs.rutgers.edu_undergraduate_admission-major.html",
+      "archive_sha256_prefix": "fc37d7aef9a1c152",
+      "page_date": "undated"
+    },
+    {
+      "id": "sas_catalog",
+      "title": "Rutgers-New Brunswick Undergraduate Catalog 2026-2027, Computer Science 198 - Entry Requirements for the Major",
+      "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/computer-science-198#entry-requirements-for-the-major",
+      "kind": "rutgers_official_catalog",
+      "retrieved_at": "2026-10-26",
+      "archive": "data/raw/catalog/catalog_computer-science-198_2026_2027.html",
+      "archive_sha256_prefix": "4f56493b41181fd1",
+      "page_date": "2026-2027 catalog"
+    }
+  ],
+  "requirements": [
+    {
+      "code": "DECLARE_FIVE_COURSES_C_OR_BETTER",
+      "kind": "courses_min_grade",
+      "text": "A grade of C or better in 01:640:151, 01:640:152, 01:198:111, 01:198:112 and 01:198:205.",
+      "courses": ["01:640:151", "01:640:152", "01:198:111", "01:198:112", "01:198:205"],
+      "min_grade": "C",
+      "quotes": [
+        {"source": "cs_department", "quote": "Students wishing to declare a major in computer science must achieve a grade of C or better in the following 5 courses:"},
+        {"source": "sas_catalog", "quote": "Students wishing to declare a major in computer science must achieve a grade of C or better in 01:198:111, 112, and 205, and 01:640:151-152."}
+      ]
+    },
+    {
+      "code": "DECLARE_EQUIVALENT_CREDIT",
+      "kind": "statement",
+      "text": "Students with credit for courses equivalent to 01:198:111, 112 or 205 must complete at least two courses in the New Brunswick Department of Computer Science (01:198:xxx) before being admitted to the major.",
+      "quotes": [
+        {"source": "cs_department", "quote": "Students who have received credit for courses equivalent to 01:198:111,112, or 205 must complete at least two (2) courses in the New Brunswick Department of Computer Science (01:198:xxx) before being admitted to the major."}
+      ]
+    },
+    {
+      "code": "DECLARE_TRANSFER_STUDENTS",
+      "kind": "statement",
+      "text": "Transfer students must take at least three courses in the Rutgers-New Brunswick Department of Computer Science before being accepted to the major.",
+      "quotes": [
+        {"source": "sas_catalog", "quote": "Transfer students are required to take at least three courses in the Rutgers University-New Brunswick Department of Computer Science before being accepted to the major."}
+      ]
+    },
+    {
+      "code": "DECLARE_HOW",
+      "kind": "procedure",
+      "text": "An SAS student who meets these requirements declares the major at mymajor.sas.rutgers.edu.",
+      "quotes": [
+        {"source": "cs_department", "quote": "An SAS student who has satisfied the above requirements may declare a major in computer science at"}
+      ]
+    }
+  ],
+  "conflicts": [
+    "The department page says students with credit for courses equivalent to 01:198:111, 112 or 205 need two courses in the New Brunswick CS department before admission; the 2026-2027 catalog says transfer students need three. CoursePilot shows both; confirm with the department."
+  ]
+}

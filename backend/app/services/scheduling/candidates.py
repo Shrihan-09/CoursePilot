@@ -33,11 +33,13 @@ school's unit code, or that unit/major pair. CoursePilot records one
 declared program and no minors, second majors, honors membership or class
 standing, so a section whose entries do not match is UNKNOWN, not failed -
 the student may hold a minor CoursePilot has never seen. NOT_SATISFIED is
-reached only for attributes declared complete (`StudentAttributes.complete`),
-which no production record is today. Special-permission sections and
-sections with uninterpreted eligibility prose ("JUNIORS AND SENIORS") are
-UNKNOWN as well. UNKNOWN is never "eligible": it is scheduled only as a
-needs-confirmation option, ranked after verified ones.
+reached only for attributes declared complete (`StudentAttributes.complete`):
+since Phase 7.6, a student who states they are UNDECLARED (no major at all,
+their school's unit known); no declared student's record is complete.
+Special-permission sections and sections with uninterpreted eligibility
+prose ("JUNIORS AND SENIORS") are UNKNOWN as well. UNKNOWN is never
+"eligible": it is scheduled only as a needs-confirmation option, ranked after
+verified ones.
 
 ## Availability (Phase 6.7)
 
@@ -133,6 +135,16 @@ def student_attributes(session: Session, student: Student) -> StudentAttributes:
         return StudentAttributes()
     major, school = row
     unit = SCHOOL_UNIT_CODES.get(school)
+    if student.declaration_status == "undeclared":
+        # Phase 7.6: the program is only the INTENDED major. The student has
+        # stated they hold no declared major, so a major-only restriction is
+        # not met (NOT_SATISFIED); minor and honors entries stay UNKNOWN
+        # (evaluate_restriction), because CoursePilot records no minors.
+        # The school's unit is the intended program's school - an assumption
+        # the plan states.
+        return StudentAttributes(major_codes=frozenset(),
+                                 unit_codes=frozenset({unit}) if unit else frozenset(),
+                                 complete=unit is not None)
     return StudentAttributes(major_codes=frozenset({major}),
                              unit_codes=frozenset({unit}) if unit else frozenset())
 
