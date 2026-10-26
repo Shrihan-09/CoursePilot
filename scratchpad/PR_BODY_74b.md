@@ -64,10 +64,10 @@ Branch `feature/phase-7-4-webreg-schedule-import` → `main`. The WebReg importe
   - the "Location:" note (modality evidence only);
   - the print has no instructor field.
 
-## Please decide / check
+## Decisions (owner, 2026-10-26)
 
-1. **A `schedule_import_row` table**, or keep the JSON rows? Behaviour is identical and originals are kept per row; a table would mean a migration and a rewrite of the service's row handling.
-2. **API path** `/api/v1/student/schedule-imports`, or move it to `/api/v1/schedule-imports`?
-3. **A completed course on a current schedule** is a conflict the student resolves by keeping the record (or excluding the row). Should there be a "replace" option?
+1. Keep the JSON row column; no `schedule_import_row` table.
+2. Keep `/api/v1/student/schedule-imports`.
+3. "Keep my record" is the only resolution for a completed-record conflict. It is visible: the row text names the conflict, Confirm stays disabled until it is resolved, and the row then says what keeping does.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

@@ -356,3 +356,12 @@ DATA_MODEL section 52.
   - **A row with no section is called `metadata_unavailable`**, not
     `unrecognized`, so the shipped UI and types keep their names. It is
     never retargeted and writes only its identity.
+
+**Owner decisions (2026-10-26):**
+
+1. Keep the JSON row column; no `schedule_import_row` table.
+2. Keep the routes at `/api/v1/student/schedule-imports`.
+3. A completed record on a current schedule is resolved only by "keep my
+   record" (or excluding the row); there is no replace option. The conflict
+   is shown on the row, Confirm stays disabled until it is resolved, and the
+   row says what keeping does.
