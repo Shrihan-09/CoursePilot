@@ -32,6 +32,7 @@ importer turns into NEEDS REVIEW:
     COURSE_LINE_UNREADABLE     a course code whose details could not be read
     READING_ORDER_UNRELIABLE   course details on a line without a course code
     UNCLASSIFIED_COURSE_ROW    a row of a shape CoursePilot does not know
+    UNRECOGNIZED_COURSE_LIST   a course row under a list title CoursePilot does not know
 """
 
 from __future__ import annotations
@@ -79,7 +80,11 @@ COURSE_LISTS = {
     "Unused Courses for this Program": "unused",
     "Unused Courses for this Program - Courses Do Not Meet Minimum Grade Requirement(s)":
         "below_minimum_grade",
+    # Seen on an "Undeclared (NB)" audit: every course, none applied.
+    "Courses Do Not Apply for this Program": "not_applicable",
 }
+#: Lines that explain a list rather than start one.
+LIST_EXPLANATION = re.compile(r"^(?:The following courses |Grade\s*:?$|:$)")
 
 
 @dataclass
@@ -459,6 +464,10 @@ def _parse_block(index: int, lines: list[Line], margins: dict, icons: list[Icon]
                 block.completed_requirements = v
             elif text == "Requirements":
                 section = "requirements"
+            elif text in ("Conditions", "Reuse"):
+                section = "skip"             # an audit with no requirements (Undeclared)
+            elif text == "Courses":
+                section = "courses"
             continue
         if text in ("Conditions", "Reuse"):
             close_requirement()
@@ -519,9 +528,16 @@ def _parse_block(index: int, lines: list[Line], margins: dict, icons: list[Icon]
             if text in COURSE_LISTS:
                 list_kind = COURSE_LISTS[text]
                 continue
-            if list_kind and _is_course_line(line):
+            if _is_course_line(line):
                 for code, detail, raw in _course_items(line):
-                    block.courses.append(_course(list_kind, line, code, detail, None, raw))
+                    row = _course(list_kind or "unrecognized", line, code, detail, None, raw)
+                    if list_kind in (None, "unrecognized"):
+                        # A list CoursePilot has not seen: rows are kept and
+                        # sent to review, never silently dropped.
+                        row.problems.append("UNRECOGNIZED_COURSE_LIST")
+                    block.courses.append(row)
+            elif not LIST_EXPLANATION.match(text):
+                list_kind = "unrecognized"        # a list title CoursePilot does not know
     close_requirement()
     _check_counts(block)
     return block

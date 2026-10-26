@@ -542,3 +542,24 @@ async def test_no_identity_course_or_grade_reaches_the_logs(ob, storage, mapping
     for secret in ("TEST STUDENT", "000000000", ob["code"]["A"], ob["code"]["B"],
                    "B+", "Fall 2025", "Course A Requirement"):
         assert secret not in logged
+
+
+@requires_db
+async def test_an_undeclared_audit_imports_its_courses_with_nothing_mapped(ob, storage, mapping):
+    """A real DN print for a student who has not declared a major is "Undeclared
+    (NB)": no requirement to map, but its courses are still the student's own."""
+    a, b = ob["code"]["A"], ob["code"]["B"]
+    undeclared = {
+        "printed_at": "10/20/26, 9:15 AM", "report_date": "October 20 2026", "degree_id": "9995",
+        "subject": "Undeclared (NB)", "version": "Fall 2003",
+        "identity": ("TEST STUDENT", "000000000"), "requirements": [], "used": [], "unused": [],
+        "below_minimum": [], "not_applicable": [(a, 3, "Fall 2025", "A"),
+                                                (b, 3, "Fall 2026", "current")]}
+    async with _client(_app(storage), ob["account"]) as ac:
+        await _profile(ac, ob)
+        [imp] = await _upload(ac, build_audit_pdf(undeclared))
+        assert (imp["track_check"], imp["requirements"]) == ("no_mapping", [])
+        assert {(h["course_code"], h["status"]) for h in imp["history"]} == {
+            (a, "completed"), (b, "in_progress")}
+        done = await _confirm(ac, imp)
+        assert done["history_outcome"]["inserted"] == 2

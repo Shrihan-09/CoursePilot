@@ -100,6 +100,9 @@ _PROBLEMS = {
     "COURSE_LINE_UNREADABLE": "A course code was found but the rest of its line could not be read.",
     "READING_ORDER_UNRELIABLE": ("Course details were read on a line without a course code (the "
                                  "columns may have run together)."),
+    "UNRECOGNIZED_COURSE_LIST": ("This course is listed under a Degree Navigator heading "
+                                 "CoursePilot has not seen before. Check it against your "
+                                 "transcript, or exclude it."),
     "UNCLASSIFIED_COURSE_ROW": ("CoursePilot does not recognise this kind of course row (transfer, "
                                 "AP or an exception?). Its text is kept; exclude it or check it "
                                 "against your transcript."),

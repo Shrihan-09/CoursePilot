@@ -197,7 +197,8 @@ def audit_layout(model: dict | None = None) -> list[dict]:
         # The tall "will be fulfilled" icon is centred on its two-line phrase.
         p.icon(314.2, y - 5.3 if ricon == "in_progress_or_planned" else y, ricon)
     p.line((327.6, "completion of in-progress or planned courses"), gap=26)
-    p.line((38.2, "Requirements"), gap=18, size=12)
+    if m["requirements"]:
+        p.line((38.2, "Requirements"), gap=18, size=12)
 
     for n, req in enumerate(m["requirements"], 1):
         p.need(80)
@@ -239,11 +240,16 @@ def audit_layout(model: dict | None = None) -> list[dict]:
 
     p.line((38.2, "Conditions"), gap=16, size=12)
     p.line((39.7, "Condition C13"), gap=12)
-    p.line((39.7, f"(Applies to requirement {{R1 - {m['requirements'][0]['title']}}})"), gap=12)
-    p.line((39.7, "Students will be able to meet an invented learning goal."), gap=20)
-    p.line((38.2, "Reuse"), gap=16, size=12)
-    for n, req in enumerate(m["requirements"], 1):
-        p.line((57.7, f"R{n} - {req['title']}"), gap=14)
+    if m["requirements"]:
+        p.line((39.7, f"(Applies to requirement {{R1 - {m['requirements'][0]['title']}}})"),
+               gap=12)
+        p.line((39.7, "Students will be able to meet an invented learning goal."), gap=20)
+        p.line((38.2, "Reuse"), gap=16, size=12)
+        for n, req in enumerate(m["requirements"], 1):
+            p.line((57.7, f"R{n} - {req['title']}"), gap=14)
+    else:
+        p.line((39.7, "(Applies to all requirements and conditions)"), gap=12)
+        p.line((39.7, "You are an invented student who has not yet declared a major."), gap=20)
     p.y -= 10
     p.line((38.2, "Courses"), gap=16.5, size=12)
 
@@ -258,7 +264,8 @@ def audit_layout(model: dict | None = None) -> list[dict]:
                           (x + 62.3, _course_detail(credits, term, grade))]
             p.line(*frags, gap=15)
 
-    numbered("Courses Used for this Program", m["used"])
+    if m["used"]:
+        numbered("Courses Used for this Program", m["used"])
     if m["unused"]:
         numbered("Unused Courses for this Program", m["unused"], second_x=250.2)
     if m["below_minimum"]:
@@ -269,6 +276,10 @@ def audit_layout(model: dict | None = None) -> list[dict]:
                gap=9.8)
         p.line((36.7, "Grade"), (61.5, ":"), gap=15)
         numbered("", m["below_minimum"])
+    if m.get("not_applicable"):
+        numbered("Courses Do Not Apply for this Program", m["not_applicable"])
+    for title, rows in m.get("extra_lists", []):
+        numbered(title, rows)                  # SYNTHETIC: a list title DN might add
     p.line((233.0, "Powered by"), (283.8, "Decision Academic Inc."))
 
     total = len(p.pages)
@@ -344,6 +355,20 @@ def build_audit_pdf(model: dict | None = None, *, extra: list[dict] | None = Non
     return render_pdf(pages)
 
 
+def undeclared_model() -> dict:
+    """An "Undeclared (NB)" audit: no requirements, every course "does not apply"."""
+    return {
+        "printed_at": "10/30/26, 9:20 AM", "report_date": "October 30 2026",
+        "degree_id": "9995", "subject": "Undeclared (NB)", "version": "Fall 2003",
+        "identity": ("TEST STUDENT", "000000000"), "requirements": [],
+        "used": [], "unused": [],
+        "below_minimum": [("01:999:801", 4, "Spring 2026", "F")],
+        "not_applicable": [("01:999:101", 3, "Spring 2026", "A"),
+                           ("01:999:102", 3, "Fall 2026", "current"),
+                           ("XX:999:ABC", 0, "Placement", "PL, PL")],
+    }
+
+
 def variant(**changes) -> dict:
     model = copy.deepcopy(sas_core_model())
     model.update(changes)
@@ -351,4 +376,4 @@ def variant(**changes) -> dict:
 
 
 __all__ = ["COURSE_ICON", "ICONS", "REQUIREMENT_ICON", "audit_layout", "build_audit_pdf",
-           "major_model", "render_pdf", "sas_core_model", "variant"]
+           "major_model", "render_pdf", "sas_core_model", "undeclared_model", "variant"]

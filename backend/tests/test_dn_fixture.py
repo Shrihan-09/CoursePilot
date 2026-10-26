@@ -21,6 +21,7 @@ from .support.synthetic_dn import (
     build_audit_pdf,
     render_pdf,
     sas_core_model,
+    undeclared_model,
 )
 
 FIXTURE = pathlib.Path(__file__).parent / "fixtures" / "synthetic" / "dn_audit.SYNTHETIC.pdf"
@@ -98,3 +99,26 @@ def test_an_icon_that_matches_no_legend_icon_is_unknown():
     assert {r.icon for r in block.requirements} == {"unknown"}
     assert "LEGEND_INCOMPLETE" in block.warnings
     assert all("ICON_UNKNOWN" in r.problems for r in block.requirements)
+
+
+def test_an_undeclared_audit_has_no_requirements_and_keeps_every_course():
+    """Layout seen on a real "Undeclared (NB)" print: no Requirements section,
+    one Condition, every course under "Courses Do Not Apply for this Program"."""
+    block = parse_audit(_layout(build_audit_pdf(undeclared_model()))).blocks[0]
+    assert (block.subject, block.completed_requirements) == ("Undeclared (NB)", "0 of 0")
+    assert block.requirements == [] and block.warnings == []
+    assert [(c.list_kind, c.course_code, c.kind, c.problems) for c in block.courses] == [
+        ("below_minimum_grade", "01:999:801", "course", []),
+        ("not_applicable", "01:999:101", "course", []),
+        ("not_applicable", "01:999:102", "current", []),
+        ("not_applicable", "XX:999:ABC", "placement", [])]
+
+
+def test_rows_under_an_unknown_list_title_are_kept_for_review_never_dropped():
+    model = sas_core_model()
+    model["extra_lists"] = [("Courses Taken Elsewhere (SYNTHETIC)",
+                             [("01:999:901", 3, "Fall 2025", "A")])]
+    block = parse_audit(_layout(build_audit_pdf(model))).blocks[0]
+    [row] = [c for c in block.courses if c.course_code == "01:999:901"]
+    assert (row.list_kind, row.problems) == ("unrecognized", ["UNRECOGNIZED_COURSE_LIST"])
+    assert all(c.problems == [] for c in block.courses if c.course_code != "01:999:901")

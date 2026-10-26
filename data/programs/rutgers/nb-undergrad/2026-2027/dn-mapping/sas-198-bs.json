@@ -1,7 +1,7 @@
 {
   "_README": [
     "Degree Navigator mapping for Computer Science B.S. - NOT BUILT (Phase 7.4).",
-    "The only real DN audit available (the developer's own, 2026-10-22) contains ONE degree block: The SAS Core Curriculum (NB). It has no Computer Science block, so no CS heading could be mapped from evidence.",
+    "Two real DN prints exist (the developer's own, local only): 'The SAS Core Curriculum (NB)' (2026-10-22) and 'Undeclared (NB) (Fall 2003)' (2026-10-25: 0 requirements; DN has not yet recorded a declared major). Neither has a Computer Science block, so no CS heading could be mapped from evidence.",
     "Names are never matched, so every CS DN requirement stays 'unmapped' (kept and shown; CoursePilot's own estimated status is used) until a real CS audit print is mapped and reviewed here.",
     "CS electives are the department's designated list (registry), which a future mapping must point at - not a {198, >=300} rule."
   ],

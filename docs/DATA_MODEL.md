@@ -10012,7 +10012,11 @@ student's is "not found".
 
 ### 51.8 Limitations
 
-- **Verified layout:** one real print (SAS Core). Transfer/AP, exceptions,
-  waivers, planned courses and other schools' layouts have not been seen.
+- **Verified layout:** two real prints, "The SAS Core Curriculum (NB)" and
+  "Undeclared (NB)". The latter has no requirements and a "Courses Do Not
+  Apply for this Program" list. Transfer/AP, exceptions, waivers, planned
+  courses, a declared major and other schools' layouts have not been seen.
+- **Unrecognized list titles:** a course row under one is kept and flagged
+  `UNRECOGNIZED_COURSE_LIST` for review, never dropped.
 - **CS mapping:** not built (§10a).
 - **Mapping review:** pending a named reviewer.

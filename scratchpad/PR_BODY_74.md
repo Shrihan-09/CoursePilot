@@ -133,4 +133,14 @@ A confirmed DN status decides **status** only and never changes a CoursePilot re
   - Backend, 5: WebReg in-progress split; anonymous developer report (subprocess); no identity, course or grade in logs; a saved plan goes stale on a DN confirmation; recommendation notes through ancestors.
 - **Suites:** backend 1,107 passed / 4 skipped; ingestion 1,057 passed / 1 skipped; frontend 93 passed; `tsc` clean.
 
+## Follow-up commit: the second real DN print (Undeclared)
+
+- **The print.** The developer's second real print is "Undeclared (NB) (Fall 2003)". It has 0 requirements, because DN has no declared major on record, and lists every course under "Courses Do Not Apply for this Program". It has no Computer Science block, so **the CS mapping is still not built**.
+- **Parser bug fixed.** This print first parsed to **no course rows**: the header only ended at "Requirements", and the unknown list title was skipped silently. Now:
+  - the header also ends at Conditions/Courses;
+  - "Courses Do Not Apply for this Program" is a known list;
+  - a row under any unrecognized list title is kept with `UNRECOGNIZED_COURSE_LIST` and goes to review, never dropped.
+- **Results on the real prints:** 21/21 rows read on the undeclared print; the SAS Core print is unchanged (6/6 requirements, 30/30 rows, reconciliation all agree).
+- **Tests:** the synthetic undeclared model plus 3 tests (parse, unknown list title, undeclared import stages and confirms its courses). Backend 1,110 passed / 4 skipped.
+
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
