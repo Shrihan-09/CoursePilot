@@ -104,8 +104,98 @@ function WhyHere({ course }: { course: PlannedCourse }) {
             <span className="text-fg-muted"> · seen in {course.offering.observed_terms.slice(-3).map(termLabel).join(", ")}</span>
           )}
         </p>
+        {course.trace && <TraceDetails trace={course.trace} />}
       </div>
     </details>
+  );
+}
+
+const SOURCE_LABEL: Record<string, string> = {
+  soc_courses_json: "Rutgers Schedule of Classes",
+  degree_navigator_audit: "your Degree Navigator audit",
+  coursepilot_audit: "CoursePilot's estimate",
+};
+
+/** Phase 7.6: the structured reason - requirement status source, Core codes, restrictions, sources. */
+function TraceDetails({ trace }: { trace: NonNullable<PlannedCourse["trace"]> }) {
+  return (
+    <div className="space-y-1 text-fg-secondary">
+      {trace.requirements.map((r) => (
+        <p key={r.requirement_code}>
+          <span className="text-xs font-medium uppercase tracking-wide text-fg-muted">Fills </span>
+          {r.requirement_name} -{" "}
+          {r.status_source === "degree_navigator" ? "open according to your Degree Navigator audit" : "open by CoursePilot's estimate"}
+        </p>
+      ))}
+      {trace.requirements.length === 0 && trace.unlocks_for.length > 0 && (
+        <p>
+          <span className="text-xs font-medium uppercase tracking-wide text-fg-muted">Needed for </span>
+          {trace.unlocks_for.join(", ")}
+        </p>
+      )}
+      {trace.core_codes && (
+        <p>
+          <span className="text-xs font-medium uppercase tracking-wide text-fg-muted">Core codes </span>
+          {trace.core_codes.codes.join(", ") || "none"} ({termLabel(trace.core_codes.term_code)}
+          {trace.core_codes.basis === "latest_offering" ? ", latest loaded offering" : ""})
+        </p>
+      )}
+      {trace.restriction?.message && <p>{trace.restriction.message}</p>}
+      {trace.sources.length > 0 && (
+        <ul className="text-2xs text-fg-muted">
+          {trace.sources.map((s) => (
+            <li key={`${s.fact}-${s.term_code ?? ""}`}>
+              {s.fact.replace(/_/g, " ")}: {SOURCE_LABEL[s.source] ?? s.source}
+              {s.term_code ? `, ${termLabel(s.term_code)}` : ""}
+              {s.fetched_at ? `, retrieved ${new Date(s.fetched_at).toLocaleDateString()}` : ""}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+const COURSE_STATUS: Record<string, string> = {
+  met: "met",
+  in_progress: "in progress",
+  below_minimum: "below the minimum grade",
+  not_taken: "not taken yet",
+  unknown: "can't tell from your record",
+};
+
+/** Phase 7.6: "planning toward X (not yet declared)" and what declaring takes, cited. */
+function DeclarationPanel({ declaration: d }: { declaration: NonNullable<SavedPlan["result"]["declaration"]> }) {
+  const byId = Object.fromEntries(d.sources.map((s) => [s.id, s]));
+  return (
+    <section aria-labelledby="declaration-heading" className="space-y-2 rounded-xl border border-border bg-surface-elevated p-4">
+      <h2 id="declaration-heading" className="text-sm font-semibold text-fg">{d.label}</h2>
+      {d.message && <p className="text-sm text-fg-secondary">{d.message}</p>}
+      {d.requirements.length > 0 && (
+        <ul className="space-y-2 text-sm text-fg-secondary">
+          {d.requirements.map((r) => (
+            <li key={r.code}>
+              <p className="text-fg">{r.text}</p>
+              {Object.keys(r.courses).length > 0 && (
+                <p className="text-xs">
+                  {Object.entries(r.courses).map(([course, status]) => `${course}: ${COURSE_STATUS[status] ?? status}`).join(" · ")}
+                </p>
+              )}
+              <p className="text-2xs text-fg-muted">
+                Source:{" "}
+                {r.sources.map((id, i) => (
+                  <span key={id}>
+                    {i > 0 ? "; " : ""}
+                    <a className="underline underline-offset-2" href={byId[id]?.url} target="_blank" rel="noreferrer">{byId[id]?.title ?? id}</a>
+                  </span>
+                ))}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+      {d.conflicts.map((c) => <p key={c} className="text-xs font-medium text-warning">{c}</p>)}
+    </section>
   );
 }
 
@@ -333,6 +423,12 @@ export function PlanView({
           semester - your CoursePilot planning preferences, not Rutgers rules.
         </p>
       </section>
+
+      {r.declaration && <DeclarationPanel declaration={r.declaration} />}
+
+      {r.school_core?.status === "unknown" && (
+        <Alert tone="warning" title="Core status unknown">{r.school_core.message}</Alert>
+      )}
 
       {earlier && (
         <Alert tone="info" title="You may be able to finish the modeled requirements sooner"

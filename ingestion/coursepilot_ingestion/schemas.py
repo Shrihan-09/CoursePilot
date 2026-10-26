@@ -182,6 +182,9 @@ class IngestionStats(BaseModel):
     #: Phase 6.3 requirement-eligibility reconciliation after the load:
     #: requirements / inserted / deleted / unchanged.
     eligibility: dict[str, int] = Field(default_factory=dict)
+    #: Phase 7.6 SOC coreCodes per offering: inserted / updated / unchanged /
+    #: deleted / skipped_malformed.
+    core_codes: dict[str, int] = Field(default_factory=dict)
     source_content_hash: str | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None

@@ -113,12 +113,23 @@ class Student(Base, TimestampMixin):
     # (app.services.placement).
     math_placement: Mapped[str | None] = mapped_column(String(16), nullable=True)
 
+    # Phase 7.6: whether the student has DECLARED the program above, as the
+    # student states it. 'undeclared' means `program_version_id` is the major
+    # the student INTENDS to declare (plans say "planning toward X (not yet
+    # declared)" and show X's declaration requirements). NULL: not stated -
+    # read as declared, the behaviour before 7.6. Never inferred.
+    declaration_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
+
     courses: Mapped[list[StudentCourse]] = relationship(
         back_populates="student", cascade="all, delete-orphan"
     )
     user: Mapped["UserAccount | None"] = relationship(back_populates="student")
 
-    __table_args__ = (UniqueConstraint("external_ref", name="uq_student_external_ref"),)
+    __table_args__ = (
+        UniqueConstraint("external_ref", name="uq_student_external_ref"),
+        CheckConstraint("declaration_status IS NULL OR declaration_status IN "
+                        "('declared','undeclared')", name="student_declaration_status_known"),
+    )
 
     def __repr__(self) -> str:
         return f"<Student {self.external_ref or self.id}>"

@@ -11,6 +11,11 @@ With CSP not adopted (PHASE_7_3_PLAN.md §1a) the "combined data view" is thin:
   subject's description; a unit code takes the SOC school description. Where
   no public name exists the code is shown alone; nothing is guessed.
 
+* CORE CODES (Phase 7.6) come from the same term's SOC `courses.json`
+  (`offering_core_code`): the codes a course carries FOR THAT TERM, verbatim.
+  Which school's Core a code belongs to is decided by that school's Core set,
+  never here.
+
 Every value carries {source, data_source_id, fetched_at}. Engines keep their
 own semantics; this view only reads.
 """
@@ -143,6 +148,49 @@ def section_facts(session: Session, term_code: str, indexes: list[str], *,
     return out
 
 
+class TermCoreCodes(BaseModel):
+    """The Core codes SOC lists for one course in one term (Phase 7.6)."""
+
+    course_string: str
+    term_code: str
+    codes: list[str]
+    provenance: Provenance
+
+
+def core_codes(session: Session, term_code: str,
+               course_strings: list[str] | set[str]) -> dict[str, TermCoreCodes]:
+    """course -> the Core codes SOC published for it in `term_code`.
+
+    Only courses OFFERED in that term appear: a course with an offering and no
+    codes maps to an empty list (SOC lists none), a course with no offering in
+    the term is absent (nothing was published to read)."""
+    from app.models.core_codes import OfferingCoreCode
+
+    keys = sorted(set(course_strings))
+    if not keys:
+        return {}
+    out: dict[str, TermCoreCodes] = {}
+    for key, source in session.execute(
+            select(Course.course_string, DataSource)
+            .join(CourseOffering, CourseOffering.course_id == Course.id)
+            .join(DataSource, DataSource.id == CourseOffering.source_id)
+            .where(CourseOffering.term_code == term_code, Course.course_string.in_(keys),
+                   Course.supplement_code == "")):
+        out.setdefault(key, TermCoreCodes(
+            course_string=key, term_code=term_code, codes=[],
+            provenance=Provenance(source=COURSES_JSON, data_source_id=str(source.id),
+                                  fetched_at=source.retrieved_at)))
+    for key, code in session.execute(
+            select(Course.course_string, OfferingCoreCode.code)
+            .join(OfferingCoreCode, OfferingCoreCode.course_id == Course.id)
+            .where(OfferingCoreCode.term_code == term_code, Course.course_string.in_(keys),
+                   Course.supplement_code == "")
+            .order_by(OfferingCoreCode.code)):
+        if key in out and code not in out[key].codes:
+            out[key].codes.append(code)
+    return out
+
+
 def _availability(resolved) -> dict:
     """The Phase 6.7 verdict as decided by services.availability - never re-judged."""
     if resolved is None:
@@ -151,5 +199,5 @@ def _availability(resolved) -> dict:
             "since": resolved.since, "reasons": list(resolved.reasons)}
 
 
-__all__ = ["Provenance", "RestrictionName", "SectionFacts", "Sourced", "restriction_names",
-           "section_facts"]
+__all__ = ["Provenance", "RestrictionName", "SectionFacts", "Sourced", "TermCoreCodes",
+           "core_codes", "restriction_names", "section_facts"]

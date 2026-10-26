@@ -11,7 +11,13 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.domain.planning import PlanningConstraints, PlanResult
+from app.domain.planning import (
+    PlanningConstraints,
+    PlanningIssue,
+    PlanResult,
+    SchoolCoreStatus,
+    Severity,
+)
 from app.domain.scenario import ScenarioAssumption
 from app.models import Program, ProgramVersion, School, Student, StudentCourse
 from app.services.planning.engine import PlanningEngine
@@ -132,6 +138,79 @@ def annotate_recommendations(result: PlanResult, overlay, parents: dict[str, str
                     code = parents.get(code)
 
 
+def school_core_status(session: Session, version: ProgramVersion) -> SchoolCoreStatus:
+    """Which school Core applies - chosen by the PROGRAM's school (Phase 7.6).
+
+    A school whose Core CoursePilot has not encoded (SEBS, SOE, ...) has
+    status "unknown": the plan says so and never substitutes SAS Core."""
+    from app.services.academic_context import school_requirement_sets
+
+    school = session.get(School, version.program.school_id)
+    sets = school_requirement_sets(session, version)
+    if sets:
+        names = ", ".join(s.name for s in sets)
+        return SchoolCoreStatus(
+            school_code=school.code, status="encoded", requirement_sets=[s.code for s in sets],
+            message=f"Core requirements: {names}, chosen by your program's school ({school.code}).")
+    return SchoolCoreStatus(
+        school_code=school.code, status="unknown",
+        message=(f"Core status is unknown: CoursePilot has not encoded the "
+                 f"{school.name or school.code} Core requirements yet, so this plan covers only "
+                 "your program's own requirements. SAS Core is not used in their place."))
+
+
+def declaration_of(session: Session, student: Student, version: ProgramVersion, key: str):
+    """Phase 7.6: the 'planning toward X (not yet declared)' block, or None."""
+    from app.services.declaration import declaration_for
+
+    program = version.program
+    return declaration_for(session, student, program_key=key, program_name=program.name,
+                           degree_type=program.degree_type, variant=program.variant or "",
+                           catalog_year=version.catalog_year)
+
+
+#: The words Prompt 05 asks for, for a DN requirement CoursePilot cannot map.
+UNMAPPED_OPEN = "Degree Navigator says this is still open, and CoursePilot can't map it yet."
+
+
+def unmapped_degree_navigator_issues(session: Session, student: Student,
+                                     version: ProgramVersion, key: str) -> list[PlanningIssue]:
+    """Phase 7.6: every requirement a confirmed DN audit shows NOT satisfied (or
+    only in progress/planned) that has no CoursePilot mapping. Shown, never
+    filled with a guess - no course is planned for it."""
+    from app.models.degree_audit import DegreeAuditImport, DegreeAuditRequirementRow
+    from app.services.academic_context import school_requirement_sets
+
+    keys = {key} | {s.code for s in school_requirement_sets(session, version)}
+    out = []
+    for imp, row in session.execute(
+            select(DegreeAuditImport, DegreeAuditRequirementRow)
+            .join(DegreeAuditRequirementRow,
+                  DegreeAuditRequirementRow.import_id == DegreeAuditImport.id)
+            .where(DegreeAuditImport.student_id == student.id,
+                   DegreeAuditImport.state == "confirmed",
+                   DegreeAuditImport.superseded_at.is_(None),
+                   DegreeAuditRequirementRow.excluded.is_(False),
+                   # Requirement headings only: a Core GOAL row (AHp, AHq...)
+                   # belongs to its requirement, which decides; an unfilled
+                   # goal of a fulfilled requirement is not "still open".
+                   DegreeAuditRequirementRow.kind == "requirement",
+                   DegreeAuditRequirementRow.requirement_code.is_(None),
+                   DegreeAuditRequirementRow.dn_status.in_(("not_satisfied",
+                                                            "in_progress_or_planned")))
+            .order_by(DegreeAuditImport.confirmed_at, DegreeAuditRequirementRow.row_index)):
+        if imp.mapping_key is not None and imp.mapping_key not in keys:
+            continue                     # another program's audit (a what-if elsewhere)
+        name = row.dn_heading or row.extracted_title or row.dn_code or f"row {row.row_index}"
+        out.append(PlanningIssue(
+            severity=Severity.NEEDS_CONFIRMATION, code="DN_REQUIREMENT_OPEN_UNMAPPED",
+            message=f"{name}: {UNMAPPED_OPEN}",
+            details={"dn_heading": row.dn_heading, "dn_code": row.dn_code,
+                     "dn_status": row.dn_status, "needs": row.extracted_needs,
+                     "kind": row.kind}))
+    return out
+
+
 def generate_plan(session: Session, student: Student, *, start_term: str,
                   program_key_: str | None = None, catalog_year: str | None = None,
                   constraints: PlanningConstraints | None = None) -> PlanResult:
@@ -155,9 +234,29 @@ def generate_plan(session: Session, student: Student, *, start_term: str,
 
     overlay, dn_notes = degree_navigator_overlay(session, student, version, key)
     assumptions += dn_notes
+    core = school_core_status(session, version)
+    if core.status == "unknown":
+        assumptions.append(ScenarioAssumption(code="school_core_unknown", message=core.message))
+    declaration = declaration_of(session, student, version, key)
+    if declaration is not None:
+        # The declaration block states what declaring takes (or that no
+        # official source does); the generic "not evaluated" note would
+        # contradict it.
+        assumptions = [a for a in assumptions if a.code != "admission_not_modeled"]
+        assumptions.insert(0, ScenarioAssumption(
+            code="planning_toward_undeclared_major",
+            message=(f"{declaration.label}. Sections restricted to declared majors are treated "
+                     "as closed to you; minor and honors restrictions stay unconfirmed.")))
     result = PlanningEngine(session, constraints, overlay).plan(student, version, target,
                                                                 start_term, assumptions)
     result.assumptions += pending_term_assumptions(session, start_term, result)
+    result.school_core = core
+    result.declaration = declaration
+    if core.status == "unknown":
+        result.issues.append(PlanningIssue(
+            severity=Severity.WARNING, code="SCHOOL_CORE_UNKNOWN", message=core.message,
+            details={"school": core.school_code}))
+    result.issues += unmapped_degree_navigator_issues(session, student, version, key)
     if overlay:
         annotate_recommendations(result, overlay, requirement_parents(session, version))
     if session.new or session.dirty or session.deleted:
@@ -166,6 +265,6 @@ def generate_plan(session: Session, student: Student, *, start_term: str,
     return result
 
 
-__all__ = ["InvalidStartTerm", "annotate_recommendations", "degree_navigator_overlay",
-           "generate_plan", "requirement_parents",
-           "latest_history_term"]
+__all__ = ["UNMAPPED_OPEN", "InvalidStartTerm", "annotate_recommendations",
+           "declaration_of", "degree_navigator_overlay", "generate_plan", "latest_history_term",
+           "requirement_parents", "school_core_status", "unmapped_degree_navigator_issues"]

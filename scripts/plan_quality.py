@@ -11,6 +11,18 @@ Diagnostics per plan: semesters, credits per semester, courses per semester,
 mean absolute deviation from the target, underfilled semesters (< 60% of the
 target, final one counted separately), final-semester load, status, time.
 No difficulty score is invented.
+
+Phase 7.6 adds three requirement-awareness columns, computed from fields every
+engine version emits (so the same script measures before and after):
+
+* untraced  - planned courses that fill no requirement and unlock no planned
+              course (nothing justifies them);
+* extra_alt - courses placed in an ANY_OF alternative beyond the number of
+              alternatives it needs (e.g. Chemistry 161 and Physics 193 both
+              planned when one B.S. science sequence is required);
+* multi     - courses credited to two or more requirements (allowed sharing).
+
+Set COURSEPILOT_PQ_ROOT to measure another checkout (the "before" numbers).
 """
 
 from __future__ import annotations
@@ -22,13 +34,16 @@ import time
 import uuid
 from decimal import Decimal
 
-ROOT = pathlib.Path(__file__).resolve().parent.parent
+import os  # noqa: E402
+
+ROOT = pathlib.Path(os.environ.get("COURSEPILOT_PQ_ROOT")
+                    or pathlib.Path(__file__).resolve().parent.parent)
 sys.path.insert(0, str(ROOT / "backend"))
 
 from sqlalchemy import select  # noqa: E402
 
 from app.db.session import get_sync_sessionmaker  # noqa: E402
-from app.domain.planning import Pace, PlanningConstraints  # noqa: E402
+from app.domain.planning import Pace, PlanningConstraints, WorkloadLevel  # noqa: E402
 from app.models import Course, Student, StudentCourse  # noqa: E402
 from app.services.planning.service import generate_plan  # noqa: E402
 from app.services.scenarios import resolve_version  # noqa: E402
@@ -61,12 +76,51 @@ MODES = {
                                          max_courses_per_term=4, max_terms=12, pace=Pace.LIGHTER),
     "finish earlier 15/18": PlanningConstraints(target_credits_per_term=Decimal(15), max_credits_per_term=Decimal(18),
                                                 max_courses_per_term=6, pace=Pace.FINISH_EARLIER),
+    "semi-rigorous (7.3)": PlanningConstraints(workload_level=WorkloadLevel.SEMI_RIGOROUS,
+                                               max_courses_per_term=6, pace=Pace.BALANCED),
 }
+
+
+def alternatives(session, version) -> dict[str, tuple[str, str, int]]:
+    """leaf code -> (ANY_OF code, alternative child code, alternatives needed)."""
+    from app.services.academic_context import composed_requirements
+
+    reqs = composed_requirements(session, version)
+    by_id = {r.id: r for r in reqs}
+    out = {}
+    for r in reqs:
+        node = r
+        while node is not None:
+            parent = by_id.get(node.parent_id)
+            if parent is not None and parent.requirement_type == "any_of":
+                out[r.code] = (parent.code, node.code, parent.min_count or 1)
+                break
+            node = parent
+    return out
+
+
+def awareness(plan, alts) -> tuple[int, int, int]:
+    courses = [pc for t in plan.terms for pc in t.courses]
+    planned = {pc.course for pc in courses}
+    untraced = sum(1 for pc in courses
+                   if not pc.requirements and not (set(pc.unlocks) & planned))
+    touched: dict[str, set[str]] = {}
+    need: dict[str, int] = {}
+    for pc in courses:
+        for r in pc.requirements:
+            if r.requirement_code in alts:
+                group, alt, n = alts[r.requirement_code]
+                touched.setdefault(group, set()).add(alt)
+                need[group] = n
+    extra = sum(max(0, len(a) - need[g]) for g, a in touched.items())
+    multi = sum(1 for pc in courses if len(pc.requirements) >= 2)
+    return untraced, extra, multi
 
 
 def main() -> None:
     with get_sync_sessionmaker()() as session:
         version, _ = resolve_version(session, PROGRAM, "2026-2027")
+        alts = alternatives(session, version)
         rows = []
         for persona, history in PERSONAS.items():
             student = Student(external_ref=f"plan-quality-{uuid.uuid4().hex[:8]}", catalog_year="2026-2027",
@@ -84,15 +138,20 @@ def main() -> None:
                 plan = generate_plan(session, student, start_term=START, constraints=cons)
                 ms = (time.perf_counter() - t0) * 1000
                 loads = [t.credits for t in plan.terms]
-                target = cons.target_credits_per_term or cons.max_credits_per_term
+                # A workload level states no target: its credit floor (16 for
+                # semi-rigorous) is the reference.
+                target = cons.target_credits_per_term or (
+                    Decimal(16) if cons.workload_level else cons.max_credits_per_term)
                 under = [x for x in loads[:-1] if x * 10 < target * 6]
                 rows.append((persona, mode, plan.status.value, len(loads),
                              "/".join(f"{x:g}" for x in loads), "/".join(str(len(t.courses)) for t in plan.terms),
                              round(statistics.fmean(abs(x - target) for x in loads), 2) if loads else "-",
-                             len(under), f"{loads[-1]:g}" if loads else "-", round(ms),
+                             len(under), f"{loads[-1]:g}" if loads else "-",
+                             *awareness(plan, alts), round(ms),
                              ",".join(o.code for o in plan.observations)))
         session.rollback()
-    head = ("persona", "mode", "status", "terms", "credits", "courses", "|dev|", "under", "last", "ms", "observations")
+    head = ("persona", "mode", "status", "terms", "credits", "courses", "|dev|", "under", "last",
+            "untraced", "extra_alt", "multi", "ms", "observations")
     print(" | ".join(head))
     for r in rows:
         print(" | ".join(str(x) for x in r))

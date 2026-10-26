@@ -101,6 +101,8 @@ export const api = {
   completeOnboarding: () => request<Profile>("/student/onboarding/complete", { method: "POST" }),
   setPlacement: (math_placement: string | null) =>
     request<Profile>("/student/placement", json("PUT", { math_placement })),
+  setDeclaration: (declaration_status: "declared" | "undeclared" | null) =>
+    request<Profile>("/student/declaration", json("PUT", { declaration_status })),
 
   courses: () => request<{ entries: Entry[] }>("/student/courses"),
   addCourse: (body: Record<string, string | null>) =>

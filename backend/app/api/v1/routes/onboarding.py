@@ -7,6 +7,7 @@ POST   /api/v1/student/profile                        {program_key, catalog_year
 GET    /api/v1/student/profile
 PUT    /api/v1/student/program                        {program_key, catalog_year}
 PUT    /api/v1/student/placement                      {math_placement: "01:640:151" | null}
+PUT    /api/v1/student/declaration                    {declaration_status: ... | null}
 GET    /api/v1/student/courses
 POST   /api/v1/student/courses                        one entry
 PATCH  /api/v1/student/courses/{entry_id}
@@ -157,6 +158,15 @@ class PlacementChoice(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+class DeclarationChoice(BaseModel):
+    """Phase 7.6. 'undeclared': my program is the major I INTEND to declare.
+    `null` clears the statement (read as declared)."""
+
+    declaration_status: Literal["declared", "undeclared"] | None
+
+    model_config = {"extra": "forbid"}
+
+
 class ConfirmRequest(BaseModel):
     expected_version: int = Field(ge=1)
 
@@ -212,6 +222,9 @@ class ProfileView(BaseModel):
     transcript_reported_gpa: ReportedGpa | None
     #: The math course the student's placement places them into, as stated.
     math_placement: str | None = None
+    #: Phase 7.6: declared | undeclared (the program is the INTENDED major) |
+    #: null (not stated, read as declared).
+    declaration_status: str | None = None
 
 
 class ProfileCreated(BaseModel):
@@ -357,7 +370,8 @@ def _profile_view(session, student) -> ProfileView:
         program=_program_view(session, student),
         onboarding_completed_at=student.onboarding_completed_at,
         transcript_reported_gpa=ReportedGpa(value=gpa[0], as_of=gpa[1]) if gpa else None,
-        math_placement=student.math_placement)
+        math_placement=student.math_placement,
+        declaration_status=student.declaration_status)
 
 
 def _entry_view(record, course) -> EntryView:
@@ -613,6 +627,20 @@ async def set_placement(body: PlacementChoice,
             session.commit()
             return _profile_view(session, student)
     return await _run(work, "math_placement_set", principal)
+
+
+@router.put("/declaration", response_model=ProfileView,
+            summary="State whether my program is declared, or the major I intend to declare")
+async def set_declaration(body: DeclarationChoice,
+                          principal: Principal = Depends(enforce_request_rate_limit)
+                          ) -> ProfileView:
+    def work():
+        with _session() as session:
+            student = onboarding_service.set_declaration_status(
+                session, principal.account_id, body.declaration_status)
+            session.commit()
+            return _profile_view(session, student)
+    return await _run(work, "declaration_status_set", principal)
 
 
 # --------------------------------------------------------------------------

@@ -18,6 +18,7 @@ from app.services.eligibility import reconcile
 from sqlalchemy.orm import Session
 
 from coursepilot_ingestion.fetchers.soc import SocFetcher
+from coursepilot_ingestion.loaders.core_codes import CoreCodeLoader
 from coursepilot_ingestion.loaders.postgres import CourseLoader
 from coursepilot_ingestion.loaders.prerequisites import PrerequisiteLoader
 from coursepilot_ingestion.normalizers.soc import SocNormalizer
@@ -39,6 +40,7 @@ class CourseIngestionPipeline:
         self.validator = CourseValidator()
         self.loader = CourseLoader(session)
         self.prerequisites = PrerequisiteLoader(session)
+        self.core_codes = CoreCodeLoader(session)
 
     def run(
         self,
@@ -139,6 +141,8 @@ class CourseIngestionPipeline:
         # Same payload, same source row: every prerequisite is traceable to
         # the exact archive the course rows came from.
         self.prerequisites.load(selected, outcome.valid, source, stats)
+        # Phase 7.6: the term's Core certifications, from the same payload.
+        self.core_codes.load(selected, outcome.valid, source, stats)
         # New course identities may match stored requirement rules (a CS
         # elective first offered this term). Eligibility is derived data, so
         # it is reconciled here, in the same transaction as the courses.

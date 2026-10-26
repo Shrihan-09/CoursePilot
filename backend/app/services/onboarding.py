@@ -286,6 +286,29 @@ def set_math_placement(session: Session, account_id: uuid.UUID,
     return student
 
 
+def set_declaration_status(session: Session, account_id: uuid.UUID,
+                           status: str | None) -> Student:
+    """State (or clear, with None) whether the record's program is DECLARED.
+
+    'undeclared': the program is the major the student intends to declare
+    (Phase 7.6) - plans say "planning toward X (not yet declared)" and show
+    its declaration requirements. Only the student's own statement; never
+    inferred, not even from a Degree Navigator "Undeclared" audit."""
+    from app.services.declaration import STATUSES
+
+    student = lock_student(session, account_id)
+    if student is None:
+        raise ProfileMissing("No academic record exists for this account.")
+    if status is not None and status not in STATUSES:
+        raise ValueError(f"declaration_status must be one of {STATUSES} or null")
+    if student.declaration_status != status:
+        student.declaration_status = status
+        session.flush()
+        invalidate_audit(session, student.id)
+        logger.info("declaration_status_changed", extra={"account": redact_id(account_id)})
+    return student
+
+
 @dataclass(slots=True)
 class OnboardingStatus:
     state: str

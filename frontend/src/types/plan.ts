@@ -113,6 +113,54 @@ export interface PlannedCourse {
   role_reason?: string | null;
   /** Phase 7.4: e.g. the requirement's status comes from Degree Navigator, or NEEDS REVIEW. */
   notes?: string[];
+  /** Phase 7.6: the structured reason for the recommendation. */
+  trace?: RecommendationTrace | null;
+}
+
+/** Phase 7.6 (backend app/domain/planning.py RecommendationTrace). */
+export interface RecommendationTrace {
+  requirements: {
+    requirement_code: string;
+    requirement_name: string;
+    requirement_system: string;
+    status_source: "degree_navigator" | "estimated";
+    status_rule: string | null;
+  }[];
+  unlocks_for: string[];
+  offering_kind: string;
+  offering_term: string;
+  prerequisite_state: string;
+  prerequisite_rules_term: string | null;
+  core_codes: { term_code: string; basis: "planned_term" | "latest_offering"; codes: string[]; goals: Record<string, boolean> } | null;
+  restriction: {
+    outcome: "unrestricted" | "satisfied" | "unknown" | "not_satisfied" | "sections_not_published";
+    sections: number;
+    open_sections: number;
+    open_to: string[];
+    reasons: string[];
+    message: string | null;
+  } | null;
+  pattern: { seasons: string[]; only_season: string | null; next_chance: string | null; message: string | null } | null;
+  unlock_chain_depth: number;
+  sources: { fact: string; source: string; term_code: string | null; data_source_id: string | null; fetched_at: string | null; detail: string | null }[];
+}
+
+/** Phase 7.6: planning toward a major the student has not declared. */
+export interface Declaration {
+  status: "undeclared";
+  program_key: string;
+  label: string;
+  requirements: {
+    code: string;
+    text: string;
+    sources: string[];
+    courses: Record<string, "met" | "in_progress" | "below_minimum" | "not_taken" | "unknown">;
+    min_grade: string | null;
+    status: "met" | "not_met" | "in_progress" | "unknown" | "not_evaluated";
+  }[];
+  sources: { id: string; title: string; url: string; kind: string; retrieved_at: string }[];
+  conflicts: string[];
+  message: string | null;
 }
 
 export interface WorkloadEvidence {
@@ -185,6 +233,10 @@ export interface PlanResult {
   placement?: { course: string; title: string | null; source_url: string } | null;
   /** Phase 7.3: the last semester the plan may use, and why. */
   graduation_target?: { term_code: string; basis: string; entry_term: string | null; semesters: number | null } | null;
+  /** Phase 7.6: which school Core applies ("unknown" when not encoded - never SAS by default). */
+  school_core?: { school_code: string; status: "encoded" | "unknown"; requirement_sets: string[]; message: string } | null;
+  /** Phase 7.6: set when the student is planning toward a major they have not declared. */
+  declaration?: Declaration | null;
 }
 
 export type StaleReason =

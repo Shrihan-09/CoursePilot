@@ -365,3 +365,38 @@ DATA_MODEL section 52.
    record" (or excluding the row); there is no replace option. The conflict
    is shown on the row, Confirm stays disabled until it is resolved, and the
    row says what keeping does.
+
+## 12. Phase 7.6 part 1: requirement-aware recommendations - against Prompt 05 (2026-10-26)
+
+Prompt 05 was checked against the code item by item (the checklist is in the
+PR); only the missing parts were built. Implementation: DATA_MODEL section 53.
+"Combined data view from Prompt 02" means `app/services/sources/sections.py`.
+
+Built:
+
+- the school Core "unknown" label;
+- term-scoped SOC coreCodes (new table, pipeline loader, backfill, data-view
+  reader) as a planning gate;
+- section restrictions as a gate for every candidate;
+- the sharing-aware multi-requirement preference;
+- long-chain and one-season-only sequencing, with "next chance";
+- unmapped open DN requirements shown;
+- a structured `RecommendationTrace` on every recommendation;
+- undeclared students planning toward an intended major, with the major's
+  cited declaration requirements (owner's addition).
+
+For review:
+
+- **DN "not satisfied" vs CoursePilot "met"** still does not reopen the node
+  (section 10a). Prompt 05's wording would reverse that; left as decided.
+- **Degree Engine, EXCLUSIVE programs.** The credit-requirement pass checks
+  only the requirement's own scope, so under an all-exclusive policy a course
+  can fill a credits node and a slot in another system. No real program
+  reaches it: the SAS Core set shares across systems, and the engine applies
+  that to every SAS program. Not changed here.
+- **Ranking.** Chain depth and one-season priority apply to REQUIRED courses
+  only. Coverage stays where it was. Broader versions were measured and
+  reverted (DATA_MODEL 53.3). See the plan_quality numbers in the PR.
+- **B.S. science data gap.** The Physics 206 and Chemistry 171 labs carry
+  co-requisite wording CoursePilot cannot evaluate, so no B.S. science
+  sequence can be completed. The planner may start two candidate sequences.

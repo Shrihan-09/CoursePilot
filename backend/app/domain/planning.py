@@ -33,7 +33,7 @@ from app.domain.course_ranking import CourseRankingEvidence
 from app.domain.scenario import ScenarioAssumption, ScenarioTarget
 
 #: Bumped whenever the same inputs could produce a different plan.
-PLANNING_ENGINE_VERSION = "7.3.2"   # 7.3: workload levels, pins, minimum course level
+PLANNING_ENGINE_VERSION = "7.6.0"   # 7.6: requirement-aware recommendations
 
 
 class EligibilityState(StrEnum):
@@ -288,6 +288,89 @@ class WorkloadEvidence(BaseModel):
     basis_term: str | None = None
 
 
+class SourceLabel(BaseModel):
+    """Phase 7.6: where one fact behind a recommendation came from - the
+    section data view's provenance (app.services.sources.sections)."""
+
+    #: offering | prerequisite_rules | core_codes | restrictions | requirement_status
+    fact: str
+    #: soc_courses_json | degree_navigator_audit | coursepilot_audit
+    source: str
+    term_code: str | None = None
+    data_source_id: str | None = None
+    fetched_at: datetime | None = None
+    detail: str | None = None
+
+
+class TracedRequirement(BaseModel):
+    """One requirement node a recommendation fills, and what decided that the
+    node is open: the student's Degree Navigator audit or CoursePilot's own
+    audit ("estimated")."""
+
+    requirement_code: str
+    requirement_name: str
+    requirement_system: str
+    #: degree_navigator | estimated
+    status_source: str
+    status_rule: str | None = None
+
+
+class RestrictionCheck(BaseModel):
+    """Phase 7.6: the term's section enrollment restrictions against the
+    student's known record (app.services.scheduling.candidates decides)."""
+
+    #: unrestricted | satisfied | unknown | not_satisfied | sections_not_published
+    outcome: str
+    sections: int = 0
+    #: Sections whose restrictions allow the student (unrestricted or satisfied).
+    open_sections: int = 0
+    #: Who the restricted sections are open to: "major 198 (COMPUTER SCIENCE)".
+    open_to: list[str] = Field(default_factory=list)
+    reasons: list[str] = Field(default_factory=list)
+    message: str | None = None
+
+
+class CoreCodeEvidence(BaseModel):
+    """Phase 7.6: the SOC coreCodes a Core contribution rests on."""
+
+    #: The term whose listing was read: the planned term when Rutgers has
+    #: published it, else the course's latest loaded offering (labelled).
+    term_code: str
+    basis: str                     # planned_term | latest_offering
+    codes: list[str] = Field(default_factory=list)
+    #: goal code -> listed in that term's coreCodes?
+    goals: dict[str, bool] = Field(default_factory=dict)
+
+
+class OfferingPattern(BaseModel):
+    """Phase 7.6: how often Rutgers offers the course, from loaded schedules."""
+
+    seasons: list[str] = Field(default_factory=list)       # regular seasons seen
+    only_season: str | None = None                          # "Fall" when only Fall
+    next_chance: str | None = None                          # the next same-season term
+    message: str | None = None
+
+
+class RecommendationTrace(BaseModel):
+    """Phase 7.6: why a course is recommended - every element structured.
+
+    A course fills requirement node(s) itself, or is the prerequisite or
+    co-requisite of a course that does (`unlocks_for`). Offering, prerequisite,
+    Core-code and restriction evidence and their sources are attached."""
+
+    requirements: list[TracedRequirement] = Field(default_factory=list)
+    unlocks_for: list[str] = Field(default_factory=list)
+    offering_kind: OfferingEvidenceKind
+    offering_term: str
+    prerequisite_state: EligibilityState
+    prerequisite_rules_term: str | None = None
+    core_codes: CoreCodeEvidence | None = None
+    restriction: RestrictionCheck | None = None
+    pattern: OfferingPattern | None = None
+    unlock_chain_depth: int = 0
+    sources: list[SourceLabel] = Field(default_factory=list)
+
+
 class PlannedCourse(BaseModel):
     course: str
     title: str
@@ -318,6 +401,9 @@ class PlannedCourse(BaseModel):
     #: requirement it counts toward has its status from the student's Degree
     #: Navigator audit, or that DN and CoursePilot disagree (NEEDS REVIEW).
     notes: list[str] = Field(default_factory=list)
+    #: Phase 7.6: the structured reason (requirement and its status source,
+    #: offering, prerequisite, Core codes, restrictions, provenance).
+    trace: RecommendationTrace | None = None
 
 
 class TermWorkload(BaseModel):
@@ -406,6 +492,54 @@ class PlacementBasis(BaseModel):
     source_url: str
 
 
+class DeclarationSource(BaseModel):
+    id: str
+    title: str
+    url: str
+    kind: str
+    retrieved_at: str
+
+
+class DeclarationRequirement(BaseModel):
+    """One published condition for declaring a major, with its citations."""
+
+    code: str
+    text: str
+    #: ids of `Declaration.sources` that state it (verbatim quotes on file)
+    sources: list[str] = Field(default_factory=list)
+    #: courses_min_grade only: course -> met | in_progress | below_minimum |
+    #: not_taken | unknown, read from the student's own record
+    courses: dict[str, str] = Field(default_factory=dict)
+    min_grade: str | None = None
+    #: met | not_met | in_progress | not_evaluated (a statement, not checkable)
+    status: str = "not_evaluated"
+
+
+class Declaration(BaseModel):
+    """Phase 7.6: a student planning toward a major they have not declared."""
+
+    status: str                    # undeclared
+    program_key: str
+    #: "Planning toward Computer Science B.S. (not yet declared)"
+    label: str
+    requirements: list[DeclarationRequirement] = Field(default_factory=list)
+    sources: list[DeclarationSource] = Field(default_factory=list)
+    #: Where the official sources disagree - shown, never resolved.
+    conflicts: list[str] = Field(default_factory=list)
+    #: Set when no official source CoursePilot holds states the requirements.
+    message: str | None = None
+
+
+class SchoolCoreStatus(BaseModel):
+    """Phase 7.6: which school Core applies, chosen by the program's school."""
+
+    school_code: str
+    #: encoded | unknown
+    status: str
+    requirement_sets: list[str] = Field(default_factory=list)
+    message: str
+
+
 class PlanResult(BaseModel):
     target: ScenarioTarget
     status: PlanStatus
@@ -417,6 +551,9 @@ class PlanResult(BaseModel):
     assumptions: list[ScenarioAssumption] = Field(default_factory=list)
     observations: list[PlanObservation] = Field(default_factory=list)
     metadata: PlanMetadata
+    #: Phase 7.6
+    school_core: SchoolCoreStatus | None = None
+    declaration: Declaration | None = None
 
     def canonical_json(self) -> str:
         """Byte-stable serialization (no timestamps exist in the model)."""
@@ -428,6 +565,9 @@ __all__ = ["CONSTRAINTS_SOURCE", "PLANNING_ENGINE_VERSION",
            "GraduationTarget", "OfferingEvidence", "OfferingEvidenceKind", "PlacementBasis",
            "PlanMetadata",
            "PlanResult", "PlanStatus", "Pace", "PlanObservation", "PlanTerm", "PlannedCourse",
-           "PlanningConstraints", "PlanningIssue",
+           "PlanningConstraints", "PlanningIssue", "CoreCodeEvidence", "Declaration",
+           "DeclarationRequirement", "DeclarationSource", "OfferingPattern",
+           "RecommendationTrace", "RestrictionCheck", "SchoolCoreStatus", "SourceLabel",
+           "TracedRequirement",
            "PrerequisiteEvidence", "Reason", "RequirementContribution", "RequirementProjection",
            "Severity"]
