@@ -88,6 +88,8 @@ export interface CurrentCourse {
   unavailable: { index_number: string; component: string }[];
   sections_available: number;
   confirmed_identities?: {term_code: string; course_string: string; section_number: string | null; index_number: string; supplement_code: string; source: string; confirmed_at: string}[];
+  /** Phase 7.4: a newer confirmed WebReg import of this term does not list it. */
+  not_on_latest_webreg?: boolean;
 }
 
 export interface CurrentSchedule {

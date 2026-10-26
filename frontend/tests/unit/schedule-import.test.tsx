@@ -7,7 +7,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { ImportedWeek, matchText } from "@/features/schedule/import-review";
+import { DroppedList, ImportedWeek, matchText, rowEffectText, WebRegExportSteps } from "@/features/schedule/import-review";
 import type { Registration, ScheduleImportRow } from "@/types/schedule-import";
 
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
@@ -60,5 +60,41 @@ describe("import review match labels", () => {
 
   it("an excluded row says so instead of a match state", () => {
     expect(matchText(row({ excluded: true, match_status: "NEEDS_CONFIRMATION" }))).toBe("Excluded by you");
+  });
+});
+
+
+describe("Phase 7.4: what confirming a WebReg import does to the record", () => {
+  it("shows the pre-selected section and every record effect before confirmation", () => {
+    expect(rowEffectText(row({ resolved_index: "91234", history_effect: "add_in_progress", section_effect: "add" })))
+      .toBe("Pre-selected: section 01, index 91234. Confirming adds it to your record as in progress and records this section as your current section.");
+    expect(rowEffectText(row({ resolved_index: "91234", history_effect: "already_in_progress", section_effect: "already_confirmed" })))
+      .toMatch(/already in progress on your record \(unchanged\) and this section is already your confirmed section/);
+    expect(rowEffectText(row({ resolved_index: "91234", history_effect: "planned_to_in_progress", section_effect: "replace" })))
+      .toMatch(/changes it from planned to in progress and replaces the section you confirmed before/);
+    expect(rowEffectText(row({ state: "metadata_unavailable", match_status: "NO_MATCH" }))).toBeNull();
+    expect(rowEffectText(row({ excluded: true, history_effect: "add_in_progress" }))).toBeNull();
+  });
+
+  it("names a completed-record conflict in words", () => {
+    expect(matchText(row({ state: "conflict", match_status: "NEEDS_CONFIRMATION", issues: ["RECORD_SAYS_COMPLETED"] })))
+      .toBe("Needs your review: your record shows this course COMPLETED in this term");
+  });
+
+  it("flags courses missing from a newer schedule and says nothing was removed", () => {
+    const t = text(renderToStaticMarkup(<DroppedList courses={[
+      { term_code: "20999", course_string: "01:999:202", section_number: "01", index_number: "95555", source: "webreg_import" }]} />));
+    expect(t).toContain("Not on your latest WebReg schedule - dropped?");
+    expect(t).toContain("01:999:202");
+    expect(t).toContain("CoursePilot removes nothing");
+    expect(renderToStaticMarkup(<DroppedList courses={[]} />)).toBe("");
+  });
+
+  it("gives the WebReg export steps with Chrome's own Save as PDF", () => {
+    const t = text(renderToStaticMarkup(<WebRegExportSteps />));
+    expect(t).toContain("View / Print Schedule");
+    expect(t).toContain("Save as PDF");
+    expect(t).toContain("not Microsoft Print to PDF");
+    expect(t).toMatch(/never asks for your NetID/);
   });
 });

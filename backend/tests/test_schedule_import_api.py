@@ -40,7 +40,7 @@ def _pdf():
 
 
 @requires_db
-async def test_stage_owner_confirm_idempotent_and_no_history_write(world, caplog):  # noqa: F811
+async def test_stage_owner_confirm_idempotent_and_an_unmatched_row_writes_no_history(world, caplog):  # noqa: F811
     app = _app()
     with _session() as session:
         before = session.scalar(select(func.count()).select_from(StudentCourse))

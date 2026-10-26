@@ -61,6 +61,9 @@ class CurrentCourse:
     unavailable: list[dict] = field(default_factory=list)
     sections_available: int = 0
     confirmed_identities: list[dict] = field(default_factory=list)
+    #: Phase 7.4: a newer confirmed WebReg import of this term does not list
+    #: this course - "not on your latest WebReg schedule - dropped?".
+    not_on_latest_webreg: bool = False
 
 
 @dataclass
@@ -118,6 +121,9 @@ def current_schedule(session: Session, student: Student) -> CurrentSchedule:
         )
     ):
         confirmations.setdefault(row.student_course_id, []).append(row)
+    from app.services.scheduling.imports import latest_import_courses
+
+    latest = latest_import_courses(session, student.id, term)
     out = []
     for sc, course in current:
         cands = by_course.get(course.course_string, [])
@@ -127,6 +133,7 @@ def current_schedule(session: Session, student: Student) -> CurrentSchedule:
             term_code=term,
             transcript_section=_hint(session, sc.id),
             sections_available=len({c.index_number for c in cands}),
+            not_on_latest_webreg=latest is not None and course.course_string not in latest,
         )
         for row in sorted(
             confirmations.get(sc.id, []), key=lambda r: (r.component, r.supplement_code)

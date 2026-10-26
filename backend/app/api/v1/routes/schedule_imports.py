@@ -41,10 +41,19 @@ class RowEdit(Version):
     index_number: str | None = Field(default=None, pattern=r"^\d{5}$")
     excluded: bool | None = None
     replace_existing: bool | None = None
+    #: Phase 7.4: keep a COMPLETED record for this course and term (writes no
+    #: history and no current section for the row).
+    keep_record: bool | None = None
 
 
-def detail(imp):
+def detail(imp, session=None):
     expired = imp.state == "extracted" and service.utc(imp.expires_at) <= datetime.now(UTC)
+    terms = sorted({r["term_code"] for r in imp.rows or []})
+    dropped = []
+    if session is not None and imp.state == "extracted" and not expired:
+        # Phase 7.4: confirmed courses this newer schedule does not list.
+        for term in terms:
+            dropped += service.possibly_dropped(session, imp.student_id, term, imp.rows)
     return {
         "id": str(imp.id),
         "state": "expired" if expired else imp.state,
@@ -53,6 +62,7 @@ def detail(imp):
         "parser_version": imp.parser_version,
         "rows": [] if expired else imp.rows,
         "ready": not expired and imp.state == "extracted" and service.ready(imp.rows),
+        "possibly_dropped": dropped,
     }
 
 
@@ -100,7 +110,8 @@ async def upload(
                 extractor=extractor,
                 max_bytes=get_settings().transcript_max_bytes,
                 now=datetime.now(UTC),
-            )
+            ),
+            session,
         ),
     )
 
@@ -140,7 +151,7 @@ async def read(
             if rows != imp.rows:
                 imp.rows = rows
                 imp.version += 1
-        return detail(imp)
+        return detail(imp, session)
 
     return await run_in_threadpool(run, principal.account_id, work)
 
@@ -155,7 +166,8 @@ async def edit(
     changes = body.model_dump(exclude_unset=True, exclude={"expected_version"})
     if any(
         changes.get(k, "present") is None
-        for k in ("term_code", "course_string", "section_number", "excluded", "replace_existing")
+        for k in ("term_code", "course_string", "section_number", "excluded", "replace_existing",
+                  "keep_record")
     ):
         raise HTTPException(422, detail="Required identity and review fields cannot be null.")
     if changes.get("section_number"):
@@ -171,7 +183,8 @@ async def edit(
                 changes,
                 expected_version=body.expected_version,
                 now=datetime.now(UTC),
-            )
+            ),
+            session,
         ),
     )
 
@@ -242,6 +255,8 @@ async def registrations(
             if ids
             else {}
         )
+        latest = {t: service.latest_import_courses(session, student.id, t)
+                  for t in {r.term_code for r in records}}
         valid = set()
         for record in records:
             pair = sections.get(record.section_id)
@@ -308,6 +323,10 @@ async def registrations(
                         normalized[r.id], index=r.index_number or ""
                     ).model_dump(mode="json"),
                     "metadata_state": "available" if r.id in valid else "unavailable",
+                    # Phase 7.4: confirmed earlier, missing from the newest
+                    # confirmed WebReg import of its term - never deleted.
+                    "on_latest_import": latest[r.term_code] is None
+                    or r.course_string in latest[r.term_code],
                     "normalized_meetings": [m.model_dump(mode="json") for m in normalized[r.id]],
                     "meetings": [
                         {

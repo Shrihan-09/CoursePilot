@@ -222,7 +222,9 @@ async def test_confirm_writes_history_and_status_and_is_idempotent(ob, storage, 
         assert {_req(done, n)["reconciliation"] for n in (1, 2)} == {"agrees"}
         with _session() as s:
             sources = set(s.scalars(select(TranscriptImport.source_document).join(
-                StudentCourse, StudentCourse.transcript_import_id == TranscriptImport.id)))
+                StudentCourse, StudentCourse.transcript_import_id == TranscriptImport.id)
+                .join(Student, Student.id == StudentCourse.student_id)
+                .where(Student.user_id == ob["account"])))
         assert sources == {"degree_navigator_audit"}
 
         again = await _confirm(ac, done)                      # same version: no-op

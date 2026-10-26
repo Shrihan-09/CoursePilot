@@ -65,7 +65,8 @@ def test_ambiguous_and_conflicting_matches_never_ready():
 
 def test_exact_index_carries_supplement_identity():
     section = SimpleNamespace(id=uuid.uuid4(), index_number="91234", section_number="01")
-    course = SimpleNamespace(course_string=ROW["course_string"], supplement_code="LB")
+    course = SimpleNamespace(id=uuid.uuid4(), course_string=ROW["course_string"],
+                             supplement_code="LB")
     row = service.resolve_row(FakeSession([(section, course)]), uuid.uuid4(), ROW)
     assert row["resolved_supplement"] == "LB" and row["resolved_index"] == "91234"
 
@@ -100,7 +101,8 @@ def test_upload_stages_only_and_retains_no_raw_text():
     assert [type(item) for item in session.added] == [ScheduleImport]
     assert "PRIVATE_CANARY_NAME" not in repr(imp.rows)
     assert imp.state == "extracted" and imp.rows[0]["extracted"] == ROW
-    # Explicit confirmation writes only registration identity, never StudentCourse.
+    # A row with no published section (metadata unavailable) writes only its
+    # registration identity on confirmation - no history, no current section.
     service.confirm(session, imp, expected_version=1, now=NOW)
     assert [type(item) for item in session.added] == [ScheduleImport, StudentRegistration]
     service.confirm(session, imp, expected_version=1, now=NOW)
@@ -141,3 +143,25 @@ def test_oversized_and_non_pdf_never_reach_extractor():
                 max_bytes=limit,
                 now=NOW,
             )
+
+
+def test_every_injected_schedule_failure_is_refused_or_blocked():
+    """scripts/inject_schedule_import_failures.py (Phase 7.4): no fault is accepted as is."""
+    import importlib.util
+    import pathlib
+
+    scripts = pathlib.Path(__file__).resolve().parents[2] / "scripts"
+    path = scripts / "inject_schedule_import_failures.py"
+    spec = importlib.util.spec_from_file_location("inject_schedule_import_failures", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    out = module.faults()
+    assert out["clean"] == "ACCEPTED 1 row(s)"
+    assert out["no_text_layer"].startswith("refused:")
+    assert out["run_together_columns"] == "refused: UNSUPPORTED_LAYOUT"
+    assert out["conflicting_ids"] == "refused: SCHEDULE_IDENTIFIERS_CONFLICT"
+    assert out["two_terms"] == "refused: SCHEDULE_TERM_AMBIGUOUS"
+    assert out["clean_row"].endswith("-> confirmable")
+    assert out["reused_index"].startswith("conflict ['IDENTIFIERS_DISAGREE'] section_id=None")
+    assert out["reused_index"].endswith("-> blocked")
+    assert out["missing_section"].endswith("identity only, no history or section")
