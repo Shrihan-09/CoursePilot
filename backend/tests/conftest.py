@@ -25,6 +25,12 @@ os.environ.setdefault("AUTH_PROVIDER", "dev")
 # 2025-12-01 is Fall 2025, so the next plannable term is Spring 2026.
 os.environ.setdefault("ACADEMIC_TODAY", "2025-12-01")
 
+# Every connection this test process opens must be to a *_test database
+# (task 1 incident: an unconfigured run wrote test rows into the dev DB).
+from app.db.test_db_guard import install as _install_test_db_guard  # noqa: E402
+
+_install_test_db_guard()
+
 
 @pytest.fixture
 def settings():

@@ -100,6 +100,20 @@ None of the 7 remaining partial B.S. plans is about science; each commits to one
 
 - Whether **`needs_reselection`** says enough to the student before Task 6 builds the choice UI.
 - The **37 reverted rows with no published prerequisite.** Their note *is* the only prerequisite statement. They are UNKNOWN now; enforcing them would need its own rule.
-- **Six fabricated `user_account` rows** were created in the dev database by an accidentally unscoped test run during this task. Nothing references them, and the backup predates them. They're left for you to delete or keep.
+- The six fabricated `user_account` rows are **deleted** from the dev database (see the follow-up below).
+
+## Follow-up commit: owner decisions
+
+- **Dev database cleaned.** The 6 fabricated `user_account` rows that an unscoped test run wrote are **deleted**; `user_account` went from 16 to 10. No account-linked student was touched, and the pre-task backup predates both the rows and the deletion.
+- **Test-database guard** (`app/db/test_db_guard.py`):
+  - Installed by the backend and ingestion conftests before any engine exists.
+  - It hooks SQLAlchemy's pool `connect` event, so it covers every engine in the test process: fixtures, the app's own sessions and scripts.
+  - It refuses, and closes, any PostgreSQL connection whose database name doesn't end in `_test`, with a message that names the database and the environment variables to set. SQLite test databases are allowed.
+  - `backend/tests/test_test_db_guard.py` (12 tests) covers the name rule, every driver connection shape, a real connection to the dev database refused before any statement, and a real connection to `coursepilot_test` allowed.
+- **Backlog** (`docs/NEXT_TASKS.md`):
+  - Major courses per term is **Task 2**: a default from the workload level (Light 1–2, Balanced 2–3, Semi-rigorous 3, Challenging 3–4), counting any course toward the major including required math and science, with a per-semester override. Not built here.
+  - Enforce the 37 section-note-only prerequisites (10 courses), labelled "from section note (Rutgers SOC)", with the same parse and unknown rules.
+- **No change:** the `needs_reselection` wording stays until Task 6.
+- **Suites with the guard:** backend 1,148 passed / 4 skipped (+12 guard tests); ingestion 1,085 passed / 1 skipped. No test connected to a non-`_test` database. The frontend is unchanged (97 passed).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
