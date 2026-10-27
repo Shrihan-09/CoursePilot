@@ -26,6 +26,7 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -33,7 +34,7 @@ from app.domain.course_ranking import CourseRankingEvidence
 from app.domain.scenario import ScenarioAssumption, ScenarioTarget
 
 #: Bumped whenever the same inputs could produce a different plan.
-PLANNING_ENGINE_VERSION = "7.6.0"   # 7.6: requirement-aware recommendations
+PLANNING_ENGINE_VERSION = "7.6.1"   # Commit to requirement alternatives
 
 
 class EligibilityState(StrEnum):
@@ -209,6 +210,9 @@ class PlanningConstraints(BaseModel):
     #: Phase 7.3: the term the student expects to graduate in; overrides the
     #: graduation target pace (On time / Early / No rush) when set.
     expected_graduation_term: str | None = Field(default=None, pattern=r"^\d{4}[0179]$")
+    #: Explicit student intent: requirement code -> selected child codes.
+    #: Omission requests a provisional recommendation. Task 6 owns UI storage.
+    alternative_selections: dict[str, list[str]] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _target_within_max(self) -> "PlanningConstraints":
@@ -462,6 +466,43 @@ class PlanObservation(BaseModel):
     details: dict = Field(default_factory=dict)
 
 
+class RequirementAlternative(BaseModel):
+    code: str
+    name: str
+    estimated_terms: int | None = None
+
+
+class AlternativeChoice(BaseModel):
+    """One one-of requirement's commitment in a plan (task 1).
+
+    `status`:
+      * undecided          - no student choice, and no alternative can be
+                             completed within the plan's horizon;
+      * planner_recommended - no student choice; `chosen` is the planner's
+                             recommendation (`recommendation_reason` says why);
+      * student_selected   - `chosen` is the student's explicit choice;
+      * needs_reselection  - the student's choice cannot be completed in this
+                             plan; it is HELD (never switched) and the student
+                             must choose again.
+    """
+
+    requirement_code: str
+    status: Literal["undecided", "planner_recommended", "student_selected",
+                    "needs_reselection"] = "planner_recommended"
+    #: What the plan commits to (and closes every competitor of).
+    chosen: list[RequirementAlternative]
+    #: The planner's recommendation, also when the student chose otherwise.
+    recommended: list[RequirementAlternative] = Field(default_factory=list)
+    recommendation_reason: str | None = None
+    #: The student's explicit choice (codes), as requested.
+    selected: list[str] = Field(default_factory=list)
+    #: Chosen codes that cannot be completed in this plan.
+    unavailable: list[str] = Field(default_factory=list)
+    alternatives: list[RequirementAlternative]
+    #: Planner recommendations replaced during construction (never a student's).
+    fallback_from: list[str] = Field(default_factory=list)
+
+
 class PlanMetadata(BaseModel):
     planning_engine_version: str = PLANNING_ENGINE_VERSION
     audit_engine_version: str
@@ -473,6 +514,7 @@ class PlanMetadata(BaseModel):
     academic_fingerprint: str
     rules_fingerprint: str
     offering_dataset: list[str]
+    alternative_choices: list[AlternativeChoice] = Field(default_factory=list)
 
 
 class GraduationTarget(BaseModel):

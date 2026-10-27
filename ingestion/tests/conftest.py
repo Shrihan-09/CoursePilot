@@ -23,8 +23,12 @@ import pathlib
 
 import pytest
 from app.db.base import Base
+from app.db.test_db_guard import install as _install_test_db_guard
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
+
+# Every connection must be to a *_test database (task 1 incident guard).
+_install_test_db_guard()
 
 FIXTURE_DIR = pathlib.Path(__file__).parent / "fixtures"
 SAMPLE = FIXTURE_DIR / "soc_courses_sample.json"

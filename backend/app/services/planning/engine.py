@@ -70,17 +70,14 @@ from app.domain.audit import DegreeAuditResult, RequirementResult, RequirementSt
 from app.domain.course_ranking import CourseRankingEvidence
 from app.domain.grades import Tri, earns_credit
 from app.domain.planning import (
+    AlternativeChoice,
     ConditionalDependency,
     CoreCodeEvidence,
-    OfferingPattern,
-    RecommendationTrace,
-    RestrictionCheck,
-    SourceLabel,
-    TracedRequirement,
     EligibilityState,
+    GraduationTarget,
     OfferingEvidence,
     OfferingEvidenceKind,
-    GraduationTarget,
+    OfferingPattern,
     Pace,
     PlacementBasis,
     PlanMetadata,
@@ -93,11 +90,15 @@ from app.domain.planning import (
     PlanTerm,
     PrerequisiteEvidence,
     Reason,
+    RecommendationTrace,
     RequirementContribution,
     RequirementProjection,
+    RestrictionCheck,
     Severity,
+    SourceLabel,
     Strategy,
     TermWorkload,
+    TracedRequirement,
     WorkloadEvidence,
 )
 from app.domain.prerequisites import ConcurrentReq, PrereqStatus, course_keys, from_json
@@ -135,6 +136,22 @@ from app.services.prerequisites import attempts_by_course
 
 LEAF_TYPES = ("course", "choose_n", "credits")
 
+
+class InvalidAlternativeSelection(ValueError):
+    """Student intent names a choice outside this requirement tree."""
+
+
+def _needs_reselection(choice) -> PlanningIssue:
+    names = ", ".join(a.name for a in choice.chosen if a.code in choice.unavailable) or \
+        ", ".join(a.name for a in choice.chosen)
+    return PlanningIssue(
+        severity=Severity.NEEDS_CONFIRMATION, code="ALTERNATIVE_NEEDS_RESELECTION",
+        requirement_code=choice.requirement_code,
+        message=(f"The alternative you chose ({names}) cannot be completed in this plan. "
+                 "Choose another - CoursePilot keeps your choice and does not switch it."),
+        details={"selected": choice.selected, "unavailable": choice.unavailable,
+                 "recommended": [a.code for a in choice.recommended]})
+
 #: Phase 7.3: regular (Fall/Spring) semesters from entry to graduation per
 #: graduation target. CoursePilot settings, not Rutgers policy.
 GRADUATION_SEMESTERS = {Pace.BALANCED: 8, Pace.FINISH_EARLIER: 7, Pace.LIGHTER: 10}
@@ -169,16 +186,12 @@ MET = (RequirementStatus.SATISFIED, RequirementStatus.PROVISIONALLY_SATISFIED)
 # --------------------------------------------------------------------------
 
 
-def active_leaves(results: list[RequirementResult]) -> list[RequirementResult]:
+def active_leaves(results: list[RequirementResult], choices=None) -> list[RequirementResult]:
     """Unmet leaf requirements, honouring alternatives.
 
-    An ANY_OF node that is not met plans only as many of its unmet children
-    as it still needs - the least-unmet first, then by code - instead of
-    every alternative. Phase 7.3: while NO alternative has any progress, all
-    stay open - the code order used to pick one blindly (the CS B.S. science
-    choice opened chemistry 159/160/171 just because "CHEM" sorts before
-    "PHYS", even where only physics was offered). The first course the plan
-    places then gives one alternative progress, and only it remains.
+    An ANY_OF opens only the number of children still needed. The planner
+    supplies persistent choices ranked by record progress and feasibility;
+    callers without a catalog use progress then deterministic code order.
     """
     out: list[RequirementResult] = []
 
@@ -193,8 +206,9 @@ def active_leaves(results: list[RequirementResult]) -> list[RequirementResult]:
             need = max((node.needed_count or 1) - sum(c.status in MET for c in children), 0)
             open_ = sorted((c for c in children if c.status not in MET),
                            key=lambda c: (-_progress_of(c), c.requirement_code))
-            started = any(_progress_of(c) > 0 for c in open_)
-            children = open_[:need] if started else open_
+            selected = (choices or {}).get(node.requirement_code)
+            children = ([c for c in open_ if c.requirement_code in selected][:need]
+                        if selected is not None else open_[:need])
         for child in children:
             walk(child)
 
@@ -313,6 +327,219 @@ def _walk(results):
 
 
 class PlanningEngine:
+    def _active(self, results):
+        return active_leaves(results, getattr(self, "alternative_choices", {}))
+
+    def _competing_courses(self, results):
+        blocked, chosen = set(), set()
+        inactive = self._inactive_requirements(self.alternative_choices)
+        for node in _walk(results):
+            selection = self.alternative_choices.get(node.requirement_code)
+            if selection is None:
+                continue
+            for child in node.children:
+                for leaf in _walk([child]):
+                    target = blocked if leaf.requirement_code in inactive else chosen
+                    target.update(self.pools.get(leaf.requirement_code, ()))
+        return blocked - chosen
+
+    def _alternative_terms(self, node, student, version, terms, planned):
+        """Estimate completion by replaying eligibility and projected audits.
+
+        This is branch-local lookahead, not a promise about the whole plan's
+        workload. Unknown rules never become feasible in the replay.
+        """
+        trial = dict(planned)
+        leaves = [n for n in _walk([node]) if n.requirement_type in LEAF_TYPES]
+        if any(n.status not in MET and not any(
+                self.offerings.terms.get(k) for k in self.pools.get(n.requirement_code, ()))
+               for n in leaves):
+            return None
+        keys = set().union(*(self.pools.get(n.requirement_code, set()) for n in leaves))
+        self._load_closure(keys)
+        # Every alternative of one choice starts from the same record, so one
+        # dependency planner (and its memo) serves them all.
+        available = frozenset(self.passed | set(self.in_progress) | set(trial))
+        deps = getattr(self, "_lookahead_deps", None)
+        dep = deps.get(available) if deps is not None else None
+        if dep is None:
+            dep = DependencyPlanner(self._expression_of, set(available),
+                                    plannable=self._plannable)
+            if deps is not None:
+                deps[available] = dep
+        dependencies = set()
+        for key in sorted(keys):
+            path = dep.path_for(key)
+            if path.feasible:
+                dependencies.update(path.courses)
+        keys |= dependencies
+        self._load_courses(keys)
+        for index, term in enumerate(terms, 1):
+            previous_size = len(trial)
+            pool = sorted(k for k in keys if k not in trial and k not in self.passed
+                          and k not in self.in_progress and k not in self.excluded)
+            if not pool:
+                break
+            evaluated = self._evaluate(student, pool, term, trial)
+            credits, count = Decimal(0), 0
+            for key in pool:
+                if key in trial or key not in self.course_info:
+                    continue
+                a, b, ev = evaluated[key]
+                if ev.kind not in PLACEABLE or b is None:
+                    continue
+                group = {key}
+                if b.status is not PrereqStatus.SATISFIED:
+                    if not _partner_may_help(b.corequisite):
+                        continue
+                    partner = self._partner(student, key, b, term, trial)
+                    if partner is None:
+                        continue
+                    group.add(partner)
+                proposed = frozenset(group)
+                group -= set(trial)
+                if any(self.course_info[k].credits is None or
+                       self._restriction(term, k).outcome == "not_satisfied" for k in group):
+                    continue
+                size = sum((self.course_info[k].credits for k in group), Decimal(0))
+                if (credits + size > self._caps()[1]
+                        or count + len(group) > self.constraints.max_courses_per_term):
+                    continue
+                checks = self._evaluate(student, sorted(group), term, trial, proposed)
+                if any(checks[k][1] is None or checks[k][1].status is not
+                       PrereqStatus.SATISFIED for k in group):
+                    continue
+                trial.update({k: term for k in group})
+                credits += size
+                count += len(group)
+            if len(trial) == previous_size:
+                continue
+            choices = dict(self.alternative_choices)
+            req = self.requirements[node.requirement_code]
+            parent = self.by_id_code.get(req.parent_id)
+            if parent:
+                choices[parent] = [node.requirement_code]
+            result = self._audit(student, version, trial, choices=choices)
+            projected = next(n for n in _walk(result.requirements)
+                             if n.requirement_code == node.requirement_code)
+            if projected.status in MET:
+                # Actual extra leaf progress respects allocation caps and sharing.
+                inside = {n.requirement_code for n in _walk([node])}
+                self._branch_benefit[node.requirement_code] = sum(
+                    max(Decimal(0), _progress_of(n) - self._record_progress.get(
+                        n.requirement_code, Decimal(0)))
+                    for n in _walk(result.requirements)
+                    if n.requirement_type in LEAF_TYPES and n.requirement_code not in inside)
+                return index
+        return None
+
+    def _estimate(self, child, student, version, terms, planned):
+        """`_alternative_terms`, cached for one `plan()` call: the key is every
+        input that can change it (the child, the planned courses, the choices
+        made so far), so a retry reuses only estimates that cannot differ."""
+        cache = getattr(self, "_alternative_cache", None)
+        if cache is None:
+            return self._alternative_terms(child, student, version, terms, planned)
+        key = (child.requirement_code, frozenset(planned.items()),
+               tuple(sorted((k, tuple(v)) for k, v in self.alternative_choices.items())))
+        if key not in cache:
+            self._branch_benefit.pop(child.requirement_code, None)
+            cost = self._alternative_terms(child, student, version, terms, planned)
+            cache[key] = (cost, self._branch_benefit.get(child.requirement_code))
+        cost, benefit = cache[key]
+        if benefit is not None:
+            self._branch_benefit[child.requirement_code] = benefit
+        return cost
+
+    def _choose_alternatives(self, current, student, version, terms, planned):
+        """Commit each one-of requirement to the children it needs.
+
+        A student's explicit choice is always held - never switched. If it
+        cannot be completed it is marked `needs_reselection` and the student
+        must choose again. Without a choice the planner recommends one feasible
+        alternative (`planner_recommended`), with the reason; with no feasible
+        alternative and no choice the requirement is `undecided`.
+        """
+        blocked = getattr(self, "_blocked_alternatives", set())
+        for node in _walk(current.requirements):
+            if node.requirement_type != "any_of":
+                continue
+            need = max((node.needed_count or 1) - sum(c.status in MET for c in node.children), 0)
+            costs = {c.requirement_code: (0 if c.status in MET else self._estimate(
+                c, student, version, terms, planned) if need else None) for c in node.children}
+            previous = self.alternative_choices.get(node.requirement_code, [])
+            requested = self.constraints.alternative_selections.get(node.requirement_code, [])
+            feasible = [c for c in node.children if c.status not in MET
+                        and costs.get(c.requirement_code) is not None
+                        and (node.requirement_code, c.requirement_code) not in blocked]
+            def rank(child, costs=costs, node=node):
+                # Initial audit progress is confirmed/provisional record progress.
+                started = self._record_progress.get(child.requirement_code, Decimal(0)) > 0
+                benefit = self._branch_benefit.get(child.requirement_code, Decimal(0))
+                order = self.requirements[child.requirement_code].sort_order
+                return (not started, costs[child.requirement_code], -benefit, order,
+                        next(i for i, c in enumerate(node.children) if c is child))
+            retained = [c for c in feasible if c.requirement_code in previous]
+            recommended = (retained + sorted([c for c in feasible if c not in retained],
+                                             key=rank))[:need]
+            reason = self._recommendation_reason(recommended, feasible, rank, costs)
+            met = [c for c in node.children if c.status in MET][:(node.needed_count or 1)]
+            if requested:
+                chosen = [c for c in node.children
+                          if c.requirement_code in requested and c not in met]
+                impossible = [c for c in chosen if c not in feasible]
+                status = "needs_reselection" if impossible else "student_selected"
+            elif recommended or not need:
+                chosen, impossible = recommended, []
+                status = "planner_recommended"
+            else:
+                # Nothing can be completed and nothing was chosen. One branch
+                # stays open so the plan can say why; it is never planned
+                # alongside another.
+                chosen = sorted(node.children, key=lambda c: (
+                    -self._record_progress.get(c.requirement_code, Decimal(0)),
+                    self.requirements[c.requirement_code].sort_order))[:need]
+                impossible = list(chosen)
+                status = "undecided"
+                reason = ("No alternative can be completed within this plan's horizon; "
+                          "choose one when your options change.")
+            selected = met + chosen
+            codes = [c.requirement_code for c in selected]
+            self.alternative_choices[node.requirement_code] = codes
+            def entry(c, costs=costs):
+                return {"code": c.requirement_code, "name": c.requirement_name,
+                        "estimated_terms": costs.get(c.requirement_code)}
+            self._choice_metadata[node.requirement_code] = {
+                "requirement_code": node.requirement_code,
+                "status": status,
+                "selected": requested,
+                "chosen": [entry(c) for c in selected],
+                "recommended": [entry(c) for c in recommended],
+                "recommendation_reason": reason,
+                "unavailable": [c.requirement_code for c in impossible],
+                "alternatives": [entry(c) for c in node.children if c not in selected],
+                "fallback_from": [code for code in previous if code not in codes]}
+
+    def _recommendation_reason(self, recommended, feasible, rank, costs) -> str | None:
+        """Why the planner recommends what it does, from the ranking it used."""
+        if not recommended:
+            return None
+        best = recommended[0]
+        key = rank(best)
+        names = ", ".join(c.requirement_name for c in recommended)
+        if not key[0]:
+            return f"Recommended {names}: you have already started it."
+        cost = costs[best.requirement_code]
+        ties = [c for c in feasible if c not in recommended and rank(c)[:2] == key[:2]]
+        terms = f"{cost} term{'s' if cost != 1 else ''}"
+        if not ties:
+            return f"Recommended {names}: it can be completed soonest (about {terms})."
+        if key[2] < 0 and all(rank(c)[2] > key[2] for c in ties):
+            return (f"Recommended {names}: as fast as the others (about {terms}) and its "
+                    "courses also count toward other requirements.")
+        return (f"Recommended {names}: as fast as the others (about {terms}); equally good "
+                "alternatives are offered in the catalog's order.")
+
     def __init__(self, session: Session, constraints: PlanningConstraints | None = None,
                  status_overlay=None) -> None:
         self.session = session
@@ -498,7 +725,12 @@ class PlanningEngine:
             return None         # prerequisites met by placement: nothing below it is needed
         if row.expression is None:
             return UNREADABLE
-        return from_json(row.expression)
+        expr = from_json(row.expression)
+        lists = (row.interpreted_conditions or {}).get("prerequisite_lists", ())
+        if lists:
+            from app.domain.prerequisites import AllOf, AnyOf, CourseReq
+            expr = AllOf((expr, *(AnyOf(tuple(CourseReq(k) for k in codes)) for codes in lists)))
+        return expr
 
     def _plannable(self, course: str) -> str | None:
         self._load_courses({course})
@@ -539,9 +771,23 @@ class PlanningEngine:
                                        credits_earned=None, credit_origin="rutgers"), course))
         return tuple(rows)
 
-    def _audit(self, student, version, planned) -> DegreeAuditResult:
+    def _inactive_requirements(self, selections):
+        excluded = set()
+        for code, requirement in self.requirements.items():
+            child = requirement
+            while child.parent_id in self.by_id_code:
+                parent_code = self.by_id_code[child.parent_id]
+                if parent_code in selections and child.code not in selections[parent_code]:
+                    excluded.add(code)
+                    break
+                child = self.requirements[parent_code]
+        return frozenset(excluded)
+
+    def _audit(self, student, version, planned, *, choices=None) -> DegreeAuditResult:
+        selections = self.alternative_choices if choices is None else choices
         return self.audit_engine.audit(student, program_version=version,
-                                       projected=self._projected(student, planned))
+                                       projected=self._projected(student, planned),
+                                       excluded_requirements=self._inactive_requirements(selections))
 
     def _hypothesis(self, planned: dict[str, str], term: str) -> list[Attempt]:
         """Planned-earlier and in-progress courses ASSUMED passed - for the
@@ -650,6 +896,71 @@ class PlanningEngine:
 
     def plan(self, student: Student, version: ProgramVersion, target: ScenarioTarget,
              start_term: str, assumptions: list[ScenarioAssumption]) -> PlanResult:
+        """Retry a stranded choice from the original record, without its courses.
+
+        Branch-local estimates do not include competition for whole-plan load.
+        If the constructed plan strands a branch (for example, its required
+        same-term partner was taken earlier), try an untried feasible branch.
+        Each retry closes a child, so the process is finite.
+        """
+        self._blocked_alternatives = set()
+        self._alternative_cache = {}
+        self._lookahead_deps = {}
+        fallbacks = defaultdict(list)
+        while True:
+            result = self._plan_once(student, version, target, start_term, assumptions)
+            nodes = {n.requirement_code: n for n in _walk(self._final_requirements)}
+            inactive = self._inactive_requirements(self.alternative_choices)
+            retry = False
+            for choice in result.metadata.alternative_choices:
+                node = nodes[choice.requirement_code]
+                if node.status in MET or node.requirement_code in inactive:
+                    continue
+                if choice.status == "student_selected":
+                    # The student's choice is held even when this plan strands
+                    # it - they choose again; CoursePilot does not switch it.
+                    choice.status = "needs_reselection"
+                    choice.unavailable = [a.code for a in choice.chosen
+                                          if nodes[a.code].status not in MET]
+                    result.issues.append(_needs_reselection(choice))
+                    continue
+                if choice.status != "planner_recommended":
+                    continue
+                original = self._initial_choices[choice.requirement_code]
+                times = {a["code"]: a["estimated_terms"]
+                         for a in original["chosen"] + original["alternatives"]}
+                available = [a for a in choice.alternatives if times.get(a.code) is not None
+                             and (choice.requirement_code, a.code)
+                             not in self._blocked_alternatives]
+                failed = [a.code for a in choice.chosen if nodes[a.code].status not in MET
+                          and (choice.requirement_code, a.code) not in self._blocked_alternatives]
+                if available and failed:
+                    for code in failed:
+                        self._blocked_alternatives.add((choice.requirement_code, code))
+                        fallbacks[choice.requirement_code].append(code)
+                    retry = True
+                    break
+            if retry:
+                continue
+            for choice in result.metadata.alternative_choices:
+                if fallbacks[choice.requirement_code]:
+                    choice.fallback_from = fallbacks[choice.requirement_code]
+                    choice.recommendation_reason = (
+                        f"{choice.recommendation_reason or 'Recommended.'} The first "
+                        "recommendation could not finish under this plan's load and "
+                        "eligibility constraints, so another alternative was recommended.")
+                    result.issues.append(PlanningIssue(
+                        severity=Severity.WARNING, code="ALTERNATIVE_REPLANNED",
+                        requirement_code=choice.requirement_code,
+                        message=("A sequence could not finish under this plan's load and "
+                                 "eligibility constraints. The plan was rebuilt with "
+                                 "another alternative."),
+                        details={"from": choice.fallback_from,
+                                 "to": [a.code for a in choice.chosen]}))
+            return result
+
+    def _plan_once(self, student: Student, version: ProgramVersion, target: ScenarioTarget,
+                   start_term: str, assumptions: list[ScenarioAssumption]) -> PlanResult:
         c = self.constraints
         self._load_static(version)
         self._history(student)
@@ -669,8 +980,21 @@ class PlanningEngine:
         cycles: dict[str, list[str]] = {}
 
         before = self.audit_engine.audit(student, program_version=version)
+        nodes = {n.requirement_code: n for n in _walk(before.requirements)}
+        for code, selection in c.alternative_selections.items():
+            node = nodes.get(code)
+            if (node is None or node.requirement_type != "any_of" or
+                    len(selection) != len(set(selection)) or not selection or
+                    len(selection) != (node.needed_count or 1) or
+                    not set(selection) <= {ch.requirement_code for ch in node.children}):
+                raise InvalidAlternativeSelection(f"Invalid alternative selection for {code}.")
         current = before
-        self._open_at_start = {leaf.requirement_code for leaf in active_leaves(before.requirements)}
+        self.alternative_choices = {}
+        self._choice_metadata = {}
+        self._branch_benefit = {}
+        self._record_progress = {n.requirement_code: _progress_of(n)
+                                 for n in _walk(before.requirements)}
+        self._open_at_start = {leaf.requirement_code for leaf in self._active(before.requirements)}
         graduation = self._graduation_target(start_term)
         if graduation is None:
             terms = planning_terms(start_term, c.max_terms, include_summer=c.include_summer,
@@ -688,11 +1012,17 @@ class PlanningEngine:
                              f"{label(start_term)}, the first semester planned. Plan from an "
                              "earlier semester or choose a later target."),
                     details={"graduation_term": graduation.term_code}))
+        self._choose_alternatives(current, student, version, terms, planned)
+        self._initial_choices = dict(self._choice_metadata)
+        self._open_at_start = {leaf.requirement_code for leaf in self._active(before.requirements)}
+        for choice in self._choice_metadata.values():
+            if choice["status"] == "needs_reselection":
+                issues.append(_needs_reselection(AlternativeChoice.model_validate(choice)))
         plan_terms: list[PlanTerm] = []
         empty_streak = 0
         stalled = False
         for term in terms:
-            if not active_leaves(current.requirements):
+            if not self._active(current.requirements):
                 break
             term_plan = PlanTerm(term_code=term, label=label(term))
             current = self._fill_term(student, version, term, term_plan, current, planned, info,
@@ -719,7 +1049,7 @@ class PlanningEngine:
                 term_plan.workload = self._term_workload(
                     term_plan.term_code, term_plan,
                     {pc.course: pc.role for pc in term_plan.courses})
-        remaining = active_leaves(final.requirements)
+        remaining = self._active(final.requirements)
         issues += self._diagnose(remaining, needs_confirmation, unplaceable, cycles,
                                  horizon=bool(remaining) and not stalled)
         issues += self._rule_issues(final)
@@ -769,12 +1099,13 @@ class PlanningEngine:
                            status_after=n.status.value)
                        for n in sorted(_walk(final.requirements), key=lambda n: n.requirement_code)
                        if n.requirement_type in LEAF_TYPES]
-        if not active_leaves(before.requirements):
+        if not self._active(before.requirements):
             status = PlanStatus.NOTHING_TO_PLAN
         elif not remaining:
             status = PlanStatus.COVERS_ALL_REQUIREMENTS
         else:
             status = PlanStatus.PARTIAL
+        self._final_requirements = final.requirements
         return PlanResult(
             target=target, status=status, terms=plan_terms,
             placement=self._placement_basis(student),
@@ -789,7 +1120,8 @@ class PlanningEngine:
                 audit_engine_version=AUDIT_ENGINE_VERSION, start_term=start_term, constraints=c,
                 academic_fingerprint=academic_fingerprint(self.session, student),
                 rules_fingerprint=rules_fingerprint(self.session, version.id),
-                offering_dataset=self.offerings.dataset_identity(self.session)))
+                offering_dataset=self.offerings.dataset_identity(self.session),
+                alternative_choices=list(self._choice_metadata.values())))
 
     # ---- one term --------------------------------------------------------
 
@@ -799,13 +1131,14 @@ class PlanningEngine:
         """Fill one term; returns the Degree Engine's result with the plan so far."""
         c = self.constraints
         before_planned = dict(planned)
-        leaves = active_leaves(current.requirements)
+        leaves = self._active(current.requirements)
+        competing = self._competing_courses(current.requirements)
         leaf_by_code = {leaf.requirement_code: leaf for leaf in leaves}
         serves: dict[str, list[str]] = defaultdict(list)
         for leaf in leaves:
             for key in sorted(self.pools.get(leaf.requirement_code, ())):
                 if key in self.passed or key in planned or key in self.in_progress \
-                        or key in self.excluded:
+                        or key in self.excluded or key in competing:
                     continue
                 serves[key].append(leaf.requirement_code)
         dependencies = sorted(k for k in dependency_targets
@@ -1039,7 +1372,7 @@ class PlanningEngine:
         weight_total = Decimal(0)
         latest = current
         score = progress(current, self.requirements)
-        open_codes = {leaf.requirement_code for leaf in active_leaves(current.requirements)}
+        open_codes = {leaf.requirement_code for leaf in self._active(current.requirements)}
         def place(key, companion_of: str | None = None) -> str:
             """Try one candidate (and its co-requisite partner): "placed", "skip"
             (this one does not fit) or "stop" (the term is full). A companion -
@@ -1108,7 +1441,7 @@ class PlanningEngine:
                 if after <= score and not is_dep and not pinned:
                     return "skip"
                 score, latest = max(after, score), result
-                open_codes = {leaf.requirement_code for leaf in active_leaves(result.requirements)}
+                open_codes = {leaf.requirement_code for leaf in self._active(result.requirements)}
             ranked_evidence = {g: ranking_evidence(g) for g in group if g in states}
             planned.update({g: term for g in group})
             credits += group_credits

@@ -217,6 +217,10 @@ def _check(key, term_code, offered, rows, history, placement=None,
                              row.raw_text or row.condition_note or row.section_condition_note
                              or ""))
     interpreted = row.interpreted_conditions
+    if interpreted and interpreted.get("prerequisite_lists"):
+        from app.domain.prerequisites import AllOf, CourseReq
+        expr = AllOf((expr, *(AnyOf(tuple(CourseReq(k) for k in codes))
+                             for codes in interpreted["prerequisite_lists"])))
     grade_condition = None
     # A math placement condition is decided below, never left uninterpreted.
     math_placement = is_math(key) and names_placement(interpreted)

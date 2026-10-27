@@ -1,8 +1,11 @@
 """Phase 7.6 failure injection: break requirement-aware recommendations on purpose.
 
 Each fault is a source edit applied in place, the Prompt 05 test suite is
-run, and the file is restored - whatever happens. A fault is DETECTED when at
-least one test fails. Same harness as scripts/inject_planning_failures.py.
+run, and the file is restored - whatever happens. A fault is DETECTED only
+when at least one test FAILS an assertion and no test ERRORS: a setup error
+(a database, a temp folder) proves nothing about the fault, so such a run is
+reported INVALID, never counted as detected. Each run gets a fresh --basetemp
+outside the repository, and tests use the TEST database explicitly.
 
 Usage:  python scripts/inject_recommendation_failures.py [fault-letter ...]
 """
@@ -11,8 +14,10 @@ from __future__ import annotations
 
 import os
 import pathlib
+import re
 import subprocess
 import sys
+import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PY = sys.executable
@@ -22,8 +27,34 @@ RANKING = "backend/app/services/planning/ranking.py"
 CANDIDATES = "backend/app/services/scheduling/candidates.py"
 DECLARATION = "backend/app/services/declaration.py"
 TESTS = ["ingestion/tests/test_requirement_aware_recommendations.py"]
+ALTERNATIVE_TESTS = ["ingestion/tests/test_science_alternatives.py",
+                     "backend/tests/test_requirement_alternatives.py"]
+
+TEST_DB = "postgresql+psycopg://coursepilot:coursepilot@localhost:5432/coursepilot_test"
+#: Faults judged by the generic alternatives suites (task 1).
+ALTERNATIVE_FAULTS = ("N", "O", "P", "Q", "R")
 
 FAULTS = {
+    "Q": ("an explicit student choice is ignored", [(ENGINE,
+          "            if requested:\n                chosen = [c for c in node.children",
+          "            if False:\n                chosen = [c for c in node.children")]),
+    "R": ("an unparseable prerequisite is treated as satisfied", [(
+          "backend/app/domain/prerequisites.py",
+          '            _add(out.unknown_reasons, f"unsupported:{e.reason}")\n'
+          "            return PrereqStatus.UNKNOWN",
+          '            _add(out.unknown_reasons, f"unsupported:{e.reason}")\n'
+          "            return PrereqStatus.SATISFIED")]),
+    "N": ("one-of opens all its competing children", [(ENGINE,
+          "            children = ([c for c in open_ if c.requirement_code in selected][:need]\n"
+          "                        if selected is not None else open_[:need])",
+          "            children = open_")]),
+    "O": ("already-started alternatives are ignored", [(ENGINE,
+          'started = self._record_progress.get(child.requirement_code, Decimal(0)) > 0',
+          'started = False')]),
+    "P": ("unsupported corequisite silently satisfied", [(
+          "backend/app/services/course_eligibility.py",
+          'return CorequisiteCheck(True, PrereqStatus.UNKNOWN, raw_text=row.raw_text,',
+          'return CorequisiteCheck(True, PrereqStatus.SATISFIED, raw_text=row.raw_text,')]),
     "A": ("a course every section of which is closed to the student is still planned", [(ENGINE,
           "                 and self.course_info[k].credits is not None\n"
           "                 and k not in restricted}",
@@ -70,7 +101,7 @@ FAULTS = {
 }
 
 
-def run(letter: str) -> tuple[bool, str]:
+def run(letter: str) -> tuple[bool | None, str]:
     name, edits = FAULTS[letter]
     originals: dict[pathlib.Path, str] = {}
     try:
@@ -81,15 +112,22 @@ def run(letter: str) -> tuple[bool, str]:
             if current.count(old) != 1:
                 return False, f"INJECTION FAILED: pattern not found exactly once in {rel}"
             path.write_text(current.replace(old, new), encoding="utf-8")
-        env = {k: v for k, v in os.environ.items()
-               if k not in ("DATABASE_URL", "DATABASE_URL_SYNC", "TEST_DATABASE_URL")}
-        proc = subprocess.run([PY, "-m", "pytest", *TESTS, "-q", "-p", "no:cacheprovider",
-                               "-rfE"], cwd=ROOT, capture_output=True, text=True, env=env)
+        env = {**os.environ, "DATABASE_URL": TEST_DB, "DATABASE_URL_SYNC": TEST_DB,
+               "TEST_DATABASE_URL": TEST_DB}
+        tests = ALTERNATIVE_TESTS if letter in ALTERNATIVE_FAULTS else TESTS
+        basetemp = pathlib.Path(tempfile.mkdtemp(prefix="cp-inject-")) / "t"
+        proc = subprocess.run([PY, "-m", "pytest", *tests, "-q", "-p", "no:cacheprovider",
+                               "-rfE", "--basetemp", str(basetemp)],
+                              cwd=ROOT, capture_output=True, text=True, env=env)
         lines = proc.stdout.strip().splitlines()
         tail = lines[-1] if lines else proc.stderr[-200:]
+        failed_n = int(m.group(1)) if (m := re.search(r"(\d+) failed", tail)) else 0
+        errors_n = int(m.group(1)) if (m := re.search(r"(\d+) errors?", tail)) else 0
         failed = sorted({ln.split("::")[-1].split(" ")[0] for ln in lines
-                         if ln.startswith(("FAILED", "ERROR"))})
-        return proc.returncode != 0, f"{tail} | {', '.join(failed[:8])}"
+                         if ln.startswith("FAILED")})
+        if errors_n:
+            return None, f"{tail} | setup errors - not evidence either way"
+        return failed_n > 0, f"{tail} | {', '.join(failed[:8])}"
     finally:
         for path, text in originals.items():
             path.write_text(text, encoding="utf-8")
@@ -97,13 +135,15 @@ def run(letter: str) -> tuple[bool, str]:
 
 def main() -> None:
     letters = sys.argv[1:] or list(FAULTS)
-    missed = 0
+    detected_n = invalid = 0
     for letter in letters:
         detected, detail = run(letter)
-        missed += not detected
-        print(f"{letter:3} {'DETECTED' if detected else 'MISSED  '} {FAULTS[letter][0]}\n"
-              f"    {detail}", flush=True)
-    print(f"{len(letters) - missed}/{len(letters)} detected")
+        verdict = "INVALID " if detected is None else "DETECTED" if detected else "MISSED  "
+        detected_n += detected is True
+        invalid += detected is None
+        print(f"{letter:3} {verdict} {FAULTS[letter][0]}\n    {detail}", flush=True)
+    print(f"{detected_n}/{len(letters)} detected by assertion failures"
+          + (f"; {invalid} INVALID (setup errors)" if invalid else ""))
 
 
 if __name__ == "__main__":

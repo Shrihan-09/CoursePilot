@@ -142,9 +142,13 @@ def test_core_needs_no_new_tables(pg_session, cs_payload_bytes: bytes) -> None:
 
     # "core" as a WORD of the table name: the Phase 6.4 table
     # `course_corequisite` contains the letters but is not a SAS Core table.
+    # Phase 7.6's `offering_core_code` is not one either: it stores the SOC
+    # FACT of which Core codes an offering carries (per term), not Core
+    # requirements - those still live in the Phase 3 requirement tables.
     import re
 
-    assert not any(re.search(r"(^|_)core($|_)", t) for t in tables), (
+    not_requirement_tables = {"offering_core_code"}
+    assert not any(re.search(r"(^|_)core($|_)", t) for t in tables - not_requirement_tables), (
         "Core should reuse requirement tables, not add its own"
     )
 

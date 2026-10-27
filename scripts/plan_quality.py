@@ -27,6 +27,8 @@ Set COURSEPILOT_PQ_ROOT to measure another checkout (the "before" numbers).
 
 from __future__ import annotations
 
+import json
+import os  # noqa: E402
 import pathlib
 import statistics
 import sys
@@ -34,19 +36,16 @@ import time
 import uuid
 from decimal import Decimal
 
-import os  # noqa: E402
-
 ROOT = pathlib.Path(os.environ.get("COURSEPILOT_PQ_ROOT")
                     or pathlib.Path(__file__).resolve().parent.parent)
 sys.path.insert(0, str(ROOT / "backend"))
-
-from sqlalchemy import select  # noqa: E402
 
 from app.db.session import get_sync_sessionmaker  # noqa: E402
 from app.domain.planning import Pace, PlanningConstraints, WorkloadLevel  # noqa: E402
 from app.models import Course, Student, StudentCourse  # noqa: E402
 from app.services.planning.service import generate_plan  # noqa: E402
 from app.services.scenarios import resolve_version  # noqa: E402
+from sqlalchemy import select  # noqa: E402
 
 PROGRAM = sys.argv[1] if len(sys.argv) > 1 else "sas-198-ba"
 START = "20271"
@@ -99,6 +98,40 @@ def alternatives(session, version) -> dict[str, tuple[str, str, int]]:
     return out
 
 
+def descendants(session, version) -> dict[str, set[str]]:
+    """requirement code -> itself and every requirement beneath it."""
+    from app.services.academic_context import composed_requirements
+
+    reqs = composed_requirements(session, version)
+    by_id = {r.id: r.code for r in reqs}
+    children: dict[str, set[str]] = {}
+    for r in reqs:
+        if r.parent_id in by_id:
+            children.setdefault(by_id[r.parent_id], set()).add(r.code)
+    out: dict[str, set[str]] = {}
+
+    def walk(code: str) -> set[str]:
+        if code not in out:
+            out[code] = {code}
+            for child in children.get(code, ()):
+                out[code] |= walk(child)
+        return out[code]
+
+    for r in reqs:
+        walk(r.code)
+    return out
+
+
+def inactive(plan, below) -> set[str]:
+    """Requirements under an alternative the plan did NOT choose: closed, not
+    'remaining' (task 1: unselected science sequences were counted as gaps)."""
+    out: set[str] = set()
+    for choice in plan.metadata.alternative_choices:
+        for alt in choice.alternatives:
+            out |= below.get(alt.code, {alt.code})
+    return out
+
+
 def awareness(plan, alts) -> tuple[int, int, int]:
     courses = [pc for t in plan.terms for pc in t.courses]
     planned = {pc.course for pc in courses}
@@ -121,7 +154,9 @@ def main() -> None:
     with get_sync_sessionmaker()() as session:
         version, _ = resolve_version(session, PROGRAM, "2026-2027")
         alts = alternatives(session, version)
+        below = descendants(session, version)
         rows = []
+        details = []
         for persona, history in PERSONAS.items():
             student = Student(external_ref=f"plan-quality-{uuid.uuid4().hex[:8]}", catalog_year="2026-2027",
                               program_version_id=version.id)
@@ -136,7 +171,15 @@ def main() -> None:
             for mode, cons in MODES.items():
                 t0 = time.perf_counter()
                 plan = generate_plan(session, student, start_term=START, constraints=cons)
-                ms = (time.perf_counter() - t0) * 1000
+                ms = (time.perf_counter() - t0) * 1000      # the plan only, not reporting
+                details.append({"persona": persona, "mode": mode,
+                    "status": plan.status.value,
+                    "remaining": [r.model_dump(mode="json") for r in plan.requirements
+                                  if r.status_after not in ("satisfied", "provisionally_satisfied")
+                                  and r.requirement_code not in inactive(plan, below)],
+                    "issues": [i.model_dump(mode="json") for i in plan.issues],
+                    "alternatives": [a.model_dump(mode="json")
+                                     for a in plan.metadata.alternative_choices]})
                 loads = [t.credits for t in plan.terms]
                 # A workload level states no target: its credit floor (16 for
                 # semi-rigorous) is the reference.
@@ -155,6 +198,9 @@ def main() -> None:
     print(" | ".join(head))
     for r in rows:
         print(" | ".join(str(x) for x in r))
+    if "--details" in sys.argv:
+        destination = pathlib.Path(sys.argv[sys.argv.index("--details") + 1])
+        destination.write_text(json.dumps(details, indent=2), encoding="utf-8")
 
 
 if __name__ == "__main__":

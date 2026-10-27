@@ -39,7 +39,7 @@ async def test_each_student_gets_a_plan_of_their_own_record(world) -> None:  # n
     assert a["target"]["program_key"] == world["keys"]["p1"]
     assert a["target"]["is_current_program"] is True
     assert a["metadata"]["academic_fingerprint"] != b["metadata"]["academic_fingerprint"]
-    assert a["metadata"]["planning_engine_version"] == "7.6.0"
+    assert a["metadata"]["planning_engine_version"] == "7.6.1"
 
 
 @requires_db

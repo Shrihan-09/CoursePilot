@@ -30,6 +30,13 @@ courses. Evaluation is then (prerequisite OR unknown): SATISFIED stays
 SATISFIED, and an unmet prerequisite becomes UNKNOWN - before 6.4 it was
 UNSATISFIED, which was wrong for a student placed by examination.
 
+Narrowing lists (parser 4) - "Prerequisite 01:160:159 or 01:160:161 or
+01:160:163" where the published prerequisite also allows 165 and two other
+campuses' courses. When every course the note names is one of the
+prerequisite's own courses, the note is enforced as an ADDITIONAL any-of
+(`prerequisite_lists`): it can only narrow eligibility. A list naming any
+course outside the prerequisite is not interpreted.
+
 ## Everything else
 
 Permission-only, program restrictions, GPA conditions, co-requisites (read by
@@ -45,7 +52,7 @@ from collections.abc import Callable
 
 from app.domain.prerequisites import _CONDITION_KINDS
 
-CONDITION_PARSER_VERSION = "2"
+CONDITION_PARSER_VERSION = "4"
 
 Resolve = Callable[[str, str], str | None]
 
@@ -223,6 +230,7 @@ def interpret(texts: list[str], expression_courses: set[str], resolve: Resolve) 
     alternatives: list[dict] = []
     uninterpreted: set[str] = set()
     corequisite_clauses = 0
+    prerequisite_lists: list[list[str]] = []
     for text in texts:
         for clause in clauses(text):
             marker = COREQ_MARKER.search(clause)
@@ -244,11 +252,27 @@ def interpret(texts: list[str], expression_courses: set[str], resolve: Resolve) 
                 if alt["kinds"]:
                     alternatives.append(alt)
                 continue
+            # A plain OR-list naming FEWER of the published prerequisite's own
+            # courses narrows it (01:160:171: "Prerequisite 01:160:159 or
+            # 01:160:161 or 01:160:163"): enforced as an extra any-of. Only
+            # when EVERY course it names is inside the published prerequisite
+            # - a list naming another course is a different condition, left
+            # uninterpreted (capping SATISFIED at UNKNOWN), never enforced.
+            match = _RESTATEMENT.fullmatch(clause)
+            if match and re.fullmatch(
+                    r"(?:\d{2}:)?\d{3}:\d{3}(?:\s+OR\s+(?:\d{2}:)?\d{3}:\d{3})*",
+                    match.group("body"), re.I):
+                codes, complete = course_codes(match.group("body"), resolve)
+                if complete and codes and set(codes) <= expression_courses:
+                    prerequisite_lists.append(sorted(set(codes)))
+                    continue
             kinds = [k for k, p in _CONDITION_KINDS if p.search(clause)] or ["other"]
             uninterpreted.update(kinds)
     out: dict = {"parser_version": CONDITION_PARSER_VERSION, "minimum_grade": None,
                  "alternatives": alternatives, "uninterpreted": sorted(uninterpreted),
                  "corequisite_clauses": corequisite_clauses}
+    if prerequisite_lists:
+        out["prerequisite_lists"] = prerequisite_lists
     if minimum:
         grades = {m["grade"] for m in minimum}
         if len(grades) > 1:

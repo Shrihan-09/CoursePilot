@@ -59,3 +59,6 @@ docker-compose.override.yml
 data/private/
 *.har
 *state*.json
+
+# Local working output (test runs, previews, probes). Never committed; PR bodies live in docs/pr/.
+scratchpad/
