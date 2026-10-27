@@ -40,6 +40,10 @@ from app.api.v1.routes.scenarios import _translate
 from app.api.v1.routes.student import _resolve, _unlinked
 from app.db.session import get_sync_sessionmaker
 from app.domain.planning import CONSTRAINTS_SOURCE, PlanningConstraints, PlanResult
+from app.domain.planning_profile import to_constraints
+from app.services.planning.engine import InvalidAlternativeSelection
+from app.services.planning.profile import get_profile, profile_input
+from app.services.planning.readiness import READY_STATES, readiness
 from app.services.planning.saved import (
     SavedPlan,
     current_plan,
@@ -47,9 +51,6 @@ from app.services.planning.saved import (
     planning_context,
     save_plan,
 )
-from app.domain.planning_profile import to_constraints
-from app.services.planning.profile import get_profile, profile_input
-from app.services.planning.readiness import READY_STATES, readiness
 from app.services.planning.service import InvalidStartTerm, generate_plan
 from app.services.planning.terms import label as term_label
 from app.services.scenarios import (
@@ -96,7 +97,7 @@ async def generate(
     started = time.perf_counter()
     try:
         outcome = await run_in_threadpool(_generate, principal.account_id, body)
-    except InvalidStartTerm as exc:
+    except (InvalidStartTerm, InvalidAlternativeSelection) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from None
     except (ProgramNotFound, CatalogYearUnavailable, ProgramNotEvaluable,
             ProgramChoiceRequired) as exc:
@@ -279,7 +280,7 @@ async def save(body: SavePlanRequest,
         out = await run_in_threadpool(work)
     except HTTPException:
         raise
-    except InvalidStartTerm as exc:
+    except (InvalidStartTerm, InvalidAlternativeSelection) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from None
     except (ProgramNotFound, CatalogYearUnavailable, ProgramNotEvaluable,
             ProgramChoiceRequired) as exc:

@@ -1025,6 +1025,7 @@ class DegreeAuditEngine:
         statuses: frozenset[str] | None = None,
         program_version: ProgramVersion | None = None,
         projected: tuple = (),
+        excluded_requirements: frozenset[str] = frozenset(),
     ) -> DegreeAuditResult:
         """Evaluate a student's degree progress.
 
@@ -1146,6 +1147,12 @@ class DegreeAuditEngine:
         eligibility, option_categories = self._load_eligibility(
             [r.id for r in requirements]
         )
+        # A planning scenario can close competing requirement alternatives.
+        # Restrict allocation edges only; course credit and sharing rules are
+        # unchanged. Ordinary degree audits omit this input.
+        if excluded_requirements:
+            eligibility = {course: codes - excluded_requirements
+                           for course, codes in eligibility.items()}
 
         # Program-level rules are loaded BEFORE candidates, because an
         # exclusion rule changes which credits count toward the degree.

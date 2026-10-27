@@ -54,6 +54,8 @@ back. A caller that requires optimality can refuse to use an inexact result.
 
 from __future__ import annotations
 
+import threading
+from collections import OrderedDict
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from fractions import Fraction
@@ -132,6 +134,11 @@ class Assignment:
 @dataclass(frozen=True, slots=True)
 class CandidateAllocation:
     assignments: tuple[Assignment, ...] = ()
+    #: The search's own incremental answer to `satisfied(problem)` for the
+    #: component it was built in (task 1 speed fix). Not part of equality or
+    #: ordering; `satisfied` falls back to a full scan when it is absent or
+    #: the problem differs.
+    _satisfied: tuple | None = field(default=None, compare=False, repr=False)
 
     @property
     def filled_slots(self) -> int:
@@ -155,14 +162,23 @@ class CandidateAllocation:
         not attempt grades, exclusions, credits or group propagation - those
         stay in the evaluator, which sees the allocation afterwards.
         """
+        if self._satisfied is not None and self._satisfied[0] is problem:
+            return self._satisfied[1]
+        # One pass over the assignments, not one per requirement.
+        counts: dict[str, int] = {}
+        categories: dict[str, set[str]] = {}
+        for a in self.assignments:
+            counts[a.requirement_code] = counts.get(a.requirement_code, 0) + 1
+            if a.category:
+                categories.setdefault(a.requirement_code, set()).add(a.category)
         done = set()
         for req in problem.requirements:
             if req.needed_count <= 0:
                 continue
-            if len(self.courses_for(req.code)) < req.needed_count:
+            if counts.get(req.code, 0) < req.needed_count:
                 continue
             if req.needed_categories and (
-                len(set(self.categories_for(req.code))) < req.needed_categories
+                len(categories.get(req.code, ())) < req.needed_categories
             ):
                 continue
             done.add(req.code)
@@ -482,6 +498,18 @@ def _solve_component(
     # dominated the runtime; this is a constant-factor change with no effect
     # on which allocations are explored.
     held: dict[str, int] = dict.fromkeys(capacity, 0)
+    # Satisfaction, maintained the same way (task 1 speed fix): category
+    # multiplicity per requirement and the set of requirements whose threshold
+    # is met. The leaf hands this to `satisfied` instead of rescanning the
+    # allocation once per requirement per objective component - the measured
+    # hot spot (over 80% of plan generation). Same allocations, same scores.
+    needed_categories = {r.code: r.needed_categories for r in problem.requirements}
+    category_counts: dict[str, dict[str, int]] = {r.code: {} for r in problem.requirements}
+    done: set[str] = set()
+
+    def meets(code: str) -> bool:
+        return (capacity[code] > 0 and held[code] >= capacity[code]
+                and len(category_counts[code]) >= needed_categories[code])
 
     def recurse(index: int, chosen: list[Assignment]) -> None:
         nonlocal best_score, best, states, exact
@@ -494,7 +522,7 @@ def _solve_component(
         if index == len(slots):
             # `chosen` is already in canonical order: slots are iterated
             # sorted by (course, system) and appended in that order.
-            allocation = CandidateAllocation(tuple(chosen))
+            allocation = CandidateAllocation(tuple(chosen), (problem, frozenset(done)))
             score = objective(allocation, problem, context)
             if best_score is None or score > best_score or (
                 score == best_score
@@ -515,15 +543,77 @@ def _solve_component(
             if held[code] >= capacity[code]:
                 continue
             held[code] += 1
+            if category:
+                counts = category_counts[code]
+                counts[category] = counts.get(category, 0) + 1
+            was_done = code in done
+            if meets(code):
+                done.add(code)
             chosen.append(Assignment(key[0], code, category))
             recurse(index + 1, chosen)
             chosen.pop()
             held[code] -= 1
+            if category:
+                counts = category_counts[code]
+                counts[category] -= 1
+                if not counts[category]:
+                    del counts[category]
+            if not was_done:
+                done.discard(code)
             if not exact:
                 return
 
     recurse(0, [])
     return best, exact, states
+
+
+# --------------------------------------------------------------------------
+# component memo (task 1 speed fix)
+# --------------------------------------------------------------------------
+
+#: A component solve is a pure function of: its requirements (code, need,
+#: categories), its courses and their NATURAL order, the sharing flag, the
+#: objective, the bound and the part of the baseline it can see. The planner
+#: re-audits after every tentative placement, and a placement changes only the
+#: component its course touches - so the other components repeat exactly.
+#: Keyed on all of those inputs; a hit returns the identical allocation.
+_MEMO_SIZE = 4096
+_memo: OrderedDict = OrderedDict()
+_memo_lock = threading.Lock()
+
+
+def _component_key(part: AllocationProblem, objective: GlobalAllocationObjective,
+                   context: ObjectiveContext, bound: int) -> tuple:
+    codes = frozenset(r.code for r in part.requirements)
+    return (
+        tuple((r.code, r.system, r.sort_key, r.needed_count, r.needed_categories,
+               tuple(sorted((c, tuple(sorted(cats))) for c, cats in r.categories.items())))
+              for r in part.requirements),
+        tuple((c, part.order_of(c)) for c in part.course_keys),
+        part.share_across_systems,
+        objective,
+        frozenset(context.baseline_satisfied & codes),
+        bound,
+    )
+
+
+def _solve_memoized(part, objective, context, bound):
+    try:
+        key = _component_key(part, objective, context, bound)
+        hash(key)
+    except TypeError:                     # an unhashable natural key: just solve
+        return _solve_component(part, objective, context, bound)
+    with _memo_lock:
+        hit = _memo.get(key)
+        if hit is not None:
+            _memo.move_to_end(key)
+            return hit
+    result = _solve_component(part, objective, context, bound)
+    with _memo_lock:
+        _memo[key] = result
+        while len(_memo) > _MEMO_SIZE:
+            _memo.popitem(last=False)
+    return result
 
 
 def optimize(
@@ -551,7 +641,7 @@ def optimize(
     fallbacks: list[str] = []
 
     for part in parts:
-        allocation, exact, states = _solve_component(part, objective, context, bound)
+        allocation, exact, states = _solve_memoized(part, objective, context, bound)
         total_states += states
         if not exact:
             fallbacks.append(",".join(sorted(r.code for r in part.requirements)))

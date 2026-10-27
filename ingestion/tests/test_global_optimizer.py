@@ -535,3 +535,49 @@ def test_engine_uses_the_optimizer_but_never_the_oracle() -> None:
     source = inspect.getsource(engine)
     assert "optimizer" in source
     assert "oracle" not in source
+
+
+# --------------------------------------------------------------------------
+# task 1 speed fix: incremental satisfaction and the component memo are exact
+# --------------------------------------------------------------------------
+
+
+def _random_problem(rng, n_req, n_course):
+    from app.services.audit.optimizer import AllocationProblem, RequirementSpec
+
+    courses = [f"c{i}" for i in range(n_course)]
+    reqs = []
+    for r in range(n_req):
+        cats = {}
+        for c in rng.sample(courses, rng.randint(1, n_course)):
+            cats[c] = frozenset(rng.sample(["x", "y", "z"], rng.randint(0, 2)))
+        reqs.append(RequirementSpec(code=f"R{r}", system=rng.choice(["major", "core"]),
+                                    needed_count=rng.randint(1, 3),
+                                    needed_categories=rng.randint(0, 2), categories=cats,
+                                    sort_key=(r,)))
+    return AllocationProblem(requirements=tuple(reqs), course_keys=tuple(courses),
+                             share_across_systems=rng.random() < 0.5)
+
+
+def test_incremental_satisfaction_equals_a_full_scan_and_the_memo_is_identical():
+    import random
+
+    from app.services.audit import optimizer as opt
+
+    rng = random.Random(20261027)
+    for _ in range(60):
+        problem = _random_problem(rng, rng.randint(1, 4), rng.randint(1, 5))
+        context = opt.ObjectiveContext(baseline_satisfied=frozenset(
+            r.code for r in problem.requirements if rng.random() < 0.3))
+        for part in opt.decompose(problem):
+            best, _, _ = opt._solve_component(part, opt.DEFAULT_OBJECTIVE, context, 10**6)
+            assert best._satisfied is not None
+            # The search's incremental answer equals the definition (a full scan).
+            assert best.satisfied(part) == opt.CandidateAllocation(best.assignments).satisfied(part)
+        opt._memo.clear()
+        first = opt.optimize(problem, opt.DEFAULT_OBJECTIVE, context)
+        again = opt.optimize(problem, opt.DEFAULT_OBJECTIVE, context)       # memo hit
+        opt._memo.clear()
+        fresh = opt.optimize(problem, opt.DEFAULT_OBJECTIVE, context)
+        assert first.allocation == again.allocation == fresh.allocation
+        assert first.exact == again.exact == fresh.exact
