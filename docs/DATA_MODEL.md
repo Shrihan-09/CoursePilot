@@ -10295,18 +10295,24 @@ taken with its lecture counts once.
 | Semi-rigorous | 3 |
 | Challenging | 3-4 |
 
-**Fill order** (Prompt 09 §4):
+**Fill order** (`MULTI_BEFORE_MAJOR = False`, decided in the Task 2 review):
 
 1. **Anchors.** Needed retakes, then pins. They count toward the range and
    are never dropped.
-2. **Multi-requirement courses.** One that also counts toward the major
-   comes first. A course that fills only other requirements (two Core goals)
-   is placed only while room remains for the term's major-related minimum:
-   its slot, credits and workload are reserved. Once the major courses are
-   placed, it gets any room left.
-3. **Major-related courses**, in rank order, up to the maximum: a
-   prerequisite, a long chain or a one-season course first.
+2. **Major-related courses**, in rank order, up to the maximum: a
+   prerequisite, a long chain or a one-season course first. One that also
+   fills another requirement keeps the "counts twice" role.
+3. **Other multi-requirement courses** (two Core goals).
 4. **Fillers.**
+
+`True` is Prompt 09 §4 as written: double-counters first, keeping room for
+the major-related minimum. On B.S. plans it put 29% of terms in range,
+against 50%.
+
+**No stranded final term.** A last term at most half its credit floor is
+moved into earlier terms. This is the existing all-or-nothing compression:
+it runs within the smallest credit cap among those terms, and nothing else
+moves. A course whose prerequisite is in the term before stays where it is.
 
 Three things can take a term past the range, and each is noted on the term:
 
@@ -10345,20 +10351,23 @@ order, and the term says which one did:
    choice: keep the minimum, or lower this semester's minimum.
 
 The credit maximum and the course limit never give way. A term still under
-the floor (nothing eligible) lists that under `shortfalls`.
+the floor (nothing eligible) lists that under `shortfalls`. When
+commitments would take the budget below the floor, the plan says so once
+(`COMMITMENTS_VS_CREDIT_MINIMUM`): "Light + your commitments don't fit a
+12-credit minimum; consider lowering commitments, the minimum, or adding a
+term."
 
 ### 54.3 Honors and admission-required courses (Prompt 09 §1.2)
 
-A course is **honors-only** when either is true:
+A course is **honors-only**, a hard block, only on SOC data: every section
+of the term carries only `honorPrograms` restriction entries. A term with no
+published sections is judged on the latest loaded term.
 
-- its catalog title names an honors course (`\bHONORS?\b`: "COMPUTER
-  SCIENCE HONORS CAPSTONE PROGRAM", "SENIOR HONORS THESIS", "HONORS GENERAL
-  CHEM"). 01:198:495/496 have no sections and no restriction rows in any
-  loaded term, so the title is the only evidence;
-- every section of the term carries only SOC `honorPrograms` restriction
-  entries.
-
-A term with no published sections is judged on the latest loaded term.
+A course whose catalog title names an honors course (`\bHONORS?\b`:
+01:160:163/164 "HONORS GENERAL CHEM", 01:198:495/496) but has no such SOC
+data stays **plannable**. It carries a needs-confirmation note ("may require
+an honors program or permission") and the issue
+`HONORS_TITLE_NEEDS_CONFIRMATION` (Task 2 review).
 
 - If `honors` is not `true`, an honors-only course is never planned, a pin
   on one is refused with that reason, and a course the major needs gets

@@ -52,11 +52,12 @@ MAJOR_RANGE: dict[WorkloadLevel, tuple[int, int]] = {
 GREEK_HOURS: dict[GreekLife, int] = {GreekLife.NONE: 0, GreekLife.RUSHING: 6,
                                      GreekLife.NEW_MEMBER: 10, GreekLife.ACTIVE: 4}
 CLUB_HOURS: dict[ClubLoad, int] = {ClubLoad.NONE: 0, ClubLoad.LIGHT: 3, ClubLoad.HEAVY: 8}
-#: Prompt 09 s4 fill order: courses filling 2+ requirements BEFORE the
-#: major-related courses (keeping room for the major minimum). False puts
-#: every major-related course first and other double-counters after them -
-#: measured in the Task 2 PR; the owner decides.
-MULTI_BEFORE_MAJOR = True
+#: Fill order. False (decided 2026-11-02, Task 2 review): every
+#: major-related course first - a double-counter among them keeps its role -
+#: and other double-counters after them. True is Prompt 09 s4 as written
+#: (double-counters first, room kept for the major minimum); it put fewer
+#: terms in the major-related range (B.S. 29% vs 50%, Task 2 PR).
+MULTI_BEFORE_MAJOR = False
 #: Weekly hours of class and study per workload point (credit).
 HOURS_PER_POINT = 3
 #: Weekly hours a student has for school before any commitment.

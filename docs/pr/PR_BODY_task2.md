@@ -12,7 +12,7 @@ Branch `feature/task2-planning-questionnaire` → `main`, built on main after Ta
 | §2 Questionnaire: 12 topics, skippable, onboarding + Plan page, per semester | level and filler questions only | all 12 except "avoid bus-heavy days"; "Clear my answers" |
 | §3 Hours baseline → budget; "your rush semester…" note; floor vs budget conflict | not built (`WORKLOAD_VS_GRADUATION_TARGET` documented, never implemented) | built, plus the pace/level conflict warning |
 | §3 Fixed blocks as blocked time in the schedule engine | before/after times, days off | + job/club/… blocks; honors-only sections; preferred campuses |
-| §4 Fill order | anchors → multi → ONE major-subject course → fillers | retakes → pins → multi (room kept for the major minimum) → major-related up to the range → fillers; **see decision 1** |
+| §4 Fill order | anchors → multi → ONE major-subject course → fillers | retakes → pins → major-related up to the range → other multi → fillers (decided in review; see the follow-up below) |
 | §5 Per term: totals, role badges, "Why this fits you", shortfalls | totals, role text, notes | all four |
 | §6 Tests, scenarios, wording grep, plan_quality, three-profile preview | – | all; below |
 
@@ -196,10 +196,37 @@ Not quoted here: the preview is built from your real record. The three plans, si
    - **I recommend flipping it;** I left the spec's order as the default because it's your spec.
 2. **Hard credit floor vs. a light finish.** Once a student's Core is done, keeping the minimum means extra major electives: more major-related courses than the range, and over the budget. Each is noted, with `CREDIT_FLOOR_OVER_BUDGET`. The STOP report shows where this hits your own plan.
 3. **Hour mappings** (Greek 6/10/4, clubs 3/8, job bands 8/15/25, 60-hour baseline, 1 point per 3 hours) are my proposal. They're all in one table.
-4. **Skipped honors = no.** That excludes every HONORS-titled course and every honors-only section. An honors student must answer yes.
+4. **Skipped honors = no.** That excludes courses whose SOC sections are all honors-only. Title-only honors courses stay plannable with a needs-confirmation note (see the follow-up below).
 5. **Not built:**
    - "Avoid bus-heavy days": the schedule engine reports campus changes but doesn't rank on them.
    - "Never above the school's max without overload": CoursePilot doesn't model Rutgers credit-load rules. Max is capped at 24, and the disclaimer stays.
    - The fit line doesn't mention schedule-shape answers ("no Friday classes"): those shape schedules, not plans.
+
+## Follow-up commit: review decisions
+
+1. **`MULTI_BEFORE_MAJOR = False`.** The fill order is now:
+   1. anchors;
+   2. major-related courses (a major course that also fills Core keeps "counts twice");
+   3. other double-counters;
+   4. fillers.
+
+   The fill-order test is updated, and a test pins the setting.
+2. **No stranded final term.** At a workload level, the existing all-or-nothing compression now folds a last term of at most half its credit floor into earlier terms. It runs within their credit caps, and nothing else moves. Your Profile B now ends in Fall 2028 (4 terms of 12–14 credits) instead of a 4-credit Spring 2029.
+   - **New message:** when commitments would push the budget below the credit floor, the plan says so once (`COMMITMENTS_VS_CREDIT_MINIMUM`): "Light + your commitments don't fit a 12-credit minimum; consider lowering commitments, the minimum, or adding a term."
+3. **Honors.**
+   - **Hard block:** only when SOC honors restriction data exists.
+   - **Title-only matches** (e.g. 01:160:163/164 "HONORS GENERAL CHEM", 01:198:495/496): stay plannable, with the note "Needs confirmation: may require an honors program or permission." and `HONORS_TITLE_NEEDS_CONFIRMATION`.
+   - **Tests:** a new test covers this. Injection fault L now removes that flag.
+4. **`docs/NEXT_TASKS.md`:**
+   - a new task: spread plans to the graduation target unless pace = Early, plus the cited SAS 120-credit total with a cumulative credit count per plan;
+   - backlog entries for bus-heavy days and overload credit rules.
+
+**Tests**, run once at the end on the final code (affected tests only while working):
+
+- backend: **1,191 passed**, 4 skipped;
+- ingestion: **1,108 passed**, 1 skipped;
+- frontend: **107 passed**, `tsc` clean.
+
+**Not re-run:** plan_quality and failure injection, per your instructions. Fault L's pattern was updated to the new code but not executed.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

@@ -51,3 +51,35 @@ Done means:
 - `scripts/reparse_conditions.py` dry run first, backup before applying, and
   a report of every changed row; tests for an enforced note, a note on some
   sections only, and an uninterpretable note.
+
+## Spread plans to the graduation target, and model the 120-credit degree total
+
+Decided 2026-11-02 in the Task 2 review; a new task, not built. Today a plan
+fills each term to its level and finishes as soon as the requirements are
+met. The owner's Semi-rigorous preview ends in Spring 2028, a year before its
+Spring 2029 target. There is also no total-credit requirement.
+
+Done means:
+
+- unless pace = Early, a plan spreads its courses to the graduation target
+  instead of finishing early. It still never goes past the target, and never
+  below a term's credit minimum;
+- the SAS 120-credit degree total is modelled as a requirement, citing the
+  catalog page that states it (with retrieval date and archive hash, like
+  the declaration sources);
+- every plan shows a cumulative credit count per term (record + planned) and
+  the total against 120.
+
+## Backlog: schedule and credit-load rules (from Prompt 09)
+
+- **Bus-heavy days.** Prompt 09's "avoid bus-heavy days" is not modelled. The
+  Schedule Engine reports campus changes between consecutive classes
+  (`CAMPUS_CHANGE_BETWEEN_CLASSES`) but neither ranks nor limits them. Done
+  means a soft preference (fewer campus changes per day) in the option
+  ranking, with the change count shown.
+- **Overload credit rules.** "Never above the school's max without an
+  overload" is not modelled: CoursePilot caps credits at 24 and shows a
+  disclaimer. Done means the school's published credit-load and overload
+  rules (cited), a plan that asks before planning above the limit, and a
+  warning that names the rule.
+

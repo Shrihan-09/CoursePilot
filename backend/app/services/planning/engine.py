@@ -1073,6 +1073,11 @@ class PlanningEngine:
             # With a workload level each term is already shaped by its budget;
             # levelling would move anchors and break the term's explanation.
             final = self._level(student, version, terms, plan_terms, planned, info, final)
+        elif c.workload_level is not None and len(plan_terms) > 1:
+            # Task 2 review: no stranded final term - the same all-or-nothing
+            # compression, within each term's credit cap; nothing else moves.
+            final = self._level(student, version, terms, plan_terms, planned, info, final,
+                                compress_only=True)
         self._finalize_courses(plan_terms, final, info, planned)
         if c.workload_level is not None:
             # Pruning may have removed courses after a term was summarised.
@@ -1087,6 +1092,20 @@ class PlanningEngine:
         issues += self._pin_issues
         issues += self._restriction_issues()
         issues += self._honors_issues()
+        clamped = [m["settings"] for t, m in sorted(self._term_meta.items())
+                   if m.get("settings") is not None and m["settings"].clamped]
+        if clamped:
+            st = clamped[0]
+            level = c.workload_level.value.replace("_", "-").capitalize()
+            issues.append(PlanningIssue(
+                severity=Severity.WARNING, code="COMMITMENTS_VS_CREDIT_MINIMUM",
+                message=(f"{level} + your commitments don't fit a {st.floor}-credit minimum; "
+                         "consider lowering commitments, the minimum, or adding a term."),
+                details={"terms": [t for t, m in sorted(self._term_meta.items())
+                                   if m.get("settings") is not None
+                                   and m["settings"].clamped],
+                         "credit_floor": str(st.floor), "commitment_hours": st.hours}))
+        issues += self._honors_title_issues(plan_terms)
         issues += [PlanningIssue(
                        severity=Severity.WARNING, code="CREDIT_FLOOR_OVER_BUDGET",
                        message=(f"{label(t)}: reaching your {floor}-credit minimum takes a "
@@ -1743,7 +1762,7 @@ class PlanningEngine:
             text = b.prerequisite.canonical_text if b is not None else None
             return "its prerequisites are not met by then" + (f" ({text})" if text else "")
         if self.constraints.honors is not True and self._honors_only(term, key):
-            return ("it is an honors course (open only to honors programs), and your planning "
+            return ("its sections are open only to honors programs, and your planning "
                     "answers do not say you are in one")
         if self._permission_only(term, key):
             self._pin_issues.append(PlanningIssue(
@@ -2283,7 +2302,7 @@ class PlanningEngine:
         return span
 
     def _level(self, student, version, terms, plan_terms, planned, info,
-               final: DegreeAuditResult) -> DegreeAuditResult:
+               final: DegreeAuditResult, *, compress_only: bool = False) -> DegreeAuditResult:
         """Deterministic, bounded improvement of an already-valid plan.
 
         1. Compression (BALANCED when the last term is stranded - at most half
@@ -2305,11 +2324,17 @@ class PlanningEngine:
         span = [t for t in terms if first <= t <= last]
         loads = self._loads(planned, span, self.course_info)
         target = c.target_credits_per_term
-        if c.pace is Pace.FINISH_EARLIER or (
+        if compress_only:
+            # A last term at most half its credit floor moves into earlier
+            # terms, under the smallest credit cap among them.
+            if loads[last] * 2 <= self._caps(last)[0]:
+                cap = min(self._caps(t)[1] for t in span if t < last)
+                span = self._compress(student, span, planned, info, cap, repeat=False)
+        elif c.pace is Pace.FINISH_EARLIER or (
                 c.pace is Pace.BALANCED and target is not None and loads[last] * 2 <= target):
             span = self._compress(student, span, planned, info, c.max_credits_per_term,
                                   repeat=c.pace is Pace.FINISH_EARLIER)
-        for _ in range(40):
+        for _ in range(0 if compress_only else 40):
             loads = self._loads(planned, span, self.course_info)
             moves = sorted(
                 (loads[planned[k]] - loads[r] - self.course_info[k].credits, planned[k], k, r)
@@ -2664,14 +2689,35 @@ class PlanningEngine:
         return terms[term if term in terms else max(terms)]
 
     def _honors_only(self, term: str, key: str) -> bool:
-        """Honors-only: the catalog title names an honors course ("COMPUTER
-        SCIENCE HONORS CAPSTONE", "SENIOR HONORS THESIS" - departmental or
-        Honors College admission), or every section is restricted to honors
-        programs in SOC."""
-        course = self.course_info.get(key)
-        if course is not None and HONORS_TITLE.search(course.title or ""):
-            return True
+        """Honors-only - a HARD block - only on SOC data: every section of the
+        term is restricted to honors programs (Task 2 review). A title that
+        only names an honors course is `_honors_title` (needs confirmation)."""
         return self._term_facts(term, key)[0]
+
+    def _honors_title(self, key: str) -> bool:
+        """The catalog title names an honors course ("HONORS GENERAL CHEM",
+        "COMPUTER SCIENCE HONORS CAPSTONE") - it may need an honors program or
+        permission, which the title alone cannot settle."""
+        course = self.course_info.get(key)
+        return course is not None and bool(HONORS_TITLE.search(course.title or ""))
+
+    def _honors_title_issues(self, plan_terms) -> list[PlanningIssue]:
+        out = []
+        for term in plan_terms:
+            for pc in term.courses:
+                if self._honors_title(pc.course) and not self._honors_only(term.term_code,
+                                                                           pc.course):
+                    note = "Needs confirmation: may require an honors program or permission."
+                    if note not in pc.notes:
+                        pc.notes.append(note)
+                    out.append(PlanningIssue(
+                        severity=Severity.NEEDS_CONFIRMATION, code="HONORS_TITLE_NEEDS_CONFIRMATION",
+                        course=pc.course,
+                        message=(f"{pc.course} in {term.label}: needs confirmation - its title "
+                                 "names an honors course, so it may require an honors program "
+                                 "or permission."),
+                        details={"term": term.term_code}))
+        return out
 
     def _permission_only(self, term: str, key: str) -> bool:
         """Every section needs special permission to add: admission or the

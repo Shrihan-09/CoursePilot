@@ -401,20 +401,22 @@ def test_an_excluded_course_never_counts_as_major_related(world):
          if any(r.requirement_system == "major" for r in pc.requirements)})
 
 
-def test_a_catalog_honors_course_needs_a_yes_on_the_honors_question(world):
-    """Prompt 09 s1.2: 01:198:495/496 (CS Honors Capstone) carry no SOC
-    honors restriction at all - the catalog title is the evidence."""
+def test_a_title_only_honors_course_stays_plannable_and_needs_confirmation(world):
+    """Task 2 review: a title naming an honors course ("HONORS GENERAL CHEM",
+    01:160:163/164) with no SOC honors restriction is NOT blocked - it is
+    planned, flagged as needing confirmation. Only SOC data hard-blocks."""
     course = world.scalar(select(Course).where(Course.course_string == "01:198:211",
                                                Course.supplement_code == ""))
-    course.title = "COMPUTER SCIENCE HONORS CAPSTONE PROGRAM"
+    course.title = "HONORS COMPUTER ARCHITECTURE"
     world.commit()
     student = _student(world)
-    for honors in (None, False):
+    for honors in (None, False, True):
         plan = _plan(world, student, honors=honors)
-        assert "01:198:211" not in {pc.course for t in plan.terms for pc in t.courses}
-        assert any(i.code == "HONORS_ONLY_NOT_PLANNED" and i.course == "01:198:211"
-                   for i in plan.issues)
-    assert "01:198:211" in {pc.course for pc in _term(_plan(world, student, honors=True)).courses}
+        pc = next(pc for pc in _term(plan).courses if pc.course == "01:198:211")
+        assert "Needs confirmation: may require an honors program or permission." in pc.notes
+        issue = next(i for i in plan.issues if i.code == "HONORS_TITLE_NEEDS_CONFIRMATION")
+        assert issue.course == "01:198:211" and issue.severity.value == "needs_confirmation"
+        assert not any(i.code == "HONORS_ONLY_NOT_PLANNED" for i in plan.issues)
 
 
 def test_a_course_needing_special_permission_is_only_placed_when_pinned(world):
@@ -435,12 +437,46 @@ def test_a_course_needing_special_permission_is_only_placed_when_pinned(world):
     assert any(i.code == "PIN_NEEDS_PERMISSION" for i in pinned.issues)
 
 
-def test_retakes_come_before_pins_and_double_counters_before_major_courses(world):
+def test_retakes_and_pins_are_anchors_and_a_major_double_counter_keeps_its_role(world):
+    """Order (decided in review): anchors, then major-related courses - one
+    that also fills another requirement stays "counts twice" - then other
+    double-counters, then fillers."""
     plan = _plan(world, _student(world), pins=[CoursePin(course="01:198:211", term_code=SPRING27)])
-    order = [pc.course for pc in _term(plan).courses]
     roles = {pc.course: pc.role for pc in _term(plan).courses}
     assert roles["01:640:152"] == roles["01:198:211"] == "anchor"
     assert roles["01:750:203"] == "multi_requirement"
+
+
+def test_major_courses_come_before_core_only_double_counters():
+    from app.services.planning import questionnaire
+    assert questionnaire.MULTI_BEFORE_MAJOR is False
+
+
+def test_commitments_below_the_credit_minimum_give_one_plan_message(world):
+    student = _student(world)
+    plan = _plan(world, student, workload_level=WorkloadLevel.LIGHT,
+                 commitments=Commitments(job_hours_per_week=15, greek_life=GreekLife.RUSHING))
+    [issue] = [i for i in plan.issues if i.code == "COMMITMENTS_VS_CREDIT_MINIMUM"]
+    assert issue.message == ("Light + your commitments don't fit a 12-credit minimum; consider "
+                             "lowering commitments, the minimum, or adding a term.")
+    calm = _plan(world, student, workload_level=WorkloadLevel.LIGHT)
+    assert not any(i.code == "COMMITMENTS_VS_CREDIT_MINIMUM" for i in calm.issues)
+
+
+def test_no_stranded_final_term_at_a_workload_level(world):
+    """A last term at most half its credit floor is folded into earlier
+    terms when they have room (the existing all-or-nothing compression)."""
+    student = _student(world)
+    for level in WorkloadLevel:
+        plan = _plan(world, student, workload_level=level)
+        if len(plan.terms) > 1:
+            last = plan.terms[-1]
+            if last.credits * 2 > last.workload.credit_floor:
+                continue
+            # Still stranded only when it could not move: each course is held
+            # there by a prerequisite the plan places in an earlier term.
+            assert all(any(d.source == "planned" for d in pc.prerequisite.conditional_on)
+                       for pc in last.courses), [pc.course for pc in last.courses]
 
 
 def test_no_api_output_calls_a_course_easy_or_hard(world):
