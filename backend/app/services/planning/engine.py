@@ -57,6 +57,7 @@ allocation puts it - once - and a course that adds nothing is not planned.
 
 from __future__ import annotations
 
+import math
 import re
 import uuid
 from collections import defaultdict
@@ -129,12 +130,25 @@ from app.services.placement import (
 from app.services.placement import covered as placement_covered
 from app.services.planning.dependencies import UNREADABLE, DependencyPlanner
 from app.services.planning.offerings import PLACEABLE, OfferingIndex
+from app.services.planning.questionnaire import (
+    MULTI_BEFORE_MAJOR,
+    TermSettings,
+    describe_hours,
+    pace_level_conflict,
+)
 from app.services.planning.ranking import rank_key
 from app.services.planning.terms import label, planning_terms
 from app.services.planning.workload import LEVELS, WorkloadIndex, filler_rank
 from app.services.prerequisites import attempts_by_course
 
 LEAF_TYPES = ("course", "choose_n", "credits")
+def _plain(value: Decimal) -> Decimal:
+    """24.00 -> 24, 16.50 -> 16.5: numbers as a student reads them."""
+    return value.quantize(Decimal(1)) if value == value.to_integral_value() else value.normalize()
+
+
+#: Prompt 09 s1.2: a course whose catalog title names it an honors course.
+HONORS_TITLE = re.compile(r"\bHONORS?\b", re.IGNORECASE)
 
 
 class InvalidAlternativeSelection(ValueError):
@@ -402,7 +416,7 @@ class PlanningEngine:
                        self._restriction(term, k).outcome == "not_satisfied" for k in group):
                     continue
                 size = sum((self.course_info[k].credits for k in group), Decimal(0))
-                if (credits + size > self._caps()[1]
+                if (credits + size > self._caps(term)[1]
                         or count + len(group) > self.constraints.max_courses_per_term):
                     continue
                 checks = self._evaluate(student, sorted(group), term, trial, proposed)
@@ -972,6 +986,16 @@ class PlanningEngine:
         #: Phase 7.6: course -> (term, RestrictionCheck) of its first exclusion.
         self._restricted: dict[str, tuple[str, RestrictionCheck]] = {}
         self._trace_issues: list[PlanningIssue] = []
+        #: Task 2: course -> first term it was kept out as honors-only.
+        self._honors_excluded: dict[str, str] = {}
+        #: Prompt 09: course -> first term it was kept out as permission-only.
+        self._permission_excluded: dict[str, str] = {}
+        #: Task 2: term -> what the questionnaire did to it (range, budget, notes).
+        self._term_meta: dict[str, dict] = {}
+        #: Task 2: courses placed as major-related (by the plan's own test).
+        self._major_flag: set[str] = set()
+        #: Prompt 09: terms whose credit minimum went past the budget.
+        self._floor_conflicts: dict[str, tuple] = {}
         planned: dict[str, str] = {}                 # course -> term
         info: dict[str, dict] = {}                   # course -> planning facts
         dependency_targets: dict[str, set[str]] = defaultdict(set)
@@ -996,6 +1020,12 @@ class PlanningEngine:
                                  for n in _walk(before.requirements)}
         self._open_at_start = {leaf.requirement_code for leaf in self._active(before.requirements)}
         graduation = self._graduation_target(start_term)
+        self._graduation = graduation
+        conflict = pace_level_conflict(c)
+        if conflict:
+            issues.append(PlanningIssue(
+                severity=Severity.WARNING, code="WORKLOAD_VS_GRADUATION_TARGET", message=conflict,
+                details={"pace": c.pace.value, "workload_level": c.workload_level.value}))
         if graduation is None:
             terms = planning_terms(start_term, c.max_terms, include_summer=c.include_summer,
                                    include_winter=c.include_winter)
@@ -1012,6 +1042,7 @@ class PlanningEngine:
                              f"{label(start_term)}, the first semester planned. Plan from an "
                              "earlier semester or choose a later target."),
                     details={"graduation_term": graduation.term_code}))
+        self._horizon = list(terms)
         self._choose_alternatives(current, student, version, terms, planned)
         self._initial_choices = dict(self._choice_metadata)
         self._open_at_start = {leaf.requirement_code for leaf in self._active(before.requirements)}
@@ -1055,6 +1086,16 @@ class PlanningEngine:
         issues += self._rule_issues(final)
         issues += self._pin_issues
         issues += self._restriction_issues()
+        issues += self._honors_issues()
+        issues += [PlanningIssue(
+                       severity=Severity.WARNING, code="CREDIT_FLOOR_OVER_BUDGET",
+                       message=(f"{label(t)}: reaching your {floor}-credit minimum takes a "
+                                f"workload of {total}, over the {budget} budget. Keep the minimum "
+                                "(as planned), or lower this semester's credit minimum in your "
+                                "planning answers."),
+                       details={"term": t, "credit_floor": str(floor), "budget": str(budget),
+                                "workload": str(total)})
+                   for t, (floor, budget, total) in sorted(self._floor_conflicts.items())]
         issues += self._trace_issues
         if graduation is not None and terms and remaining and not stalled:
             # Never silently push graduation later: say so and suggest fixes.
@@ -1176,9 +1217,34 @@ class PlanningEngine:
         # Phase 7.6 gate: section restrictions. Every section of the term
         # closed to the student -> the course is excluded, with the reason.
         restricted = set()
+        honors_gate = c.honors is not True
+        if honors_gate:
+            self._prefetch_honors([k for k in keys if evaluated[k][2].kind in PLACEABLE])
         for key in keys:
             if key in pins_here or evaluated[key][2].kind not in PLACEABLE:
                 continue                 # a pin has its own restriction check
+            if honors_gate and self._honors_only(term, key):
+                # Task 2: open only to honors programs, and the student has not
+                # said they are in one - never planned.
+                restricted.add(key)
+                if key in dependency_targets or any(
+                        not self._is_core(code) for code in serves.get(key, ())):
+                    self._honors_excluded.setdefault(key, term)
+                for code in serves.get(key, ()):
+                    unplaceable[code][key] = "honors_only"
+                continue
+            if key not in dependency_targets and self._permission_only(term, key):
+                # Prompt 09 s1.2: admission/consent required on every section -
+                # no planning answer meets it, so only a pin can place it. Not
+                # applied to a prerequisite on the plan's path: placement-gated
+                # courses (01:640:001, 01:355:095) carry a permission code on
+                # every section and are entered by placement.
+                restricted.add(key)
+                if any(not self._is_core(code) for code in serves.get(key, ())):
+                    self._permission_excluded.setdefault(key, term)
+                for code in serves.get(key, ()):
+                    unplaceable[code][key] = "special_permission_required"
+                continue
             check = self._restriction(term, key)
             if check.outcome == "not_satisfied":
                 restricted.add(key)
@@ -1280,7 +1346,9 @@ class PlanningEngine:
                 states[k] = self._settle(k, self._state(*evaluated[k][:2]), evaluated[k][1],
                                          planner)
             check = self._restriction(term, k)
-            if check.outcome == "not_satisfied":
+            if c.honors is not True and self._honors_only(term, k):
+                self._honors_excluded.setdefault(k, term)
+            elif check.outcome == "not_satisfied":
                 self._restricted.setdefault(k, (term, check))
             elif (self._placeable_state(states[k], evaluated[k][1])
                     and evaluated[k][2].kind in PLACEABLE
@@ -1289,7 +1357,8 @@ class PlanningEngine:
                 continue
             # A prerequisite the plan needs cannot be placed this term: say
             # so under every requirement whose candidate it would unlock.
-            why = ("dependency_restricted_sections" if k in self._restricted
+            why = ("dependency_honors_only" if self._honors_excluded.get(k) == term
+                   else "dependency_restricted_sections" if k in self._restricted
                    and self._restricted[k][0] == term
                    else f"dependency_{states[k].value}" if evaluated[k][2].kind in PLACEABLE
                    else f"dependency_{evaluated[k][2].kind.value}")
@@ -1351,14 +1420,31 @@ class PlanningEngine:
                 season_only=(key in self._required_courses()
                              and self._pattern(key, term).only_season is not None))
 
+        rank_cache: dict[str, tuple] = {}
+
         def rank(key):
-            return rank_key(key, ranking_evidence(key), c.strategy)
+            # Its inputs are fixed once the term's candidates are ranked (an
+            # unplaced course's evidence does not change as others are
+            # placed), and the filler loop asks again on every pick.
+            if key not in rank_cache:
+                rank_cache[key] = rank_key(key, ranking_evidence(key), c.strategy)
+            return rank_cache[key]
 
         workload_mode = c.workload_level is not None
-        stop_at, hard_cap = self._caps()
+        stop_at, hard_cap = self._caps(term)
         budget = LEVELS[c.workload_level][2] if workload_mode else None
         roles: dict[str, tuple[str, str]] = {}
+        major_cap = 0
+        meta: dict = {}
         if workload_mode:
+            # Task 2: the questionnaire's range and commitments for THIS term.
+            settings = TermSettings(c, term)
+            budget = settings.budget
+            need = self._major_need(leaves, term)
+            major_cap = max(settings.major_max, need)     # never silently delay graduation
+            meta = self._term_meta[term] = {
+                "settings": settings, "need": need, "open_units": self._major_units(leaves),
+                "skip": None, "floor_major": [], "budget_raised": False}
             ranked = self._workload_order(term, ready | coreq_pending, pins_ok, serves,
                                           dependency_targets, rank, budget)
             order = [k for k, _, _ in ranked]
@@ -1373,14 +1459,38 @@ class PlanningEngine:
         latest = current
         score = progress(current, self.requirements)
         open_codes = {leaf.requirement_code for leaf in self._active(current.requirements)}
+        major_count = 0
+        beyond_major = False         # the credit-floor pass may pass the major range
+        reserving = True             # keep room for the major-related minimum
+        deferred: list[str] = []
+
+        def reserved(key) -> tuple[int, Decimal, Decimal]:
+            """(slots, credits, weight) the term's major-related minimum still
+            needs: the next major-related candidates in order."""
+            short = settings.major_min - major_count if workload_mode else 0
+            if short <= 0 or not reserving:
+                return 0, Decimal(0), Decimal(0)
+            nxt = [k for k in order if k != key and k not in planned
+                   and roles[k][0] in ("major", "multi_requirement")
+                   and self._major_related(k, serves)][:short]
+            return (len(nxt), sum((self.course_info[k].credits for k in nxt), Decimal(0)),
+                    sum((self.workload_index.weight(self.course_info[k], term).weight
+                         for k in nxt), Decimal(0)))
+
         def place(key, companion_of: str | None = None) -> str:
             """Try one candidate (and its co-requisite partner): "placed", "skip"
             (this one does not fit) or "stop" (the term is full). A companion -
             a lab joining its lecture placed this term - takes that course's
             role for the floor and budget checks."""
             nonlocal credits, count, topics_here, weight_total, latest, score, open_codes
+            nonlocal major_count
             role = roles.get(companion_of or key, (None, None))[0]
+            # Task 2: a lab joining its lecture is part of that one course.
+            major = (workload_mode and companion_of is None
+                     and self._major_related(key, serves))
             if count >= c.max_courses_per_term or credits >= hard_cap:
+                if major:
+                    meta["skip"] = meta["skip"] or "limit"
                 return "stop"
             if not workload_mode and credits >= stop_at:
                 return "stop"
@@ -1388,6 +1498,8 @@ class PlanningEngine:
                 return "skip"            # fillers only fill up to the level's credit floor
             if key in planned or self._twin_taken(key, planned):
                 return "skip"            # never the same class twice, under any number
+            if major and role != "anchor" and major_count >= major_cap and not beyond_major:
+                return "skip"            # the term's major-related range is full
             is_dep = key in dependency_targets
             pinned = key in pins_ok
             # A requirement course whose requirements the engine already
@@ -1416,6 +1528,8 @@ class PlanningEngine:
             group_credits = sum((self.course_info[g].credits for g in group), Decimal(0))
             if count + len(group) > c.max_courses_per_term or \
                     credits + group_credits > hard_cap:
+                if major:
+                    meta["skip"] = meta["skip"] or "limit"
                 return "skip"
             group_topics = sum(1 for g in group if self._is_topics(g))
             if group_topics and topics_here + group_topics > c.max_topics_courses_per_term:
@@ -1426,7 +1540,16 @@ class PlanningEngine:
             group_weight = (sum((self.workload_index.weight(self.course_info[g], term).weight
                                  for g in group), Decimal(0)) if workload_mode else Decimal(0))
             if workload_mode and role != "anchor" and weight_total + group_weight > budget:
+                if major:
+                    meta["skip"] = meta["skip"] or "budget"
                 return "skip"            # only must-take courses may go over the budget
+            if workload_mode and role == "multi_requirement" and not major:
+                slots, res_credits, res_weight = reserved(key)
+                if slots and (count + len(group) + slots > c.max_courses_per_term
+                              or credits + group_credits + res_credits > hard_cap
+                              or weight_total + group_weight + res_weight > budget):
+                    deferred.append(key)
+                    return "skip"        # leaves room for the major-related minimum
             if not workload_mode and c.pace is Pace.BALANCED \
                     and c.target_credits_per_term is not None and count:
                 # "Aim for the target": go past it only when that lands CLOSER
@@ -1448,6 +1571,9 @@ class PlanningEngine:
             count += len(group)
             topics_here += group_topics
             weight_total += group_weight
+            if major:
+                major_count += 1
+                self._major_flag |= {g for g in group if self._major_related(g, serves)} | {key}
             members = sorted(set(group) | ({coreq_partner} if coreq_partner else set()))
             if coreq_partner and coreq_partner not in group:
                 # The partner was already placed this term on its own merits.
@@ -1493,6 +1619,7 @@ class PlanningEngine:
             # preferred delivery mode first, then one that reaches the credit
             # floor within the budget, then the lowest weight (Phase 7.3).
             pool = [k for k in order if roles[k][0] == "filler"]
+            deferred.clear()
             for key in [k for k in order if roles[k][0] != "filler"]:
                 outcome = place(key)
                 if outcome == "stop":
@@ -1502,17 +1629,63 @@ class PlanningEngine:
                         if self._partner(student, k, evaluated[k][1], term, planned) == key:
                             pool.remove(k)
                             place(k, companion_of=key)
-            while pool and credits < stop_at:
-                def choice(k):
-                    w = self.workload_index.weight(self.course_info[k], term)
-                    reaches = (credits + self.course_info[k].credits >= stop_at
-                               and weight_total + w.weight <= budget)
-                    return (filler_rank(w.delivery, c.filler_preference.value), not reaches,
-                            w.weight, self._is_topics(k), rank(k))
-                pick = min(pool, key=choice)
-                pool.remove(pick)
-                if place(pick) == "stop":
+            # A double-counter that waited for the major minimum gets the room
+            # the major courses did not take.
+            reserving = False
+            for key in list(deferred):
+                place(key)
+
+            def run_fillers(pool) -> list[str]:
+                skipped = []
+                while pool and credits < stop_at:
+                    def choice(k):
+                        w = self.workload_index.weight(self.course_info[k], term)
+                        reaches = (credits + self.course_info[k].credits >= stop_at
+                                   and weight_total + w.weight <= budget)
+                        return (filler_rank(w.delivery, c.filler_preference.value), not reaches,
+                                w.weight, self._is_topics(k), rank(k))
+                    pick = min(pool, key=choice)
+                    pool.remove(pick)
+                    outcome = place(pick)
+                    if outcome == "stop":
+                        break
+                    if outcome == "skip":
+                        skipped.append(pick)
+                return skipped
+
+            skipped = run_fillers(pool)
+            # Task 2: the credit minimum stays a HARD floor. Below it, the
+            # term's other limits give way in this order, each said on the
+            # term: the commitments' budget reduction, then the major-related
+            # range, then the level's own budget. Never the credit maximum or
+            # the course limit.
+            rest_major = [k for k in order if roles[k][0] != "anchor"
+                          and self._major_related(k, serves)]
+            floor_start = credits
+            if credits < stop_at and budget < settings.base_budget:
+                budget, before = settings.base_budget, credits
+                skipped = run_fillers(skipped)
+                meta["budget_raised"] = credits > before
+            for over_budget in (False, True):
+                if credits >= stop_at:
                     break
+                before = credits
+                if over_budget:
+                    budget = Decimal(10 ** 6)
+                    skipped = run_fillers(skipped)
+                beyond_major = True
+                for key in [k for k in rest_major if k not in planned]:
+                    if credits >= stop_at:
+                        break
+                    if place(key) == "placed":
+                        meta["floor_major"].append(key)
+                beyond_major = False
+                if over_budget and credits > before:
+                    meta["over_budget_for_floor"] = True
+            # Whatever the floor took past the commitments' budget, the term
+            # says so as the floor's doing (not as courses it "must hold").
+            if credits > floor_start and weight_total > settings.budget:
+                meta["budget_raised"] = True
         else:
             for key in order:
                 if place(key) == "stop":
@@ -1528,6 +1701,9 @@ class PlanningEngine:
                 term, term_plan, {g: info[g].get("role") for g in planned if planned[g] == term})
         if latest is current and planned != before_planned:
             latest = self._audit(student, version, planned)
+        if workload_mode:
+            # Task 2: nothing left to plan after this term (a light last term).
+            meta["open_after"] = len(self._active(latest.requirements))
         return latest
 
     # ---- Phase 7.3: pins and workload levels ------------------------------
@@ -1566,6 +1742,14 @@ class PlanningEngine:
         elif not self._placeable_state(states[key], b):
             text = b.prerequisite.canonical_text if b is not None else None
             return "its prerequisites are not met by then" + (f" ({text})" if text else "")
+        if self.constraints.honors is not True and self._honors_only(term, key):
+            return ("it is an honors course (open only to honors programs), and your planning "
+                    "answers do not say you are in one")
+        if self._permission_only(term, key):
+            self._pin_issues.append(PlanningIssue(
+                severity=Severity.NEEDS_CONFIRMATION, code="PIN_NEEDS_PERMISSION", course=key,
+                message=(f"{key} is placed in {label(term)} because you pinned it; every section "
+                         "needs special permission to add, so confirm you have it.")))
         restricted = self._pin_restriction(student, term, key)
         if restricted == "not_satisfied":
             return f"every {label(term)} section is restricted to other majors or schools"
@@ -1616,6 +1800,39 @@ class PlanningEngine:
             return "unknown"
         return None
 
+    def _is_major_node(self, code: str) -> bool:
+        """A node of the major's requirement tree (its required math and
+        science included) - not a school Core node."""
+        req = self.requirements.get(code)
+        return req is not None and req.requirement_system == "major"
+
+    def _major_related(self, key: str, serves) -> bool:
+        """Task 2: the course counts toward an OPEN major requirement."""
+        return any(self._is_major_node(code) for code in serves.get(key, ()))
+
+    def _counts_major(self, pc: PlannedCourse) -> bool:
+        return (pc.course in self._major_flag
+                or any(self._is_major_node(r.requirement_code) for r in pc.requirements))
+
+    def _major_units(self, leaves) -> int:
+        """Courses the open major requirements still need (a credits node:
+        its missing credits / 3, rounded up)."""
+        units = 0
+        for leaf in leaves:
+            if not self._is_major_node(leaf.requirement_code):
+                continue
+            d = deficit(leaf)
+            units += math.ceil(d / 3) if leaf.requirement_type == "credits" else int(d)
+        return units
+
+    def _major_need(self, leaves, term: str) -> int:
+        """Major-related courses a semester the graduation target needs from
+        `term` on (0 without a target)."""
+        if self._graduation is None:
+            return 0
+        left = sum(1 for t in self._horizon if t >= term)
+        return math.ceil(self._major_units(leaves) / left) if left else 0
+
     def _workload(self, key: str, term: str) -> WorkloadEvidence:
         w = self.workload_index.weight(self.course_info[key], term)
         return WorkloadEvidence(weight=w.weight, credits=w.credits, contact_hours=w.contact_hours,
@@ -1634,6 +1851,8 @@ class PlanningEngine:
         names = {code: self.requirements[code].name for code in self.requirements}
         out: list[tuple[str, str, str]] = []
         used: set[str] = set()
+        # Every candidate's meetings in one query, not one per course weighed.
+        self.workload_index._load(set(ready_or_pending))
 
         def take(keys, role, why):
             for k in keys:
@@ -1641,22 +1860,44 @@ class PlanningEngine:
                     used.add(k)
                     out.append((k, role, why(k)))
 
-        take(pins, "anchor", lambda k: "you pinned it to this term")
         retakes = sorted((k for k in ready_or_pending if serves.get(k) and (
             k in self.retakes or (k in self.history and k not in self.passed))), key=rank)
         take(retakes, "anchor", lambda k: "a retake you need (your recorded attempt does not "
                                          "count yet)")
+        take(pins, "anchor", lambda k: "you pinned it to this term")
         # Phase 7.6: "multi-requirement" only where the sharing policy lets one
         # course count in two open requirements (one per allocation scope).
+        def multi_why(k):
+            return "counts toward " + " and ".join(
+                sorted({names.get(code, code) for code in serves[k]}))
+
+        def major_why(k):
+            why = "counts toward your major (" + ", ".join(sorted(
+                {names.get(code, code) for code in serves[k] if self._is_major_node(code)})) + ")"
+            opens = sorted(t for t in dependency_targets.get(k, ()) if serves.get(t))
+            return why + (f"; a prerequisite for {', '.join(opens)}" if opens else "")
+
+        # Prompt 09 s4: courses filling 2+ open requirements at once - one that
+        # also counts toward the major first (a science for Core AND the B.S.).
+        # The caller keeps room for the term's major-related minimum, so Core
+        # double-counters never crowd out the major (Task 2).
         multi = sorted((k for k in ready_or_pending if self._usable(serves.get(k, ())) >= 2),
-                       key=rank)
-        take(multi, "multi_requirement", lambda k: "counts toward " + " and ".join(
-            sorted({names.get(code, code) for code in serves[k]})))
-        major = sorted((k for k in ready_or_pending if k.split(":")[1] == self.major_subject
-                        and any(self._system(code) == "major" for code in serves.get(k, ()))),
+                       key=lambda k: (not self._major_related(k, serves), rank(k)))
+        if not MULTI_BEFORE_MAJOR:
+            # The alternative order: major-related first (a double-counter
+            # among them keeps its role), other double-counters after.
+            multi = [k for k in multi if self._major_related(k, serves)]
+        take(multi, "multi_requirement", multi_why)
+        # Task 2: then EVERY course that counts toward the major's tree - its
+        # required math and science too - in rank order, so a course that
+        # opens prerequisites or is needed sooner comes first. How many the
+        # term takes is the caller's (the term's major-related range).
+        major = sorted((k for k in ready_or_pending if self._major_related(k, serves)),
                        key=lambda k: (self._is_topics(k), rank(k)))       # fixed content first
-        take(major[:1], "major", lambda k: f"a {self.major_subject} course that counts toward "
-                                           "your major")
+        take(major, "major", major_why)
+        if not MULTI_BEFORE_MAJOR:
+            take(sorted((k for k in ready_or_pending if self._usable(serves.get(k, ())) >= 2),
+                        key=rank), "multi_requirement", multi_why)
         nearly_used = budget_left <= Decimal(8)
 
         def filler_key(k):
@@ -1667,7 +1908,8 @@ class PlanningEngine:
         # Fillers: everything else that completes a remaining requirement or
         # opens one (a prerequisite path), chosen by the filler preference.
         fillers = sorted((k for k in ready_or_pending
-                          if serves.get(k) or k in dependency_targets), key=filler_key)
+                          if (serves.get(k) or k in dependency_targets)
+                          and not self._major_related(k, serves)), key=filler_key)
 
         def filler_why(k):
             w = self.workload_index.weight(self.course_info[k], term)
@@ -1683,26 +1925,120 @@ class PlanningEngine:
 
     def _term_workload(self, term: str, term_plan: PlanTerm, roles: dict[str, str]) -> TermWorkload:
         c = self.constraints
-        floor, cap, budget = LEVELS[c.workload_level]
-        total = sum((pc.workload.weight for pc in term_plan.courses if pc.workload), Decimal(0))
+        meta = self._term_meta.get(term) or {}
+        st = meta.get("settings") or TermSettings(c, term)
+        floor, cap, base_budget = st.floor, st.cap, st.base_budget
+        budget = st.budget
+        total = _plain(sum((pc.workload.weight for pc in term_plan.courses if pc.workload),
+                           Decimal(0)))
         hours = sum((pc.workload.contact_hours or Decimal(0) for pc in term_plan.courses
                      if pc.workload), Decimal(0))
+        credits = _plain(term_plan.credits)
         notes = []
         anchors = [pc for pc in term_plan.courses if roles.get(pc.course) == "anchor"]
-        anchor_weight = sum((pc.workload.weight for pc in anchors if pc.workload), Decimal(0))
+        anchor_weight = _plain(sum((pc.workload.weight for pc in anchors if pc.workload),
+                                   Decimal(0)))
         if anchors and anchor_weight > budget:
             notes.append(f"{' + '.join(pc.title for pc in anchors)} make this a heavier term: "
                          f"the courses you must take weigh {anchor_weight} against a "
-                         f"{budget} budget.")
+                         f"{budget} budget - consider fewer other commitments.")
+        elif total > budget and (meta.get("over_budget_for_floor")
+                                 or meta.get("budget_raised")):
+            # The floor passed the budget (the commitments' reduction or the
+            # level's own budget gave way) - one note, and the choice.
+            notes.append(f"Over the {budget} workload budget ({total}) to reach the {floor}-credit "
+                         "minimum: the credit minimum comes first. To keep the budget instead, "
+                         "lower this semester's credit minimum in your planning answers.")
+            self._floor_conflicts[term] = (floor, budget, total)
         elif total > budget:
             notes.append(f"Over the {budget} workload budget ({total}) because of the courses "
                          "this term must hold.")
+        # Task 2: major-related courses (a lab with its lecture counts once).
+        groups = {frozenset(pc.corequisite_group or [pc.course])
+                  for pc in term_plan.courses if self._counts_major(pc)}
+        major = len(groups)
+        rng = st.range_text()
+        anchor_major = [pc for pc in anchors if self._counts_major(pc)]
+        if major > st.major_max:
+            if anchor_major and len(anchor_major) >= st.major_max:
+                notes.append(f"{' and '.join(pc.title for pc in anchor_major)} count toward your "
+                             f"major and always stay, so this term has {major} major-related "
+                             f"courses, above your range of {rng}.")
+            elif meta.get("need", 0) > st.major_max and self._graduation is not None:
+                notes.append(f"To graduate by {label(self._graduation.term_code)}, about "
+                             f"{meta['need']} major-related courses a semester are needed from "
+                             f"here; this term has {major}, above your range of {rng}.")
+            elif meta.get("floor_major"):
+                notes.append(f"{', '.join(meta['floor_major'])} added above your major-related "
+                             f"range ({rng}) to reach the {floor}-credit minimum: no other "
+                             "eligible course fit.")
+            else:
+                notes.append(f"{major} major-related courses, above your range of {rng}, because "
+                             "of the courses this term must hold.")
+        if st.hours and budget < base_budget:
+            lead = {"rushing": "Your rush semester",
+                    "new_member": "Your new-member semester"}.get(st.greek.value,
+                                                                 "Your commitments")
+            notes.append(f"{lead} ({describe_hours(st.hours_by_type)}, so about "
+                         f"{st.hours_available} of 60 weekly hours are left for school) lowered "
+                         f"this term's workload budget from {base_budget} to {budget}"
+                         + (f" - no lower than the {floor}-credit minimum." if st.clamped
+                            else "."))
+        shortfalls = []
+        if term_plan.courses and major < st.major_min:
+            open_units = meta.get("open_units", 0)
+            reason = (("your major requirements are all planned or complete" if not open_units
+                       else f"only {open_units} major-related requirement"
+                            f"{'s' if open_units != 1 else ''} left to plan")
+                      if open_units < st.major_min
+                      else "the workload budget was reached first" if meta.get("skip") == "budget"
+                      else "the course or credit limit was reached first"
+                      if meta.get("skip") == "limit"
+                      else "no other major-related course can be taken this term (prerequisites, "
+                           "offerings or section restrictions)")
+            shortfalls.append(f"{major} major-related course{'s' if major != 1 else ''}, below "
+                              f"your range of {rng}: {reason}.")
         if term_plan.courses and term_plan.credits < floor:
-            notes.append(f"Below the {floor}-credit floor ({term_plan.credits}): no further "
-                         "eligible course fit the workload budget and the per-term limits.")
+            shortfalls.append(
+                f"Below the {floor}-credit floor ({credits}): "
+                + ("these are the last courses your requirements need."
+                   if meta.get("open_after") == 0 else
+                   "no further eligible course fit the per-term limits (prerequisites, offerings "
+                   "and the course limit)."))
+        level = {"light": "Light", "balanced": "Balanced", "semi_rigorous": "Semi-rigorous",
+                 "challenging": "Challenging"}[c.workload_level.value]
+        scope = "your range for this semester" if st.source == "override" else "your range"
+        why = [level]
+        if st.greek.value in ("rushing", "new_member", "active"):
+            why.append({"rushing": "rushing", "new_member": "new member",
+                        "active": "Greek life"}[st.greek.value])
+        for kind in ("job", "athletics", "research", "recruiting", "clubs"):
+            if kind in st.hours_by_type:
+                why.append(f"{kind} {st.hours_by_type[kind]} h/week" if kind != "clubs"
+                           else "clubs")
+        fillers = [pc for pc in term_plan.courses if roles.get(pc.course) == "filler"]
+        filler = ("async filler" if fillers and all(
+                      "async" in (pc.workload.delivery if pc.workload else []) for pc in fillers)
+                  else "in-person filler" if fillers and all(
+                      (pc.workload.delivery if pc.workload else []) == ["in_person"]
+                      for pc in fillers)
+                  else "filler" if fillers else None)
+        parts = [f"{credits} credits",
+                 f"{major} major-related course{'s' if major != 1 else ''} ({scope}: {rng})"]
+        if filler:
+            parts.append(filler)
+        if st.hours:
+            parts.append(f"budget {budget} instead of {base_budget} for your commitments")
+        parts.append(f"workload {total} of {budget}")
         return TermWorkload(level=c.workload_level, budget=budget, total=total,
                             credit_floor=floor, credit_max=cap, contact_hours=hours,
-                            notes=notes)
+                            notes=notes, base_budget=base_budget, commitment_hours=st.hours,
+                            major_related=major, major_min=st.major_min, major_max=st.major_max,
+                            major_range_source=st.source,
+                            hours_available=st.hours_available,
+                            fit=("Why this fits you: " + " + ".join(why) + " → "
+                                 + ", ".join(parts) + "."),
+                            shortfalls=shortfalls)
 
     def _partner(self, student, key, b, term, planned) -> str | None:
         """Deterministic same-term partner satisfying `key`'s co-requisite:
@@ -1851,7 +2187,7 @@ class PlanningEngine:
 
     # ---- Phase 7.2.1: pace, target load, levelling -----------------------
 
-    def _caps(self) -> tuple[Decimal, Decimal]:
+    def _caps(self, term: str | None = None) -> tuple[Decimal, Decimal]:
         """(where a term STOPS taking courses, the HARD credit cap).
 
         No pace (unpersonalized request): the Phase 6.5 behaviour - fill to the
@@ -1860,8 +2196,10 @@ class PlanningEngine:
         exceeded by any pace."""
         c = self.constraints
         if c.workload_level is not None:
-            floor, cap, _budget = LEVELS[c.workload_level]
-            return floor, cap
+            # Prompt 09: the student's credit range (this semester's answer,
+            # else their usual one), else the level's.
+            st = TermSettings(c, term or "")
+            return st.floor, st.cap
         target = c.target_credits_per_term
         if c.pace in (Pace.BALANCED, Pace.LIGHTER) and target is not None:
             hard = target if c.pace is Pace.LIGHTER else c.max_credits_per_term
@@ -2276,6 +2614,84 @@ class PlanningEngine:
                 message=f"{key} was not planned for {label(term)}: {check.message}",
                 details={"term": term, "open_to": check.open_to, "reasons": check.reasons}))
         return out
+
+    def _prefetch_honors(self, keys) -> None:
+        """Task 2 / Prompt 09 s1.2, per course and loaded term, in ONE query:
+        whether every section is open only to honors programs (SOC
+        `honorPrograms` entries and nothing else), and whether every section
+        needs special permission to add (admission required)."""
+        from sqlalchemy import case
+
+        from app.models import SectionRestriction
+
+        if not hasattr(self, "_honors_terms"):
+            self._honors_terms: dict[str, dict[str, tuple[bool, bool]]] = {}
+        todo = sorted({k for k in keys if k not in self._honors_terms})
+        if not todo:
+            return
+        for key in todo:
+            self._honors_terms[key] = {}
+        per_section = (
+            select(Course.course_string.label("k"), CourseSection.term_code.label("t"),
+                   CourseSection.id.label("sid"),
+                   func.count(SectionRestriction.id).label("n"),
+                   func.count(SectionRestriction.id).filter(
+                       SectionRestriction.kind == "honor_program").label("h"),
+                   func.max(func.coalesce(CourseSection.special_permission_add_code, ""))
+                   .label("sp"))
+            .join(CourseOffering, CourseOffering.course_id == Course.id)
+            .join(CourseSection, CourseSection.offering_id == CourseOffering.id)
+            .outerjoin(SectionRestriction, SectionRestriction.section_id == CourseSection.id)
+            .where(Course.course_string.in_(todo), Course.supplement_code == "")
+            .group_by(Course.course_string, CourseSection.term_code, CourseSection.id)
+            .subquery())
+        honors_section = case(((per_section.c.n > 0) & (per_section.c.n == per_section.c.h), 1),
+                              else_=0)
+        permission_section = case((per_section.c.sp != "", 1), else_=0)
+        for key, term, sections, honors, permission in self.session.execute(
+                select(per_section.c.k, per_section.c.t, func.count(),
+                       func.sum(honors_section), func.sum(permission_section))
+                .group_by(per_section.c.k, per_section.c.t)):
+            self._honors_terms[key][term] = (honors == sections, permission == sections)
+
+    def _term_facts(self, term: str, key: str) -> tuple[bool, bool]:
+        """(honors-only, permission-only) in `term`: the term's own sections
+        when Rutgers has published them, else the latest loaded term's."""
+        self._prefetch_honors([key])
+        terms = self._honors_terms[key]
+        if not terms:
+            return False, False
+        return terms[term if term in terms else max(terms)]
+
+    def _honors_only(self, term: str, key: str) -> bool:
+        """Honors-only: the catalog title names an honors course ("COMPUTER
+        SCIENCE HONORS CAPSTONE", "SENIOR HONORS THESIS" - departmental or
+        Honors College admission), or every section is restricted to honors
+        programs in SOC."""
+        course = self.course_info.get(key)
+        if course is not None and HONORS_TITLE.search(course.title or ""):
+            return True
+        return self._term_facts(term, key)[0]
+
+    def _permission_only(self, term: str, key: str) -> bool:
+        """Every section needs special permission to add: admission or the
+        department's consent, which no planning answer can meet."""
+        return self._term_facts(term, key)[1]
+
+    def _honors_issues(self) -> list[PlanningIssue]:
+        return [PlanningIssue(
+                    severity=Severity.WARNING, code="PERMISSION_REQUIRED_NOT_PLANNED", course=key,
+                    message=(f"{key} was not planned for {label(term)}: every section needs "
+                             "special permission to add. Pin it to a semester if you have "
+                             "permission."),
+                    details={"term": term})
+                for key, term in sorted(self._permission_excluded.items())] + [PlanningIssue(
+                    severity=Severity.WARNING, code="HONORS_ONLY_NOT_PLANNED", course=key,
+                    message=(f"{key} was not planned for {label(term)}: its sections are open "
+                             "only to honors programs. If you are in one, say so in your "
+                             "planning answers."),
+                    details={"term": term})
+                for key, term in sorted(self._honors_excluded.items())]
 
     def _core_evidence(self, key: str, term: str, ev: OfferingEvidence):
         """The coreCodes listing a Core contribution in `term` rests on: the

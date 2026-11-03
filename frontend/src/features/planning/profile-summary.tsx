@@ -1,4 +1,5 @@
 import { STATUS_ICON } from "@/components/academic/status";
+import { blockedTimeText, commitmentSummary } from "@/lib/academic/questionnaire";
 import { DAY_NAME, formatMinute } from "@/lib/academic/schedule-time";
 import { GOAL_KIND, PACE_LABEL, READINESS_CHECK, STRATEGY_LABEL, termLabel, WORKLOAD_LEVEL_LABEL } from "@/lib/academic/vocabulary";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,26 @@ export function profileLines(p: PlanningProfileInput, programName?: string): [st
     lines.push(["Semester intensity", WORKLOAD_LEVEL_LABEL[p.workload_level] ?? p.workload_level]);
     lines.push(["Filling the rest", FILLER_LABEL[p.filler_preference ?? "no_preference"] ?? String(p.filler_preference)]);
     if (p.pins?.length) lines.push(["Pinned courses", p.pins.map((x) => `${x.course} (${termLabel(x.term_code)})`).join(", ")]);
+    if (p.credit_min != null && p.credit_max != null) lines.push(["Credits per semester", `${p.credit_min}-${p.credit_max} (the minimum is kept)`]);
+    if (p.major_courses_min != null && p.major_courses_max != null) {
+      lines.push(["Major courses per semester", p.major_courses_min === p.major_courses_max
+        ? `${p.major_courses_min}` : `${p.major_courses_min}-${p.major_courses_max}`]);
+    }
+    lines.push(["Commitments", commitmentSummary(p.commitments)]);
+    lines.push(["Honors program", p.honors === true ? "Yes - honors-only courses may be planned (confirm before registering)"
+      : p.honors === false ? "No - honors-only courses are not planned" : "Not answered - honors-only courses are not planned"]);
+    const terms = p.term_overrides ?? [];
+    if (terms.length) {
+      lines.push(["Semesters answered separately", terms.map((o) => {
+        const bits: string[] = [];
+        if (o.major_courses_min !== null && o.major_courses_max !== null) {
+          bits.push(`${o.major_courses_min === o.major_courses_max ? o.major_courses_min : `${o.major_courses_min}-${o.major_courses_max}`} major-related courses`);
+        }
+        if (o.commitments) bits.push(commitmentSummary(o.commitments).toLowerCase().replace(/, so .*$/, ""));
+        if (o.blocked_times) bits.push(`${o.blocked_times.length} fixed time${o.blocked_times.length === 1 ? "" : "s"}`);
+        return `${termLabel(o.term_code)}: ${bits.join(", ") || "same as usual"}`;
+      }).join("; ")]);
+    }
   }
   lines.push(["When several courses fit", STRATEGY_LABEL[p.strategy ?? "balanced"] ?? String(p.strategy)]);
   if (!p.workload_level) {
@@ -42,6 +63,8 @@ export function profileLines(p: PlanningProfileInput, programName?: string): [st
   if (p.schedule.earliest_start) sched.push(`No classes before ${formatMinute(minutes(p.schedule.earliest_start))}`);
   if (p.schedule.latest_end) sched.push(`No classes after ${formatMinute(minutes(p.schedule.latest_end))}`);
   if (p.schedule.avoid_days.length) sched.push(`No classes on ${p.schedule.avoid_days.map((d) => DAY_NAME[d]).join(", ")}`);
+  for (const b of p.schedule.blocked_times ?? []) sched.push(`Busy ${blockedTimeText(b)}`);
+  if (p.schedule.preferred_campuses?.length) sched.push(`Prefer ${p.schedule.preferred_campuses.join(", ")}`);
   lines.push(["Schedule", sched.length ? sched.join(" · ") : "No time limits"]);
   lines.push(["Additional goals", p.additional_goals.length
     ? p.additional_goals.map((g) => `Exploring ${g.label} (${GOAL_KIND[g.kind]?.toLowerCase() ?? g.kind})`).join("; ")

@@ -4,6 +4,8 @@
  * availability arrive as SEPARATE fields and are kept separate in the UI.
  */
 
+import type { BlockedTime } from "@/types/personalization";
+
 export type ScheduleStatus =
   | "options_found"
   | "no_valid_schedule"
@@ -48,6 +50,9 @@ export interface SchedulePreferences {
   minimum_minutes_between_classes: number;
   preferred_campuses: string[];
   availability: "prefer_open" | "require_open";
+  /** Task 2: fixed weekly blocks and the honors answer, from the planning answers. */
+  blocked_times?: BlockedTime[];
+  honors?: boolean | null;
 }
 
 export interface MeetingInterval {

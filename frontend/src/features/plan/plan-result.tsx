@@ -226,8 +226,10 @@ function CourseCard({ course: c, index }: { course: PlannedCourse; index: number
       )}
       {c.role && (
         <p className="text-xs text-fg-secondary">
-          <span className="font-medium text-fg">{ROLE_LABEL[c.role] ?? c.role}</span>
-          {c.role_reason ? <span> — {c.role_reason}</span> : null}
+          <span className="mr-1.5 inline-block rounded-full border border-border-strong bg-surface-hover px-2 py-0.5 text-2xs font-semibold uppercase tracking-wide text-fg">
+            {ROLE_LABEL[c.role] ?? c.role}
+          </span>
+          {c.role_reason ? <span>{c.role_reason}</span> : null}
         </p>
       )}
       {c.workload && (
@@ -287,7 +289,11 @@ export function SemesterCard({
               {Number(term.workload.credit_floor)}-{Number(term.workload.credit_max)} credits
             </p>
           )}
+          {term.workload?.fit && <p className="text-xs text-fg-secondary">{term.workload.fit}</p>}
           {term.workload?.notes.map((n) => (
+            <p key={n} className="text-xs text-warning">{n}</p>
+          ))}
+          {term.workload?.shortfalls?.map((n) => (
             <p key={n} className="text-xs text-warning">{n}</p>
           ))}
         </div>

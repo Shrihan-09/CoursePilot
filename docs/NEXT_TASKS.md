@@ -27,29 +27,6 @@ Done means:
 - `scripts/reparse_conditions.py` reports the semantic changes (dry run first,
   backup before applying), and tests cover both courses.
 
-## Task 2: major courses per term (workload-level default + per-semester override)
-
-Decided 2026-10-27; **part of Task 2, not Task 1**. Today the planner fills
-each term as anchors -> multi-requirement courses -> ONE dedicated major
-course -> fillers, and has no setting for how many major courses a term gets.
-Task 2 adds one:
-
-| Workload level | Major courses per term (default) |
-|---|---|
-| Light | 1-2 |
-| Balanced | 2-3 |
-| Semi-rigorous | 3 |
-| Challenging | 3-4 |
-
-- A "major course" is ANY course that counts toward the major, including the
-  major's required mathematics and science (e.g. Calculus II, a B.S. science
-  sequence) - not only courses in the major's own subject.
-- The default comes from the workload level; the student can override the
-  range for any single semester.
-- It joins the existing fill order and budgets (anchors still come first and
-  may exceed it, and the term says so), with tests for each level and for an
-  override.
-
 ## Enforce prerequisites published only in section notes
 
 Found in the Task 1 reparse (2026-10-27). 37 course-term rows (10

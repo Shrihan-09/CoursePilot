@@ -46,6 +46,13 @@ def profile_input(row: StudentPlanningProfile) -> PlanningProfileInput:
         "filler_preference": row.filler_preference or "no_preference",
         "pins": row.pins or [],
         "expected_graduation_term": row.expected_graduation_term,
+        "commitments": row.commitments or {},
+        "honors": row.honors,
+        "term_overrides": row.term_overrides or [],
+        "credit_min": row.credit_min,
+        "credit_max": row.credit_max,
+        "major_courses_min": row.major_courses_min,
+        "major_courses_max": row.major_courses_max,
     })
 
 
@@ -70,6 +77,11 @@ def confirm_profile(session: Session, student: Student, data: PlanningProfileInp
     row.filler_preference = data.filler_preference.value
     row.pins = [p.model_dump(mode="json") for p in data.pins]
     row.expected_graduation_term = data.expected_graduation_term
+    row.commitments = data.commitments.model_dump(mode="json")
+    row.honors = data.honors
+    row.term_overrides = [o.model_dump(mode="json") for o in data.term_overrides]
+    row.credit_min, row.credit_max = data.credit_min, data.credit_max
+    row.major_courses_min, row.major_courses_max = data.major_courses_min, data.major_courses_max
     row.source = source
     row.confirmed_at = now
     session.flush()

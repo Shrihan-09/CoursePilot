@@ -9,6 +9,7 @@ import { Checkbox, Field, Input, Radio, Select } from "@/components/ui/field";
 import { api } from "@/lib/api";
 import { DAY_NAME } from "@/lib/academic/schedule-time";
 import { GOAL_KIND, termLabel, upcomingTerms } from "@/lib/academic/vocabulary";
+import { answersInvalid, QuestionnaireFields, type QuestionnaireValue } from "@/features/planning/questionnaire-fields";
 import type {
   AdditionalGoal,
   CoursePin,
@@ -18,6 +19,7 @@ import type {
   Strategy,
   WorkloadLevel,
 } from "@/types/personalization";
+import { NO_COMMITMENTS } from "@/types/personalization";
 import type { Pace } from "@/types/plan";
 import type { DayCode } from "@/types/schedule";
 
@@ -65,6 +67,17 @@ export function PreferencesForm({
   const [filler, setFiller] = useState<FillerPreference>(initial.filler_preference ?? "no_preference");
   const [pins, setPins] = useState<CoursePin[]>(initial.pins ?? []);
   const [gradTerm, setGradTerm] = useState(initial.expected_graduation_term ?? "");
+  const [answers, setAnswers] = useState<QuestionnaireValue>({
+    commitments: initial.commitments ?? NO_COMMITMENTS,
+    honors: initial.honors ?? null,
+    blocked_times: initial.schedule.blocked_times ?? [],
+    term_overrides: initial.term_overrides ?? [],
+    credit_min: initial.credit_min ?? null,
+    credit_max: initial.credit_max ?? null,
+    major_min: initial.major_courses_min ?? null,
+    major_max: initial.major_courses_max ?? null,
+    preferred_campuses: initial.schedule.preferred_campuses ?? [],
+  });
   const termsAhead = upcomingTerms(new Date(), 8, { summer: initial.include_summer, winter: initial.include_winter });
   const [pinCourse, setPinCourse] = useState("");
   const [pinTerm, setPinTerm] = useState(termsAhead[0] ?? "");
@@ -77,6 +90,7 @@ export function PreferencesForm({
     courses: Number.isInteger(c) && c >= 1 && c <= 8 ? undefined : "A whole number from 1 to 8.",
     terms: n === null || (Number.isInteger(n) && n >= 1 && n <= 12) ? undefined : "A whole number from 1 to 12, or leave empty.",
     window: early && late && early >= late ? "The earliest time must be before the latest." : undefined,
+    answers: answersInvalid(answers) ?? undefined,
   };
   const valid = !Object.values(errors).some(Boolean);
   const programChoices = (programs.data?.programs ?? []).filter((p) => p.versions.some((v) => v.support_status !== "unavailable"));
@@ -90,10 +104,14 @@ export function PreferencesForm({
         onSubmit({
           pace, strategy, target_credits_per_term: t, max_credits_per_term: m, max_courses_per_term: c, max_terms: n,
           include_summer: summer, include_winter: winter,
-          schedule: { ...initial.schedule, earliest_start: early || null, latest_end: late || null, avoid_days: avoid },
+          schedule: { ...initial.schedule, earliest_start: early || null, latest_end: late || null, avoid_days: avoid,
+                      blocked_times: answers.blocked_times, preferred_campuses: answers.preferred_campuses },
           additional_goals: goals,
           workload_level: level, filler_preference: filler, pins,
           expected_graduation_term: gradTerm || null,
+          commitments: answers.commitments, honors: answers.honors, term_overrides: answers.term_overrides,
+          credit_min: answers.credit_min, credit_max: answers.credit_max,
+          major_courses_min: answers.major_min, major_courses_max: answers.major_max,
         });
       }}
     >
@@ -132,6 +150,10 @@ export function PreferencesForm({
           </div>
           {meta.workload_weight && <p className="text-xs text-fg-muted">{meta.workload_weight}</p>}
         </fieldset>
+      )}
+
+      {level && (
+        <QuestionnaireFields meta={meta} value={answers} onChange={setAnswers} terms={termsAhead} level={level} pace={pace} />
       )}
 
       {(meta.filler_preferences?.length ?? 0) > 0 && level && (

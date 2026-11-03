@@ -200,10 +200,10 @@ export const WORKLOAD_LEVEL_LABEL: Record<string, string> = {
 
 /** Why a course is in its term (Phase 7.3 fill order). */
 export const ROLE_LABEL: Record<string, string> = {
-  anchor: "Must take",
-  multi_requirement: "Counts for several requirements",
-  major: "Major course",
-  filler: "Fills the semester",
+  anchor: "Anchor",
+  multi_requirement: "Counts twice",
+  major: "Major",
+  filler: "Filler",
 };
 
 const WEIGHT_PART: Record<string, string> = {

@@ -22,13 +22,16 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from app.domain.modality import ModalityPreferences
 from app.domain.planning import (
+    Commitments,
     CoursePin,
     FillerPreference,
     Pace,
     PlanningConstraints,
     Strategy,
+    TermPlanningOverride,
     WorkloadLevel,
 )
+from app.domain.schedule import BlockedTime
 
 _HHMM = r"^([01][0-9]|2[0-3]):[0-5][0-9]$"
 _PROGRAM_KEY = r"^[a-z0-9]+-[a-z0-9]+-[a-z0-9]+(-[a-z0-9]+)*$"
@@ -56,12 +59,25 @@ class ScheduleDefaults(BaseModel):
     latest_end: str | None = Field(default=None, pattern=_HHMM)
     avoid_days: list[Literal["M", "T", "W", "H", "F", "S", "U"]] = Field(default_factory=list,
                                                                         max_length=7)
+    #: Task 2: fixed weekly blocks (job shifts, club meetings) - hard limits too.
+    blocked_times: list[BlockedTime] = Field(default_factory=list, max_length=20)
+    #: Prompt 09: preferred campuses (SOC codes: BUS, CAC, LIV, D/C, DNB). They
+    #: order schedule options; no section is excluded for its campus.
+    preferred_campuses: list[str] = Field(default_factory=list, max_length=8)
 
     @model_validator(mode="after")
     def _window(self) -> "ScheduleDefaults":
         if self.earliest_start and self.latest_end and self.earliest_start >= self.latest_end:
             raise ValueError("earliest_start must be before latest_end")
         return self
+
+
+class TermAnswers(TermPlanningOverride):
+    """Task 2: the questionnaire's answers for one semester. The planner reads
+    the range and commitments (TermPlanningOverride); `blocked_times` replace
+    the usual fixed blocks when that semester's schedule is built."""
+
+    blocked_times: list[BlockedTime] | None = Field(default=None, max_length=20)
 
 
 class AdditionalGoal(BaseModel):
@@ -106,11 +122,31 @@ class PlanningProfileInput(BaseModel):
     pins: list[CoursePin] = Field(default_factory=list, max_length=24)
     #: Optional: overrides the graduation target pace (e.g. "20281" Spring 2028).
     expected_graduation_term: str | None = Field(default=None, pattern=r"^\d{4}[0179]$")
+    #: Task 2 planning questionnaire. Every answer is optional: the defaults
+    #: (no commitments, not in an honors program, the level's major-related
+    #: range) are what a skipped question means.
+    commitments: Commitments = Field(default_factory=Commitments)
+    #: True: in an honors program (honors-only courses may be planned, still
+    #: needs confirmation). False or None (skipped): never planned.
+    honors: bool | None = None
+    term_overrides: list[TermAnswers] = Field(default_factory=list, max_length=16)
+    #: Prompt 09: "How many credits?" and "How many major courses?" for every
+    #: semester (None: the workload level's range).
+    credit_min: int | None = Field(default=None, ge=1, le=24)
+    credit_max: int | None = Field(default=None, ge=1, le=24)
+    major_courses_min: int | None = Field(default=None, ge=0, le=8)
+    major_courses_max: int | None = Field(default=None, ge=0, le=8)
 
     @model_validator(mode="after")
     def _load(self) -> "PlanningProfileInput":
         if self.target_credits_per_term > self.max_credits_per_term:
             raise ValueError("The target load cannot be higher than the maximum load.")
+        terms = [o.term_code for o in self.term_overrides]
+        if len(terms) != len(set(terms)):
+            raise ValueError("Only one set of answers per semester.")
+        from app.domain.planning import _check_pair
+        _check_pair(self.credit_min, self.credit_max, "credit")
+        _check_pair(self.major_courses_min, self.major_courses_max, "major_courses")
         return self
 
 
@@ -129,8 +165,21 @@ def to_constraints(profile: PlanningProfileInput) -> PlanningConstraints:
         workload_level=profile.workload_level,
         filler_preference=profile.filler_preference,
         pins=profile.pins,
-        expected_graduation_term=profile.expected_graduation_term)
+        expected_graduation_term=profile.expected_graduation_term,
+        commitments=profile.commitments,
+        honors=profile.honors,
+        credit_min=profile.credit_min,
+        credit_max=profile.credit_max,
+        major_courses_min=profile.major_courses_min,
+        major_courses_max=profile.major_courses_max,
+        # Fixed blocks shape SCHEDULES, not which courses: kept out of the
+        # plan's constraints so editing a shift does not make a plan stale.
+        term_overrides=[TermPlanningOverride.model_validate(
+                            o.model_dump(exclude={"blocked_times"}))
+                        for o in profile.term_overrides
+                        if o.major_courses_min is not None or o.credit_min is not None
+                        or o.commitments is not None])
 
 
 __all__ = ["AdditionalGoal", "DEFAULT_MAX_TERMS", "GRADUATION_TARGET_TERMS", "PlanningProfileInput",
-           "ScheduleDefaults", "to_constraints"]
+           "ScheduleDefaults", "TermAnswers", "to_constraints"]

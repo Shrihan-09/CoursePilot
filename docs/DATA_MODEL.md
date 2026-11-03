@@ -10248,3 +10248,166 @@ the 2026-2027 catalog's Entry Requirements. They agree on C or better in
 01:640:151, 01:640:152, 01:198:111, 01:198:112 and 01:198:205. They differ on
 students with transfer or equivalent credit (two New Brunswick CS courses vs
 three).
+
+## 54. Planning questionnaire (Task 2, Prompt 09)
+
+Spec: `prompts/09-planning-interview-and-workload.md`.
+
+Student intent, stored on the planning profile like every other preference
+(`student_planning_profile`, migrations `t2quest01` and `t2quest02`, both
+additive). The student confirms it; an assistant may propose it but never
+writes it. Every question can be skipped, and a skipped answer means the
+default.
+
+| Column | Shape | Default (skipped) |
+|---|---|---|
+| `commitments` | `{job_hours_per_week, greek_life, clubs, athletics_hours_per_week, research_hours_per_week, recruiting_hours_per_week}` | `{}`: none |
+| `honors` | boolean, nullable | `NULL`: not answered, read as "no" |
+| `credit_min`, `credit_max` | integers, nullable | `NULL`: the workload level's credit range |
+| `major_courses_min`, `major_courses_max` | integers, nullable | `NULL`: the workload level's major-related range |
+| `term_overrides` | `[{term_code, major_courses_min/max, credit_min/max, commitments, blocked_times}]` | `[]` |
+| `schedule.blocked_times` (existing JSON) | `[{kind, days, start, end}]` | `[]` |
+| `schedule.preferred_campuses` (existing JSON) | SOC campus codes (BUS, CAC, LIV, D/C, DNB) | `[]` |
+
+Only commitment TYPES and hours are stored. There is no field for the name
+of an employer, chapter, club or team, and unknown fields are rejected.
+`kind` is one of job, club, greek_life, athletics, research, recruiting or
+other. The UI asks for job hours as bands, stored as hours: none 0,
+under 10 → 8, 10-20 → 15, 20+ → 25. "Clear my answers" resets every answer
+to its default.
+
+**Precedence for each range:** this semester's answer, then the student's
+own answer, then the workload level.
+
+### 54.1 Major-related courses per term
+
+A course is **major-related** when it counts toward an open node of the
+major's requirement tree (`requirement_system = "major"`). That includes
+the major's required math and science (Calculus, a B.S. science sequence),
+not only the major's own subject. A Core-only course, a general elective or
+a course the program excludes (01:198:142 for CS) does not count. A lab
+taken with its lecture counts once.
+
+| Workload level | Default range |
+|---|---|
+| Light | 1-2 |
+| Balanced | 2-3 |
+| Semi-rigorous | 3 |
+| Challenging | 3-4 |
+
+**Fill order** (Prompt 09 §4):
+
+1. **Anchors.** Needed retakes, then pins. They count toward the range and
+   are never dropped.
+2. **Multi-requirement courses.** One that also counts toward the major
+   comes first. A course that fills only other requirements (two Core goals)
+   is placed only while room remains for the term's major-related minimum:
+   its slot, credits and workload are reserved. Once the major courses are
+   placed, it gets any room left.
+3. **Major-related courses**, in rank order, up to the maximum: a
+   prerequisite, a long chain or a one-season course first.
+4. **Fillers.**
+
+Three things can take a term past the range, and each is noted on the term:
+
+- the anchors alone fill it;
+- the graduation target needs more: `ceil(open major course-units / terms
+  left in the horizon)`, where a credits node counts `ceil(missing / 3)`;
+  the plan is never silently extended;
+- the credit floor needs it.
+
+### 54.2 Commitments, hours and the budget
+
+The baseline is 60 weekly hours for school; commitments come off it, and
+the term shows the hours left (`hours_available`). Weekly hours are the
+stated hours for a job, athletics, research and recruiting. The other two
+answers map to fixed hours:
+
+| Commitment | None | Light | Heavy | Rushing | New member | Active |
+|---|---|---|---|---|---|---|
+| Greek life (hours/week) | 0 | | | 6 | 10 | 4 |
+| Clubs/professional orgs (hours/week) | 0 | 3 | 8 | | | |
+
+The term's workload budget drops by `hours / 3` (one credit is about 3 hours
+of class and study a week), rounded to the nearest 0.5, and never below the
+credit floor. The term says so: "Your rush semester (21 hours a week: job
+15, Greek life 6, so about 39 of 60 weekly hours are left for school) lowered
+this term's workload budget from 16 to 12 - no lower than the 12-credit
+minimum."
+
+**The credit floor is hard.** Below it, the term's limits give way in this
+order, and the term says which one did:
+
+1. the commitments' reduction;
+2. the major-related range;
+3. the level's own budget. This step also raises
+   `CREDIT_FLOOR_OVER_BUDGET` (warning), which offers the student the
+   choice: keep the minimum, or lower this semester's minimum.
+
+The credit maximum and the course limit never give way. A term still under
+the floor (nothing eligible) lists that under `shortfalls`.
+
+### 54.3 Honors and admission-required courses (Prompt 09 §1.2)
+
+A course is **honors-only** when either is true:
+
+- its catalog title names an honors course (`\bHONORS?\b`: "COMPUTER
+  SCIENCE HONORS CAPSTONE PROGRAM", "SENIOR HONORS THESIS", "HONORS GENERAL
+  CHEM"). 01:198:495/496 have no sections and no restriction rows in any
+  loaded term, so the title is the only evidence;
+- every section of the term carries only SOC `honorPrograms` restriction
+  entries.
+
+A term with no published sections is judged on the latest loaded term.
+
+- If `honors` is not `true`, an honors-only course is never planned, a pin
+  on one is refused with that reason, and a course the major needs gets
+  `HONORS_ONLY_NOT_PLANNED`.
+- If `honors` is `true`, the course is plannable and stays needs-confirmation
+  (CoursePilot cannot verify membership).
+- The Schedule Engine applies the same rule to sections (`honors = false`
+  excludes honors-only sections).
+
+A course is **permission-only** when every section needs a special
+permission number to add (admission or the department's consent, e.g.
+01:198:494 Independent Study). No planning answer meets that, so it is never
+planned for a requirement (`PERMISSION_REQUIRED_NOT_PLANNED`). A pin places
+it, with `PIN_NEEDS_PERMISSION` (needs confirmation). The rule does not apply
+to a prerequisite on the plan's path: placement-gated courses such as
+01:640:001 and 01:355:095 carry a permission code on every section, but
+students enter them by placement. Excluding them stranded every science
+sequence for a student with no record (measured).
+
+### 54.4 Fixed weekly times and campuses
+
+`SchedulePreferences.blocked_times` is a hard Schedule Engine constraint: a
+timed meeting overlapping a block is excluded (`blocked_times`). A meeting
+that only touches a block's start or end is not an overlap. The Schedule
+page sends the semester's own blocks when it has them, otherwise the usual
+ones, plus the preferred campuses. The engine's existing soft
+`preferred_campuses` only orders options. Neither is a planning constraint,
+so editing one never makes a saved plan stale. "Avoid bus-heavy days" is not
+modelled: the engine reports campus changes between classes and does not
+rank on them.
+
+### 54.5 What a term shows
+
+`TermWorkload` adds:
+
+- `base_budget`, `commitment_hours`, `hours_available`;
+- `major_related`, `major_min`, `major_max`, `major_range_source`
+  (`level` | `profile` | `override`);
+- `fit`;
+- `shortfalls`: below the range or below the credit floor, with the reason.
+
+Example `fit`:
+
+> Why this fits you: Light + rushing + job 15 h/week → *credits*,
+> *n* major-related courses (your range: 1-2), async filler, budget 12
+> instead of 16 for your commitments, workload *w* of 12.
+
+Course roles show as badges: Anchor / Counts twice / Major / Filler.
+
+Pace stays the graduation target, separate from the level.
+`WORKLOAD_VS_GRADUATION_TARGET` warns when the two pull apart: Early with
+Light, or No rush with Challenging. Planning engine version 7.7.0.

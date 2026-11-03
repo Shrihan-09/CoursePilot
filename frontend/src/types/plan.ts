@@ -183,6 +183,17 @@ export interface TermWorkload {
   credit_max: string;
   contact_hours: string;
   notes: string[];
+  /** Task 2: the budget before commitments, and the commitments' weekly hours. */
+  base_budget?: string | null;
+  commitment_hours?: number;
+  /** Task 2: courses counting toward the major (a lab with its lecture counts once). */
+  major_related?: number;
+  major_min?: number;
+  major_max?: number;
+  major_range_source?: "level" | "override";
+  /** Task 2: "Why this fits you: ..." */
+  fit?: string | null;
+  shortfalls?: string[];
 }
 
 export interface PlanTerm {

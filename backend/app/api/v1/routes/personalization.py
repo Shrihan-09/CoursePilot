@@ -24,7 +24,14 @@ from pydantic import BaseModel, Field
 from app.api.security import Principal, enforce_request_rate_limit
 from app.api.v1.routes.student import _resolve, _unlinked
 from app.db.session import get_sync_sessionmaker
-from app.domain.planning import FillerPreference, Pace, Strategy, WorkloadLevel
+from app.domain.planning import (
+    ClubLoad,
+    FillerPreference,
+    GreekLife,
+    Pace,
+    Strategy,
+    WorkloadLevel,
+)
 from app.domain.planning_profile import (
     DEFAULT_MAX_TERMS,
     GRADUATION_TARGET_TERMS,
@@ -35,6 +42,12 @@ from app.services.planning.engine import GRADUATION_SEMESTERS
 from app.services.planning.profile import confirm_profile, get_profile, profile_input
 from app.services.planning.readiness import readiness
 from app.services.planning.terms import label as term_label
+from app.services.planning.questionnaire import (
+    CLUB_HOURS,
+    GREEK_HOURS,
+    HOURS_PER_POINT,
+    MAJOR_RANGE,
+)
 from app.services.planning.workload import LEVELS
 from app.services.scheduling.current import (
     CurrentScheduleError,
@@ -67,8 +80,12 @@ WORKLOAD_LEVELS = [
     {"value": level.value, "label": label,
      "credit_floor": str(LEVELS[level][0]), "credit_max": str(LEVELS[level][1]),
      "budget": str(LEVELS[level][2]),
+     "major_min": MAJOR_RANGE[level][0], "major_max": MAJOR_RANGE[level][1],
      "description": (f"{LEVELS[level][0]}-{LEVELS[level][1]} credits a semester, workload up "
-                     f"to {LEVELS[level][2]}.")}
+                     f"to {LEVELS[level][2]}, "
+                     + (f"{MAJOR_RANGE[level][0]}" if MAJOR_RANGE[level][0] == MAJOR_RANGE[level][1]
+                        else f"{MAJOR_RANGE[level][0]}-{MAJOR_RANGE[level][1]}")
+                     + " courses toward your major.")}
     for level, label in ((WorkloadLevel.LIGHT, "Light"), (WorkloadLevel.BALANCED, "Balanced"),
                          (WorkloadLevel.SEMI_RIGOROUS, "Semi-rigorous"),
                          (WorkloadLevel.CHALLENGING, "Challenging"))]
@@ -84,6 +101,23 @@ WORKLOAD_WEIGHT_TEXT = (
     "Workload weight = credits + 0.25 x weekly contact hours above the credits + 1 for a lab "
     "+ 0.5 x (course level - 1) + 1 if technical (your major's subject, math, or a Core "
     "natural science). Computed from the Rutgers Schedule of Classes; not a difficulty rating.")
+
+#: Task 2 questionnaire: the fixed hour mappings, shown next to each answer.
+GREEK_LIFE = [{"value": g.value, "label": label, "hours": GREEK_HOURS[g]}
+              for g, label in ((GreekLife.NONE, "None"), (GreekLife.RUSHING, "Rushing"),
+                               (GreekLife.NEW_MEMBER, "New member"),
+                               (GreekLife.ACTIVE, "Active member"))]
+CLUBS = [{"value": c.value, "label": label, "hours": CLUB_HOURS[c]}
+         for c, label in ((ClubLoad.NONE, "None"), (ClubLoad.LIGHT, "Light"),
+                          (ClubLoad.HEAVY, "Heavy"))]
+COMMITMENTS_TEXT = (
+    f"Commitments lower a semester's workload budget by 1 for every {HOURS_PER_POINT} hours a "
+    "week (about one credit of class and study), never below the credit minimum. Only the "
+    "type and hours are saved - never the name of an employer, chapter, club or team.")
+MAJOR_RELATED_TEXT = (
+    "Major-related courses are any that count toward your major, including its required math "
+    "and science. Courses you must take (a retake or a pin) always stay; if your graduation "
+    "target needs more, the plan takes more and says so on the semester.")
 
 #: Academic strategy (7.2.4): an ordering preference among courses CoursePilot
 #: has already checked are valid. Never a shortcut around a requirement.
@@ -114,6 +148,10 @@ class ProfileResponse(BaseModel):
     workload_levels: list[dict] = WORKLOAD_LEVELS
     filler_preferences: list[dict] = FILLER_PREFERENCES
     workload_weight: str = WORKLOAD_WEIGHT_TEXT
+    greek_life: list[dict] = GREEK_LIFE
+    clubs: list[dict] = CLUBS
+    commitments_text: str = COMMITMENTS_TEXT
+    major_related_text: str = MAJOR_RELATED_TEXT
     #: Planning settings are CoursePilot's, never Rutgers credit-load policy.
     disclaimer: str = ("These are your CoursePilot planning settings, not Rutgers credit-load "
                        "policy. Check your school's rules before planning an overload.")

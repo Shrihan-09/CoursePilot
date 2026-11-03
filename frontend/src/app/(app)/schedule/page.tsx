@@ -15,6 +15,7 @@ import { CurrentScheduleView } from "@/features/schedule/current-schedule";
 import { Comparison, IssueList, OptionDetails, RankingNote } from "@/features/schedule/option-view";
 import { WeekCalendar } from "@/features/schedule/week-calendar";
 import { ApiError, api } from "@/lib/api";
+import { blockedTimeText } from "@/lib/academic/questionnaire";
 import { DAY_NAME } from "@/lib/academic/schedule-time";
 import { SCHEDULE_STATUS, termLabel } from "@/lib/academic/vocabulary";
 import type { DayCode, SchedulePreferences } from "@/types/schedule";
@@ -153,6 +154,20 @@ function PlannedSchedule() {
     }
   };
 
+  // Task 2: the planning answers' fixed weekly times (that semester's own when
+  // answered separately) and honors answer are hard limits too.
+  const profileLimits = (t: string): Partial<SchedulePreferences> => {
+    const p = planning.data?.profile;
+    if (!p) return {};
+    const own = p.term_overrides?.find((o) => o.term_code === t)?.blocked_times;
+    return {
+      blocked_times: own ?? p.schedule.blocked_times ?? [], honors: p.honors ?? null,
+      ...(p.schedule.preferred_campuses?.length && !prefs.preferred_campuses.length
+        ? { preferred_campuses: p.schedule.preferred_campuses } : {}),
+    };
+  };
+  const blocked = term ? (profileLimits(term).blocked_times ?? []) : [];
+
   const usesProfile = Boolean(planning.data?.profile?.schedule && (planning.data.profile.schedule.earliest_start
     || planning.data.profile.schedule.latest_end || planning.data.profile.schedule.avoid_days.length));
 
@@ -238,13 +253,18 @@ function PlannedSchedule() {
       {usesProfile && (
         <p className="text-xs text-fg-muted">Class-time limits start from your planning preferences.</p>
       )}
+      {blocked.length > 0 && (
+        <p className="text-xs text-fg-muted">
+          No class is placed during your fixed weekly times: {blocked.map(blockedTimeText).join("; ")}. Change them in Planning preferences.
+        </p>
+      )}
       <Settings prefs={prefs} onChange={(p) => { setPrefs(p); generate.reset(); }} />
 
       <Button
         variant="primary"
         disabled={!canGenerate}
         loading={generate.isPending}
-        onClick={() => generate.mutate({ term, courses, preferences: prefs, max_results: 10 })}
+        onClick={() => generate.mutate({ term, courses, preferences: { ...prefs, ...profileLimits(term) }, max_results: 10 })}
       >
         Find schedules{term ? ` for ${termLabel(term)}` : ""}
       </Button>

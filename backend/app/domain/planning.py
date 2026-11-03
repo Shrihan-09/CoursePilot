@@ -34,7 +34,7 @@ from app.domain.course_ranking import CourseRankingEvidence
 from app.domain.scenario import ScenarioAssumption, ScenarioTarget
 
 #: Bumped whenever the same inputs could produce a different plan.
-PLANNING_ENGINE_VERSION = "7.6.1"   # Commit to requirement alternatives
+PLANNING_ENGINE_VERSION = "7.7.0"   # Task 2: major-related courses per term, commitments, honors
 
 
 class EligibilityState(StrEnum):
@@ -156,6 +156,70 @@ class CoursePin(BaseModel):
     term_code: str = Field(pattern=r"^\d{4}[0179]$")
 
 
+class GreekLife(StrEnum):
+    """Task 2: where the student is in Greek life - a stage, never a chapter."""
+
+    NONE = "none"
+    RUSHING = "rushing"
+    NEW_MEMBER = "new_member"
+    ACTIVE = "active"
+
+
+class ClubLoad(StrEnum):
+    """Task 2: clubs and professional organizations - how much, never which."""
+
+    NONE = "none"
+    LIGHT = "light"
+    HEAVY = "heavy"
+
+
+class Commitments(BaseModel):
+    """Task 2: what else takes the student's week. Commitment TYPES and hours
+    only - no employer, chapter, club or team name is ever stored. Mapped
+    deterministically to hours (app.services.planning.questionnaire), which
+    lower a term's workload budget. Every field defaults to "none"."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    job_hours_per_week: int = Field(default=0, ge=0, le=40)
+    greek_life: GreekLife = GreekLife.NONE
+    clubs: ClubLoad = ClubLoad.NONE
+    athletics_hours_per_week: int = Field(default=0, ge=0, le=40)
+    research_hours_per_week: int = Field(default=0, ge=0, le=40)
+    recruiting_hours_per_week: int = Field(default=0, ge=0, le=40)
+
+
+class TermPlanningOverride(BaseModel):
+    """Task 2: the student's answers for ONE semester, replacing the defaults
+    there only. A planning setting (an assistant may propose one; the student
+    confirms it like any other)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    term_code: str = Field(pattern=r"^\d{4}[0179]$")
+    #: Exact major-related course range for this term (None: the usual one).
+    major_courses_min: int | None = Field(default=None, ge=0, le=8)
+    major_courses_max: int | None = Field(default=None, ge=0, le=8)
+    #: This term's credit range (None: the usual one).
+    credit_min: int | None = Field(default=None, ge=1, le=24)
+    credit_max: int | None = Field(default=None, ge=1, le=24)
+    #: This term's commitments (None: the student's usual ones).
+    commitments: Commitments | None = None
+
+    @model_validator(mode="after")
+    def _range(self) -> "TermPlanningOverride":
+        _check_pair(self.major_courses_min, self.major_courses_max, "major_courses")
+        _check_pair(self.credit_min, self.credit_max, "credit")
+        return self
+
+
+def _check_pair(lo: int | None, hi: int | None, name: str) -> None:
+    if (lo is None) != (hi is None):
+        raise ValueError(f"set both {name}_min and {name}_max, or neither")
+    if lo is not None and lo > hi:
+        raise ValueError(f"{name}_min cannot be above {name}_max")
+
+
 class Strategy(StrEnum):
     """Academic strategy (Phase 7.2.4): a RANKING preference among courses the
     engine has already proved valid. It never relaxes prerequisites, offering
@@ -213,12 +277,30 @@ class PlanningConstraints(BaseModel):
     #: Explicit student intent: requirement code -> selected child codes.
     #: Omission requests a provisional recommendation. Task 6 owns UI storage.
     alternative_selections: dict[str, list[str]] = Field(default_factory=dict)
+    #: Task 2 (workload levels only): weekly commitments lower each term's
+    #: workload budget; per-term overrides replace the major-related range and
+    #: commitments for one semester. Honors False/None keeps honors-only
+    #: courses out of every plan.
+    commitments: Commitments = Field(default_factory=Commitments)
+    term_overrides: list[TermPlanningOverride] = Field(default_factory=list, max_length=16)
+    honors: bool | None = None
+    #: Prompt 09: the student's own credit range and major-related range for
+    #: every semester (None: the workload level's).
+    credit_min: int | None = Field(default=None, ge=1, le=24)
+    credit_max: int | None = Field(default=None, ge=1, le=24)
+    major_courses_min: int | None = Field(default=None, ge=0, le=8)
+    major_courses_max: int | None = Field(default=None, ge=0, le=8)
 
     @model_validator(mode="after")
     def _target_within_max(self) -> "PlanningConstraints":
+        _check_pair(self.credit_min, self.credit_max, "credit")
+        _check_pair(self.major_courses_min, self.major_courses_max, "major_courses")
         if self.target_credits_per_term is not None and \
                 self.target_credits_per_term > self.max_credits_per_term:
             raise ValueError("target_credits_per_term cannot exceed max_credits_per_term")
+        terms = [o.term_code for o in self.term_overrides]
+        if len(terms) != len(set(terms)):
+            raise ValueError("one override per semester")
         return self
 
 
@@ -411,15 +493,33 @@ class PlannedCourse(BaseModel):
 
 
 class TermWorkload(BaseModel):
-    """Phase 7.3: a term against its workload level - all numbers shown."""
+    """Phase 7.3: a term against its workload level - all numbers shown.
+
+    Task 2 adds the major-related course count and range, the commitments
+    behind the budget, a "Why this fits you" line and any shortfall reasons."""
 
     level: WorkloadLevel
+    #: The budget this term was planned against (after commitments).
     budget: Decimal
     total: Decimal
     credit_floor: Decimal
     credit_max: Decimal
     contact_hours: Decimal
     notes: list[str] = Field(default_factory=list)
+    #: The level's own budget, before commitments.
+    base_budget: Decimal | None = None
+    commitment_hours: int = 0
+    #: Weekly hours left for school: a 60-hour baseline minus commitments.
+    hours_available: int | None = None
+    #: Courses counting toward the major's requirement tree (a lab taken with
+    #: its lecture counts once).
+    major_related: int = 0
+    major_min: int = 0
+    major_max: int = 0
+    #: level | override
+    major_range_source: str = "level"
+    fit: str | None = None
+    shortfalls: list[str] = Field(default_factory=list)
 
 
 class PlanTerm(BaseModel):
@@ -607,7 +707,8 @@ __all__ = ["CONSTRAINTS_SOURCE", "PLANNING_ENGINE_VERSION",
            "GraduationTarget", "OfferingEvidence", "OfferingEvidenceKind", "PlacementBasis",
            "PlanMetadata",
            "PlanResult", "PlanStatus", "Pace", "PlanObservation", "PlanTerm", "PlannedCourse",
-           "PlanningConstraints", "PlanningIssue", "CoreCodeEvidence", "Declaration",
+           "PlanningConstraints", "PlanningIssue", "CoreCodeEvidence", "ClubLoad", "Commitments",
+           "GreekLife", "TermPlanningOverride", "Declaration",
            "DeclarationRequirement", "DeclarationSource", "OfferingPattern",
            "RecommendationTrace", "RestrictionCheck", "SchoolCoreStatus", "SourceLabel",
            "TracedRequirement",

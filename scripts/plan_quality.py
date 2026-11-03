@@ -77,7 +77,17 @@ MODES = {
                                                 max_courses_per_term=6, pace=Pace.FINISH_EARLIER),
     "semi-rigorous (7.3)": PlanningConstraints(workload_level=WorkloadLevel.SEMI_RIGOROUS,
                                                max_courses_per_term=6, pace=Pace.BALANCED),
+    # Task 2: every workload level (fields that exist before and after Task 2).
+    "light (7.3)": PlanningConstraints(workload_level=WorkloadLevel.LIGHT,
+                                       max_courses_per_term=6, pace=Pace.BALANCED),
+    "balanced level (7.3)": PlanningConstraints(workload_level=WorkloadLevel.BALANCED,
+                                                max_courses_per_term=6, pace=Pace.BALANCED),
+    "challenging (7.3)": PlanningConstraints(workload_level=WorkloadLevel.CHALLENGING,
+                                             max_courses_per_term=6, pace=Pace.BALANCED),
 }
+#: Task 2: the credit floor of each level, the reference for |dev| and "under".
+FLOORS = {WorkloadLevel.LIGHT: 12, WorkloadLevel.BALANCED: 14, WorkloadLevel.SEMI_RIGOROUS: 16,
+          WorkloadLevel.CHALLENGING: 17}
 
 
 def alternatives(session, version) -> dict[str, tuple[str, str, int]]:
@@ -150,10 +160,25 @@ def awareness(plan, alts) -> tuple[int, int, int]:
     return untraced, extra, multi
 
 
+def major_per_term(plan, major_codes) -> str:
+    """Task 2: courses per term counting toward the MAJOR's tree (its math and
+    science included), a lab with its lecture once - from fields every engine
+    version emits."""
+    out = []
+    for t in plan.terms:
+        groups = {frozenset(pc.corequisite_group or [pc.course]) for pc in t.courses
+                  if any(r.requirement_code in major_codes for r in pc.requirements)}
+        out.append(str(len(groups)))
+    return "/".join(out)
+
+
 def main() -> None:
     with get_sync_sessionmaker()() as session:
         version, _ = resolve_version(session, PROGRAM, "2026-2027")
         alts = alternatives(session, version)
+        from app.services.academic_context import composed_requirements
+        major_codes = {r.code for r in composed_requirements(session, version)
+                       if r.requirement_system == "major"}
         below = descendants(session, version)
         rows = []
         details = []
@@ -184,17 +209,18 @@ def main() -> None:
                 # A workload level states no target: its credit floor (16 for
                 # semi-rigorous) is the reference.
                 target = cons.target_credits_per_term or (
-                    Decimal(16) if cons.workload_level else cons.max_credits_per_term)
+                    Decimal(FLOORS[cons.workload_level]) if cons.workload_level
+                    else cons.max_credits_per_term)
                 under = [x for x in loads[:-1] if x * 10 < target * 6]
                 rows.append((persona, mode, plan.status.value, len(loads),
                              "/".join(f"{x:g}" for x in loads), "/".join(str(len(t.courses)) for t in plan.terms),
                              round(statistics.fmean(abs(x - target) for x in loads), 2) if loads else "-",
                              len(under), f"{loads[-1]:g}" if loads else "-",
-                             *awareness(plan, alts), round(ms),
+                             *awareness(plan, alts), major_per_term(plan, major_codes), round(ms),
                              ",".join(o.code for o in plan.observations)))
         session.rollback()
     head = ("persona", "mode", "status", "terms", "credits", "courses", "|dev|", "under", "last",
-            "untraced", "extra_alt", "multi", "ms", "observations")
+            "untraced", "extra_alt", "multi", "major/term", "ms", "observations")
     print(" | ".join(head))
     for r in rows:
         print(" | ".join(str(x) for x in r))
