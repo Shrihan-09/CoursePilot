@@ -83,3 +83,9 @@ Done means:
   rules (cited), a plan that asks before planning above the limit, and a
   warning that names the rule.
 
+
+## Backlog: tooling
+
+- `inject_*_failures.py`: report INVALID (not MISSED) when pytest can't load
+  the app / no tests ran. Today a collection error (e.g. the wrong Python, so
+  `app` won't import) prints MISSED, which looks like a test gap.
