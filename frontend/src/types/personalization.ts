@@ -16,11 +16,44 @@ export interface AdditionalGoal {
   status: "exploring";
 }
 
+/** Task 2: a fixed weekly block - a commitment TYPE only, never a name. */
+export type BlockKind = "job" | "club" | "greek_life" | "athletics" | "research" | "recruiting" | "other";
+export interface BlockedTime { kind: BlockKind; days: DayCode[]; start: string; end: string }
+
 export interface ScheduleDefaults {
   modality?: { application_state: "not_applied"; preferred: Exclude<Modality, "unknown"> | null; excluded: Exclude<Modality, "unknown">[] };
   earliest_start: string | null;
   latest_end: string | null;
   avoid_days: DayCode[];
+  blocked_times?: BlockedTime[];
+  /** Task 2: SOC campus codes (BUS, CAC, LIV, D/C, DNB) - orders schedules, never excludes. */
+  preferred_campuses?: string[];
+}
+
+/** Task 2 planning questionnaire. */
+export type GreekLife = "none" | "rushing" | "new_member" | "active";
+export type ClubLoad = "none" | "light" | "heavy";
+export interface Commitments {
+  job_hours_per_week: number;
+  greek_life: GreekLife;
+  clubs: ClubLoad;
+  athletics_hours_per_week: number;
+  research_hours_per_week: number;
+  recruiting_hours_per_week: number;
+}
+export const NO_COMMITMENTS: Commitments = {
+  job_hours_per_week: 0, greek_life: "none", clubs: "none",
+  athletics_hours_per_week: 0, research_hours_per_week: 0, recruiting_hours_per_week: 0,
+};
+/** One semester's answers; null fields keep the usual answers. */
+export interface TermAnswers {
+  term_code: string;
+  major_courses_min: number | null;
+  major_courses_max: number | null;
+  credit_min?: number | null;
+  credit_max?: number | null;
+  commitments: Commitments | null;
+  blocked_times: BlockedTime[] | null;
 }
 
 /** 7.2.4 academic strategy: ordering among VALID courses only. */
@@ -47,6 +80,16 @@ export interface PlanningProfileInput {
   pins?: CoursePin[];
   /** Phase 7.3: overrides the graduation target pace, e.g. "20281". */
   expected_graduation_term?: string | null;
+  commitments?: Commitments;
+  /** true: in an honors program. false or null (skipped): honors-only courses are not planned. */
+  honors?: boolean | null;
+  term_overrides?: TermAnswers[];
+  /** Task 2: credits per semester (null: the workload level's range). */
+  credit_min?: number | null;
+  credit_max?: number | null;
+  /** Task 2: major-related courses per semester (null: the workload level's range). */
+  major_courses_min?: number | null;
+  major_courses_max?: number | null;
 }
 
 export interface PlanningProfile extends PlanningProfileInput {
@@ -61,7 +104,11 @@ export interface PlanningProfileResponse {
   defaults: PlanningProfileInput;
   paces: { value: Pace; label: string; description: string }[];
   strategies?: { value: Strategy; label: string; description: string }[];
-  workload_levels?: { value: WorkloadLevel; label: string; description: string; credit_floor: string; credit_max: string; budget: string }[];
+  workload_levels?: { value: WorkloadLevel; label: string; description: string; credit_floor: string; credit_max: string; budget: string; major_min?: number; major_max?: number }[];
+  greek_life?: { value: GreekLife; label: string; hours: number }[];
+  clubs?: { value: ClubLoad; label: string; hours: number }[];
+  commitments_text?: string;
+  major_related_text?: string;
   filler_preferences?: { value: FillerPreference; label: string; description: string }[];
   workload_weight?: string;
   disclaimer: string;

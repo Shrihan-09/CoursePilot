@@ -184,6 +184,13 @@ def evaluate_restriction(entries: list[RestrictionEntry], attrs: StudentAttribut
                                special_permission=special_permission, reasons=reasons)
 
 
+def honors_only(restriction: RestrictionEvidence) -> bool:
+    """Task 2: the section is open ONLY to honors programs - it has
+    restriction entries and every one is an SOC `honorPrograms` entry."""
+    return bool(restriction.entries) and all(e.kind == "honor_program"
+                                             for e in restriction.entries)
+
+
 def prose_meeting_text(*notes: str | None) -> str | None:
     """The section note, when it states a meeting time the structured
     meetings may not contain (Phase 6.6.1). Never parsed into intervals."""
@@ -407,4 +414,4 @@ def load_term(session: Session, term_code: str, courses: list[str],
 
 
 __all__ = ["SCHOOL_UNIT_CODES", "SectionCandidate", "StudentAttributes", "TermData",
-           "evaluate_restriction", "load_term", "student_attributes"]
+           "evaluate_restriction", "honors_only", "load_term", "student_attributes"]

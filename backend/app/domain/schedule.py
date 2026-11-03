@@ -39,7 +39,7 @@ from datetime import date
 from decimal import Decimal
 from enum import StrEnum
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.domain.availability import AvailabilityStatus, Freshness
 from app.domain.modality import CourseModalityOptions, ModalityEvidence
@@ -124,6 +124,37 @@ class Reason(StrEnum):
 
 _HHMM = r"^([01][0-9]|2[0-3]):[0-5][0-9]$"
 
+#: Task 2: what a fixed weekly block is FOR - a commitment TYPE only. Names of
+#: employers, clubs or organizations are never stored.
+BLOCK_KINDS = ("job", "club", "greek_life", "athletics", "research", "recruiting", "other")
+
+
+class BlockedTime(BaseModel):
+    """A fixed weekly block the student is busy (a job shift, a club meeting).
+    A HARD constraint in the Schedule Engine: a section meeting during it is
+    never scheduled."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: str = Field(default="other", pattern="^(" + "|".join(BLOCK_KINDS) + ")$")
+    days: list[str] = Field(min_length=1, max_length=7)
+    start: str = Field(pattern=_HHMM)
+    end: str = Field(pattern=_HHMM)
+
+    @field_validator("days")
+    @classmethod
+    def _days(cls, v: list[str]) -> list[str]:
+        bad = [d for d in v if d not in WEEKDAYS]
+        if bad:
+            raise ValueError(f"unknown weekday codes {bad}; use {list(WEEKDAYS)}")
+        return sorted(set(v), key=WEEKDAYS.index)
+
+    @model_validator(mode="after")
+    def _window(self) -> "BlockedTime":
+        if self.start >= self.end:
+            raise ValueError("a blocked time must start before it ends")
+        return self
+
 
 class SchedulePreferences(BaseModel):
     """Student scheduling settings - CoursePilot settings, NOT Rutgers rules.
@@ -144,6 +175,13 @@ class SchedulePreferences(BaseModel):
     minimum_minutes_between_classes: int = Field(default=0, ge=0, le=120)
     preferred_campuses: list[str] = Field(default_factory=list, max_length=8)
     availability: AvailabilityMode = AvailabilityMode.PREFER_OPEN
+    #: Task 2: fixed weekly blocks (job shifts, club meetings) - HARD.
+    blocked_times: list[BlockedTime] = Field(default_factory=list, max_length=20)
+    #: Task 2: the student's honors answer. False: sections open ONLY to honors
+    #: programs are never scheduled. True or None (not asked): such sections
+    #: stay needs-confirmation, as before - CoursePilot cannot verify
+    #: membership.
+    honors: bool | None = None
 
     @field_validator("avoid_days")
     @classmethod
@@ -163,6 +201,8 @@ class SchedulePreferences(BaseModel):
         out = self.time_constraints()
         if self.availability is AvailabilityMode.REQUIRE_OPEN:
             out.append("availability")
+        if self.honors is False:
+            out.append("honors")
         return out
 
     def time_constraints(self) -> list[str]:
@@ -176,6 +216,8 @@ class SchedulePreferences(BaseModel):
             out.append("avoid_days")
         if self.minimum_minutes_between_classes:
             out.append("minimum_minutes_between_classes")
+        if self.blocked_times:
+            out.append("blocked_times")
         return out
 
     def without(self, name: str) -> SchedulePreferences:

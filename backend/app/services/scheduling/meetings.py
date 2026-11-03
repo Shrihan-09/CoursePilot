@@ -139,6 +139,20 @@ def violates_window(meetings: list[MeetingInterval], *, earliest: int | None,
     return None
 
 
+def overlaps_blocked(meetings: list[MeetingInterval],
+                     blocked: list[tuple[str, int, int]]) -> str | None:
+    """Task 2: "blocked_times" when a timed meeting overlaps one of the
+    student's fixed weekly blocks (day, start minute, end minute). Touching
+    ends (a block ending 12:00, a class starting 12:00) do not overlap."""
+    for m in meetings:
+        if m.kind is not MeetingKind.TIMED:
+            continue
+        for day, start, end in blocked:
+            if m.day == day and m.start_minute < end and start < m.end_minute:
+                return "blocked_times"
+    return None
+
+
 __all__ = ["CLASS_MODES", "ONLINE_MODE_DESC", "conflict", "dates_may_overlap", "hhmm",
-           "minutes", "normalize", "sections_conflict",
+           "minutes", "normalize", "overlaps_blocked", "sections_conflict",
            "time_verified", "violates_window"]

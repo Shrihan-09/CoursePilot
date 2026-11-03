@@ -27,29 +27,6 @@ Done means:
 - `scripts/reparse_conditions.py` reports the semantic changes (dry run first,
   backup before applying), and tests cover both courses.
 
-## Task 2: major courses per term (workload-level default + per-semester override)
-
-Decided 2026-10-27; **part of Task 2, not Task 1**. Today the planner fills
-each term as anchors -> multi-requirement courses -> ONE dedicated major
-course -> fillers, and has no setting for how many major courses a term gets.
-Task 2 adds one:
-
-| Workload level | Major courses per term (default) |
-|---|---|
-| Light | 1-2 |
-| Balanced | 2-3 |
-| Semi-rigorous | 3 |
-| Challenging | 3-4 |
-
-- A "major course" is ANY course that counts toward the major, including the
-  major's required mathematics and science (e.g. Calculus II, a B.S. science
-  sequence) - not only courses in the major's own subject.
-- The default comes from the workload level; the student can override the
-  range for any single semester.
-- It joins the existing fill order and budgets (anchors still come first and
-  may exceed it, and the term says so), with tests for each level and for an
-  override.
-
 ## Enforce prerequisites published only in section notes
 
 Found in the Task 1 reparse (2026-10-27). 37 course-term rows (10
@@ -74,3 +51,35 @@ Done means:
 - `scripts/reparse_conditions.py` dry run first, backup before applying, and
   a report of every changed row; tests for an enforced note, a note on some
   sections only, and an uninterpretable note.
+
+## Spread plans to the graduation target, and model the 120-credit degree total
+
+Decided 2026-11-02 in the Task 2 review; a new task, not built. Today a plan
+fills each term to its level and finishes as soon as the requirements are
+met. The owner's Semi-rigorous preview ends in Spring 2028, a year before its
+Spring 2029 target. There is also no total-credit requirement.
+
+Done means:
+
+- unless pace = Early, a plan spreads its courses to the graduation target
+  instead of finishing early. It still never goes past the target, and never
+  below a term's credit minimum;
+- the SAS 120-credit degree total is modelled as a requirement, citing the
+  catalog page that states it (with retrieval date and archive hash, like
+  the declaration sources);
+- every plan shows a cumulative credit count per term (record + planned) and
+  the total against 120.
+
+## Backlog: schedule and credit-load rules (from Prompt 09)
+
+- **Bus-heavy days.** Prompt 09's "avoid bus-heavy days" is not modelled. The
+  Schedule Engine reports campus changes between consecutive classes
+  (`CAMPUS_CHANGE_BETWEEN_CLASSES`) but neither ranks nor limits them. Done
+  means a soft preference (fewer campus changes per day) in the option
+  ranking, with the change count shown.
+- **Overload credit rules.** "Never above the school's max without an
+  overload" is not modelled: CoursePilot caps credits at 24 and shows a
+  disclaimer. Done means the school's published credit-load and overload
+  rules (cited), a plan that asks before planning above the limit, and a
+  warning that names the rule.
+

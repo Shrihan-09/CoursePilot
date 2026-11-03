@@ -90,8 +90,8 @@ from app.domain.schedule import (
     SectionChoice,
     Severity,
 )
-from app.services.scheduling.candidates import SectionCandidate, TermData
-from app.services.scheduling.meetings import hhmm, violates_window
+from app.services.scheduling.candidates import SectionCandidate, TermData, honors_only
+from app.services.scheduling.meetings import hhmm, overlaps_blocked, violates_window
 from app.services.scheduling.modality import aggregate, classify_meetings
 from app.services.scheduling.search import Candidate, incompatible_pairs, search
 
@@ -106,6 +106,7 @@ ONLINE_CAMPUSES = frozenset({"ONL", "**"})
 def _domains(term: TermData, prefs: SchedulePreferences):
     """Apply the UNARY hard constraints; return domains and what excluded what."""
     earliest, latest = hhmm(prefs.earliest_start), hhmm(prefs.latest_end)
+    blocked = [(day, hhmm(b.start), hhmm(b.end)) for b in prefs.blocked_times for day in b.days]
     domains: dict[str, list[SectionCandidate]] = {}
     excluded: dict[str, dict[str, list[str]]] = {}
     for slot in sorted(term.candidates):
@@ -122,8 +123,12 @@ def _domains(term: TermData, prefs: SchedulePreferences):
                 if a.state is not AvailabilityState.OPEN:
                     why[f"availability_{a.state.value}"].append(c.index_number)
                     continue
-            broken = violates_window(c.meetings, earliest=earliest, latest=latest,
-                                     avoid_days=prefs.avoid_days)
+            if prefs.honors is False and honors_only(c.restriction):
+                why["honors_only"].append(c.index_number)
+                continue
+            broken = (violates_window(c.meetings, earliest=earliest, latest=latest,
+                                      avoid_days=prefs.avoid_days)
+                      or overlaps_blocked(c.meetings, blocked))
             if broken:
                 why[broken].append(c.index_number)
                 continue

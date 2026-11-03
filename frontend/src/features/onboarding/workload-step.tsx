@@ -7,9 +7,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert, Skeleton } from "@/components/ui/feedback";
 import { Field, Radio, Select } from "@/components/ui/field";
+import { answersInvalid, QuestionnaireFields, type QuestionnaireValue } from "@/features/planning/questionnaire-fields";
 import { termLabel, upcomingTerms } from "@/lib/academic/vocabulary";
 import { ApiError, api } from "@/lib/api";
-import type { FillerPreference, WorkloadLevel } from "@/types/personalization";
+import { NO_COMMITMENTS, type FillerPreference, type WorkloadLevel } from "@/types/personalization";
 import type { Pace } from "@/types/plan";
 
 /**
@@ -25,6 +26,7 @@ export function WorkloadStep({ onDone }: { onDone: () => void }) {
   const [level, setLevel] = useState<WorkloadLevel | null>(null);
   const [filler, setFiller] = useState<FillerPreference | null>(null);
   const [gradTerm, setGradTerm] = useState<string | null | undefined>(undefined);
+  const [answers, setAnswers] = useState<QuestionnaireValue | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,6 +40,17 @@ export function WorkloadStep({ onDone }: { onDone: () => void }) {
   const chosenFiller = filler ?? base.filler_preference ?? "no_preference";
   const chosenGrad = gradTerm === undefined ? (base.expected_graduation_term ?? null) : gradTerm;
   const gradChoices = upcomingTerms(new Date(), 14).filter((t) => t.endsWith("1") || t.endsWith("9"));
+  const chosenAnswers: QuestionnaireValue = answers ?? {
+    commitments: base.commitments ?? NO_COMMITMENTS, honors: base.honors ?? null,
+    blocked_times: base.schedule.blocked_times ?? [], term_overrides: base.term_overrides ?? [],
+    credit_min: base.credit_min ?? null, credit_max: base.credit_max ?? null,
+    major_min: base.major_courses_min ?? null, major_max: base.major_courses_max ?? null,
+    preferred_campuses: base.schedule.preferred_campuses ?? [],
+    schedule_shape: { earliest_start: base.schedule.earliest_start, latest_end: base.schedule.latest_end,
+                      avoid_days: base.schedule.avoid_days },
+    pins: base.pins ?? [],
+  };
+  const invalid = answersInvalid(chosenAnswers);
 
   async function save() {
     setSaving(true);
@@ -46,6 +59,12 @@ export function WorkloadStep({ onDone }: { onDone: () => void }) {
       await api.confirmPlanningProfile({
         ...base!, pace: chosenPace, workload_level: chosenLevel, filler_preference: chosenFiller,
         expected_graduation_term: chosenGrad,
+        schedule: { ...base!.schedule, ...chosenAnswers.schedule_shape, blocked_times: chosenAnswers.blocked_times,
+                    preferred_campuses: chosenAnswers.preferred_campuses },
+        commitments: chosenAnswers.commitments, honors: chosenAnswers.honors,
+        term_overrides: chosenAnswers.term_overrides, pins: chosenAnswers.pins ?? [],
+        credit_min: chosenAnswers.credit_min, credit_max: chosenAnswers.credit_max,
+        major_courses_min: chosenAnswers.major_min, major_courses_max: chosenAnswers.major_max,
       });
       onDone();
     } catch (e) {
@@ -59,7 +78,7 @@ export function WorkloadStep({ onDone }: { onDone: () => void }) {
     <section aria-labelledby="workload-title" className="space-y-6">
       <div className="space-y-1">
         <h2 id="workload-title" className="text-xl font-semibold tracking-tight text-fg">Your semesters</h2>
-        <p className="text-sm text-fg-secondary">You can change all of this later in Planning preferences.</p>
+        <p className="text-sm text-fg-secondary">Every question is optional - skip any you like. You can change all of this later from the Plan page.</p>
       </div>
       <fieldset className="space-y-2">
         <legend className="text-base font-semibold text-fg">When do you want to graduate?</legend>
@@ -93,10 +112,12 @@ export function WorkloadStep({ onDone }: { onDone: () => void }) {
             checked={chosenFiller === f.value} onChange={() => setFiller(f.value)} />
         ))}
       </fieldset>
-      {error && <Alert tone="danger">{error}</Alert>}
+      <QuestionnaireFields meta={meta.data} value={chosenAnswers} onChange={setAnswers}
+        terms={upcomingTerms(new Date(), 8)} level={chosenLevel} pace={chosenPace} />
+      {(error || invalid) && <Alert tone="danger">{error ?? invalid}</Alert>}
       <div className="flex justify-between">
         <Button variant="ghost" onClick={onDone}>Skip</Button>
-        <Button variant="primary" loading={saving} onClick={save}>
+        <Button variant="primary" loading={saving} disabled={Boolean(invalid)} onClick={save}>
           Save <ArrowRight aria-hidden className="size-4" />
         </Button>
       </div>

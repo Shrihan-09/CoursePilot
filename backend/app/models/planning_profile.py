@@ -49,6 +49,17 @@ class StudentPlanningProfile(Base, TimestampMixin):
     pins: Mapped[list] = mapped_column(JSON, default=list)
     #: Phase 7.3: optional expected graduation term ("20281"), overriding the pace.
     expected_graduation_term: Mapped[str | None] = mapped_column(String(5), nullable=True)
+    #: Task 2 questionnaire: commitment TYPES and hours (never names), the
+    #: honors answer (NULL: not answered) and per-semester answers.
+    commitments: Mapped[dict] = mapped_column(JSON, default=dict)
+    honors: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    term_overrides: Mapped[list] = mapped_column(JSON, default=list)
+    #: Prompt 09: the student's own credit and major-related ranges (NULL: the
+    #: workload level's).
+    credit_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    credit_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    major_courses_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    major_courses_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
     source: Mapped[str] = mapped_column(String(32), default="student_form")
     confirmed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 

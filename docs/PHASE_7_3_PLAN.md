@@ -229,7 +229,12 @@ prerequisites CoursePilot cannot verify is placed and flagged
 placed with `PIN_WILL_NOT_COUNT` (e.g. 01:198:142 Data 101 for CS).
 
 If the level cannot fit the graduation target, the plan says so
-(`WORKLOAD_VS_GRADUATION_TARGET`) with fixes; it never extends the horizon.
+(`GRADUATION_TARGET_NOT_MET`) with fixes; it never extends the horizon.
+`WORKLOAD_VS_GRADUATION_TARGET` (added in Task 2, DATA_MODEL section 54)
+warns when the pace and level pull apart.
+
+Task 2 replaced "ONE major-subject course" with the level's major-related
+range (DATA_MODEL section 54).
 Profiles confirmed before 7.3 have no level and keep the 7.2.1 behaviour until
 the student chooses one (onboarding and the preferences form preselect
 Balanced).
