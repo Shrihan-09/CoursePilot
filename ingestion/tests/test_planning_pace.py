@@ -18,6 +18,7 @@ from .test_planning_engine import (  # noqa: F401
     CS_DONE,
     _invariants,
     _plan,
+    _requirements_covered,
     _student,
     _verify_order,
     cs,
@@ -61,7 +62,7 @@ def test_the_target_is_not_a_minimum(cs) -> None:
     student = _student(cs, [*CS_DONE, ("01:198:344", "20269", "in_progress")])
     plan = _plan(cs, student, constraints=_cons(Pace.BALANCED, 15, 18))
     _invariants(plan)
-    assert plan.status is PlanStatus.COVERS_ALL_REQUIREMENTS
+    assert _requirements_covered(plan)
     assert any(t.credits < D(15) for t in plan.terms)               # nothing was padded
 
 
@@ -80,7 +81,7 @@ def test_balanced_is_the_choice_not_the_capability(cs) -> None:
     earlier = _plan(cs, student, constraints=_cons(Pace.FINISH_EARLIER, 9, 15, terms=12))
     assert balanced.metadata.constraints.pace is Pace.BALANCED
     if len(earlier.terms) < len(balanced.terms) and \
-            balanced.status is PlanStatus.COVERS_ALL_REQUIREMENTS:
+            _requirements_covered(balanced):
         obs = [o for o in balanced.observations if o.code == "earlier_completion_possible"]
         assert obs, "capability not surfaced"
         assert "not a graduation date" in obs[0].message
@@ -143,7 +144,7 @@ def test_earlier_completion_is_offered_never_applied_never_a_graduation_claim(cs
     student = _student(cs, [*CS_DONE, ("01:198:344", "20269", "in_progress")])
     plan = _plan(cs, student, constraints=_cons(Pace.LIGHTER, 4, 15, courses=5, terms=12))
     _invariants(plan)
-    assert plan.status is PlanStatus.COVERS_ALL_REQUIREMENTS
+    assert _requirements_covered(plan)
     assert all(t.credits <= D(4) for t in plan.terms)                 # the choice is kept
     [obs] = [o for o in plan.observations if o.code == "earlier_completion_possible"]
     assert "currently modeled requirements" in obs.message

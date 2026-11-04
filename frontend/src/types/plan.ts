@@ -202,6 +202,25 @@ export interface PlanTerm {
   courses: PlannedCourse[];
   credits: string;
   workload?: TermWorkload | null;
+  /** Credits of free electives (courses the student chooses) toward the degree total - never a course. */
+  free_elective_credits?: string;
+  /** Degree credits after this term: record + everything planned so far. */
+  cumulative_credits?: string | null;
+}
+
+/** The school's cited degree credit total and where the plan leaves it. */
+export interface DegreeCredits {
+  required: string;
+  completed: string;
+  in_progress: string;
+  planned_courses: string;
+  planned_free_electives: string;
+  total: string;
+  met: boolean;
+  source_title: string;
+  source_url: string;
+  source_quote: string;
+  retrieved_at: string;
 }
 
 export interface PlanningIssue {
@@ -248,6 +267,8 @@ export interface PlanResult {
   school_core?: { school_code: string; status: "encoded" | "unknown"; requirement_sets: string[]; message: string } | null;
   /** Phase 7.6: set when the student is planning toward a major they have not declared. */
   declaration?: Declaration | null;
+  /** The degree credit total (null: not modelled for this school/catalog year). */
+  degree_credits?: DegreeCredits | null;
 }
 
 export type StaleReason =

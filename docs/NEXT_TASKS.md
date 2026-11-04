@@ -52,23 +52,21 @@ Done means:
   a report of every changed row; tests for an enforced note, a note on some
   sections only, and an uninterpretable note.
 
-## Spread plans to the graduation target, and model the 120-credit degree total
+## Done: spread to the graduation target; the 120-credit degree total
 
-Decided 2026-11-02 in the Task 2 review; a new task, not built. Today a plan
-fills each term to its level and finishes as soon as the requirements are
-met. The owner's Semi-rigorous preview ends in Spring 2028, a year before its
-Spring 2029 target. There is also no total-credit requirement.
+Built on `feature/spread-to-graduation-target` (DATA_MODEL.md section 55).
+Follow-ups it leaves:
 
-Done means:
-
-- unless pace = Early, a plan spreads its courses to the graduation target
-  instead of finishing early. It still never goes past the target, and never
-  below a term's credit minimum;
-- the SAS 120-credit degree total is modelled as a requirement, citing the
-  catalog page that states it (with retrieval date and archive hash, like
-  the declaration sources);
-- every plan shows a cumulative credit count per term (record + planned) and
-  the total against 120.
+- **Degree credits per course.** Record credits come from the Degree
+  Engine's "credits applicable to the degree". Courses that carry no degree
+  credit (the catalog names "noncredit remedial courses") are not yet marked,
+  so their credits would count. Done means a cited per-course
+  "no degree credit" flag, used by the audit and the total.
+- **Other schools and catalog years.** Only SAS 2026-2027 is read. Other
+  plans say no total is modelled. Done means each total cited the same way
+  (SAS 2025-2026, SOE, SEBS, ...).
+- **Residency (30 of the last 42 credits at Rutgers-New Brunswick).** It is
+  on the same catalog tab and is not modelled.
 
 ## Backlog: schedule and credit-load rules (from Prompt 09)
 

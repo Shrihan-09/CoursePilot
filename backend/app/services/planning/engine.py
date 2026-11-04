@@ -74,6 +74,7 @@ from app.domain.planning import (
     AlternativeChoice,
     ConditionalDependency,
     CoreCodeEvidence,
+    DegreeCredits,
     EligibilityState,
     GraduationTarget,
     OfferingEvidence,
@@ -114,6 +115,7 @@ from app.models import (
     ProgramVersion,
     Requirement,
     RequirementCourseOption,
+    School,
     SectionCrossListing,
     Student,
     StudentCourse,
@@ -128,6 +130,8 @@ from app.services.placement import (
     is_math,
 )
 from app.services.placement import covered as placement_covered
+from app.services.planning.degree_total import REQUIREMENT_CODE as DEGREE_CREDITS_CODE
+from app.services.planning.degree_total import degree_total, spread_electives
 from app.services.planning.dependencies import UNREADABLE, DependencyPlanner
 from app.services.planning.offerings import PLACEABLE, OfferingIndex
 from app.services.planning.questionnaire import (
@@ -917,6 +921,31 @@ class PlanningEngine:
         same-term partner was taken earlier), try an untried feasible branch.
         Each retry closes a child, so the process is finite.
         """
+        self._spread_major = True
+        result = self._plan_alternatives(student, version, target, start_term, assumptions)
+        if self._spread and any(i.code == "GRADUATION_TARGET_NOT_MET" for i in result.issues):
+            # Spread task: spreading the major-related courses would miss the
+            # graduation target (a prerequisite chain starts too late). Never
+            # silently delay graduation: take them as Task 2 did, and say so.
+            self._spread_major = False
+            sooner = self._plan_alternatives(student, version, target, start_term, assumptions)
+            if not any(i.code == "GRADUATION_TARGET_NOT_MET" for i in sooner.issues):
+                sooner.issues.append(PlanningIssue(
+                    severity=Severity.WARNING, code="SPREAD_WOULD_MISS_TARGET",
+                    message=("Spreading your major-related courses to the low end of your range "
+                             f"would not finish them by {label(self._graduation.term_code)}, so "
+                             "this plan takes them sooner: up to your range's maximum or what the "
+                             "target needs, and past the range when that is what reaches a "
+                             "semester's credit minimum.")))
+                sooner.issues.sort(key=lambda i: (i.severity.value, i.code,
+                                                  i.requirement_code or "", i.course or ""))
+                return sooner
+            self._spread_major = True    # neither finishes: keep the spread plan
+        return result
+
+    def _plan_alternatives(self, student: Student, version: ProgramVersion,
+                           target: ScenarioTarget, start_term: str,
+                           assumptions: list[ScenarioAssumption]) -> PlanResult:
         self._blocked_alternatives = set()
         self._alternative_cache = {}
         self._lookahead_deps = {}
@@ -1021,6 +1050,13 @@ class PlanningEngine:
         self._open_at_start = {leaf.requirement_code for leaf in self._active(before.requirements)}
         graduation = self._graduation_target(start_term)
         self._graduation = graduation
+        school = self.session.get(School, version.program.school_id)
+        #: Spread task: the school's cited degree credit total (None: not modelled).
+        self._degree_total = degree_total(school.code if school else None, version.catalog_year)
+        #: Unless pace = Early, a workload plan uses the terms up to its
+        #: graduation target: each term's major-related courses stay in range.
+        self._spread = (c.workload_level is not None and graduation is not None
+                        and c.pace is not Pace.FINISH_EARLIER)
         conflict = pace_level_conflict(c)
         if conflict:
             issues.append(PlanningIssue(
@@ -1079,6 +1115,7 @@ class PlanningEngine:
             final = self._level(student, version, terms, plan_terms, planned, info, final,
                                 compress_only=True)
         self._finalize_courses(plan_terms, final, info, planned)
+        degree = self._free_electives(before, terms, plan_terms)
         if c.workload_level is not None:
             # Pruning may have removed courses after a term was summarised.
             for term_plan in plan_terms:
@@ -1116,6 +1153,23 @@ class PlanningEngine:
                                 "workload": str(total)})
                    for t, (floor, budget, total) in sorted(self._floor_conflicts.items())]
         issues += self._trace_issues
+        if degree is None:
+            assumptions = [*assumptions, ScenarioAssumption(
+                code="degree_credit_total_not_modelled",
+                message=(f"CoursePilot has not read {school.code if school else 'this'} school's "
+                         f"degree credit total for the {version.catalog_year} catalog, so this "
+                         "plan does not check one."))]
+        elif not degree.met:
+            last = plan_terms[-1].term_code if plan_terms else start_term
+            issues.append(PlanningIssue(
+                severity=Severity.WARNING, code="DEGREE_CREDITS_SHORT",
+                requirement_code=DEGREE_CREDITS_CODE,
+                message=(f"This plan reaches {_plain(degree.total)} of the {_plain(degree.required)} "
+                         f"degree credits by {label(last)}, even with every semester at its credit "
+                         "maximum. Add a term (a summer, or a later graduation target) or raise "
+                         "your credit maximum."),
+                details={"required": str(degree.required), "planned_total": str(degree.total),
+                         "source_url": degree.source_url}))
         if graduation is not None and terms and remaining and not stalled:
             # Never silently push graduation later: say so and suggest fixes.
             level = (f" at a {c.workload_level.value.replace('_', '-')} workload"
@@ -1159,9 +1213,24 @@ class PlanningEngine:
                            status_after=n.status.value)
                        for n in sorted(_walk(final.requirements), key=lambda n: n.requirement_code)
                        if n.requirement_type in LEAF_TYPES]
-        if not self._active(before.requirements):
+        if degree is not None:
+            # The degree credit total is a requirement of the plan too.
+            had = degree.completed + degree.in_progress
+            projections.append(RequirementProjection(
+                requirement_code=DEGREE_CREDITS_CODE,
+                requirement_name=f"{_plain(degree.required)} degree credits",
+                status_before=(RequirementStatus.SATISFIED.value if had >= degree.required
+                               else RequirementStatus.PARTIALLY_SATISFIED.value if had
+                               else RequirementStatus.UNSATISFIED.value),
+                status_after=(RequirementStatus.PROVISIONALLY_SATISFIED.value
+                              if degree.met and degree.total > had
+                              else RequirementStatus.SATISFIED.value if degree.met
+                              else RequirementStatus.PARTIALLY_SATISFIED.value)))
+        credits_met = degree is None or degree.met
+        if not self._active(before.requirements) and (
+                degree is None or degree.completed + degree.in_progress >= degree.required):
             status = PlanStatus.NOTHING_TO_PLAN
-        elif not remaining:
+        elif not remaining and credits_met:
             status = PlanStatus.COVERS_ALL_REQUIREMENTS
         else:
             status = PlanStatus.PARTIAL
@@ -1170,12 +1239,15 @@ class PlanningEngine:
             target=target, status=status, terms=plan_terms,
             placement=self._placement_basis(student),
             graduation_target=graduation,
+            degree_credits=degree,
             issues=sorted(issues, key=lambda i: (i.severity.value, i.code,
                                                  i.requirement_code or "", i.course or "")),
             requirements=projections, assumptions=assumptions,
             observations=self._observations(
                 student, version, terms, plan_terms, planned, info, final,
-                complete=status is PlanStatus.COVERS_ALL_REQUIREMENTS) if c.pace is not None else [],
+                # The observation speaks of the modelled requirements only.
+                complete=not remaining and status is not PlanStatus.NOTHING_TO_PLAN)
+            if c.pace is not None else [],
             metadata=PlanMetadata(
                 audit_engine_version=AUDIT_ENGINE_VERSION, start_term=start_term, constraints=c,
                 academic_fingerprint=academic_fingerprint(self.session, student),
@@ -1461,6 +1533,10 @@ class PlanningEngine:
             budget = settings.budget
             need = self._major_need(leaves, term)
             major_cap = max(settings.major_max, need)     # never silently delay graduation
+            if self._spread and self._spread_major:
+                # Spread to the graduation target: no more major-related courses
+                # than the range's minimum, or what the target needs from here.
+                major_cap = max(settings.major_min, need)
             meta = self._term_meta[term] = {
                 "settings": settings, "need": need, "open_units": self._major_units(leaves),
                 "skip": None, "floor_major": [], "budget_raised": False}
@@ -1591,7 +1667,6 @@ class PlanningEngine:
             topics_here += group_topics
             weight_total += group_weight
             if major:
-                major_count += 1
                 self._major_flag |= {g for g in group if self._major_related(g, serves)} | {key}
             members = sorted(set(group) | ({coreq_partner} if coreq_partner else set()))
             if coreq_partner and coreq_partner not in group:
@@ -1630,6 +1705,11 @@ class PlanningEngine:
                                 "role_reason": g_why}
                 term_plan.courses.append(self._planned_course(g, info[g]))
                 term_plan.credits += self.course_info[g].credits
+            if major:
+                # A lab taken with its lecture is one course, also when it is
+                # placed after the lecture (as the term's summary counts it).
+                major_count = len({frozenset(pc.corequisite_group or [pc.course])
+                                   for pc in term_plan.courses if pc.course in self._major_flag})
             return "placed"
 
         if workload_mode:
@@ -1685,8 +1765,12 @@ class PlanningEngine:
                 budget, before = settings.base_budget, credits
                 skipped = run_fillers(skipped)
                 meta["budget_raised"] = credits > before
+            # Spread task: with a degree credit total the floor is reached with
+            # free-elective credits (after the term is filled), not with major
+            # courses past the range - unless pace = Early.
+            spare = self._spread and self._spread_major and self._degree_total is not None
             for over_budget in (False, True):
-                if credits >= stop_at:
+                if credits >= stop_at or spare:
                     break
                 before = credits
                 if over_budget:
@@ -1952,8 +2036,12 @@ class PlanningEngine:
                            Decimal(0)))
         hours = sum((pc.workload.contact_hours or Decimal(0) for pc in term_plan.courses
                      if pc.workload), Decimal(0))
-        credits = _plain(term_plan.credits)
+        electives = term_plan.free_elective_credits
+        credits = _plain(term_plan.credits + electives)
         notes = []
+        if electives:
+            notes.append(f"{_plain(electives)} free-elective credits (any degree-credit courses you "
+                         "choose) toward the degree credit total - not weighed in the workload.")
         anchors = [pc for pc in term_plan.courses if roles.get(pc.course) == "anchor"]
         anchor_weight = _plain(sum((pc.workload.weight for pc in anchors if pc.workload),
                                    Decimal(0)))
@@ -2004,7 +2092,7 @@ class PlanningEngine:
                          + (f" - no lower than the {floor}-credit minimum." if st.clamped
                             else "."))
         shortfalls = []
-        if term_plan.courses and major < st.major_min:
+        if (term_plan.courses or electives) and major < st.major_min:
             open_units = meta.get("open_units", 0)
             reason = (("your major requirements are all planned or complete" if not open_units
                        else f"only {open_units} major-related requirement"
@@ -2017,10 +2105,11 @@ class PlanningEngine:
                            "offerings or section restrictions)")
             shortfalls.append(f"{major} major-related course{'s' if major != 1 else ''}, below "
                               f"your range of {rng}: {reason}.")
-        if term_plan.courses and term_plan.credits < floor:
+        if (term_plan.courses or electives) and term_plan.credits + electives < floor:
             shortfalls.append(
                 f"Below the {floor}-credit floor ({credits}): "
-                + ("these are the last courses your requirements need."
+                + ("these are the last credits your degree needs." if electives else
+                   "these are the last courses your requirements need."
                    if meta.get("open_after") == 0 else
                    "no further eligible course fit the per-term limits (prerequisites, offerings "
                    "and the course limit)."))
@@ -2046,6 +2135,8 @@ class PlanningEngine:
                  f"{major} major-related course{'s' if major != 1 else ''} ({scope}: {rng})"]
         if filler:
             parts.append(filler)
+        if electives:
+            parts.append(f"{_plain(electives)} free-elective credits")
         if st.hours:
             parts.append(f"budget {budget} instead of {base_budget} for your commitments")
         parts.append(f"workload {total} of {budget}")
@@ -2123,6 +2214,63 @@ class PlanningEngine:
         mine = rank(key)[:-1]
         return sum(1 for k in ready if k != key and k not in planned
                    and set(serves.get(k, ())) == codes and rank(k)[:-1] == mine)
+
+    def _free_electives(self, before: DegreeAuditResult, terms: list[str],
+                        plan_terms: list[PlanTerm]) -> DegreeCredits | None:
+        """Spread task: free-elective credits toward the degree credit total,
+        and the running total per term (app.services.planning.degree_total).
+
+        The terms are the plan's own and every regular (Fall/Spring) term of
+        the horizon - up to the graduation target. A term added here holds
+        free-elective credits only."""
+        total = self._degree_total
+        if total is None:
+            return None
+        c = self.constraints
+        completed = before.credits_applicable_to_degree
+        in_progress = before.credits_in_progress
+
+        def course_credits(tp: PlanTerm) -> Decimal:
+            # Repeating a passed course earns no further degree credit.
+            return sum((pc.credits for pc in tp.courses if pc.course not in self.passed),
+                       Decimal(0))
+
+        by_term = {tp.term_code: tp for tp in plan_terms}
+        span = sorted(set(by_term) | {t for t in terms if t[4] in "19"})
+        if by_term:
+            span = [t for t in span if t >= min(by_term)]
+        rows = []
+        for t in span:
+            courses = course_credits(by_term[t]) if t in by_term else Decimal(0)
+            floor, cap = self._caps(t)
+            if c.workload_level is None:
+                # No credit floor without a workload level (the per-term target
+                # is "not a minimum"): electives go where the total needs them,
+                # up to the target; a term of electives only holds a full load.
+                floor = Decimal(0) if courses else floor
+                cap = floor if not courses else self._caps(t)[0]
+            rows.append((courses, floor, cap))
+        planned_courses = sum((r[0] for r in rows), Decimal(0))
+        need = total.credits - completed - in_progress - planned_courses
+        electives = spread_electives(rows, need, early=c.pace is Pace.FINISH_EARLIER)
+        for t, extra in zip(span, electives, strict=True):
+            if extra <= 0:
+                continue
+            if t not in by_term:
+                by_term[t] = PlanTerm(term_code=t, label=label(t))
+                plan_terms.append(by_term[t])
+            by_term[t].free_elective_credits = extra
+        plan_terms.sort(key=lambda tp: tp.term_code)
+        running = completed + in_progress
+        for tp in plan_terms:
+            running += course_credits(tp) + tp.free_elective_credits
+            tp.cumulative_credits = running
+        return DegreeCredits(
+            required=total.credits, completed=completed, in_progress=in_progress,
+            planned_courses=planned_courses,
+            planned_free_electives=sum(electives, Decimal(0)), total=running,
+            met=running >= total.credits, source_title=total.title, source_url=total.url,
+            source_quote=total.quote, retrieved_at=total.retrieved_at)
 
     def _graduation_target(self, start_term: str) -> GraduationTarget | None:
         """The last term a personalized plan may use (Phase 7.3).

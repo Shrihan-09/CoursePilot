@@ -123,11 +123,11 @@ export const FINDING_SEVERITY: Record<FindingSeverity, { tone: Tone; label: stri
 export const PLAN_STATUS: Record<PlanStatus, Presentation> = {
   covers_all_requirements: {
     label: "Covers every remaining requirement", tone: "success", icon: "complete",
-    meaning: "If you pass these courses, the Degree Engine projects every requirement met.",
+    meaning: "If you pass these courses, the Degree Engine projects every requirement met, the degree credit total included.",
   },
   partial: {
     label: "Partial plan", tone: "warning", icon: "partial",
-    meaning: "Some requirements could not be planned with the evidence CoursePilot has. See what's blocking them below.",
+    meaning: "Some requirements, or the degree credit total, could not be planned with the evidence CoursePilot has. See what's blocking them below.",
   },
   nothing_to_plan: {
     label: "Nothing left to plan", tone: "success", icon: "complete",

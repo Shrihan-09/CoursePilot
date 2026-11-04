@@ -272,7 +272,8 @@ export function SemesterCard({
   /** The student's hard maximum: the column's load bar is measured against it. */
   maxCredits?: number;
 }) {
-  const credits = Number(term.credits);
+  const electives = Number(term.free_elective_credits ?? 0);
+  const credits = Number(term.credits) + electives;
   return (
     <section
       aria-labelledby={`term-${term.term_code}`}
@@ -281,7 +282,11 @@ export function SemesterCard({
       <header className="space-y-2 px-1 pt-1">
         <div>
           <h3 id={`term-${term.term_code}`} className="text-lg font-bold tracking-tight text-fg">{term.label}</h3>
-          <p className="tabular text-xs text-fg-muted">{term.courses.length} courses · {term.credits} credits</p>
+          <p className="tabular text-xs text-fg-muted">
+            {term.courses.length} courses · {Number(term.credits)} credits
+            {electives > 0 && <> + {electives} free-elective credits</>}
+            {term.cumulative_credits != null && <> · running total {Number(term.cumulative_credits)}</>}
+          </p>
           {term.workload && (
             <p className="tabular text-xs text-fg-secondary">
               {WORKLOAD_LEVEL_LABEL[term.workload.level] ?? term.workload.level}: workload {Number(term.workload.total)} of{" "}
@@ -299,7 +304,7 @@ export function SemesterCard({
         </div>
         {maxCredits ? (
           <Progress value={Math.min(credits, maxCredits)} max={maxCredits}
-            label={`${term.label}: ${term.credits} of at most ${maxCredits} credits`} className="h-1" />
+            label={`${term.label}: ${credits} of at most ${maxCredits} credits`} className="h-1" />
         ) : null}
       </header>
       {scheduleHref && (
@@ -313,6 +318,11 @@ export function SemesterCard({
       {note && <p className="px-1 text-xs text-fg-secondary">{note}</p>}
       <ul className="space-y-2">
         {term.courses.map((c, i) => <CourseCard key={c.course} course={c} index={i} />)}
+        {electives > 0 && (
+          <li className="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-fg-secondary">
+            Free electives: {electives} credits of any degree-credit courses you choose.
+          </li>
+        )}
       </ul>
     </section>
   );
@@ -410,6 +420,18 @@ export function PlanView({
             {r.graduation_target && (
               <p className="text-sm text-fg-secondary">
                 Planned to graduate by {termLabel(r.graduation_target.term_code)} ({r.graduation_target.basis}).
+              </p>
+            )}
+            {r.degree_credits && (
+              <p className="tabular text-sm text-fg-secondary">
+                Degree credits: {Number(r.degree_credits.total)} of {Number(r.degree_credits.required)}
+                {" "}({Number(r.degree_credits.completed) + Number(r.degree_credits.in_progress)} on your record
+                {" "}+ {Number(r.degree_credits.planned_courses)} in planned courses
+                {" "}+ {Number(r.degree_credits.planned_free_electives)} free electives)
+                {r.degree_credits.met ? "." : " - short of the total."}{" "}
+                <a href={r.degree_credits.source_url} className="underline underline-offset-2" target="_blank" rel="noreferrer">
+                  Source
+                </a>
               </p>
             )}
             {r.placement && (
