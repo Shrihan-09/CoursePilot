@@ -1919,14 +1919,51 @@ class PlanningEngine:
 
     def _major_units(self, leaves) -> int:
         """Courses the open major requirements still need (a credits node:
-        its missing credits / 3, rounded up)."""
+        its missing credits / 3, rounded up). A lab and its lecture are two
+        requirement leaves but one course (as a term counts them): a leaf
+        whose one course is a co-requisite partner of another open leaf's
+        course counts once with it."""
         units = 0
+        singles: dict[str, str] = {}
         for leaf in leaves:
             if not self._is_major_node(leaf.requirement_code):
                 continue
             d = deficit(leaf)
             units += math.ceil(d / 3) if leaf.requirement_type == "credits" else int(d)
+            pool = self.pools.get(leaf.requirement_code, set())
+            if leaf.requirement_type == "course" and len(pool) == 1 and d:
+                singles[next(iter(pool))] = leaf.requirement_code
+        paired: set[str] = set()
+        for key in sorted(singles):
+            if key in paired:
+                continue
+            partner = next((p for p in sorted(self._coreq_partners(key))
+                            if p in singles and p not in paired and p != key), None)
+            if partner is not None:
+                paired |= {key, partner}
+                units -= 1
         return units
+
+    def _coreq_partners(self, key: str) -> set[str]:
+        """Courses any published co-requisite rule of `key` names (any term)."""
+        cache = self.__dict__.setdefault("_coreq_partner_cache", {})
+        if key not in cache:
+            names: set[str] = set()
+
+            def walk(e):
+                if isinstance(e, ConcurrentReq):
+                    names.add(e.course_key)
+                for ch in getattr(e, "children", ()):
+                    walk(ch)
+
+            for expression in self.session.scalars(
+                    select(CourseCorequisite.expression)
+                    .join(Course, Course.id == CourseCorequisite.course_id)
+                    .where(Course.course_string == key)):
+                if expression:
+                    walk(from_json(expression))
+            cache[key] = names
+        return cache[key]
 
     def _major_need(self, leaves, term: str) -> int:
         """Major-related courses a semester the graduation target needs from

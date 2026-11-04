@@ -10483,3 +10483,11 @@ pace but Early:
 So a plan uses the terms up to its target. It ends sooner only when every
 term is already at its floor.
 
+If spreading would miss the target (a prerequisite chain starts too late),
+the plan is rebuilt with the Task 2 behaviour and says so
+(`SPREAD_WOULD_MISS_TARGET`).
+
+**A lab and its lecture count once,** both when a term is filled and in the
+graduation target's per-term need. A requirement leaf whose one course is a
+co-requisite partner of another open leaf's course is not counted again.
+
