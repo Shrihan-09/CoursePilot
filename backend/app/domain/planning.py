@@ -34,7 +34,7 @@ from app.domain.course_ranking import CourseRankingEvidence
 from app.domain.scenario import ScenarioAssumption, ScenarioTarget
 
 #: Bumped whenever the same inputs could produce a different plan.
-PLANNING_ENGINE_VERSION = "7.7.0"   # Task 2: major-related courses per term, commitments, honors
+PLANNING_ENGINE_VERSION = "7.8.0"   # spread to the graduation target; the degree credit total
 
 
 class EligibilityState(StrEnum):
@@ -526,8 +526,32 @@ class PlanTerm(BaseModel):
     term_code: str
     label: str
     courses: list[PlannedCourse] = Field(default_factory=list)
+    #: Credits of the planned courses.
     credits: Decimal = Decimal(0)
     workload: TermWorkload | None = None
+    #: Credits of free electives (any degree-credit course the student
+    #: chooses) planned toward the degree credit total - never a course.
+    free_elective_credits: Decimal = Decimal(0)
+    #: Degree credits after this term: record (completed + in progress) plus
+    #: every planned course and free-elective credit so far.
+    cumulative_credits: Decimal | None = None
+
+
+class DegreeCredits(BaseModel):
+    """The school's degree credit total and where the plan leaves it."""
+
+    required: Decimal
+    #: Completed credits that apply to the degree, and in-progress credits.
+    completed: Decimal
+    in_progress: Decimal
+    planned_courses: Decimal
+    planned_free_electives: Decimal
+    total: Decimal
+    met: bool
+    source_title: str
+    source_url: str
+    source_quote: str
+    retrieved_at: str
 
 
 class PlanningIssue(BaseModel):
@@ -693,6 +717,9 @@ class PlanResult(BaseModel):
     assumptions: list[ScenarioAssumption] = Field(default_factory=list)
     observations: list[PlanObservation] = Field(default_factory=list)
     metadata: PlanMetadata
+    #: Spread task: None when the program's school/catalog year has no
+    #: modelled total (an issue says so).
+    degree_credits: DegreeCredits | None = None
     #: Phase 7.6
     school_core: SchoolCoreStatus | None = None
     declaration: Declaration | None = None
@@ -709,7 +736,7 @@ __all__ = ["CONSTRAINTS_SOURCE", "PLANNING_ENGINE_VERSION",
            "PlanResult", "PlanStatus", "Pace", "PlanObservation", "PlanTerm", "PlannedCourse",
            "PlanningConstraints", "PlanningIssue", "CoreCodeEvidence", "ClubLoad", "Commitments",
            "GreekLife", "TermPlanningOverride", "Declaration",
-           "DeclarationRequirement", "DeclarationSource", "OfferingPattern",
+           "DeclarationRequirement", "DegreeCredits", "DeclarationSource", "OfferingPattern",
            "RecommendationTrace", "RestrictionCheck", "SchoolCoreStatus", "SourceLabel",
            "TracedRequirement",
            "PrerequisiteEvidence", "Reason", "RequirementContribution", "RequirementProjection",

@@ -156,6 +156,16 @@ def _verify_order(session, student, plan):
         assert check.status is PrereqStatus.SATISFIED, (pc.course, pc.term_code, check.status)
 
 
+def _requirements_covered(plan) -> bool:
+    """Every modelled requirement is planned. A fabricated record this small
+    cannot reach the SAS 120-credit total, so the plan is PARTIAL for that
+    reason alone - and says so."""
+    codes = {i.code for i in plan.issues}
+    return (plan.status is PlanStatus.COVERS_ALL_REQUIREMENTS
+            or (plan.status is PlanStatus.PARTIAL and "DEGREE_CREDITS_SHORT" in codes
+                and not codes & {"PLAN_HORIZON_REACHED", "REQUIREMENT_NOT_PLANNED"}))
+
+
 def _invariants(plan, student_courses=()):
     """What every plan must satisfy, whatever else a test checks."""
     placed = [pc for t in plan.terms for pc in t.courses]
@@ -191,7 +201,7 @@ def test_a_cs_student_plan(cs) -> None:
     _invariants(plan, [k for k, _ in CS_DONE])
     _verify_order(cs, student, plan)
     placed = _placed(plan)
-    assert plan.status is PlanStatus.COVERS_ALL_REQUIREMENTS
+    assert _requirements_covered(plan)
     electives = [pc for pc in placed.values()
                  if [r.requirement_code for r in pc.requirements] == ["CS_ELECTIVES"]]
     assert len(electives) == 5 - 2                     # 314 and 336 already count
@@ -199,7 +209,7 @@ def test_a_cs_student_plan(cs) -> None:
     assert all(r.provisional for pc in placed.values() for r in pc.requirements)
     codes = {i.code for i in plan.issues}
     assert "IN_PROGRESS_OUTCOME_ASSUMED_PENDING" in codes
-    assert plan.metadata.planning_engine_version == "7.7.0"
+    assert plan.metadata.planning_engine_version == "7.8.0"
     assert plan.metadata.constraints_source.endswith("not_rutgers_policy")
 
 

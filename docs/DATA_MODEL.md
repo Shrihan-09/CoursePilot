@@ -10420,3 +10420,66 @@ Course roles show as badges: Anchor / Counts twice / Major / Filler.
 Pace stays the graduation target, separate from the level.
 `WORKLOAD_VS_GRADUATION_TARGET` warns when the two pull apart: Early with
 Light, or No rush with Challenging. Planning engine version 7.7.0.
+
+
+## 55. Spread to the graduation target; the degree credit total
+
+**The total is a requirement.** `app.services.planning.degree_total` holds
+each school's published degree credit total, keyed by (school, catalog
+year). One is read so far:
+
+- SAS 2026-2027: "All students must earn at least 120 credits, with a minimum
+  cumulative grade-point average of 2.000."
+- Source: the "Requirements (SAS)" catalog page, "Credits and Residency" tab
+  (`newbrunswick-26-27-undergrad.catalogs.rutgers.edu/pages/xv72Yj9vsrh3FCdUV1kI`).
+- Retrieved 2026-11-03. Archived locally at
+  `data/raw/catalog/catalog_sas-requirements_2026_2027.html`, sha256
+  `981a914c...`.
+
+No other school or year has a total: their plans say none is modelled
+(`degree_credit_total_not_modelled`), and no total is assumed.
+
+**Cumulative credits.** Record credits are the Degree Engine's
+`credits_applicable_to_degree` (completed; a repeat counts once) plus
+`credits_in_progress`. Planned courses add their credits, except a repeat of
+a passed course. `PlanTerm.cumulative_credits` is the running total after
+each term. `PlanResult.degree_credits` gives:
+
+- the parts: record completed, record in progress, planned courses, planned
+  free electives;
+- the total and whether it is met;
+- the citation.
+
+The requirement also appears in `requirements` as `DEGREE_CREDITS`.
+
+**Status.** `covers_all_requirements` needs every modelled requirement AND the
+total. A plan short of the total is `partial`, with `DEGREE_CREDITS_SHORT`.
+
+**Free electives.** These are any degree-credit courses the student chooses.
+CoursePilot plans their credits (`PlanTerm.free_elective_credits`), never a
+course, and gives them no workload weight. They are added after the
+requirement courses are placed:
+
+1. every term with courses is topped up to its credit floor;
+2. unless pace = Early, the rest spreads over the regular terms up to the
+   graduation target. Empty terms get their floor in order while that is
+   enough. Otherwise every term rises to a common level, never above its
+   maximum;
+3. pace = Early fills each term toward its maximum, in order.
+
+A plan with no workload level has no floor. There, electives go where the
+total needs them, up to the per-term target, and a term of electives alone
+holds a full load.
+
+**Spreading the major.** With a workload level, a graduation target, and any
+pace but Early:
+
+- a term takes no more major-related courses than its range's minimum, or
+  than what the target needs from that term on (whichever is more);
+- the credit floor is reached with free electives, never with major courses
+  past the range or over the budget. The Task 2 floor relaxation still
+  applies with pace = Early, or when no total is modelled.
+
+So a plan uses the terms up to its target. It ends sooner only when every
+term is already at its floor.
+

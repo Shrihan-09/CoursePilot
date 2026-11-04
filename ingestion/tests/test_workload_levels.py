@@ -95,6 +95,11 @@ def _plan(session, student, **kw):
     return generate_plan(session, student, start_term=SPRING27, constraints=constraints)
 
 
+def _credits(term):
+    """A term's credits: its courses and its free-elective credits."""
+    return term.credits + term.free_elective_credits
+
+
 def _term(plan, code=SPRING27):
     return next(t for t in plan.terms if t.term_code == code)
 
@@ -116,7 +121,7 @@ def test_the_scenario_spring_2027_shape(world):
     assert "async" in fillers[0].workload.delivery and "completes" in fillers[0].role_reason
     lab = next(pc for pc in term.courses if pc.course == "01:750:205")
     assert lab.role == "multi_requirement" and "together with 01:750:203" in lab.role_reason
-    assert Decimal(16) <= term.credits <= Decimal(19)
+    assert Decimal(16) <= _credits(term) <= Decimal(19)
     w = term.workload
     assert w.level is WorkloadLevel.SEMI_RIGOROUS and w.total <= w.budget == Decimal(24)
     assert w.contact_hours > 0
@@ -150,7 +155,7 @@ def test_in_person_preference_changes_only_the_filler(world):
     assert "01:640:152" in keep
     assert all("async" in pc.workload.delivery for pc in flexible.courses if pc.role == "filler")
     fillers = [pc for pc in in_person.courses if pc.role == "filler"]
-    assert fillers and in_person.credits >= in_person.workload.credit_floor
+    assert fillers and _credits(in_person) >= in_person.workload.credit_floor
 
 
 def test_a_pinned_course_the_program_excludes_is_placed_with_a_warning(world):
@@ -222,7 +227,7 @@ def test_each_level_sets_the_major_related_range_and_says_why(world, level):
         assert (w.major_min, w.major_max, w.major_range_source) == (*RANGE[level], "level")
         assert w.major_related <= w.major_max or _explained(w)
         # The credit minimum is a hard floor: below it only with a reason.
-        assert term.credits >= w.credit_floor or any("credit floor" in s for s in w.shortfalls)
+        assert _credits(term) >= w.credit_floor or any("credit floor" in s for s in w.shortfalls)
         assert w.fit.startswith("Why this fits you: ")
         assert f"{w.major_related} major-related course" in w.fit
         assert not EASY_HARD.search(" ".join([w.fit, *w.notes, *w.shortfalls]))
@@ -290,7 +295,7 @@ def test_commitments_lower_the_budget_and_the_term_says_so(world):
                and "from 24 to 19" in n for n in w.notes)
     assert w.hours_available == 45
     assert w.total <= w.budget or any("credit minimum comes first" in n for n in w.notes)
-    assert term.credits >= w.credit_floor or w.shortfalls
+    assert _credits(term) >= w.credit_floor or w.shortfalls
     assert "01:640:152" in {pc.course for pc in term.courses}         # the retake stays
 
 
@@ -342,7 +347,7 @@ def test_scenario_light_rushing_with_a_15_hour_job(world):
     assert w.base_budget == Decimal(16) and w.budget == Decimal(12)       # clamped at the floor
     assert w.commitment_hours == 21 and w.hours_available == 39
     assert w.major_related <= 2 or _explained(w)
-    assert term.credits <= w.credit_max == Decimal(14)                     # no heavy stacking
+    assert _credits(term) <= w.credit_max == Decimal(14)                     # no heavy stacking
     assert any(n.startswith("Your rush semester") for n in w.notes)
     assert "Light + rushing + job 15 h/week → " in w.fit
     assert "01:640:152" in {pc.course for pc in term.courses}             # the retake stays
@@ -352,17 +357,18 @@ def test_scenario_challenging_without_commitments(world):
     """Prompt 09 scenario 3: a high load and 3-4 major-related courses."""
     term = _term(_plan(world, _student(world), workload_level=WorkloadLevel.CHALLENGING))
     w = term.workload
-    assert term.credits >= Decimal(17) and w.budget == Decimal(28)
+    assert _credits(term) >= Decimal(17) and w.budget == Decimal(28)
     assert 3 <= w.major_related <= 4
     assert w.fit.startswith("Why this fits you: Challenging → ")
 
 
 def test_the_credit_minimum_is_a_hard_floor_and_the_conflict_is_said(world):
-    """A 19-credit minimum on a Light level (range 1-2, budget 16): the
-    floor is reached by passing the range and the budget, each said, and the
-    student is told how to choose the budget instead."""
+    """A 19-credit minimum on a Light level (range 1-2, budget 16), pace =
+    Early: the floor is reached by passing the range and the budget, each
+    said, and the student is told how to choose the budget instead. (Spread
+    to a target, free-elective credits reach the floor instead - below.)"""
     plan = _plan(world, _student(world), workload_level=WorkloadLevel.LIGHT,
-                 credit_min=19, credit_max=21)
+                 credit_min=19, credit_max=21, pace=Pace.FINISH_EARLIER)
     term = _term(plan)
     w = term.workload
     assert (w.credit_floor, w.credit_max) == (Decimal(19), Decimal(21))
@@ -379,7 +385,7 @@ def test_a_profile_wide_major_range_and_credit_range(world):
     w = _term(plan).workload
     assert (w.major_min, w.major_max, w.major_range_source) == (1, 1, "profile")
     assert (w.credit_floor, w.credit_max) == (Decimal(15), Decimal(16))
-    assert _term(plan).credits <= Decimal(16)
+    assert _credits(_term(plan)) <= Decimal(16)
 
 
 def test_an_excluded_course_never_counts_as_major_related(world):
@@ -471,7 +477,7 @@ def test_no_stranded_final_term_at_a_workload_level(world):
         plan = _plan(world, student, workload_level=level)
         if len(plan.terms) > 1:
             last = plan.terms[-1]
-            if last.credits * 2 > last.workload.credit_floor:
+            if _credits(last) * 2 > last.workload.credit_floor:
                 continue
             # Still stranded only when it could not move: each course is held
             # there by a prerequisite the plan places in an earlier term.
@@ -485,3 +491,75 @@ def test_no_api_output_calls_a_course_easy_or_hard(world):
                  commitments=Commitments(job_hours_per_week=25, greek_life=GreekLife.NEW_MEMBER),
                  credit_min=19, credit_max=21)
     assert not EASY_HARD.search(plan.model_dump_json())
+
+
+# ---- spread to the graduation target; the 120-credit SAS total ------------
+
+LATER = "20299"           # Fall 2029: six regular terms from Spring 2027
+
+
+def _major_overrun_explained(term):
+    w = term.workload
+    return w.major_related <= w.major_max or any(
+        "always stay" in n or "To graduate by" in n for n in w.notes)
+
+
+def test_a_later_target_spreads_the_plan_within_the_ranges(world):
+    """Unless pace = Early, the plan uses the terms up to the target: every
+    term in its credit range (free electives reach the floor), the major-
+    related courses in range, and the 120-credit total reached."""
+    plan = _plan(world, _student(world), expected_graduation_term=LATER)
+    assert plan.terms[-1].term_code == LATER
+    assert plan.degree_credits.met and plan.terms[-1].cumulative_credits >= 120
+    for term in plan.terms:
+        w = term.workload
+        assert w.credit_floor <= _credits(term) <= w.credit_max, term.label
+        assert _major_overrun_explained(term), (term.label, w.major_related, w.notes)
+        assert not any("added above your major-related range" in n for n in w.notes)
+    assert not any(i.code == "CREDIT_FLOOR_OVER_BUDGET" for i in plan.issues)
+    # Free electives are credits, never a course.
+    assert any(t.free_elective_credits for t in plan.terms)
+    assert all(pc.requirements or pc.role == "anchor" or pc.unlocks
+               for t in plan.terms for pc in t.courses)
+
+
+def test_the_running_total_adds_each_terms_courses_and_electives(world):
+    plan = _plan(world, _student(world), expected_graduation_term=LATER)
+    dc = plan.degree_credits
+    running = dc.completed + dc.in_progress
+    for term in plan.terms:
+        running += _credits(term)
+        assert term.cumulative_credits == running, term.label
+    assert dc.total == running == dc.completed + dc.in_progress + dc.planned_courses \
+        + dc.planned_free_electives
+    assert dc.required == 120 and "at least 120 credits" in dc.source_quote
+    assert dc.source_url.startswith("https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/")
+
+
+def test_a_plan_short_of_120_credits_is_not_complete(world):
+    """Spring 2028 leaves three semesters: every requirement may be planned,
+    but 120 credits are out of reach - PARTIAL, and the plan says why."""
+    plan = _plan(world, _student(world), expected_graduation_term="20281")
+    assert plan.status.value == "partial"
+    assert not plan.degree_credits.met and plan.degree_credits.total < 120
+    issue = next(i for i in plan.issues if i.code == "DEGREE_CREDITS_SHORT")
+    assert "of the 120 degree credits" in issue.message
+    projection = next(r for r in plan.requirements if r.requirement_code == "DEGREE_CREDITS")
+    assert projection.status_after == "partially_satisfied"
+    # Every term at its maximum: nothing left to add.
+    assert all(_credits(t) == t.workload.credit_max for t in plan.terms)
+
+
+def test_pace_early_still_finishes_early(world):
+    """Spring 2031 leaves room: spread, every term stays at or above its
+    floor (so the plan ends once 120 is reached at the floors); Early fills
+    each term to its maximum and ends sooner."""
+    student = _student(world)
+    far = "20311"
+    spread = _plan(world, student, expected_graduation_term=far)
+    early = _plan(world, student, expected_graduation_term=far, pace=Pace.FINISH_EARLIER)
+    assert early.degree_credits.met and spread.degree_credits.met
+    assert len(early.terms) < len(spread.terms)
+    assert early.terms[-1].term_code < spread.terms[-1].term_code <= far
+    # Every term but the last is filled to its maximum.
+    assert all(_credits(t) == t.workload.credit_max for t in early.terms[:-1])
