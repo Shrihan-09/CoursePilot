@@ -84,6 +84,9 @@ Follow-ups it leaves:
 
 ## Backlog: tooling
 
+- Free-elective credits: show them as a course slot (e.g. "one 3-credit
+  elective") instead of odd partial counts like "1 free-elective credit".
+
 - `inject_*_failures.py`: report INVALID (not MISSED) when pytest can't load
   the app / no tests ran. Today a collection error (e.g. the wrong Python, so
   `app` won't import) prints MISSED, which looks like a test gap.
