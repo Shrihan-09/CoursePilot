@@ -2,8 +2,6 @@
 
 Branch: `feature/task3-dn-fixes`. Roadmap phase 7.4 follow-up. Design notes: `docs/DATA_MODEL.md` section 56.
 
-> **Status: not yet verified against the database.** Docker Desktop could not start its WSL engine on the dev machine (`wsl-bootstrap` exit `0xc00000fd`, after the C: drive filled up). The database-backed tests in `backend/tests/test_degree_audit_import.py` (the new item 2 and item 3 tests included) and the full backend and ingestion suites have **not** been run. Run them, and apply migration `t3dn01`, before merging.
-
 ## Checklist (state before this branch → after)
 
 | # | Item | Before | Now |
@@ -75,9 +73,11 @@ NULL means primary, or node. Existing imports keep working, but their AH goal ro
 
 | Suite | Result |
 |---|---|
-| DN tests that need no database (`test_degree_audit_overlay.py`, `test_dn_fixture.py`) | 26 passed |
-| frontend (`vitest`) | 110 passed (107 existing + 3 new), `tsc` clean |
-| `test_degree_audit_import.py`, full backend, full ingestion | **not run: database unavailable** |
+| backend | **1,204 passed**, 4 skipped |
+| ingestion | **1,112 passed**, 1 skipped |
+| frontend (`vitest`) | **110 passed** (107 existing + 3 new), `tsc` clean |
+
+The DN files alone (`test_degree_audit_import.py`, `test_degree_audit_overlay.py`, `test_dn_fixture.py`): 45 passed. Migration `t3dn01` is applied to the test database, and `alembic check` reports no drift. It is **not** applied to the dev database yet: run `alembic upgrade head` there after merging.
 
 ## Item 4: "(Summer 2019)" in the SAS Core block
 
@@ -85,7 +85,8 @@ NULL means primary, or node. Existing imports keep working, but their AH goal ro
   - DN prints "The SAS Core Curriculum (NB)", then the version of that requirement set: here, the Core as revised for Summer 2019.
   - The student's catalog year belongs to the program, and in DN to the student's entry term.
   - The owner's first Rutgers semester is Fall 2025, so 2019 cannot be their catalog year.
-  - (I could not re-read the stored `catalog_year` and `dn_version_label` because the database was down.)
+  - Their stored catalog year is 2026-2027. No DN import is stored in the dev database; "Summer 2019" comes from the DN print the mapping was built from.
+  - Their real catalog year is likely 2025-2026, which CoursePilot does not have. A "planned against the 2026-27 catalog" notice is now in the `docs/NEXT_TASKS.md` backlog (not built).
 - **Does the mismatch affect the owner's audit? No, not as built.**
   - The DN track check compares the printed version with the mapping's `dn_versions` (`["Summer 2019"]`). They match, so the mapping is used.
   - CoursePilot's own Core rules come from the 2026-27 sources, and the owner's plans use the 2026-27 CS B.S.
@@ -106,7 +107,7 @@ See `docs/DN_MAPPING_SAS_CORE.md`: 6 requirements and 14 goal codes. Every entry
 
 ## For you to decide or check
 
-1. Fix Docker/WSL, apply `t3dn01`, and run the database tests and full suites before merging.
+1. Apply `t3dn01` to the dev database after merging.
 2. Review the mapping table. Say "mark it reviewed" to flip every entry to `reviewed`.
 3. What-if DN imports reach what-if **plans**. The what-if **audit** (`/student/scenarios`) doesn't use a DN overlay at all, now or before.
 
