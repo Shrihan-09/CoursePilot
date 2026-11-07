@@ -8,7 +8,7 @@ import { useMemo, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { Alert, ErrorState, PageHeader, Skeleton, StatusBadge } from "@/components/ui/feedback";
 import { Tabs } from "@/components/ui/overlay";
-import { DegreeNavigatorImport, DnNodeSource, DnSourceNotice, dnLookup, useDnProgress } from "@/features/degree/degree-navigator";
+import { DegreeNavigatorImport, DnNodeSource, DnSourceNotice, dnLookup, dnNotMet, useDnProgress } from "@/features/degree/degree-navigator";
 import { DegreeView } from "@/features/degree/degree-view";
 import { WhatIf } from "@/features/degree/what-if";
 import { ApiError, api } from "@/lib/api";
@@ -22,6 +22,7 @@ export default function DegreePage() {
   const [view, setView] = useState<"mine" | "whatif" | "dn">("mine");
   const dn = useDnProgress();
   const dnRow = useMemo(() => dnLookup(dn.data), [dn.data]);
+  const notMet = useMemo(() => dnNotMet(dn.data), [dn.data]);
   const profile = useQuery({ queryKey: ["profile"], queryFn: api.profile });
   const onboarding = useQuery({ queryKey: ["onboarding"], queryFn: api.onboarding });
   const audit = useQuery({ queryKey: ["audit"], queryFn: api.audit, staleTime: 0 });
@@ -92,6 +93,7 @@ export default function DegreePage() {
           <DegreeView
             audit={audit.data}
             program={program}
+            dnNotMet={notMet}
             source={(code) => (
               <DnNodeSource row={dnRow(code)} hasImport={dn.data?.source === "degree_navigator"} />
             )}

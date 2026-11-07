@@ -7,6 +7,8 @@ Labels (one per DN row):
     cp_satisfied_dn_not  CoursePilot met, DN not
     allocation_differs   same verdict, different courses
     unmapped             no reviewed CoursePilot node for this DN row
+    member_goal          one of several DN goals of one node (AHo..AHr of CORE_AH):
+                         its requirement row is compared, never the goal alone
     unknown              DN's status unreadable, or the node is not in this audit
 
 CoursePilot's side is the plain Degree Engine audit of the record as it is now
@@ -69,12 +71,30 @@ def label(dn_status: str, dn_courses: set[str], node: RequirementResult | None) 
 
 def reconcile(session: Session, student: Student, imp: DegreeAuditImport, now: datetime,
               *, log: bool = False) -> dict[str, int]:
-    """Label every requirement row of `imp`. Returns label counts."""
-    nodes = _index(DegreeAuditEngine(session).audit(student).requirements)
+    """Label every requirement row of `imp`. Returns label counts.
+
+    Task 3: a block for another program (track mismatch) is compared with
+    CoursePilot's audit of THAT program (what-if), not the student's own."""
+    version = None
+    if imp.track_check == "mismatch" and imp.mapping_key:
+        from app.services.scenarios import ScenarioError, resolve_version
+        try:
+            version, _ = resolve_version(session, imp.mapping_key, student.catalog_year)
+        except ScenarioError:
+            version = None
+    engine = DegreeAuditEngine(session)
+    result = engine.audit(student, program_version=version) if version is not None \
+        else engine.audit(student)
+    nodes = _index(result.requirements)
     counts: dict[str, int] = {}
     for row in imp.requirement_rows:
         if row.requirement_code is None:
             row.reconciliation, row.cp_status, row.cp_courses = "unmapped", None, []
+        elif row.mapping_role == "member_goal":
+            node = nodes.get(row.requirement_code)
+            row.reconciliation = "member_goal"
+            row.cp_status = node.status.value if node is not None else "not_in_audit"
+            row.cp_courses = sorted(_allocated(node)) if node is not None else []
         else:
             node = nodes.get(row.requirement_code)
             dn_courses = {c["course"] for c in row.extracted_courses or []

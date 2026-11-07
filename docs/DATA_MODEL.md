@@ -10491,3 +10491,38 @@ the plan is rebuilt with the Task 2 behaviour and says so
 graduation target's per-term need. A requirement leaf whose one course is a
 co-requisite partner of another open leaf's course is not counted again.
 
+
+## 56. Degree Navigator follow-ups (Task 3)
+
+**Member goals.** A mapping goal entry may carry `"role": "member_goal"`:
+one of several DN goals of ONE CoursePilot node. AHo, AHp, AHq and AHr all
+map to `CORE_AH`. Their rows are mapped (`degree_audit_requirement_row.
+mapping_role = member_goal`) and shown, but they never decide the node:
+
+- the overlay skips them;
+- reconciliation labels them `member_goal`;
+- requirement R4 decides `CORE_AH`.
+
+NS stays unmapped: requirement R2 carries `CORE_NS`. The reviewable table is
+in `docs/DN_MAPPING_SAS_CORE.md`.
+
+**DN says not met, CoursePilot says met** (`cp_satisfied_dn_not` with DN
+"not fulfilled"):
+
+- planning keeps CoursePilot's status and guesses no course;
+- the Degree page, the progress page and the plan never show "Complete",
+  "All requirements complete" or "Covers every remaining requirement" for it,
+  for any group above it, or overall. They show "Needs review" and the
+  warning "Degree Navigator says this isn't met — confirm with your advisor.";
+- the plan carries `DN_SAYS_NOT_MET` (needs confirmation) per requirement.
+
+**What-if DN imports.** `degree_audit_import.confirmed_scope` is primary or
+what_if (NULL means primary). A block for another program (track mismatch,
+with that program's mapping) can be confirmed only with `scope=what_if`:
+
+- no course reaches the record, and the main audit is not invalidated;
+- `active_overlay()` leaves it out unless `include_what_if=True`, which only
+  a what-if plan for that program asks for;
+- it is reconciled against that program's audit;
+- a primary confirmation of such a block is still refused
+  (`DN_TRACK_MISMATCH`). Migration `t3dn01`.

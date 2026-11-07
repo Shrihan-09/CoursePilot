@@ -19,7 +19,7 @@ import logging
 import uuid
 from dataclasses import asdict
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Request, Response, status
 from pydantic import BaseModel, Field
@@ -31,6 +31,7 @@ from app.services import onboarding as onboarding_service
 from app.services.degree_audit import imports as service
 from app.services.degree_audit.overlay import (
     DISAGREE_LABEL,
+    DN_NOT_MET_MESSAGE,
     ESTIMATED_LABEL,
     active_overlay,
     current_schedule,
@@ -56,6 +57,12 @@ def get_audit_extractor() -> Extractor:
 class Version(BaseModel):
     expected_version: int = Field(ge=1)
     model_config = {"extra": "forbid"}
+
+
+class Confirm(Version):
+    #: Task 3: what_if confirms a block for ANOTHER program into that program's
+    #: what-if plans only; nothing reaches the student's record.
+    scope: Literal["primary", "what_if"] = "primary"
 
 
 class RowResolve(Version):
@@ -93,6 +100,8 @@ def _summary(imp, now) -> dict:
         if imp.failure_code else None,
         "created_at": imp.created_at, "expires_at": imp.expires_at,
         "confirmed_at": imp.confirmed_at, "superseded_at": imp.superseded_at,
+        "confirmed_scope": imp.confirmed_scope,
+        "what_if_available": imp.track_check == "mismatch" and imp.mapping_key is not None,
     }
 
 
@@ -107,14 +116,19 @@ def _requirement(row, schedule) -> dict:
         "dn_courses": row.extracted_courses, "dn_status": row.dn_status,
         "planning_status": planned, "planning_rule": rule,
         "requirement_code": row.requirement_code,
-        "mapping_review_status": row.mapping_review_status, "state": row.state,
+        "mapping_review_status": row.mapping_review_status,
+        "mapping_role": row.mapping_role or ("node" if row.requirement_code else None),
+        "state": row.state,
         "issues": row.issues, "excluded": row.excluded, "edited": row.edited,
         "reconciliation": row.reconciliation, "cp_status": row.cp_status,
         "cp_courses": row.cp_courses,
         "needs_review": row.reconciliation in ("dn_satisfied_cp_not", "cp_satisfied_dn_not",
                                                "allocation_differs"),
-        "label": DISAGREE_LABEL if row.reconciliation in (
-            "dn_satisfied_cp_not", "cp_satisfied_dn_not", "allocation_differs") else None,
+        "label": (DN_NOT_MET_MESSAGE if row.reconciliation == "cp_satisfied_dn_not"
+                  and row.dn_status == "not_satisfied"
+                  else DISAGREE_LABEL if row.reconciliation in (
+                      "dn_satisfied_cp_not", "cp_satisfied_dn_not", "allocation_differs")
+                  else None),
     }
 
 
@@ -253,14 +267,15 @@ async def resolve(import_id: uuid.UUID, row_id: uuid.UUID, body: RowResolve,
 
 @router.post("/{import_id}/confirm",
              summary="Confirm: courses to my history, statuses to my record")
-async def confirm(import_id: uuid.UUID, body: Version,
+async def confirm(import_id: uuid.UUID, body: Confirm,
                   principal: Annotated[Principal, Depends(enforce_request_rate_limit)]) -> dict:
     def work():
         now = _now()
         with _session() as session:
             try:
                 result = service.confirm_import(session, principal.account_id, import_id,
-                                                expected_version=body.expected_version, now=now)
+                                                expected_version=body.expected_version, now=now,
+                                                scope=body.scope)
             except service.ImportRefused as exc:
                 if exc.keep_changes:
                     session.commit()      # re-validated rows only; nothing was written

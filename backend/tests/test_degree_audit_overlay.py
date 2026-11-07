@@ -167,9 +167,41 @@ def test_sas_core_mapping_points_only_at_real_nodes_and_codes():
     # 14 goal codes appear in a real SAS Core DN audit (not 13); every one is listed.
     assert len(core.goals) == 14
     for code, entry in core.goals.items():
-        if entry.requirement_code is not None:
+        if entry.requirement_code is None:
+            continue
+        if entry.role == "member_goal":                                  # many-to-one
+            assert code in nodes[entry.requirement_code]["goals"]
+        else:
             assert nodes[entry.requirement_code].get("goal") == code      # one-to-one
-    assert {c for c, e in core.goals.items() if not e.usable} == {"AHo", "AHp", "AHq", "AHr", "NS"}
+    # Task 3: the four Arts and Humanities goals are MEMBER goals of the single
+    # CORE_AH node; NS stays unmapped (requirement R2 carries CORE_NS).
+    members = {c: e for c, e in core.goals.items() if e.role == "member_goal"}
+    assert set(members) == {"AHo", "AHp", "AHq", "AHr"}
+    assert {e.requirement_code for e in members.values()} == {"CORE_AH"}
+    assert all(e.usable for e in members.values())
+    assert {c for c, e in core.goals.items() if not e.usable} == {"NS"}
+    r2 = core.requirement("Requirement R2 : Areas of Inquiry: Natural Sciences [NS]")
+    assert r2 is not None and r2.requirement_code == "CORE_NS"
+
+
+def test_a_member_goal_never_decides_its_node():
+    """AHo satisfied in DN says nothing about CORE_AH (2 courses, 2 goals):
+    the overlay ignores member-goal rows; requirement R4 decides."""
+    from app.models.degree_audit import DegreeAuditRequirementRow
+    from app.services.degree_audit.imports import normalize_requirement_row
+
+    [core] = [m for m in load_mappings("2026-2027", PROGRAMS) if m.program_key == "sas-core"]
+    row = DegreeAuditRequirementRow(kind="goal", dn_code="AHp", dn_status="satisfied",
+                                    extraction_problems=[], edited=False)
+    normalize_requirement_row(row, core)
+    assert (row.requirement_code, row.mapping_role, row.state) == (
+        "CORE_AH", "member_goal", "matched")
+    assert any(i["code"] == "DN_MEMBER_GOAL" for i in row.issues)
+    assert any("Mapping not yet reviewed" in i["message"] for i in row.issues)
+    ns = DegreeAuditRequirementRow(kind="goal", dn_code="NS", dn_status="satisfied",
+                                   extraction_problems=[], edited=False)
+    normalize_requirement_row(ns, core)
+    assert (ns.requirement_code, ns.state) == (None, "unmapped")
 
 
 def test_cs_mappings_exist_but_map_nothing_until_a_real_cs_audit_is_reviewed():

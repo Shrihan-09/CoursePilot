@@ -225,6 +225,7 @@ def normalize_requirement_row(row: DegreeAuditRequirementRow, mapping: DnMapping
             else mapping.goal(row.dn_code or "")
     row.requirement_code = entry.requirement_code if entry is not None and entry.usable else None
     row.mapping_review_status = entry.review_status if entry is not None else None
+    row.mapping_role = entry.role if row.requirement_code is not None else None
     if row.requirement_code is None:
         reason = (entry.reason if entry is not None and entry.reason else
                   "No reviewed CoursePilot requirement corresponds to this Degree Navigator "
@@ -232,8 +233,12 @@ def normalize_requirement_row(row: DegreeAuditRequirementRow, mapping: DnMapping
         issues.append(_issue("DN_REQUIREMENT_UNMAPPED", IssueSeverity.INFO, reason))
     elif row.mapping_review_status != "reviewed":
         issues.append(_issue("DN_MAPPING_PENDING_REVIEW", IssueSeverity.INFO,
-                             "The mapping of this row to a CoursePilot requirement has not been "
-                             "reviewed by a person yet."))
+                             "Mapping not yet reviewed: the mapping of this row to a CoursePilot "
+                             "requirement has not been checked by a person yet."))
+    if row.mapping_role == "member_goal":
+        issues.append(_issue("DN_MEMBER_GOAL", IssueSeverity.INFO, (
+            f"One of the goals of {row.requirement_code}: its requirement row decides that "
+            "node's status, never this goal alone.")))
     if row.dn_status == "unknown":
         issues.append(_issue("DN_STATUS_UNKNOWN", message=(
             "Degree Navigator's status for this row could not be read. Set it from your "
@@ -650,10 +655,19 @@ class ConfirmResult:
 
 
 def confirm_import(session: Session, account_id: uuid.UUID, import_id: uuid.UUID, *,
-                   expected_version: int, now: datetime) -> ConfirmResult:
+                   expected_version: int, now: datetime,
+                   scope: str = "primary") -> ConfirmResult:
     """Confirm one block: its courses through the transcript path, then its
     requirement statuses become the student's progress record. One
-    transaction; the caller commits (or rolls everything back)."""
+    transaction; the caller commits (or rolls everything back).
+
+    Task 3, `scope="what_if"`: a block for ANOTHER program (track mismatch, with
+    that program's mapping) is confirmed only for that program's what-if plans.
+    Nothing reaches the student's record: no course is added, and the main
+    audit and main plan never see it. A primary confirmation of such a block is
+    still refused (the track-mismatch block)."""
+    if scope not in ("primary", "what_if"):
+        raise ImportRefused("DN_SCOPE_UNKNOWN", f"Unknown confirmation scope {scope!r}.")
     student = lock_student(session, account_id)
     if student is None:
         raise ProfileMissing("No academic record exists for this account.")
@@ -669,7 +683,12 @@ def confirm_import(session: Session, account_id: uuid.UUID, import_id: uuid.UUID
     if imp.version != expected_version:
         raise ImportRefused("IMPORT_VERSION_STALE",
                             "This import changed since you reviewed it; review it again.")
-    if imp.track_check == "mismatch":
+    what_if = scope == "what_if"
+    if what_if and (imp.track_check != "mismatch" or imp.mapping_key is None):
+        raise ImportRefused("DN_WHAT_IF_NOT_ANOTHER_PROGRAM", (
+            "Only a Degree Navigator audit for another program CoursePilot has a mapping for "
+            "can be confirmed into a what-if."))
+    if imp.track_check == "mismatch" and not what_if:
         raise ImportRefused("DN_TRACK_MISMATCH", imp.track_message or
                             "This audit is for a different program than your CoursePilot track.")
     mapping = _mapping_for(session, imp, student)
@@ -683,7 +702,7 @@ def confirm_import(session: Session, account_id: uuid.UUID, import_id: uuid.UUID
             "ROWS_NEED_ATTENTION", None, IssueSeverity.NEEDS_REVIEW,
             f"{blocking} Degree Navigator row(s) need review before confirming.")])
 
-    timp = linked_transcript(session, imp)
+    timp = None if what_if else linked_transcript(session, imp)
     if timp is not None:
         try:
             transcripts.confirm_import(session, account_id, timp.id,
@@ -700,13 +719,19 @@ def confirm_import(session: Session, account_id: uuid.UUID, import_id: uuid.UUID
         DegreeAuditImport.superseded_at.is_(None), DegreeAuditImport.id != imp.id)
     same = same.where(DegreeAuditImport.mapping_key == imp.mapping_key) if imp.mapping_key \
         else same.where(DegreeAuditImport.dn_subject == imp.dn_subject)
+    # A what-if replaces only an older what-if of the same program, never a
+    # primary import (and a primary never replaces a what-if).
+    same = same.where(DegreeAuditImport.confirmed_scope == "what_if") if what_if else \
+        same.where(DegreeAuditImport.confirmed_scope.is_distinct_from("what_if"))
     for older in session.scalars(same):
         older.superseded_at = now
     imp.state, imp.confirmed_at = ImportState.CONFIRMED, now
+    imp.confirmed_scope = scope
     session.flush()
     from app.services.degree_audit.reconciliation import reconcile
     counts = reconcile(session, student, imp, now, log=True)
-    invalidate_audit(session, student.id)
+    if not what_if:
+        invalidate_audit(session, student.id)
     logger.info("dn_import_confirmed", extra={"import": redact_id(imp.id),
                                               "mapping": imp.mapping_key, "labels": counts})
     return ConfirmResult(imp, False)

@@ -49,6 +49,15 @@ export interface Presentation {
 
 /* --------------------------------------------------------------- degree */
 
+/** Task 3: Degree Navigator says "not fulfilled" where CoursePilot says met. */
+export const DN_NOT_MET_MESSAGE = "Degree Navigator says this isn't met — confirm with your advisor.";
+
+/** Shown INSTEAD of complete / on-track while such a disagreement is unresolved. */
+export const DN_REVIEW: Presentation = {
+  label: "Needs review", tone: "warning", icon: "attention",
+  meaning: DN_NOT_MET_MESSAGE,
+};
+
 export const REQUIREMENT_STATUS: Record<RequirementStatus, Presentation> = {
   satisfied: {
     label: "Complete", tone: "success", icon: "complete",

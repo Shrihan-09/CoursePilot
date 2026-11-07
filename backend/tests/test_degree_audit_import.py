@@ -335,6 +335,96 @@ async def test_confirmed_dn_status_overrides_coursepilot_for_planning(ob, storag
 
 
 @requires_db
+async def test_dn_not_met_where_coursepilot_says_met_is_never_shown_as_complete(
+        ob, storage, mapping):
+    """Task 3: DN says R2 (REQ_B) is NOT fulfilled although the record's
+    course B meets it for CoursePilot. Planning keeps CoursePilot's "met" (no
+    course is guessed), and every surface carries the exact warning."""
+    from app.services.degree_audit.overlay import (
+        DN_NOT_MET_MESSAGE,
+        OverlaidAuditEngine,
+        active_overlay,
+    )
+    from app.services.planning.service import degree_navigator_overlay
+
+    async with _client(_app(storage), ob["account"]) as ac:
+        await _profile(ac, ob)
+        [imp] = await _upload(ac, build_audit_pdf(model(ob, r2_status="not_fulfilled")))
+        done = await _confirm(ac, imp)
+        r2 = _req(done, 2)
+        assert (r2["dn_status"], r2["reconciliation"], r2["cp_status"]) == (
+            "not_satisfied", "cp_satisfied_dn_not", "satisfied")
+        assert r2["needs_review"] is True and r2["label"] == DN_NOT_MET_MESSAGE
+        progress = (await ac.get(f"{URL}/progress")).json()
+        row = next(r for r in progress["requirements"] if r["requirement_code"] == "REQ_B")
+        assert row["label"] == DN_NOT_MET_MESSAGE and row["mapping_role"] == "node"
+        audit = (await ac.get("/api/v1/student/audit")).json()
+        assert statuses(audit)["REQ_B"] == "satisfied"           # CoursePilot's own status
+
+    with _session() as s:
+        student = s.scalar(select(Student).where(Student.user_id == ob["account"]))
+        overlay = active_overlay(s, student)
+        assert [n.requirement_code for n in overlay.dn_not_met()] == ["REQ_B"]
+        # Planning keeps CoursePilot's "met": nothing is lowered, nothing guessed.
+        assert statuses(OverlaidAuditEngine(s, overlay).audit(student))["REQ_B"] == "satisfied"
+        version = s.get(ProgramVersion, student.program_version_id)
+        used, _ = degree_navigator_overlay(s, student, version, ob["keys"]["pub"])
+        assert [n.requirement_code for n in used.dn_not_met()] == ["REQ_B"]
+
+
+@requires_db
+async def test_another_programs_audit_confirms_only_into_a_what_if(ob, storage, mapping):
+    """Task 3: a DN block for another program (PEND) is refused as primary and
+    confirmable as a what-if: the student's record, audit and main plan never
+    see it; only PEND's what-if plan uses its statuses."""
+    from app.services.degree_audit.overlay import active_overlay
+    from app.services.planning.service import degree_navigator_overlay
+
+    mapping(program_key=ob["keys"]["pend"])            # the table says: program PEND
+    async with _client(_app(storage), ob["account"]) as ac:
+        await _profile(ac, ob)
+        [imp] = await _upload(ac, build_audit_pdf(model(ob)))
+        assert imp["track_check"] == "mismatch" and imp["what_if_available"] is True
+        refused = await _confirm(ac, imp, code=422)          # primary: still blocked
+        assert refused["error"]["issues"][0]["code"] == "DN_TRACK_MISMATCH"
+        r = await ac.post(f"{URL}/{imp['id']}/confirm",
+                          json={"expected_version": imp["version"], "scope": "what_if"})
+        assert r.status_code == 200, r.text
+        done = r.json()
+        assert (done["state"], done["confirmed_scope"]) == ("confirmed", "what_if")
+        assert _record(ob["account"]) == []                  # no course reached the record
+        progress = (await ac.get(f"{URL}/progress")).json()
+        assert progress["source"] == "coursepilot_estimate"  # the Degree page: untouched
+
+    with _session() as s:
+        student = s.scalar(select(Student).where(Student.user_id == ob["account"]))
+        assert not active_overlay(s, student)                         # main record
+        assert active_overlay(s, student, include_what_if=True).imports
+        own = s.get(ProgramVersion, student.program_version_id)
+        main, _ = degree_navigator_overlay(s, student, own, ob["keys"]["pub"])
+        assert main is None                                           # main plan
+        from app.services.scenarios import resolve_version
+        pend, _ = resolve_version(s, ob["keys"]["pend"], ob["year"])
+        what_if, notes = degree_navigator_overlay(s, student, pend, ob["keys"]["pend"],
+                                                  what_if=True)
+        assert what_if and {st.program_key for st in what_if.statuses.values()} == {
+            ob["keys"]["pend"]}
+        assert any(n.code == "requirement_status_from_degree_navigator" for n in notes)
+
+
+@requires_db
+async def test_a_what_if_is_refused_for_the_students_own_program(ob, storage, mapping):
+    async with _client(_app(storage), ob["account"]) as ac:
+        await _profile(ac, ob)
+        [imp] = await _upload(ac, build_audit_pdf(model(ob)))
+        r = await ac.post(f"{URL}/{imp['id']}/confirm",
+                          json={"expected_version": imp["version"], "scope": "what_if"})
+        assert r.status_code == 422
+        assert r.json()["error"]["issues"][0]["code"] == "DN_WHAT_IF_NOT_ANOTHER_PROGRAM"
+        assert _record(ob["account"]) == []
+
+
+@requires_db
 async def test_without_an_import_requirement_status_is_estimated(ob, storage, mapping):
     from app.services.planning.service import degree_navigator_overlay
 

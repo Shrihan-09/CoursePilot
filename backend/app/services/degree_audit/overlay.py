@@ -44,6 +44,8 @@ MET = (RequirementStatus.SATISFIED, RequirementStatus.PROVISIONALLY_SATISFIED)
 _RANK = {RequirementStatus.SATISFIED: 2, RequirementStatus.PROVISIONALLY_SATISFIED: 1}
 
 ESTIMATED_LABEL = "Estimated - import your Degree Navigator audit for accuracy"
+#: Task 3: DN "not fulfilled" where CoursePilot says met (shown until resolved).
+DN_NOT_MET_MESSAGE = "Degree Navigator says this isn't met — confirm with your advisor."
 DISAGREE_LABEL = "Degree Navigator and CoursePilot disagree; confirm with your advisor"
 
 
@@ -79,6 +81,13 @@ class DnOverlay:
 
     def __bool__(self) -> bool:
         return bool(self.statuses)
+
+    def dn_not_met(self) -> list[NodeStatus]:
+        """Task 3: DN says "not fulfilled" while CoursePilot says met. Planning
+        keeps CoursePilot's status; nothing may call these complete."""
+        return sorted((s for s in self.statuses.values()
+                       if s.reconciliation == "cp_satisfied_dn_not"
+                       and s.dn_status == "not_satisfied"), key=lambda s: s.requirement_code)
 
 
 def _utc(value: datetime | None) -> datetime | None:
@@ -134,13 +143,19 @@ def planning_status(row: DegreeAuditRequirementRow,
                            "confirmed current schedule - satisfied if you pass.")
 
 
-def active_overlay(session: Session, student: Student) -> DnOverlay:
-    """The statuses of the student's confirmed, not superseded DN imports."""
-    imports = list(session.scalars(
-        select(DegreeAuditImport).where(DegreeAuditImport.student_id == student.id,
+def active_overlay(session: Session, student: Student, *,
+                   include_what_if: bool = False) -> DnOverlay:
+    """The statuses of the student's confirmed, not superseded DN imports.
+
+    Task 3: a what-if import (a block for another program) is included only
+    when asked - by that program's what-if plan - never for the student's own
+    record, Degree page or main plan."""
+    q = select(DegreeAuditImport).where(DegreeAuditImport.student_id == student.id,
                                         DegreeAuditImport.state == "confirmed",
                                         DegreeAuditImport.superseded_at.is_(None))
-        .order_by(DegreeAuditImport.confirmed_at)))
+    if not include_what_if:
+        q = q.where(DegreeAuditImport.confirmed_scope.is_distinct_from("what_if"))
+    imports = list(session.scalars(q.order_by(DegreeAuditImport.confirmed_at)))
     if not imports:
         return DnOverlay()
     schedule = current_schedule(session, student.id)
@@ -151,6 +166,8 @@ def active_overlay(session: Session, student: Student) -> DnOverlay:
         for row in rows:
             if row.excluded or row.requirement_code is None or row.state == "unmapped":
                 continue
+            if row.mapping_role == "member_goal":
+                continue          # Task 3: one goal of a node never decides the node
             planned, rule = planning_status(row, schedule)
             if planned == "unknown":
                 continue
@@ -273,6 +290,6 @@ def freshness(imp: DegreeAuditImport, now: datetime) -> Freshness:
     return Freshness(as_of, imp.as_of_source, age, bool(reasons), reasons, message)
 
 
-__all__ = ["DISAGREE_LABEL", "ESTIMATED_LABEL", "DnOverlay", "Freshness", "NodeStatus",
+__all__ = ["DISAGREE_LABEL", "DN_NOT_MET_MESSAGE", "ESTIMATED_LABEL", "DnOverlay", "Freshness", "NodeStatus",
            "OverlaidAuditEngine", "active_overlay", "apply_overlay", "current_schedule",
            "freshness", "planning_status"]

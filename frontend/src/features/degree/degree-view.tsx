@@ -10,6 +10,8 @@ import { Alert, Progress } from "@/components/ui/feedback";
 import { Tabs } from "@/components/ui/overlay";
 import {
   AUDIT_STATUS,
+  DN_NOT_MET_MESSAGE,
+  DN_REVIEW,
   FINDING_SEVERITY,
   REQUIREMENT_STATUS,
   RULE_STATUS,
@@ -17,7 +19,26 @@ import {
 import type { DegreeAudit, RequirementStatus } from "@/types/degree";
 import type { ProgramView } from "@/types/onboarding";
 
-import { evidenceFor, leafTally, matchesFilter, RequirementNode, type Filter } from "./requirement-tree";
+import {
+  DnReviewContext, evidenceFor, leafTally, matchesFilter, RequirementNode, type Filter,
+} from "./requirement-tree";
+
+/**
+ * Task 3: Degree Navigator says these are NOT met while CoursePilot says they
+ * are. Planning keeps CoursePilot's status; this page never calls them - or the
+ * degree as a whole - complete or on track while that is unresolved.
+ */
+export function DnNotMetNotice({ items }: { items: { code: string; name: string }[] }) {
+  if (items.length === 0) return null;
+  return (
+    <Alert tone="warning" title={DN_NOT_MET_MESSAGE}>
+      <ul className="list-disc pl-5">
+        {items.map((i) => <li key={i.code}>{i.name}</li>)}
+      </ul>
+      <span className="block">CoursePilot counts {items.length === 1 ? "it" : "them"} as met and plans on that basis; it does not guess which course Degree Navigator is missing.</span>
+    </Alert>
+  );
+}
 
 /**
  * Pending-review is shown prominently whenever EITHER source says so - the
@@ -42,9 +63,14 @@ const TALLY_ORDER: RequirementStatus[] = [
   "satisfied", "provisionally_satisfied", "partially_satisfied", "unsatisfied", "indeterminate", "not_evaluable",
 ];
 
-export function DegreeSummary({ audit }: { audit: DegreeAudit }) {
-  const state = AUDIT_STATUS[audit.status];
-  const tally = leafTally(audit.requirements);
+export function DegreeSummary({ audit, review = new Set<string>() }: {
+  audit: DegreeAudit;
+  /** Task 3: requirement codes Degree Navigator says are not met. */
+  review?: ReadonlySet<string>;
+}) {
+  const state = review.size > 0 && (audit.status === "complete" || audit.status === "in_progress")
+    ? DN_REVIEW : AUDIT_STATUS[audit.status];
+  const tally = leafTally(audit.requirements, review);
   const required = audit.credits_required_min;
   const applicable = Number(audit.credits_applicable_to_degree);
   return (
@@ -99,6 +125,11 @@ export function DegreeSummary({ audit }: { audit: DegreeAudit }) {
               </li>
             );
           })}
+          {tally.needs_review > 0 && (
+            <li className="flex items-center gap-1.5 text-warning">
+              <span className="tabular font-medium">{tally.needs_review}</span> {DN_REVIEW.label.toLowerCase()}: Degree Navigator says not met
+            </li>
+          )}
         </ul>
         <p className="text-xs text-fg-muted">Counts of individual requirements; they differ in size, so this is not a percentage of the degree.</p>
       </div>
@@ -113,12 +144,15 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: "complete", label: "Complete" },
 ];
 
-export function DegreeView({ audit, program, source }: {
+export function DegreeView({ audit, program, source, dnNotMet = [] }: {
   audit: DegreeAudit;
   program: ProgramView;
   /** Phase 7.4: per requirement, "from your Degree Navigator audit" or "estimated". */
   source?: (code: string) => React.ReactNode;
+  /** Task 3: requirements Degree Navigator says are not met while CoursePilot says met. */
+  dnNotMet?: { code: string; name: string }[];
 }) {
+  const review = useMemo(() => new Set(dnNotMet.map((i) => i.code)), [dnNotMet]);
   const [filter, setFilter] = useState<Filter>("all");
   const evidence = useMemo(() => {
     const cache = new Map<string, ReturnType<typeof evidenceFor>>();
@@ -134,9 +168,11 @@ export function DegreeView({ audit, program, source }: {
   const findings = audit.findings.filter((f) => f.code !== "program_pending_review");
 
   return (
+    <DnReviewContext.Provider value={review}>
     <div className="space-y-6">
       <PendingReviewNotice program={program} audit={audit} />
-      <DegreeSummary audit={audit} />
+      <DnNotMetNotice items={dnNotMet} />
+      <DegreeSummary audit={audit} review={review} />
 
       {findings.length > 0 && (
         <section aria-labelledby="findings-heading" className="space-y-2">
@@ -158,7 +194,7 @@ export function DegreeView({ audit, program, source }: {
           </Link>
         </div>
         <Tabs label="Show requirements" value={filter} onChange={setFilter} items={FILTERS} />
-        {groups.some((g) => matchesFilter(g, filter)) ? (
+        {groups.some((g) => matchesFilter(g, filter, review)) ? (
           <ul className="space-y-2">
             {groups.map((g) => (
               <RequirementNode key={g.requirement_code} node={g} evidence={evidence} filter={filter} source={source} />
@@ -217,5 +253,6 @@ export function DegreeView({ audit, program, source }: {
         </footer>
       )}
     </div>
+    </DnReviewContext.Provider>
   );
 }
