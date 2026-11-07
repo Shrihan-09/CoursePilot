@@ -551,13 +551,13 @@ def test_a_plan_short_of_120_credits_is_not_complete(world):
 
 
 def test_pace_early_still_finishes_early(world):
-    """Spring 2031 leaves room: spread, every term stays at or above its
-    floor (so the plan ends once 120 is reached at the floors); Early fills
-    each term to its maximum and ends sooner."""
+    """A 12-19 credit range and a Spring 2031 target leave real room: spread,
+    terms sit near the 12-credit floor over more semesters; Early fills each
+    term toward 19 and finishes in fewer."""
     student = _student(world)
-    far = "20311"
-    spread = _plan(world, student, expected_graduation_term=far)
-    early = _plan(world, student, expected_graduation_term=far, pace=Pace.FINISH_EARLIER)
+    far, rng = "20311", {"credit_min": 12, "credit_max": 19}
+    spread = _plan(world, student, expected_graduation_term=far, **rng)
+    early = _plan(world, student, expected_graduation_term=far, pace=Pace.FINISH_EARLIER, **rng)
     assert early.degree_credits.met and spread.degree_credits.met
     assert len(early.terms) < len(spread.terms)
     assert early.terms[-1].term_code < spread.terms[-1].term_code <= far
