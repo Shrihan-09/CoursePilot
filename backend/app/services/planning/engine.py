@@ -389,6 +389,16 @@ class PlanningEngine:
     def _active(self, results):
         return active_leaves(results, getattr(self, "alternative_choices", {}))
 
+    def _similarity_score(self, course, term):
+        """Owner-only ordering signal; validity and requirements still decide."""
+        from app.services.planning.options import Similarity
+
+        cache = getattr(self, "_filler_similarity", {})
+        if term not in cache:
+            cache[term] = Similarity(self, term, getattr(self, "_liked_courses", []))
+        self._filler_similarity = cache
+        return cache[term].best(course, self.course_info[course].title)[0]
+
     def _competing_courses(self, results):
         blocked, chosen = set(), set()
         inactive = self._inactive_requirements(self.alternative_choices)
@@ -1077,6 +1087,10 @@ class PlanningEngine:
         c = self.constraints
         self._load_static(version)
         self._history(student)
+        from app.services.planning.options import liked_courses
+
+        self._liked_courses = liked_courses(self.session, student)
+        self._filler_similarity = {}
         from app.services.scheduling.candidates import student_attributes
         self.attributes = student_attributes(self.session, student)
         self.undeclared = student.declaration_status == "undeclared"
@@ -1880,7 +1894,8 @@ class PlanningEngine:
                                    and weight_total + w.weight <= budget)
                         return (self._hold_first(k),
                                 filler_rank(w.delivery, c.filler_preference.value), not reaches,
-                                w.weight, self._is_topics(k), rank(k))
+                                w.weight, -self._usable(serves.get(k, ())),
+                                -self._similarity_score(k, term), self._is_topics(k), rank(k))
                     pick = min(pool, key=choice)
                     pool.remove(pick)
                     outcome = place(pick)
@@ -2311,7 +2326,8 @@ class PlanningEngine:
         def filler_key(k):
             w = self.workload_index.weight(self.course_info[k], term)
             return (hold(k), filler_rank(w.delivery, c.filler_preference.value),
-                    w.weight if nearly_used else Decimal(0), self._is_topics(k), rank(k))
+                    w.weight if nearly_used else Decimal(0), -self._usable(serves.get(k, ())),
+                    -self._similarity_score(k, term), self._is_topics(k), rank(k))
 
         # Fillers: everything else that completes a remaining requirement or
         # opens one (a prerequisite path), chosen by the filler preference.

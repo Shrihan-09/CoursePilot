@@ -115,6 +115,9 @@ class Interpretation:
     online: bool = False
     async_only: bool = False
     in_person: bool = False
+    campus: str | None = None
+    earliest: str | None = None
+    latest: str | None = None
     avoid_days: list[str] = field(default_factory=list)
     level: int | None = None
     credits: Decimal | None = None
@@ -235,6 +238,17 @@ def interpret(ctx: OptionsContext, text: str, *, term_code: str | None = None) -
     if re.search(r"\bin[- ]person\b", q):
         out.in_person, out.online, out.async_only = True, False, False
     q = re.sub(r"\b(asynchronous|async|online|remote|in[- ]person)\b", " ", q)
+    for phrase, campus in {"college avenue": "CAC", "busch": "BUS", "livingston": "LIV",
+                           "cook": "COOK", "douglass": "D/C"}.items():
+        if re.search(rf"\b{phrase}\b", q):
+            out.campus = campus
+            q = re.sub(rf"\b(?:on\s+)?{phrase}(?:\s+campus)?\b", " ", q)
+    for word, field_name in (("after", "earliest"), ("before", "latest")):
+        m = re.search(rf"\b{word}\s+(1[0-2]|0?[1-9])(?::([0-5]\d))?\s*(am|pm)\b", q)
+        if m:
+            hour = int(m[1]) % 12 + (12 if m[3] == "pm" else 0)
+            setattr(out, field_name, f"{hour:02}:{int(m[2] or 0):02}")
+            q = q.replace(m[0], " ")
     for word, day in DAY_WORDS.items():
         if re.search(rf"\b(no\s+{word}|{word}\s+off|not\s+on\s+{word}|without\s+{word})\b", q):
             out.avoid_days.append(day)
@@ -312,10 +326,17 @@ def interpret(ctx: OptionsContext, text: str, *, term_code: str | None = None) -
     return out
 
 
-def _sections(session: Session, term: str, keys: list[str]):
+def _sections(session: Session, term: str, keys: list[str], attrs, honors):
     """course -> [(index, open, [meetings])] for a PUBLISHED term."""
     from app.models import SectionAvailability
     from app.services.scheduling.meetings import normalize
+    from app.domain.schedule import RestrictionOutcome
+    from app.services.scheduling.candidates import load_term, honors_only
+
+    data = load_term(session, term, keys, attrs)
+    eligible = {c.index_number for candidates in data.candidates.values() for c in candidates
+                if c.restriction.outcome in (RestrictionOutcome.UNRESTRICTED, RestrictionOutcome.SATISFIED)
+                and (honors or not honors_only(c.restriction))}
 
     rows = session.execute(
         select(Course.course_string, CourseSection.id, CourseSection.index_number,
@@ -336,24 +357,31 @@ def _sections(session: Session, term: str, keys: list[str]):
             campus=m.campus_abbrev))
     out = defaultdict(list)
     for key, sid, index, soc_open in rows:
+        if index not in eligible:
+            continue
         status = live.get(index) or ("open" if soc_open else "closed")
         out[key].append((index, status == "open", meetings.get(sid, [])))
     return out
 
 
-def _blocked(ctx: OptionsContext) -> list[tuple[str, int, int]]:
+def _blocked(ctx: OptionsContext, term: str) -> list[tuple[str, int, int]]:
     from app.services.planning.profile import get_profile, profile_input
     from app.services.scheduling.meetings import hhmm
 
     profile = get_profile(ctx.session, ctx.student)
     if profile is None:
         return []
-    schedule = profile_input(profile).schedule
-    return [(d, hhmm(b.start), hhmm(b.end)) for b in schedule.blocked_times for d in b.days]
+    answers = profile_input(profile)
+    blocks = answers.schedule.blocked_times
+    override = next((o for o in answers.term_overrides if o.term_code == term), None)
+    if override is not None and override.blocked_times is not None:
+        blocks = override.blocked_times
+    return [(d, hhmm(b.start), hhmm(b.end)) for b in blocks for d in b.days]
 
 
 def search_courses(ctx: OptionsContext, text: str = "", *, term_code: str | None = None,
                    requirements: list[list[str]] | None = None, topic: str | None = None,
+                   filters: dict | None = None,
                    limit: int = 10) -> SearchResult:
     """Structured fields (requirements, topic) win over the same thing in `text`."""
     it = interpret(ctx, text, term_code=term_code) if text else Interpretation(
@@ -363,6 +391,10 @@ def search_courses(ctx: OptionsContext, text: str = "", *, term_code: str | None
                            for group in requirements]
     if topic:
         it.topic = topic
+    for key, value in (filters or {}).items():
+        if key in {"online", "async_only", "in_person", "campus", "earliest", "latest",
+                   "avoid_days", "level", "credits", "open_only", "fills_two"} and value is not None:
+            setattr(it, key, value)
     explicit = term_code is not None or bool(
         re.search(r"\b(spring|fall|summer|winter)\b", (text or "").lower()))
     out = _search(ctx, it, limit)
@@ -381,8 +413,30 @@ def search_courses(ctx: OptionsContext, text: str = "", *, term_code: str | None
     return out
 
 
+def _section_fits(meetings, it: Interpretation, blocked) -> bool:
+    """All requested filters must hold for the SAME section, with known times."""
+    from app.domain.schedule import MeetingKind, TIME_UNKNOWN_KINDS
+    from app.services.scheduling.meetings import hhmm, overlaps_blocked, violates_window
+
+    time_filter = bool(it.avoid_days or blocked or it.earliest or it.latest)
+    if time_filter and (not meetings or any(m.kind in TIME_UNKNOWN_KINDS for m in meetings)):
+        return False
+    online = [m.kind is MeetingKind.ASYNCHRONOUS or m.campus == "ONL"
+              or "ONLINE" in (m.mode_desc or "").upper() for m in meetings]
+    if it.async_only and (not meetings or any(m.kind is not MeetingKind.ASYNCHRONOUS for m in meetings)):
+        return False
+    if it.online and (not online or not all(online)):
+        return False
+    if it.in_person and (not meetings or any(online)):
+        return False
+    if it.campus and not any((m.campus or "").upper() == it.campus.upper() for m in meetings):
+        return False
+    return not violates_window(meetings, earliest=hhmm(it.earliest) if it.earliest else None,
+                               latest=hhmm(it.latest) if it.latest else None,
+                               avoid_days=it.avoid_days) and not overlaps_blocked(meetings, blocked)
+
+
 def _search(ctx: OptionsContext, it: Interpretation, limit: int) -> SearchResult:
-    from app.services.scheduling.meetings import overlaps_blocked, violates_window
 
     out = SearchResult(interpretation=it)
     if it.did_you_mean and not it.requirements:
@@ -419,8 +473,8 @@ def _search(ctx: OptionsContext, it: Interpretation, limit: int) -> SearchResult
     passed = [v for v in verdicts.values() if v.ok]
     out.not_available = [{"course": v.course, "reason": v.reason}
                          for v in verdicts.values() if not v.ok][:15]
-    sections = _sections(ctx.session, term, [v.course for v in passed])
-    blocked = _blocked(ctx)
+    sections = _sections(ctx.session, term, [v.course for v in passed], ctx.engine.attributes, ctx.c.honors)
+    blocked = _blocked(ctx, term)
     similarity = Similarity(ctx.engine, term, ctx.liked)
     hits = []
     for v in passed:
@@ -448,17 +502,14 @@ def _search(ctx: OptionsContext, it: Interpretation, limit: int) -> SearchResult
         secs = sections.get(v.course, [])
         status = "not_published"
         if secs:
-            fitting = [s for s in secs
-                       if not violates_window(s[2], earliest=None, latest=None,
-                                              avoid_days=it.avoid_days)
-                       and not overlaps_blocked(s[2], blocked)]
-            if (it.avoid_days or blocked) and not fitting:
+            fitting = [s for s in secs if _section_fits(s[2], it, blocked)]
+            if not fitting:
                 continue
-            usable = fitting or secs
+            usable = fitting
             status = "open" if any(s[1] for s in usable) else "closed"
             if it.open_only and status != "open":
                 continue
-        elif it.open_only or it.avoid_days:
+        elif it.open_only or it.avoid_days or blocked or it.campus or it.earliest or it.latest:
             continue                                   # times unknown: cannot promise a fit
         reasons = []
         if codes:

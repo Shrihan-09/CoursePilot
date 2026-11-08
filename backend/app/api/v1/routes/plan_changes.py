@@ -23,6 +23,7 @@ import logging
 import time
 from datetime import UTC, datetime
 from decimal import Decimal
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Path
 from fastapi.concurrency import run_in_threadpool
@@ -106,6 +107,22 @@ class ChoicesView(BaseModel):
     questions: list[ChoiceQuestionView]
 
 
+class SearchFilters(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    online: bool | None = None
+    async_only: bool | None = None
+    in_person: bool | None = None
+    campus: str | None = Field(default=None, min_length=1, max_length=40)
+    earliest: str | None = Field(default=None, pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
+    latest: str | None = Field(default=None, pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
+    avoid_days: list[Literal["M", "T", "W", "H", "F", "S", "U"]] | None = None
+    level: int | None = Field(default=None, ge=1, le=4)
+    credits: Decimal | None = Field(default=None, gt=0, le=30)
+    open_only: bool | None = None
+    fills_two: bool | None = None
+
+
 class SearchRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -116,6 +133,7 @@ class SearchRequest(BaseModel):
     #: assistant passes these instead of guessing from words.
     requirements: list[list[str]] | None = Field(default=None, max_length=4)
     topic: str | None = Field(default=None, max_length=120)
+    filters: SearchFilters | None = None
     limit: int = Field(default=10, ge=1, le=25)
 
 
@@ -143,6 +161,9 @@ class InterpretationView(BaseModel):
     online: bool
     async_only: bool
     in_person: bool
+    campus: str | None = None
+    earliest: str | None = None
+    latest: str | None = None
     avoid_days: list[str]
     level: int | None
     credits: Decimal | None
@@ -338,6 +359,7 @@ async def search(body: SearchRequest, principal: Principal = Depends(enforce_req
             ctx = _context(session, student)
             r = search_courses(ctx, body.text, term_code=body.term_code,
                                requirements=body.requirements, topic=body.topic,
+                               filters=body.filters.model_dump(exclude_none=True) if body.filters else None,
                                limit=body.limit)
             session.rollback()
             return SearchView(interpretation=InterpretationView(**vars(r.interpretation)),

@@ -88,7 +88,7 @@ def _prod(**overrides) -> Settings:
 # ==========================================================================
 
 
-def test_production_can_never_run_in_debug() -> None:
+def test_production_can_never_run_in_debug(monkeypatch) -> None:
     """**A real finding from this phase.**
 
     `debug` defaulted to True with nothing lowering it for production. That
@@ -102,6 +102,8 @@ def test_production_can_never_run_in_debug() -> None:
     debug quietly off is better than one that will not boot, and nothing
     legitimate wants SQL echo in production.
     """
+    # This test checks the default, independently of the runner's DEBUG setting.
+    monkeypatch.delenv("DEBUG", raising=False)
     assert _prod().debug is False
     assert _prod(debug=True).debug is False, "an explicit debug=True must be overridden"
 

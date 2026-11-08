@@ -472,6 +472,9 @@ export function CourseSearchBox({ term, changes, replacing }: { term: string; ch
             {r.interpretation.topic && <Badge>topic: {r.interpretation.topic}</Badge>}
             {r.interpretation.online && <Badge>{r.interpretation.async_only ? "async" : "online"}</Badge>}
             {r.interpretation.in_person && <Badge>in person</Badge>}
+            {r.interpretation.campus && <Badge>{r.interpretation.campus}</Badge>}
+            {r.interpretation.earliest && <Badge>after {r.interpretation.earliest}</Badge>}
+            {r.interpretation.latest && <Badge>before {r.interpretation.latest}</Badge>}
             {r.interpretation.avoid_days.length > 0 && <Badge>no {r.interpretation.avoid_days.join("/")}</Badge>}
             {r.interpretation.exclude.map((x) => <Badge key={x}>not {x}</Badge>)}
           </p>

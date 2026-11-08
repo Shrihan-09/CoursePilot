@@ -155,6 +155,7 @@ class Similarity:
     def __init__(self, engine: PlanningEngine, term: str, liked: list[Liked]) -> None:
         self.engine, self.term = engine, term
         self.liked = [(item, self._features(item.course, item.title)) for item in liked]
+        self._scores: dict[tuple[str, str], tuple[int, str | None]] = {}
 
     def _features(self, key: str, title: str) -> _Features:
         e = self.engine
@@ -178,6 +179,8 @@ class Similarity:
         """(score, note). 0 / None when nothing is shared."""
         if not self.liked:
             return 0, None
+        if (key, title) in self._scores:
+            return self._scores[(key, title)]
         f = self._features(key, title)
         best_score, best_note = 0, None
         for item, g in self.liked:
@@ -207,6 +210,7 @@ class Similarity:
                 verb = "you did well" if item.why == "did_well" else "you're doing well"
                 best_score = score
                 best_note = f"Similar to {item.course}, where {verb}: " + ", ".join(shared[:3])
+        self._scores[(key, title)] = (best_score, best_note)
         return best_score, best_note
 
 

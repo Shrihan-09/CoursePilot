@@ -487,6 +487,9 @@ export interface CourseSearchResult {
     online: boolean;
     async_only: boolean;
     in_person: boolean;
+    campus?: string | null;
+    earliest?: string | null;
+    latest?: string | null;
     avoid_days: string[];
     level: number | null;
     credits: string | number | null;
