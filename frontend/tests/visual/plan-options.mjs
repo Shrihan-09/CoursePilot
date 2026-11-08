@@ -3,7 +3,10 @@
 // the Options sheet, a swap preview and search results for the A3c example
 // queries, at laptop width (and the Options sheet / preview at phone width).
 //
-//   run: node tests/visual/plan-options.mjs <out-dir> [base-url]
+// Run only against an isolated CI-mode backend with the test DB guard installed,
+// DATABASE_URL/DATABASE_URL_SYNC pointing to coursepilot_test, and a frontend
+// configured to proxy that backend. Set COURSEPILOT_VISUAL_DATABASE=coursepilot_test.
+//   run: node tests/visual/plan-options.mjs <out-dir> <test-frontend-base-url>
 //
 // A throwaway `qa11a-*` dev subject with a FABRICATED CS B.S. record (no real
 // person): CS 111/112/205, Calc I, Expository Writing passed; Calc II failed
@@ -16,8 +19,10 @@ import path from "node:path";
 import AxeBuilder from "@axe-core/playwright";
 import { chromium } from "@playwright/test";
 
-const [OUT, BASE = "http://localhost:3000"] = process.argv.slice(2);
-if (!OUT) throw new Error("usage: plan-options.mjs <out-dir> [base-url]");
+const [OUT, BASE] = process.argv.slice(2);
+if (!OUT || !BASE || !process.env.COURSEPILOT_VISUAL_DATABASE?.endsWith("_test")) {
+  throw new Error("Provide an explicit test frontend URL and COURSEPILOT_VISUAL_DATABASE ending in _test; never run this against dev.");
+}
 await mkdir(OUT, { recursive: true });
 const findings = [];
 const failures = [];
@@ -70,6 +75,8 @@ const HISTORY = [
 ];
 
 async function seed(page) {
+  const health = await api(page, "GET", "/health");
+  if (health.json?.environment !== "ci") throw new Error("Visual fixture seeding requires a CI-mode test backend.");
   const programs = (await api(page, "GET", "/programs")).json.programs;
   const pick = programs.find((p) => p.program_code === "198" && p.degree_type === "BS");
   const version = pick.versions.find((v) => v.support_status !== "unavailable");
