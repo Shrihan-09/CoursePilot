@@ -10526,3 +10526,73 @@ with that program's mapping) can be confirmed only with `scope=what_if`:
 - it is reconciled against that program's audit;
 - a primary confirmation of such a block is still refused
   (`DN_TRACK_MISMATCH`). Migration `t3dn01`.
+
+## 57. Planner/audit correctness fixes (owner plan review)
+
+**Entry term (item 1).** The graduation target counts from the first semester
+the student STATED in setup when there is one; the earliest Rutgers Fall/Spring
+term on the record is used only without an answer. When the record starts
+earlier than the answer, `GraduationTarget.conflict` says so and the plan
+carries `FIRST_SEMESTER_CONFLICT` (needs confirmation).
+`app.services.record_checks.term_order_conflicts` flags a record course
+recorded BEFORE its prerequisite (`RECORD_TERM_ORDER_IMPOSSIBLE`, needs
+confirmation). It reads the course's published prerequisite expression
+structurally (course identity only, no grades). It flags only "not met by
+earlier courses AND met once later ones count"; anything unreadable is
+unknown, and unknown is never flagged. The record is never changed.
+
+**In progress (item 2).** A DN "In progress or planned" row is IN PROGRESS
+when every course behind it is in progress on a CONFIRMED unofficial
+transcript import (`source_document = rutgers_unofficial_transcript`) or in
+the confirmed current schedule (WebReg import or a confirmed section). A
+course with neither is PLANNED. A DN audit's own staged courses never count:
+DN cannot vouch for itself. A goal row's course without a term matches any
+confirmed term of that course.
+
+**Choose-one requirements (item 3).** An ANY_OF is ONE display unit per
+alternative it needs, wherever progress is shown: the progress metrics
+(`app.services.progress`) and the Degree page tally and "Still needed"
+filter. The alternative that counts is the saved plan's choice
+(`PlanMetadata.alternative_choices`), else the furthest along. An unchosen
+alternative adds no unit, no uncertainty and no "still needed" leaf.
+
+**Major's own subject (item 5).** Profile and constraints field
+`major_subject_each_term` (default true). In a workload-level plan, the
+best-ranked eligible course in the program's own subject (01:198 for CS) is
+taken right after the double-counters, before other major-related courses.
+It may use the budget room the commitments removed, up to the level's own
+budget, inside the major-related range. Two engine fixes came with it:
+
+- a lab joining its lecture this term is placed right after the lecture;
+- the major-related range never refuses such a lab (it does not add a course).
+
+**One credit range (item 6).** With a workload level, `to_constraints` sends
+the student's own range, else the level's (Semi-rigorous 16-19), as
+target/maximum. `confirm_profile` stores that range in the old fields, and the
+plan header shows it.
+
+**Restrictions (item 8).** School-only section restrictions are decided for
+every student, since a student is in one school. For a term without published
+sections, the course is restricted when every section of each of its last
+recent terms (up to 4, at least 2) was open only to schools the student is
+not in. Major restrictions are never borrowed from history.
+
+**Badges and wording (items 7, 9-12).**
+
+- "Counts twice" (`multi_requirement`) only when the FINAL allocation credits
+  the course to two requirements. A filler's "completes ..." names the final
+  allocation.
+- A flexible-preference student's in-person filler says "no online option
+  this term", or names the online options that did not fit.
+- Observation `consider_light_term`: every over-budget term is over only
+  because of commitments. Details carry the Light range, so one tap writes a
+  per-term answer.
+- Conditional prerequisites name the exact courses and terms.
+- Free-elective credits read as course slots ("one 1-credit elective").
+
+**Migration `cf01`** (revises `t3dn01`) adds
+`student_planning_profile.major_subject_each_term` (NOT NULL, default true).
+For profiles with a workload level it rewrites `target_credits_per_term` /
+`max_credits_per_term` to that one range: the student's own credit_min/max,
+else the level's. The downgrade drops the column and does not restore the old
+target/maximum.

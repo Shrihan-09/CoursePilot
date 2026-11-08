@@ -120,7 +120,11 @@ def test_the_scenario_spring_2027_shape(world):
     assert len(fillers) == 1
     assert "async" in fillers[0].workload.delivery and "completes" in fillers[0].role_reason
     lab = next(pc for pc in term.courses if pc.course == "01:750:205")
-    assert lab.role == "multi_requirement" and "together with 01:750:203" in lab.role_reason
+    # Correctness fixes item 9: the lab's badge matches its FINAL allocation -
+    # "Counts twice" only if it is credited to two requirements.
+    assert "together with 01:750:203" in lab.role_reason
+    assert (lab.role == "multi_requirement") == (len({r.requirement_code
+                                                      for r in lab.requirements}) >= 2)
     assert Decimal(16) <= _credits(term) <= Decimal(19)
     w = term.workload
     assert w.level is WorkloadLevel.SEMI_RIGOROUS and w.total <= w.budget == Decimal(24)
@@ -563,3 +567,60 @@ def test_pace_early_still_finishes_early(world):
     assert early.terms[-1].term_code < spread.terms[-1].term_code <= far
     # Every term but the last is filled to its maximum.
     assert all(_credits(t) == t.workload.credit_max for t in early.terms[:-1])
+
+
+# --------------------------------------------------------------------------
+# Correctness fixes (items 5, 7, 9)
+# --------------------------------------------------------------------------
+
+
+def test_counts_twice_only_when_the_final_allocation_counts_it_twice(world):
+    """Item 9: a lab taken with a double-counting lecture (Physics 205 beside
+    203) shares the lecture's reason but is credited once - its badge is not
+    "Counts twice"."""
+    plan = _plan(world, _student(world))
+    courses = [pc for t in plan.terms for pc in t.courses]
+    assert courses
+    for pc in courses:
+        if pc.role == "multi_requirement":
+            assert len({r.requirement_code for r in pc.requirements}) >= 2, pc.course
+
+
+def test_a_major_own_subject_course_is_placed_each_term_when_eligible(world):
+    """Item 5: with the preference ON (the default) the first term takes an
+    eligible 01:198 course and says it is the student's preference."""
+    plan = _plan(world, _student(world))
+    first = plan.terms[0]
+    assert any(pc.course.startswith("01:198:") for pc in first.courses), \
+        [pc.course for pc in first.courses]
+    assert any("your preference: a 01:198 course every term" in (pc.role_reason or "")
+               for t in plan.terms for pc in t.courses)
+
+
+def test_the_own_subject_preference_can_be_turned_off(world):
+    plan = _plan(world, _student(world), major_subject_each_term=False)
+    assert not any("your preference: a 01:198 course" in (pc.role_reason or "")
+                   for t in plan.terms for pc in t.courses)
+
+
+def test_a_lab_is_never_split_from_its_lecture_by_the_own_subject_pick(world):
+    """Item 5 regression: a 198 course placed between Physics 203 and its 205
+    lab must not leave the lab out (the major range and the budget never refuse
+    a lab joining its lecture placed this term)."""
+    plan = _plan(world, _student(world))
+    for t in plan.terms:
+        codes = {pc.course for pc in t.courses}
+        if "01:750:203" in codes:
+            assert "01:750:205" in codes, sorted(codes)
+
+
+def test_an_in_person_filler_for_a_flexible_student_says_why(world):
+    """Item 7: 'prefer flexible' and an in-person filler -> the card says there
+    is no online option this term, or which online options did not fit."""
+    plan = _plan(world, _student(world))          # _plan uses FillerPreference.FLEXIBLE
+    for t in plan.terms:
+        for pc in t.courses:
+            if pc.role == "filler" and pc.workload and \
+                    not {"async", "online"} & set(pc.workload.delivery):
+                assert ("no online option this term" in pc.role_reason
+                        or "did not fit this term" in pc.role_reason), pc.role_reason

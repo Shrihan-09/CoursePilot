@@ -338,8 +338,14 @@ export function planReasonText(reason: PlanReason, course: PlannedCourse): strin
     }
     case "prerequisites_satisfied_by_history":
       return "You've already met its prerequisites";
-    case "prerequisites_conditional_on_plan":
-      return "Its prerequisites are met once the earlier courses it depends on are passed";
+    case "prerequisites_conditional_on_plan": {
+      // Correctness fixes item 11: name the exact courses and terms.
+      const deps = course.prerequisite.conditional_on.map((d) =>
+        `${d.course} ${d.source === "in_progress" ? `(in progress, ${termLabel(d.term_code)})` : `in ${termLabel(d.term_code)}`}`);
+      return deps.length
+        ? `Its prerequisites are met once you pass ${deps.length > 1 ? `${deps.slice(0, -1).join(", ")} and ${deps[deps.length - 1]}` : deps[0]}`
+        : "Its prerequisites are met once the earlier courses it depends on are passed";
+    }
     case "no_prerequisite_published":
       return "Rutgers publishes no prerequisite for it";
     case "required_prerequisite_for":

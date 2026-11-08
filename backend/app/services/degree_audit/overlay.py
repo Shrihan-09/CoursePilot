@@ -12,9 +12,11 @@ Planning status of a DN row (decision 2 splits "In Progress or Planned"):
     satisfied              -> SATISFIED
     in_progress_or_planned -> IN PROGRESS (provisionally satisfied, counts as
                               satisfied-if-passed for next term) when EVERY
-                              course behind it is in the student's confirmed
-                              current schedule for its term; otherwise PLANNED,
-                              which counts as not satisfied
+                              course behind it is in progress on the student's
+                              CONFIRMED unofficial transcript or in their
+                              confirmed current schedule (WebReg import or a
+                              confirmed section) for its term; otherwise
+                              PLANNED, which counts as not satisfied
     not_satisfied          -> not satisfied
     unknown / excluded / unmapped -> CoursePilot's own status ("estimated")
 
@@ -111,9 +113,48 @@ def current_schedule(session: Session, student_id: uuid.UUID) -> set[tuple[str, 
     return {(t, c) for t, c in [*manual, *webreg]}
 
 
+def transcript_in_progress(session: Session, student_id: uuid.UUID) -> set[tuple[str, str]]:
+    """(term, course) the student's CONFIRMED unofficial transcript lists as in
+    progress (correctness fixes, item 2): record rows written by a confirmed
+    transcript import that are still in progress. They count as in progress
+    exactly like a confirmed WebReg schedule."""
+    from app.models import Course, StudentCourse
+    from app.models.onboarding import TranscriptImport
+
+    return {(t, c) for t, c in session.execute(
+        select(StudentCourse.term_code, Course.course_string)
+        .join(Course, Course.id == StudentCourse.course_id)
+        .join(TranscriptImport, TranscriptImport.id == StudentCourse.transcript_import_id)
+        .where(StudentCourse.student_id == student_id,
+               StudentCourse.status == "in_progress",
+               TranscriptImport.state == "confirmed",
+               # Not a DN audit's own staged courses: DN cannot vouch for itself.
+               TranscriptImport.source_document == "rutgers_unofficial_transcript"))}
+
+
+def in_progress_evidence(session: Session, student_id: uuid.UUID
+                         ) -> tuple[set[tuple[str, str]], set[tuple[str, str]]]:
+    """(confirmed current schedule, confirmed transcript in-progress) - the two
+    sources that make a course "in progress" rather than "planned"."""
+    return current_schedule(session, student_id), transcript_in_progress(session, student_id)
+
+
+def _confirmed(course: dict, pairs: set[tuple[str, str]]) -> bool:
+    term = course.get("term_code")
+    if term is not None:
+        return (term, course["course"]) in pairs
+    # A goal-row course carries no term: any confirmed term of that course.
+    return any(c == course["course"] for _, c in pairs)
+
+
 def planning_status(row: DegreeAuditRequirementRow,
-                    schedule: set[tuple[str, str]]) -> tuple[str, str]:
-    """(planning status, the rule that decided it) for one DN row."""
+                    schedule: set[tuple[str, str]],
+                    transcript: set[tuple[str, str]] = frozenset()) -> tuple[str, str]:
+    """(planning status, the rule that decided it) for one DN row.
+
+    `schedule`: the confirmed current schedule; `transcript`: in-progress
+    courses on the confirmed unofficial transcript. Either makes a course in
+    progress; a course in neither counts as planned (item 2)."""
     status = row.dn_status
     if status == "satisfied":
         return "satisfied", "Degree Navigator shows it fulfilled."
@@ -133,14 +174,20 @@ def planning_status(row: DegreeAuditRequirementRow,
         return "planned", (f"In progress or planned: {', '.join(sorted(set(planned)))} "
                            "is only planned, so it counts as not satisfied.")
     missing = sorted({c["course"] for c in behind
-                      if (c.get("term_code"), c["course"]) not in schedule})
+                      if not _confirmed(c, schedule) and not _confirmed(c, transcript)})
     if missing:
-        return "planned", (f"In progress or planned: {', '.join(missing)} is not in your "
-                           "confirmed current schedule, so it counts as planned (not "
-                           "satisfied). Confirm your current sections to change this.")
+        return "planned", (f"In progress or planned: {', '.join(missing)} is neither in "
+                           "progress on your confirmed transcript nor in your confirmed "
+                           "current schedule, so it counts as planned (not satisfied). "
+                           "Import your transcript or WebReg schedule to change this.")
     courses = ", ".join(sorted({c["course"] for c in behind}))
-    return "in_progress", (f"In progress: every course behind it ({courses}) is in your "
-                           "confirmed current schedule - satisfied if you pass.")
+    sources = []
+    if any(_confirmed(c, transcript) for c in behind):
+        sources.append("in progress on your confirmed transcript")
+    if any(_confirmed(c, schedule) for c in behind):
+        sources.append("in your confirmed current schedule")
+    return "in_progress", (f"In progress: every course behind it ({courses}) is "
+                           f"{' or '.join(sources)} - satisfied if you pass.")
 
 
 def active_overlay(session: Session, student: Student, *,
@@ -158,7 +205,7 @@ def active_overlay(session: Session, student: Student, *,
     imports = list(session.scalars(q.order_by(DegreeAuditImport.confirmed_at)))
     if not imports:
         return DnOverlay()
-    schedule = current_schedule(session, student.id)
+    schedule, transcript = in_progress_evidence(session, student.id)
     out: dict[str, NodeStatus] = {}
     for imp in imports:
         # Requirement rows win over goal rows for the same node.
@@ -168,7 +215,7 @@ def active_overlay(session: Session, student: Student, *,
                 continue
             if row.mapping_role == "member_goal":
                 continue          # Task 3: one goal of a node never decides the node
-            planned, rule = planning_status(row, schedule)
+            planned, rule = planning_status(row, schedule, transcript)
             if planned == "unknown":
                 continue
             if row.requirement_code in out and out[row.requirement_code].import_id == str(imp.id):
@@ -292,4 +339,5 @@ def freshness(imp: DegreeAuditImport, now: datetime) -> Freshness:
 
 __all__ = ["DISAGREE_LABEL", "DN_NOT_MET_MESSAGE", "ESTIMATED_LABEL", "DnOverlay", "Freshness", "NodeStatus",
            "OverlaidAuditEngine", "active_overlay", "apply_overlay", "current_schedule",
+           "in_progress_evidence", "transcript_in_progress",
            "freshness", "planning_status"]

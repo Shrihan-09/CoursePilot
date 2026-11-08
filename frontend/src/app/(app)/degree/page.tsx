@@ -12,6 +12,7 @@ import { DegreeNavigatorImport, DnNodeSource, DnSourceNotice, dnLookup, dnNotMet
 import { DegreeView } from "@/features/degree/degree-view";
 import { WhatIf } from "@/features/degree/what-if";
 import { ApiError, api } from "@/lib/api";
+import { planChoices } from "@/types/plan";
 
 /**
  * Degree: "What have I completed? What do I still need? Why? What is
@@ -26,6 +27,9 @@ export default function DegreePage() {
   const profile = useQuery({ queryKey: ["profile"], queryFn: api.profile });
   const onboarding = useQuery({ queryKey: ["onboarding"], queryFn: api.onboarding });
   const audit = useQuery({ queryKey: ["audit"], queryFn: api.audit, staleTime: 0 });
+  // Correctness fixes item 3: a choose-one requirement counts its chosen alternative.
+  const plan = useQuery({ queryKey: ["plan"], queryFn: api.currentPlan, staleTime: 0 });
+  const choices = useMemo(() => planChoices(plan.data?.plan), [plan.data]);
 
   if (profile.isPending || audit.isPending || onboarding.isPending) {
     return (
@@ -94,6 +98,7 @@ export default function DegreePage() {
             audit={audit.data}
             program={program}
             dnNotMet={notMet}
+            choices={choices}
             source={(code) => (
               <DnNodeSource row={dnRow(code)} hasImport={dn.data?.source === "degree_navigator"} />
             )}

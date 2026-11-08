@@ -60,6 +60,10 @@ class StudentPlanningProfile(Base, TimestampMixin):
     credit_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
     major_courses_min: Mapped[int | None] = mapped_column(Integer, nullable=True)
     major_courses_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    #: Correctness fixes item 5: "at least one course in my major's own subject
+    #: each term (when eligible)". Default ON.
+    major_subject_each_term: Mapped[bool] = mapped_column(Boolean, default=True,
+                                                          server_default="true")
     source: Mapped[str] = mapped_column(String(32), default="student_form")
     confirmed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 

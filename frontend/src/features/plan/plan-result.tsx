@@ -26,7 +26,8 @@ import {
 } from "@/lib/academic/vocabulary";
 import { courseTone } from "@/lib/tone";
 import { cn } from "@/lib/utils";
-import type { BlockedCourse, PlannedCourse, PlanningIssue, PlanTerm, SavedPlan } from "@/types/plan";
+import type { BlockedCourse, PlannedCourse, PlanningIssue, PlanObservation, PlanTerm, SavedPlan } from "@/types/plan";
+import { conditionalLabel, creditsText, electiveSlotText, loadText } from "@/lib/academic/plan-text";
 
 /**
  * The Planning Engine's plan, semester by semester (Phase 7.2).
@@ -78,7 +79,8 @@ function WhyHere({ course }: { course: PlannedCourse }) {
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-medium uppercase tracking-wide text-fg-muted">Prerequisites</span>
-            <StateBadge state={eligibility} />
+            <StateBadge state={pre.state === "conditional_on_plan" && pre.conditional_on.length
+              ? { ...eligibility, label: conditionalLabel(pre.conditional_on) } : eligibility} />
           </div>
           {pre.conditional_on.length > 0 && (
             <ul className="space-y-0.5 text-fg-secondary">
@@ -286,7 +288,7 @@ export function SemesterCard({
           <h3 id={`term-${term.term_code}`} className="text-lg font-bold tracking-tight text-fg">{term.label}</h3>
           <p className="tabular text-xs text-fg-muted">
             {term.courses.length} courses · {Number(term.credits)} credits
-            {electives > 0 && <> + {electives} free-elective credits</>}
+            {electives > 0 && <> + {electiveSlotText(electives)}</>}
             {term.cumulative_credits != null && <> · running total {Number(term.cumulative_credits)}</>}
           </p>
           {term.workload && (
@@ -322,7 +324,7 @@ export function SemesterCard({
         {term.courses.map((c, i) => <CourseCard key={c.course} course={c} index={i} />)}
         {electives > 0 && (
           <li className="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-fg-secondary">
-            Free electives: {electives} credits of any degree-credit courses you choose.
+            Free elective: {electiveSlotText(electives)} - any degree-credit course you choose ({creditsText(electives)} toward the degree total).
           </li>
         )}
       </ul>
@@ -401,10 +403,15 @@ export function PlanView({
   plan,
   onRegenerate,
   regenerating,
+  onApplyLight,
+  applyingLight = false,
 }: {
   plan: SavedPlan;
   onRegenerate: () => void;
   regenerating: boolean;
+  /** Correctness fixes item 10: apply the "Consider Light" suggestion to its semester. */
+  onApplyLight?: (suggestion: PlanObservation) => void;
+  applyingLight?: boolean;
 }) {
   const r = plan.result;
   // Task 3: while Degree Navigator says a requirement CoursePilot counts as met
@@ -412,6 +419,7 @@ export function PlanView({
   const dnNotMet = r.issues.filter((i) => i.code === "DN_SAYS_NOT_MET");
   const status = dnNotMet.length > 0 && r.status !== "partial" ? DN_REVIEW : PLAN_STATUS[r.status];
   const earlier = (r.observations ?? []).find((o) => o.code === "earlier_completion_possible");
+  const lighter = (r.observations ?? []).find((o) => o.code === "consider_light_term");
   return (
     <div className="space-y-6">
       <StaleNotice plan={plan} onRegenerate={onRegenerate} regenerating={regenerating} />
@@ -434,6 +442,9 @@ export function PlanView({
               <p className="text-sm text-fg-secondary">
                 Planned to graduate by {termLabel(r.graduation_target.term_code)} ({r.graduation_target.basis}).
               </p>
+            )}
+            {r.graduation_target?.conflict && (
+              <p className="text-sm font-medium text-warning">Needs review: {r.graduation_target.conflict}</p>
             )}
             {r.degree_credits && (
               <p className="tabular text-sm text-fg-secondary">
@@ -459,9 +470,7 @@ export function PlanView({
         <p className="text-xs text-fg-muted">
           Generated {new Date(plan.updated_at).toLocaleString()} by planning engine {r.metadata.planning_engine_version}.{" "}
           {plan.constraints.pace ? `${PACE_LABEL[plan.constraints.pace] ?? plan.constraints.pace} pace, ` : ""}
-          {plan.constraints.target_credits_per_term ? `aiming for ${String(plan.constraints.target_credits_per_term)} credits, ` : ""}
-          never more than {String(plan.constraints.max_credits_per_term)} credits or {plan.constraints.max_courses_per_term} courses a
-          semester - your CoursePilot planning preferences, not Rutgers rules.
+          {loadText(plan.constraints)} - your CoursePilot planning preferences, not Rutgers rules.
         </p>
       </section>
 
@@ -475,6 +484,19 @@ export function PlanView({
         <Alert tone="info" title="You may be able to finish the modeled requirements sooner"
           action={<Link href="/plan/personalize" className={buttonVariants({ variant: "secondary", size: "sm" })}>Review pace</Link>}>
           {earlier.message}
+        </Alert>
+      )}
+
+      {lighter && (
+        <Alert tone="info" title={`Consider Light for ${lighter.term_code ? termLabel(lighter.term_code) : "one semester"}`}
+          action={onApplyLight ? (
+            <Button size="sm" variant="secondary" loading={applyingLight} onClick={() => onApplyLight(lighter)}>
+              Use Light for {lighter.term_code ? termLabel(lighter.term_code) : "that semester"}
+            </Button>
+          ) : (
+            <Link href="/plan/personalize" className={buttonVariants({ variant: "secondary", size: "sm" })}>Review that semester</Link>
+          )}>
+          {lighter.message}
         </Alert>
       )}
 

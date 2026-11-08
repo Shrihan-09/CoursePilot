@@ -61,7 +61,7 @@ import math
 import re
 import uuid
 from collections import defaultdict
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -76,6 +76,7 @@ from app.domain.planning import (
     CoreCodeEvidence,
     DegreeCredits,
     EligibilityState,
+    FillerPreference,
     GraduationTarget,
     OfferingEvidence,
     OfferingEvidenceKind,
@@ -176,6 +177,23 @@ GRADUATION_SEMESTERS = {Pace.BALANCED: 8, Pace.FINISH_EARLIER: 7, Pace.LIGHTER: 
 
 
 SEASON = {"1": "Spring", "9": "Fall"}
+
+
+_SLOT_WORDS = ("zero", "one", "two", "three", "four", "five", "six", "seven", "eight")
+
+
+def elective_slots(credits: Decimal) -> str:
+    """Correctness fixes item 12: free-elective credits as course SLOTS. Up to
+    4 credits is one course ("one 1-credit elective", "one ~3-credit
+    elective"); more is that many ~3-credit courses."""
+    if credits <= 0:
+        return "no elective"
+    if credits <= 4:
+        return ("one ~3-credit elective" if credits == 3
+                else f"one {_plain(credits)}-credit elective")
+    slots = max(2, int((credits / 3).to_integral_value(rounding=ROUND_HALF_UP)))
+    word = _SLOT_WORDS[slots] if slots < len(_SLOT_WORDS) else str(slots)
+    return f"{word} electives (about {_plain(credits)} credits)"
 
 
 def _next_regular(term: str) -> str:
@@ -1031,6 +1049,8 @@ class PlanningEngine:
         self._term_meta: dict[str, dict] = {}
         #: Task 2: courses placed as major-related (by the plan's own test).
         self._major_flag: set[str] = set()
+        #: Correctness fixes item 5: the term's major-own-subject course.
+        self._own_pick: dict[str, str | None] = {}
         #: Prompt 09: terms whose credit minimum went past the budget.
         self._floor_conflicts: dict[str, tuple] = {}
         planned: dict[str, str] = {}                 # course -> term
@@ -1065,6 +1085,12 @@ class PlanningEngine:
         #: graduation target: each term's major-related courses stay in range.
         self._spread = (c.workload_level is not None and graduation is not None
                         and c.pace is not Pace.FINISH_EARLIER)
+        if graduation is not None and graduation.conflict:
+            issues.append(PlanningIssue(
+                severity=Severity.NEEDS_CONFIRMATION, code="FIRST_SEMESTER_CONFLICT",
+                message=graduation.conflict,
+                details={"stated_first_term": graduation.entry_term,
+                         "record_first_term": graduation.record_first_term}))
         conflict = pace_level_conflict(c)
         if conflict:
             issues.append(PlanningIssue(
@@ -1629,8 +1655,13 @@ class PlanningEngine:
                 return "skip"            # fillers only fill up to the level's credit floor
             if key in planned or self._twin_taken(key, planned):
                 return "skip"            # never the same class twice, under any number
-            if major and role != "anchor" and major_count >= major_cap and not beyond_major:
-                return "skip"            # the term's major-related range is full
+            if major and role != "anchor" and major_count >= major_cap and not beyond_major \
+                    and not (key in coreq_pending and any(
+                        planned.get(p) == term for p in self._coreq_partners(key))):
+                # The term's major-related range is full. A lab joining its
+                # lecture already placed this term is part of that one course
+                # (the count does not grow), so the range never refuses it.
+                return "skip"
             is_dep = key in dependency_targets
             pinned = key in pins_ok
             # A requirement course whose requirements the engine already
@@ -1670,7 +1701,14 @@ class PlanningEngine:
                 return "skip"
             group_weight = (sum((self.workload_index.weight(self.course_info[g], term).weight
                                  for g in group), Decimal(0)) if workload_mode else Decimal(0))
-            if workload_mode and role != "anchor" and weight_total + group_weight > budget:
+            # Item 5: the term's own-subject course may use the room the
+            # student's commitments took from the budget (up to the level's own
+            # budget) - inside the major-related range only, never past the
+            # level's budget and never in the credit-floor pass.
+            own_room = (key == self._own_pick.get(term) and not beyond_major
+                        and weight_total + group_weight <= settings.base_budget)
+            if workload_mode and role != "anchor" and weight_total + group_weight > budget \
+                    and not own_room:
                 if major:
                     meta["skip"] = meta["skip"] or "budget"
                 return "skip"            # only must-take courses may go over the budget
@@ -1764,6 +1802,15 @@ class PlanningEngine:
                         if self._partner(student, k, evaluated[k][1], term, planned) == key:
                             pool.remove(k)
                             place(k, companion_of=key)
+                    # A lab whose lecture was just placed goes in right after
+                    # it, before the next course takes the room it needs
+                    # (correctness fixes item 5: a 198 course placed between
+                    # Physics 203 and its 205 lab left the lab out).
+                    for k in [k for k in order if k in coreq_pending and k not in planned
+                              and roles[k][0] != "filler" and k != key]:
+                        if key in self._coreq_partners(k) and \
+                                self._partner(student, k, evaluated[k][1], term, planned) == key:
+                            place(k)
             # A double-counter that waited for the major minimum gets the room
             # the major courses did not take.
             reserving = False
@@ -2045,17 +2092,21 @@ class PlanningEngine:
         take(retakes, "anchor", lambda k: "a retake you need (your recorded attempt does not "
                                          "count yet)")
         take(pins, "anchor", lambda k: "you pinned it to this term")
-        # Phase 7.6: "multi-requirement" only where the sharing policy lets one
-        # course count in two open requirements (one per allocation scope).
-        def multi_why(k):
-            return "counts toward " + " and ".join(
-                sorted({names.get(code, code) for code in serves[k]}))
+
+        def own_subject(k) -> bool:
+            return bool(self.major_subject) and k.split(":")[1] == self.major_subject
 
         def major_why(k):
             why = "counts toward your major (" + ", ".join(sorted(
                 {names.get(code, code) for code in serves[k] if self._is_major_node(code)})) + ")"
             opens = sorted(t for t in dependency_targets.get(k, ()) if serves.get(t))
             return why + (f"; a prerequisite for {', '.join(opens)}" if opens else "")
+
+        # Phase 7.6: "multi-requirement" only where the sharing policy lets one
+        # course count in two open requirements (one per allocation scope).
+        def multi_why(k):
+            return "counts toward " + " and ".join(
+                sorted({names.get(code, code) for code in serves[k]}))
 
         # Prompt 09 s4: courses filling 2+ open requirements at once - one that
         # also counts toward the major first (a science for Core AND the B.S.).
@@ -2068,6 +2119,22 @@ class PlanningEngine:
             # among them keeps its role), other double-counters after.
             multi = [k for k in multi if self._major_related(k, serves)]
         take(multi, "multi_requirement", multi_why)
+        if c.major_subject_each_term and self.major_subject \
+                and not any(own_subject(k) for k in used):
+            # Correctness fixes item 5: one eligible course in the major's own
+            # subject (01:198 for CS) comes right after the double-counters,
+            # before any other major-related course - so a related-department
+            # elective (01:730:329) never takes the term's last major slot
+            # from an eligible 198 course.
+            own = sorted((k for k in ready_or_pending
+                          if own_subject(k) and self._major_related(k, serves)),
+                         key=lambda k: (self._is_topics(k), rank(k)))
+            take(own[:1], "major", lambda k: major_why(k) + (
+                f"; your preference: a {k.rsplit(':', 1)[0]} course every term"))
+            # The preference is about eligibility, not the budget: like an
+            # anchor, this one course may take the term over its workload
+            # budget (never past the credit, course or major-related limits).
+            self._own_pick[term] = own[0] if own else None
         # Task 2: then EVERY course that counts toward the major's tree - its
         # required math and science too - in rank order, so a course that
         # opens prerequisites or is needed sooner comes first. How many the
@@ -2098,7 +2165,21 @@ class PlanningEngine:
             what = (f"completes {', '.join(sorted({names.get(x, x) for x in serves[k]}))}"
                     if serves.get(k) else
                     f"a prerequisite for {', '.join(sorted(dependency_targets[k]))}")
-            return f"{what}; has {mode}"
+            why = f"{what}; has {mode}"
+            if c.filler_preference is FillerPreference.FLEXIBLE \
+                    and not {"async", "online"} & set(w.delivery):
+                # Correctness fixes item 7: say why a "prefer flexible" student
+                # gets an in-person filler - no candidate for the same open
+                # requirements has an online section this term, or the online
+                # ones did not fit.
+                same = set(serves.get(k, ()))
+                online = sorted(o for o in fillers if o != k and same & set(serves.get(o, ()))
+                                and {"async", "online"} & set(
+                                    self.workload_index.weight(self.course_info[o], term).delivery))
+                why += ("; no online option this term" if not online else
+                        f"; online options for the same requirements ({', '.join(online[:3])}) "
+                        "did not fit this term")
+            return why
 
         take(fillers, "filler", filler_why)
         return out
@@ -2117,8 +2198,11 @@ class PlanningEngine:
         credits = _plain(term_plan.credits + electives)
         notes = []
         if electives:
-            notes.append(f"{_plain(electives)} free-elective credits (any degree-credit courses you "
-                         "choose) toward the degree credit total - not weighed in the workload.")
+            # Correctness fixes item 12: a course slot, with correct grammar.
+            notes.append(f"Room for {elective_slots(electives)} (any degree-credit course you "
+                         f"choose; {_plain(electives)} free-elective "
+                         f"credit{'' if electives == 1 else 's'} toward the degree credit "
+                         "total) - not weighed in the workload.")
         anchors = [pc for pc in term_plan.courses if roles.get(pc.course) == "anchor"]
         anchor_weight = _plain(sum((pc.workload.weight for pc in anchors if pc.workload),
                                    Decimal(0)))
@@ -2213,7 +2297,7 @@ class PlanningEngine:
         if filler:
             parts.append(filler)
         if electives:
-            parts.append(f"{_plain(electives)} free-elective credits")
+            parts.append(elective_slots(electives))
         if st.hours:
             parts.append(f"budget {budget} instead of {base_budget} for your commitments")
         parts.append(f"workload {total} of {budget}")
@@ -2355,11 +2439,15 @@ class PlanningEngine:
 
         An expected graduation term the student states wins. Otherwise the
         graduation target pace counts REGULAR semesters (Fall/Spring) from
-        the student's entry term - their first Rutgers semester on record,
-        else the first semester they stated in setup (Prompt 10a follow-up:
-        a brand-new freshman, or nothing uploaded), else the first planned
+        the student's entry term - the first semester they stated in setup,
+        else their first Rutgers semester on record, else the first planned
         one: On time 8, Early 7, No rush 10. A stateless request (no pace)
-        keeps the plain horizon."""
+        keeps the plain horizon.
+
+        Correctness fixes (item 1): the stated answer wins over the record.
+        A record row in an earlier term (a mis-dated transcript row, a course
+        taken before matriculation) must not move the graduation target; when
+        the two disagree the target says so (`conflict`)."""
         c = self.constraints
         if c.expected_graduation_term:
             return GraduationTarget(term_code=c.expected_graduation_term,
@@ -2369,11 +2457,21 @@ class PlanningEngine:
         seen = sorted(a.term_code for atts in self.history.values() for a in atts
                       if a.credit_origin == "rutgers" and a.term_code
                       and a.term_code[4:] in ("1", "9"))
-        if seen:
-            entry, source = seen[0], f"your first semester, {label(seen[0])}"
-        elif stated_first:
+        conflict = None
+        if stated_first:
             entry = _regular(stated_first)
             source = f"the first semester you told us, {label(entry)}"
+            if seen and seen[0] < entry:
+                courses = sorted(k for k, atts in self.history.items() for a in atts
+                                 if a.credit_origin == "rutgers" and a.term_code == seen[0])
+                conflict = (f"Your record has {', '.join(courses)} in {label(seen[0])}, "
+                            f"before the first semester you told us ({label(entry)}). "
+                            f"The graduation target counts from {label(entry)}, your answer. "
+                            "If that course's term is wrong on your transcript import, fix it "
+                            "there; if you did start earlier, change your first semester in "
+                            "setup.")
+        elif seen:
+            entry, source = seen[0], f"your first semester, {label(seen[0])}"
         else:
             entry, source = _regular(start_term), "the first planned semester"
         semesters = GRADUATION_SEMESTERS[c.pace]
@@ -2381,7 +2479,8 @@ class PlanningEngine:
         for _ in range(semesters - 1):
             end = _next_regular(end)
         return GraduationTarget(term_code=end, entry_term=entry, semesters=semesters,
-                                basis=f"{semesters} semesters counted from {source}")
+                                basis=f"{semesters} semesters counted from {source}",
+                                conflict=conflict, record_first_term=seen[0] if seen else None)
 
     def _placement_basis(self, student: Student) -> PlacementBasis | None:
         """The stated math placement the plan relied on - shown, so a wrong
@@ -2766,6 +2865,28 @@ class PlanningEngine:
                                     key=lambda a: a.requirement_code)]
                 if pc.requirements:
                     pc.reasons.insert(0, Reason.SATISFIES_REQUIREMENT)
+                if pc.role == "multi_requirement" and \
+                        len({r.requirement_code for r in pc.requirements}) < 2:
+                    # Correctness fixes item 9: "Counts twice" only when the
+                    # FINAL allocation credits it twice. A lab taken with a
+                    # double-counting lecture (Physics 205 beside 203) shares
+                    # the lecture's reason but counts once.
+                    pc.role = ("major" if any(self._is_major_node(r.requirement_code)
+                                              for r in pc.requirements) else "filler")
+                    names = sorted({r.requirement_name for r in pc.requirements})
+                    partner = next((g for g in pc.corequisite_group if g != pc.course), None)
+                    pc.role_reason = "; ".join(
+                        x for x in ((f"taken together with {partner}" if partner else None),
+                                    (f"counts toward {', '.join(names)}" if names else None))
+                        if x) or pc.role_reason
+                elif pc.role == "filler" and pc.requirements and \
+                        (pc.role_reason or "").startswith("completes "):
+                    # Same rule for a filler's "completes ...": the requirements
+                    # the final allocation credits, not the ones it was picked for.
+                    names = ", ".join(sorted({r.requirement_name for r in pc.requirements}))
+                    rest = pc.role_reason.split(";", 1)
+                    pc.role_reason = f"completes {names}" + (f";{rest[1]}" if len(rest) > 1
+                                                             else "")
                 if unlocked_by[pc.course]:
                     pc.unlocks = sorted(set(pc.unlocks) | unlocked_by[pc.course])
                     if Reason.UNLOCKS_DOWNSTREAM_COURSE not in pc.reasons:
@@ -2819,6 +2940,84 @@ class PlanningEngine:
                 bucket.append(row)
         for key in todo:
             self._restriction_cache[(term, key)] = self._judge(term, rows.get(key, {}))
+        unpublished = [k for k in todo
+                       if self._restriction_cache[(term, k)].outcome == "sections_not_published"]
+        if unpublished:
+            self._history_restrictions(term, unpublished)
+
+    #: Correctness fixes item 8: how many recent terms a school restriction is
+    #: read from when the target term is not published (at least two must agree).
+    SCHOOL_HISTORY_TERMS = 4
+
+    def _school_closed(self, sections: dict) -> list[str] | None:
+        """The schools (unit codes) a term's sections are open to, when EVERY
+        section is open only to schools the student is not in - else None.
+
+        A student is in exactly one school, so a school-only restriction is
+        decidable even when majors are not (a declared student's other majors
+        are unknown). Any major, class or other entry makes the term undecided."""
+        mine = self.attributes.unit_codes
+        if not mine or not sections:
+            return None
+        units: set[str] = set()
+        for rows in sections.values():
+            if not rows:
+                return None                  # an unrestricted section is open
+            for r in rows:
+                unit = (r.code if r.kind == "unit" else r.unit_code if r.kind == "unit_major"
+                        else None)
+                if unit is None or unit in mine:
+                    return None
+                units.add(unit)
+        return sorted(units)
+
+    def _history_restrictions(self, term: str, keys) -> None:
+        """Correctness fixes item 8: a term whose sections are not published
+        borrows a SCHOOL restriction from history. When every section of each
+        of the course's recent terms (the last SCHOOL_HISTORY_TERMS terms it
+        had sections, at least two) is open only to schools the student is not
+        in, the course is treated as restricted there too - e.g. 14:332:452,
+        open only to School of Engineering students every term since Fall 2025.
+        Major restrictions are never borrowed: a student may declare by then."""
+        from app.models import SectionRestriction
+        from app.services.sources.sections import restriction_names
+
+        rows: dict[str, dict] = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+        for key, sec_term, section_id, row in self.session.execute(
+                select(Course.course_string, CourseSection.term_code, CourseSection.id,
+                       SectionRestriction)
+                .join(CourseOffering, CourseOffering.course_id == Course.id)
+                .join(CourseSection, CourseSection.offering_id == CourseOffering.id)
+                .outerjoin(SectionRestriction, SectionRestriction.section_id == CourseSection.id)
+                .where(Course.course_string.in_(sorted(keys)), CourseSection.term_code < term,
+                       Course.supplement_code == "")):
+            bucket = rows[key][sec_term][section_id]
+            if row is not None:
+                bucket.append(row)
+        for key in keys:
+            by_term = rows.get(key)
+            if not by_term:
+                continue
+            recent = sorted(by_term, reverse=True)[:self.SCHOOL_HISTORY_TERMS]
+            if len(recent) < 2:
+                continue
+            closed = [self._school_closed(by_term[t]) for t in recent]
+            if any(c is None for c in closed):
+                continue
+            # Names from one query: every unit row of the recent terms at once.
+            unit_rows = {r.code: r for t in recent for section_rows in by_term[t].values()
+                         for r in section_rows if r.kind == "unit"}
+            names = [f"{n.code}" + (f" ({n.name})" if n.name else "")
+                     for n in restriction_names(self.session, list(unit_rows.values()))]
+            seen = ", ".join(label(t) for t in sorted(recent))
+            self._restriction_cache[(term, key)] = RestrictionCheck(
+                outcome="not_satisfied", sections=0, open_sections=0, open_to=names,
+                reasons=["school_restricted_in_recent_terms"],
+                message=(f"{label(term)} sections are not published yet, and every section in "
+                         f"each recent term ({seen}) was open only to school "
+                         f"{', '.join(names) or ', '.join(sorted({u for c in closed for u in c}))}"
+                         " students - not your school. Rutgers' own list is the deciding "
+                         "source once it publishes this term."))
 
     def _restriction(self, term: str, key: str) -> RestrictionCheck:
         """The term's sections against the student's record. Cached per plan."""
@@ -2862,7 +3061,10 @@ class PlanningEngine:
             message = (None if open_ == len(sections) else
                        f"{open_} of {len(sections)} {label(term)} sections are open to you; "
                        "the others are restricted.")
-        elif outcomes == {RestrictionOutcome.NOT_SATISFIED}:
+        elif outcomes == {RestrictionOutcome.NOT_SATISFIED} or (
+                not open_ and self._school_closed(sections) is not None):
+            # Item 8: a school-only restriction is decided even when the
+            # student's majors are not fully known (one school per student).
             outcome = "not_satisfied"
             mine = self.undeclared and any(
                 r.kind in ("major", "unit_major") and r.code == self.major_subject

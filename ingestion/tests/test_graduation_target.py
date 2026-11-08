@@ -69,7 +69,49 @@ def test_a_stated_first_semester_is_the_entry_term_when_the_record_has_none(cs):
     assert "the first semester you told us, Fall 2026" in target.basis
 
 
-def test_the_record_still_wins_over_a_stated_first_semester(cs):  # noqa: F811
+def test_a_stated_first_semester_wins_over_an_earlier_record_term_and_says_so(cs):  # noqa: F811
+    """Correctness fixes item 1: the student's answer wins over the earliest
+    record term (a mis-dated transcript row must not move graduation), and the
+    conflict is shown - on the target and as a plan issue."""
+    student = _student(cs, CLASS_OF_2028)                 # record starts Fall 2024
+    student.first_term = "20259"                          # the student says Fall 2025
+    plan = _plan(cs, student)
+    target = plan.graduation_target
+    assert (target.entry_term, target.term_code) == ("20259", "20291")   # 8th: Spring 2029
+    assert target.record_first_term == "20249"
+    assert "Fall 2024, before the first semester you told us (Fall 2025)" in target.conflict
+    issue = next(i for i in plan.issues if i.code == "FIRST_SEMESTER_CONFLICT")
+    assert issue.severity.value == "needs_confirmation"
+    assert issue.details == {"stated_first_term": "20259", "record_first_term": "20249"}
+
+
+def test_no_conflict_when_the_record_starts_at_the_stated_semester(cs):  # noqa: F811
     student = _student(cs, CLASS_OF_2028)
-    student.first_term = "20269"
-    assert _plan(cs, student).graduation_target.entry_term == "20249"
+    student.first_term = "20249"
+    plan = _plan(cs, student)
+    assert plan.graduation_target.conflict is None
+    assert not any(i.code == "FIRST_SEMESTER_CONFLICT" for i in plan.issues)
+
+
+def test_a_course_recorded_before_its_prerequisite_is_flagged_never_changed(cs):  # noqa: F811
+    """Correctness fixes item 1: Data Structures (01:198:112, prerequisite
+    01:198:111) recorded a term BEFORE 01:198:111 is impossible as recorded:
+    flagged NEEDS REVIEW, the record untouched."""
+    from app.services.record_checks import term_order_conflicts
+
+    student = _student(cs, [("01:198:112", "20249"), ("01:198:111", "20261")])
+    [conflict] = term_order_conflicts(cs, student)
+    assert (conflict.course, conflict.term_code) == ("01:198:112", "20249")
+    assert conflict.later == (("01:198:111", "20261"),)
+    assert conflict.message.startswith("NEEDS REVIEW - 01:198:112 is recorded in Fall 2024, "
+                                       "before its prerequisite 01:198:111 (Spring 2026)")
+    plan = _plan(cs, student)
+    issue = next(i for i in plan.issues if i.code == "RECORD_TERM_ORDER_IMPOSSIBLE")
+    assert issue.course == "01:198:112" and issue.severity.value == "needs_confirmation"
+    assert issue.details["prerequisites_later"] == [{"course": "01:198:111", "term": "20261"}]
+
+
+def test_a_record_in_prerequisite_order_is_not_flagged(cs):  # noqa: F811
+    from app.services.record_checks import term_order_conflicts
+
+    assert term_order_conflicts(cs, _student(cs, CLASS_OF_2028)) == []

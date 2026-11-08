@@ -50,6 +50,11 @@ export interface PlanningConstraints {
   /** SOFT: what to aim for - never a minimum (7.2.1). */
   target_credits_per_term?: string | number | null;
   pace?: Pace | null;
+  /** Phase 7.3 / Prompt 09: the workload level and the student's own credit range. */
+  workload_level?: string | null;
+  credit_min?: number | null;
+  credit_max?: number | null;
+  major_subject_each_term?: boolean;
 }
 
 export interface PlanObservation {
@@ -248,6 +253,17 @@ export interface PlanMetadata {
   academic_fingerprint: string;
   rules_fingerprint: string;
   offering_dataset: string[];
+  /** Task 1: each choose-one requirement's commitment (chosen alternatives). */
+  alternative_choices?: { requirement_code: string; status: string; chosen: { code: string; name: string }[] }[];
+}
+
+/** Correctness fixes item 3: requirement code -> chosen alternative codes. */
+export function planChoices(plan: { result: { metadata: PlanMetadata } } | null | undefined): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const c of plan?.result.metadata.alternative_choices ?? []) {
+    if (c.status !== "undecided" && c.chosen.length) out[c.requirement_code] = c.chosen.map((a) => a.code);
+  }
+  return out;
 }
 
 export interface PlanResult {
@@ -262,7 +278,7 @@ export interface PlanResult {
   /** Phase 7.3: the stated math placement the plan relied on. */
   placement?: { course: string; title: string | null; source_url: string } | null;
   /** Phase 7.3: the last semester the plan may use, and why. */
-  graduation_target?: { term_code: string; basis: string; entry_term: string | null; semesters: number | null } | null;
+  graduation_target?: { term_code: string; basis: string; entry_term: string | null; semesters: number | null; record_first_term?: string | null; conflict?: string | null } | null;
   /** Phase 7.6: which school Core applies ("unknown" when not encoded - never SAS by default). */
   school_core?: { school_code: string; status: "encoded" | "unknown"; requirement_sets: string[]; message: string } | null;
   /** Phase 7.6: set when the student is planning toward a major they have not declared. */

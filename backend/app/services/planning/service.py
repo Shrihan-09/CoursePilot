@@ -260,6 +260,15 @@ def generate_plan(session: Session, student: Student, *, start_term: str,
             severity=Severity.WARNING, code="SCHOOL_CORE_UNKNOWN", message=core.message,
             details={"school": core.school_code}))
     result.issues += unmapped_degree_navigator_issues(session, student, version, key)
+    from app.services.record_checks import term_order_conflicts
+    for conflict in term_order_conflicts(session, student):
+        # Correctness fixes (item 1): flagged for review, never corrected.
+        result.issues.append(PlanningIssue(
+            severity=Severity.NEEDS_CONFIRMATION, code="RECORD_TERM_ORDER_IMPOSSIBLE",
+            course=conflict.course, message=conflict.message,
+            details={"term": conflict.term_code,
+                     "prerequisites_later": [{"course": c, "term": t}
+                                             for c, t in conflict.later]}))
     if overlay:
         annotate_recommendations(result, overlay, requirement_parents(session, version))
         from app.services.degree_audit.overlay import DN_NOT_MET_MESSAGE
@@ -271,10 +280,54 @@ def generate_plan(session: Session, student: Student, *, start_term: str,
                 message=f"{status.name or status.requirement_code}: {DN_NOT_MET_MESSAGE}",
                 details={"name": status.name or status.requirement_code,
                          "dn_status": status.dn_status}))
+    suggestion = lighter_term_suggestion(result, constraints)
+    if suggestion is not None:
+        result.observations.append(suggestion)
     if session.new or session.dirty or session.deleted:
         session.rollback()
         raise ScenarioWouldWrite("plan generation attempted to modify state")
     return result
+
+
+def lighter_term_suggestion(result: PlanResult, constraints: PlanningConstraints | None):
+    """Correctness fixes item 10: ONE plan-level suggestion when the plan's
+    over-budget semesters are over only because of the student's commitments
+    (each would fit the level's own budget without them): "Consider Light for
+    your rush semester". `details` carry the Light range so one tap can apply
+    it to that semester as a per-term answer. Never applied by the planner."""
+    from app.domain.planning import PlanObservation, WorkloadLevel
+    from app.services.planning.questionnaire import MAJOR_RANGE
+    from app.services.planning.terms import label
+    from app.services.planning.workload import LEVELS
+
+    c = constraints
+    if c is None or c.workload_level in (None, WorkloadLevel.LIGHT):
+        return None
+    over = [t for t in result.terms if t.workload and t.workload.total > t.workload.budget]
+    if not over or not all(
+            t.workload.commitment_hours > 0 and t.workload.base_budget is not None
+            and t.workload.total <= t.workload.base_budget for t in over):
+        return None
+    term = over[0]
+    if any(o.term_code == term.term_code and o.credit_min is not None
+           for o in c.term_overrides):
+        return None                       # the student already answered for that term
+    commitments = next((o.commitments for o in c.term_overrides
+                        if o.term_code == term.term_code and o.commitments), c.commitments)
+    rushing = getattr(commitments.greek_life, "value", commitments.greek_life) == "rushing"
+    floor, cap, _ = LEVELS[WorkloadLevel.LIGHT]
+    major_min, major_max = MAJOR_RANGE[WorkloadLevel.LIGHT]
+    which = "rush semester" if rushing else "busiest semester"
+    return PlanObservation(
+        code="consider_light_term", term_code=term.term_code,
+        message=(f"Consider Light for your {which} ({label(term.term_code)}): your commitments "
+                 f"put {'it' if len(over) == 1 else 'every over-budget semester'} over its "
+                 f"workload budget. Light plans {floor}-{cap} credits and "
+                 f"{major_min}-{major_max} major-related courses that semester; the rest of "
+                 "the plan keeps your level."),
+        details={"level": "light", "credit_min": int(floor), "credit_max": int(cap),
+                 "major_courses_min": major_min, "major_courses_max": major_max,
+                 "over_budget_terms": [t.term_code for t in over]})
 
 
 __all__ = ["UNMAPPED_OPEN", "InvalidStartTerm", "annotate_recommendations",

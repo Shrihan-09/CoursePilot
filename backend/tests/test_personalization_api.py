@@ -286,6 +286,47 @@ async def test_a_course_on_the_record_is_not_a_section(world, sections) -> None:
 
 
 @requires_db
+async def test_a_non_01_in_progress_course_without_a_section_is_still_listed(
+        world, sections) -> None:  # noqa: F811
+    """Correctness fixes item 4: an in-progress course from another school
+    (another school, unit 11) appears in the current term even with no
+    confirmed - or no published - section. Nothing is dropped for its code."""
+    with _session() as session:
+        manual = session.scalar(select(DataSource).where(DataSource.url == "synthetic://cs-course")
+                                .order_by(DataSource.created_at.desc()).limit(1))
+        subject = session.scalar(select(Subject).where(Subject.offering_unit_code == "11",
+                                                       Subject.code == "999"))
+        if subject is None:
+            subject = Subject(code="999", offering_unit_code="11", description="Synthetic",
+                              source_id=manual.id)
+            session.add(subject)
+            session.flush()
+        taken = set(session.scalars(select(Course.course_number).where(
+            Course.subject_code == "999", Course.offering_unit_code == "11")))
+        number = next(f"{n}" for n in range(200, 1000) if f"{n}" not in taken)
+        course = Course(offering_unit_code="11", subject_code="999", course_number=number,
+                        supplement_code="", course_string=f"11:999:{number}", title="Synthetic",
+                        credits=3, subject_id=subject.id, source_id=manual.id)
+        session.add(course)
+        session.flush()
+        session.add(StudentCourse(student_id=world["a"], course_id=course.id, term_code=TERM,
+                                  status="in_progress"))
+        session.commit()
+        sebs_id, sebs = course.id, course.course_string
+    try:
+        async with _client(_app(), world["account_a"]) as ac:
+            body = (await ac.get(CURRENT)).json()
+        listed = {c["course"]: c for c in body["courses"]}
+        assert set(listed) == {sections["course"], sebs}
+        assert listed[sebs]["confirmed"] == [] and listed[sebs]["sections_available"] == 0
+    finally:
+        with _session() as session:
+            session.execute(text("DELETE FROM student_course WHERE course_id = :c"), {"c": sebs_id})
+            session.execute(text("DELETE FROM course WHERE id = :c"), {"c": sebs_id})
+            session.commit()
+
+
+@requires_db
 async def test_the_student_confirms_their_exact_section(world, sections) -> None:  # noqa: F811
     async with _client(_app(), world["account_a"]) as ac:
         confirmed = await ac.put(SECTIONS, json={"course": sections["course"], "index_number": "22222"})

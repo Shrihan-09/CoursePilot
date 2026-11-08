@@ -160,3 +160,69 @@ def test_unknown_budget_in_either_evaluation_withholds_the_denominator():
     assert display_denominator(known, known) == 3
     assert display_denominator(unknown, known) == 0
     assert display_denominator(known, unknown) == 0
+
+
+# --------------------------------------------------------------------------
+# Correctness fixes item 3: a choose-one requirement is ONE unit
+# --------------------------------------------------------------------------
+
+
+def _science():
+    """Science Requirement B.S.-shaped: 8 alternatives, each a 2-4 course sequence."""
+    def seq(code, done, total, unknown=False):
+        kids = [node(f"{code}_{i}", status=S.SATISFIED if i < done else
+                     (S.INDETERMINATE if unknown and i == total - 1 else S.UNSATISFIED))
+                for i in range(total)]
+        return node(code, kind="all_of", status=S.PARTIALLY_SATISFIED if done else S.UNSATISFIED,
+                    children=kids)
+    alts = [seq("PHYS_A", 1, 4), seq("CHEM", 2, 4), seq("BIO", 0, 2, unknown=True)]
+    alts += [seq(f"ALT{i}", 0, 3) for i in range(5)]
+    return node("SCIENCE", kind="any_of", needed_count=1, status=S.PARTIALLY_SATISFIED,
+                children=alts)
+
+
+def test_a_choose_one_of_eight_is_one_unit_using_the_chosen_alternative():
+    value = measure(_science(), choices={"SCIENCE": ["PHYS_A"]})
+    assert value.budget == 1 and value.earned == Fraction(1, 4) and value.unknown == 0
+
+
+def test_without_a_choice_the_furthest_along_alternative_counts():
+    value = measure(_science())
+    assert value.budget == 1 and value.earned == Fraction(2, 4)
+
+
+def test_an_unchosen_alternatives_unknowns_do_not_make_the_unit_uncertain():
+    """BIO has an indeterminate course; it is not chosen, so it is ignored."""
+    assert measure(_science(), choices={"SCIENCE": ["PHYS_A"]}).unknown == 0
+    assert measure(_science(), choices={"SCIENCE": ["BIO"]}).unknown == 1
+
+
+def test_unchosen_alternatives_are_never_still_needed():
+    from app.services.progress import counted_leaves
+
+    chosen = [n.requirement_code for n in counted_leaves([_science()], {"SCIENCE": ["PHYS_A"]})]
+    assert chosen == [f"PHYS_A_{i}" for i in range(4)]
+    furthest = [n.requirement_code for n in counted_leaves([_science()])]
+    assert furthest == [f"CHEM_{i}" for i in range(4)]
+
+
+def test_a_choice_that_names_no_child_falls_back_to_the_furthest_along():
+    assert measure(_science(), choices={"SCIENCE": ["NOT_A_CHILD"]}).earned == Fraction(2, 4)
+
+
+def test_the_choose_one_unit_inside_a_program_scope_counts_once():
+    program = node("MAJOR", kind="all_of", children=[node("CORE_1", status=S.SATISFIED),
+                                                      _science()])
+    value = _scope_measure([program], {}, None, choices={"SCIENCE": ["PHYS_A"]})
+    assert (value.earned, value.budget) == (Fraction(5, 4), 2)
+
+
+def test_plan_choices_reads_chosen_alternatives_except_undecided():
+    from types import SimpleNamespace as NS
+
+    from app.services.progress import plan_choices
+
+    plan = NS(metadata=NS(alternative_choices=[
+        NS(requirement_code="SCIENCE", status="planner_recommended", chosen=[NS(code="PHYS_A")]),
+        NS(requirement_code="OTHER", status="undecided", chosen=[NS(code="X")])]))
+    assert plan_choices(plan) == {"SCIENCE": ["PHYS_A"]}

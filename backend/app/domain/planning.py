@@ -295,6 +295,10 @@ class PlanningConstraints(BaseModel):
     credit_max: int | None = Field(default=None, ge=1, le=24)
     major_courses_min: int | None = Field(default=None, ge=0, le=8)
     major_courses_max: int | None = Field(default=None, ge=0, le=8)
+    #: Correctness fixes item 5: each term takes at least one eligible course in
+    #: the major's own subject (01:198 for CS) before a related-department
+    #: elective fills the major-related range. Default ON.
+    major_subject_each_term: bool = True
 
     @model_validator(mode="after")
     def _target_within_max(self) -> "PlanningConstraints":
@@ -655,6 +659,10 @@ class GraduationTarget(BaseModel):
     basis: str
     entry_term: str | None = None
     semesters: int | None = None
+    #: Correctness fixes (item 1): the earliest Fall/Spring term on the record
+    #: and, when it precedes the stated first semester, what was preferred.
+    record_first_term: str | None = None
+    conflict: str | None = None
 
 
 class PlacementBasis(BaseModel):

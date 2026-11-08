@@ -13,7 +13,8 @@ import { PlanView } from "@/features/plan/plan-result";
 import { ProfileSummary, ReadinessList } from "@/features/planning/profile-summary";
 import { ApiError, api } from "@/lib/api";
 import { termLabel } from "@/lib/academic/vocabulary";
-import type { SavedPlan } from "@/types/plan";
+import { asProfileInput } from "@/lib/setup";
+import type { PlanObservation, SavedPlan } from "@/types/plan";
 
 /**
  * Plan: "What should I take, and in what order?"
@@ -59,6 +60,33 @@ export default function PlanPage() {
       void client.invalidateQueries({ queryKey: ["readiness"] });
     },
     onError: () => setResolved(true),
+  });
+
+  // Correctness fixes item 10: one tap applies "Consider Light" to that
+  // semester as a per-term answer, confirmed like any other, then rebuilds.
+  const applyLight = useMutation({
+    mutationFn: async (o: PlanObservation) => {
+      const meta = await api.planningProfile();
+      if (!meta.profile || !o.term_code) throw new Error("no profile");
+      const input = asProfileInput(meta.profile);
+      const d = o.details as { credit_min: number; credit_max: number; major_courses_min: number; major_courses_max: number };
+      const others = (input.term_overrides ?? []).filter((t) => t.term_code !== o.term_code);
+      const mine = (input.term_overrides ?? []).find((t) => t.term_code === o.term_code);
+      await api.confirmPlanningProfile({
+        ...input,
+        term_overrides: [...others, {
+          term_code: o.term_code, credit_min: d.credit_min, credit_max: d.credit_max,
+          major_courses_min: d.major_courses_min, major_courses_max: d.major_courses_max,
+          commitments: mine?.commitments ?? null, blocked_times: mine?.blocked_times ?? null,
+        }],
+      });
+      return api.savePlan(current.data?.plan?.start_term);
+    },
+    onSuccess: (plan: SavedPlan) => {
+      client.setQueryData(["plan"], { plan });
+      void Promise.all(["planning-profile", "profile", "readiness"].map(
+        (key) => client.invalidateQueries({ queryKey: [key] })));
+    },
   });
 
   if (readiness.isPending || context.isPending || current.isPending || prefs.isPending) {
@@ -160,6 +188,8 @@ export default function PlanPage() {
           <PlanView
             plan={plan}
             regenerating={generate.isPending}
+            onApplyLight={(o) => applyLight.mutate(o)}
+            applyingLight={applyLight.isPending}
             onRegenerate={() => generate.mutate(
               plan.freshness.reasons.includes("start_term_passed") ? undefined : plan.start_term)}
           />
