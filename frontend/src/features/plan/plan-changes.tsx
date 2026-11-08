@@ -445,6 +445,14 @@ function Question({ q, term, changes, onSkip }: { q: ChoiceQuestion; term: strin
 
 /* ------------------------------------------------------------ search */
 
+export function AddCourseSheet({ term, changes, onClose }: { term: string | null; changes: PlanChanges; onClose: () => void }) {
+  if (!term) return null;
+  return <Sheet open title={`Add a course to ${termLabel(term)}`} onClose={onClose}>
+    <p className="mb-3 text-sm text-fg-secondary">Search for a course that counts. Review the plan impact before confirming.</p>
+    <CourseSearchBox term={term} changes={{ ...changes, request: (change) => { changes.request(change); onClose(); } }} />
+  </Sheet>;
+}
+
 export function CourseSearchBox({ term, changes, replacing }: { term: string; changes: PlanChanges; replacing?: string }) {
   const [text, setText] = useState("");
   const search = useMutation({

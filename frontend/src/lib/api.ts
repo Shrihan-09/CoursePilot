@@ -180,7 +180,9 @@ export const api = {
     request<SavedPlan>("/student/plans/current/changes/apply", json("POST", { preview_id })),
   undoChange: () => request<SavedPlan>("/student/plans/current/undo", { method: "POST" }),
   planChoices: () => request<import("@/types/plan").Choices>("/student/plans/current/choices"),
-  searchCourses: (body: { text?: string; term_code?: string | null; requirements?: string[][] | null; topic?: string | null; limit?: number }) =>
+  searchCourses: (body: { text?: string; term_code?: string | null; requirements?: string[][] | null; topic?: string | null; limit?: number;
+    filters?: { online?: boolean; async_only?: boolean; in_person?: boolean; campus?: string; earliest?: string; latest?: string;
+      avoid_days?: string[]; level?: number; credits?: number; open_only?: boolean; fills_two?: boolean } }) =>
     request<import("@/types/plan").CourseSearchResult>("/student/plans/current/search", json("POST", body)),
   setDoingWell: (course: string, term: string, doing_well: boolean) =>
     request<void>(`/student/courses/${course.replace(/:/g, "-")}/${term}/doing-well`, json("PUT", { doing_well })),

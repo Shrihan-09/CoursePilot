@@ -9,7 +9,7 @@ import { GenerationAnimation } from "@/components/brand/generation";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Alert, EmptyState, ErrorState, PageHeader, Skeleton } from "@/components/ui/feedback";
 import { Field, Select } from "@/components/ui/field";
-import { ChangePreviewDialog, CourseOptionsSheet, usePlanChanges, YourChoicesCard } from "@/features/plan/plan-changes";
+import { AddCourseSheet, ChangePreviewDialog, CourseOptionsSheet, usePlanChanges, YourChoicesCard } from "@/features/plan/plan-changes";
 import { PlanView } from "@/features/plan/plan-result";
 import { ProfileSummary, ReadinessList } from "@/features/planning/profile-summary";
 import { ApiError, api } from "@/lib/api";
@@ -55,6 +55,7 @@ export default function PlanPage() {
   // Prompt 11: options, swaps, locks and undo - always preview, then confirm.
   const changes = usePlanChanges();
   const [optionsFor, setOptionsFor] = useState<{ course: string; term: string } | null>(null);
+  const [addFor, setAddFor] = useState<string | null>(null);
   const saved = current.data?.plan ?? null;
   const states = useMemo(
     () => new Map((saved?.course_states ?? []).map((s) => [`${s.course}@${s.term_code}`, s])),
@@ -203,6 +204,7 @@ export default function PlanPage() {
             actions={plan.freshness.state === "current" ? {
               changes, states, lockedTerms: plan.edits?.locked_terms ?? [],
               onOptions: (course, term) => setOptionsFor({ course, term }),
+                onAddCourse: setAddFor,
             } : undefined}
             regenerating={generate.isPending}
             onApplyLight={(o) => applyLight.mutate(o)}
@@ -224,6 +226,7 @@ export default function PlanPage() {
         </>
       )}
       <CourseOptionsSheet target={optionsFor} onClose={() => setOptionsFor(null)} changes={changes} />
+      <AddCourseSheet term={addFor} changes={changes} onClose={() => setAddFor(null)} />
       <ChangePreviewDialog changes={changes} />
     </div>
   );

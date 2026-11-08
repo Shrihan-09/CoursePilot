@@ -35,6 +35,7 @@ export interface BoardActions {
   states: Map<string, PlannedCourseState>;
   lockedTerms: string[];
   onOptions: (course: string, term: string) => void;
+  onAddCourse?: (term: string) => void;
 }
 import { conditionalLabel, creditsText, electiveSlotText, loadText } from "@/lib/academic/plan-text";
 
@@ -343,6 +344,9 @@ export function SemesterCard({
               onClick={() => actions.changes.request({ kind: "lighten_term", term_code: term.term_code })}>
               <Feather aria-hidden className="size-4" /> Lighten
             </Button>
+            {actions.onAddCourse && <Button size="sm" variant="ghost" onClick={() => actions.onAddCourse?.(term.term_code)}>
+              Add a course
+            </Button>}
           </div>
         )}
       </header>
