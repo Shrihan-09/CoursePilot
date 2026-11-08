@@ -114,11 +114,17 @@ describe("uploads", () => {
 });
 
 describe("labels", () => {
-  const v = (support_status: string) => ({ catalog_year: "2025", support_status }) as never;
-  it("a program's label comes from its published support status", () => {
-    expect(programSupportLabel({ versions: [v("supported")] })).toBe("Beta supported");
+  const v = (support_status: string, publication_basis: string | null = null) =>
+    ({ catalog_year: "2025", support_status, publication_basis }) as never;
+  it("only a human-reviewed encoding is Beta supported", () => {
+    expect(programSupportLabel({ versions: [v("supported", "human_review")] })).toBe("Beta supported");
+    // Legacy curated (e.g. CS B.A./B.S. until the owner reviews them) is a preview.
+    expect(programSupportLabel({ versions: [v("supported", "legacy_curated")] })).toBe("Preview — not yet reviewed");
     expect(programSupportLabel({ versions: [v("pending_review")] })).toBe("Preview — not yet reviewed");
     expect(programSupportLabel({ versions: [v("unavailable")] })).toBe("Coming soon");
+    expect(programSupportLabel({ versions: [] })).toBe("Coming soon");
+    expect(programSupportLabel({ versions: [v("supported", "legacy_curated"), v("supported", "human_review")] }))
+      .toBe("Beta supported");
   });
 
   it("a workload level reads as one line of ranges, with no easy/hard wording", () => {

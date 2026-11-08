@@ -154,6 +154,11 @@ class CoursePin(BaseModel):
 
     course: str = Field(pattern=r"^\d{2}:\d{3}:\d{3}$")
     term_code: str = Field(pattern=r"^\d{4}[0179]$")
+    #: 10a follow-up: the student chose WHEN to retake a course on their
+    #: record (Musts step). Lets the pin place a course already passed with a
+    #: grade too low for a later course; a winter/summer pin term is planned
+    #: for this pin only (the general winter/summer preference is unchanged).
+    retake: bool = False
 
 
 class GreekLife(StrEnum):
@@ -483,6 +488,8 @@ class PlannedCourse(BaseModel):
     workload: WorkloadEvidence | None = None
     role: str | None = None
     role_reason: str | None = None
+    #: 10a follow-up: why this planned course is a retake (None: it is not).
+    retake: str | None = None
     #: Phase 7.4: plain-language notes on this recommendation - e.g. that the
     #: requirement it counts toward has its status from the student's Degree
     #: Navigator audit, or that DN and CoursePilot disagree (NEEDS REVIEW).

@@ -334,3 +334,81 @@ async def delete(principal: Principal = Depends(enforce_request_rate_limit)) -> 
     if await run_in_threadpool(work) is None:
         raise _unlinked()
     return Response(status_code=204)
+
+
+# ------------------------------------------------- 10a follow-up: retakes
+
+
+class RetakeImpactView(BaseModel):
+    course: str
+    term_code: str | None
+    planned_term: str | None
+    delayed: bool
+    message: str
+
+
+class RetakeOptionView(BaseModel):
+    key: Literal["asap", "winter", "next_semester", "summer"]
+    term_code: str | None
+    label: str
+    evidence: Literal["confirmed", "historical", "none"]
+    evidence_label: str
+    recommended: bool
+    impacts: list[RetakeImpactView]
+
+
+class RetakeUnlockView(BaseModel):
+    course: str
+    title: str | None
+    planned_term: str | None
+
+
+class RetakeView(BaseModel):
+    course: str
+    title: str
+    reason: str
+    unlocks: list[RetakeUnlockView]
+    blocking: bool
+    default: Literal["asap", "next_semester"]
+    options: list[RetakeOptionView]
+    chosen_term: str | None
+
+
+class RetakesResponse(BaseModel):
+    start_term: str | None
+    retakes: list[RetakeView]
+    cost_note: str
+    #: Why retakes could not be listed (no program, program not evaluable...).
+    unavailable: str | None = None
+
+
+@router.get("/retakes", response_model=RetakesResponse,
+            summary="The retakes my plan needs, and when I could take each (read-only)")
+async def get_retakes(principal: Principal = Depends(enforce_request_rate_limit)
+                      ) -> RetakesResponse:
+    from dataclasses import asdict
+
+    from app.services.planning.retakes import COST_NOTE, detect_retakes
+
+    def work():
+        with get_sync_sessionmaker()() as session:
+            student = _resolve(session, principal.account_id)
+            if student is None:
+                return None
+            try:
+                view = detect_retakes(session, student)
+            except (ProgramNotFound, CatalogYearUnavailable, ProgramNotEvaluable,
+                    ProgramChoiceRequired, InvalidStartTerm) as exc:
+                session.rollback()
+                return RetakesResponse(start_term=None, retakes=[], cost_note=COST_NOTE,
+                                       unavailable=str(exc) or type(exc).__name__)
+            session.rollback()              # read-only: nothing to keep
+            return RetakesResponse.model_validate(asdict(view))
+    try:
+        out = await run_in_threadpool(work)
+    except Exception:
+        logger.exception("retakes_failed")
+        raise HTTPException(status_code=500, detail="Unable to list retakes.") from None
+    if out is None:
+        raise _unlinked()
+    return out

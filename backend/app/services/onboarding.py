@@ -322,9 +322,13 @@ class SetupInvalid(OnboardingError):
     code = "SETUP_INVALID"
 
 
+CLASS_STANDINGS = ("first_year", "sophomore", "junior", "senior", "transfer")
+
+
 def save_setup_progress(session: Session, account_id: uuid.UUID, *,
                         steps: list[str], first_term: str | None,
-                        set_first_term: bool) -> Student:
+                        set_first_term: bool, class_standing: str | None = None,
+                        set_class_standing: bool = False) -> Student:
     """Record which setup steps the student has finished or skipped, and
     (optionally) the first Rutgers semester they state. Navigation state and a
     stated fact only: nothing academic is derived from either, so the cached
@@ -337,9 +341,13 @@ def save_setup_progress(session: Session, account_id: uuid.UUID, *,
         raise SetupInvalid("Unknown setup step.")
     if set_first_term and first_term is not None and not _TERM_SHAPE.fullmatch(first_term):
         raise SetupInvalid("A first semester is a term code such as 20259.")
+    if set_class_standing and class_standing is not None and class_standing not in CLASS_STANDINGS:
+        raise SetupInvalid("Unknown class standing.")
     student.setup_steps = [s for s in SETUP_STEPS if s in set(steps)]
     if set_first_term:
         student.first_term = first_term
+    if set_class_standing:
+        student.class_standing = class_standing
     session.flush()
     return student
 

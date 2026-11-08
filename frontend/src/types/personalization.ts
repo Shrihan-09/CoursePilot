@@ -62,7 +62,8 @@ export type Strategy = "balanced" | "major_first" | "requirements_first" | "unlo
 /** Phase 7.3: per-term intensity and how fillers are chosen. */
 export type WorkloadLevel = "light" | "balanced" | "semi_rigorous" | "challenging";
 export type FillerPreference = "flexible" | "in_person" | "no_preference";
-export interface CoursePin { course: string; term_code: string }
+/** `retake`: the student chose WHEN to retake a course on their record (10a follow-up). */
+export interface CoursePin { course: string; term_code: string; retake?: boolean }
 
 export interface PlanningProfileInput {
   pace: Pace;

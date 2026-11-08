@@ -7,6 +7,7 @@ import Link from "next/link";
 import { StateBadge } from "@/components/academic/status";
 import { buttonVariants } from "@/components/ui/button";
 import { Alert, ErrorState, PageHeader, Skeleton, StatusBadge } from "@/components/ui/feedback";
+import { GradesReminderAlert } from "@/features/setup/grades-reminder";
 import { api } from "@/lib/api";
 import { AUDIT_STATUS, PLAN_STATUS, termLabel } from "@/lib/academic/vocabulary";
 import type { ReadinessState } from "@/types/personalization";
@@ -65,6 +66,7 @@ export default function HomePage() {
   return (
     <div className="space-y-8">
       <PageHeader eyebrow="Home" title="Your plan at a glance" />
+      <GradesReminderAlert />
       <Link href="/profile" className="inline-flex min-h-11 items-center text-sm font-medium text-primary-text underline">View modeled progress</Link>
 
       {plan.isSuccess && (

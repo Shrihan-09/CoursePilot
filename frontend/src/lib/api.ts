@@ -99,9 +99,20 @@ export const api = {
   changeProgram: (program_key: string, catalog_year: string) =>
     request<Profile>("/student/program", json("PUT", { program_key, catalog_year })),
   /** Prompt 10a: wizard progress; omit firstTerm to leave it unchanged. */
-  saveSetup: (completed_steps: string[], firstTerm?: string | null) =>
+  saveSetup: (completed_steps: string[], firstTerm?: string | null,
+    classStanding?: import("@/types/onboarding").ClassStanding | null) =>
     request<{ steps: string[]; completed_steps: string[] }>("/student/onboarding/setup",
-      json("PUT", firstTerm === undefined ? { completed_steps } : { completed_steps, first_term: firstTerm })),
+      json("PUT", {
+        completed_steps,
+        ...(firstTerm === undefined ? {} : { first_term: firstTerm }),
+        ...(classStanding === undefined ? {} : { class_standing: classStanding }),
+      })),
+  /** 10a follow-up: the "Your grades are in" Home reminder. */
+  gradesReminder: () => request<import("@/types/onboarding").GradesReminder>("/student/grades-reminder"),
+  dismissGradesReminder: () =>
+    request<import("@/types/onboarding").GradesReminder>("/student/grades-reminder/dismiss", { method: "POST" }),
+  /** 10a follow-up: the retakes the planner detects and when each could be taken. */
+  retakes: () => request<import("@/types/onboarding").RetakesResponse>("/student/plans/retakes"),
   completeOnboarding: () => request<Profile>("/student/onboarding/complete", { method: "POST" }),
   setPlacement: (math_placement: string | null) =>
     request<Profile>("/student/placement", json("PUT", { math_placement })),

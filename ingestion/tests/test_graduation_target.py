@@ -57,3 +57,19 @@ def test_a_stateless_request_keeps_the_plain_horizon(cs):  # noqa: F811
     plan = generate_plan(cs, _student(cs, CLASS_OF_2028), start_term=SPRING27)
     assert plan.graduation_target is None
     assert not any(i.code == "GRADUATION_TARGET_NOT_MET" for i in plan.issues)
+
+
+def test_a_stated_first_semester_is_the_entry_term_when_the_record_has_none(cs):  # noqa: F811
+    """10a follow-up: a brand-new freshman (nothing uploaded) who said they
+    start Fall 2026 is counted from Fall 2026, not from the first planned term."""
+    student = _student(cs, [])
+    student.first_term = "20269"
+    target = _plan(cs, student).graduation_target
+    assert (target.entry_term, target.term_code) == ("20269", "20301")   # 8th: Spring 2030
+    assert "the first semester you told us, Fall 2026" in target.basis
+
+
+def test_the_record_still_wins_over_a_stated_first_semester(cs):  # noqa: F811
+    student = _student(cs, CLASS_OF_2028)
+    student.first_term = "20269"
+    assert _plan(cs, student).graduation_target.entry_term == "20249"
