@@ -8,7 +8,9 @@ openSections.json is term-wide across campuses and is joined by index.
     GET https://classes.rutgers.edu/soc/api/openSections.json?year=Y&term=T&campus=C
         ~96 KB JSON (28 KB gzip), Cache-Control: max-age=30
 
-Every payload is archived as received; every run records a refresh row -
+A payload is archived only when it differs (sha256) from the term's last
+archived payload; an unchanged fetch points its refresh row at that earlier
+file, which holds the identical bytes. Every run records a refresh row -
 accepted, or rejected with the reason (malformed, empty, wrong term,
 implausible drop, fetch failure). No polling loop lives here: cadence is a
 deployment decision (Rutgers' max-age=30 is the floor; 60-120 s during
@@ -17,6 +19,7 @@ registration windows was suggested in Phase 6.1, pending human sign-off).
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import pathlib
 from dataclasses import dataclass
@@ -31,6 +34,23 @@ from sqlalchemy.orm import Session
 from coursepilot_ingestion.sources.soc import SOC_BASE, USER_AGENT, SocQuery
 
 logger = logging.getLogger(__name__)
+
+
+#: (archive_dir, file prefix) -> (newest archived file, its sha256). A cache
+#: only: on a miss (worker restart) the newest file on disk is hashed once.
+_LAST_ARCHIVE: dict[tuple[str, str], tuple[pathlib.Path, str]] = {}
+
+
+def _last_archive(archive_dir: pathlib.Path, prefix: str) -> tuple[pathlib.Path, str] | None:
+    key = (str(archive_dir), prefix)
+    cached = _LAST_ARCHIVE.get(key)
+    if cached is not None and cached[0].exists():
+        return cached
+    files = sorted(archive_dir.glob(f"{prefix}*.json"))     # UTC stamps sort by time
+    if not files:
+        return None
+    _LAST_ARCHIVE[key] = (files[-1], hashlib.sha256(files[-1].read_bytes()).hexdigest())
+    return _LAST_ARCHIVE[key]
 
 
 @dataclass(frozen=True)
@@ -70,13 +90,21 @@ class AvailabilityRefreshPipeline:
             return AvailabilityFetch(url, observed_at, None, f"{type(exc).__name__}: {exc}")
 
     def _archive(self, query: SocQuery, fetched: AvailabilityFetch) -> str | None:
+        """Write the payload unless it is byte-identical to the term's newest
+        archive; then return that file's path (same bytes, so the refresh row's
+        archive_path and content_sha256 still describe what was received)."""
         if fetched.body is None:
             return None
         self.archive_dir.mkdir(parents=True, exist_ok=True)
+        prefix = f"openSections_{query.year}_{query.term}_{query.campus}_"
+        digest = hashlib.sha256(fetched.body).hexdigest()
+        last = _last_archive(self.archive_dir, prefix)
+        if last is not None and last[1] == digest:
+            return str(last[0])
         stamp = fetched.observed_at.strftime("%Y%m%dT%H%M%SZ")
-        path = self.archive_dir / (f"openSections_{query.year}_{query.term}_{query.campus}"
-                                   f"_{stamp}.json")
+        path = self.archive_dir / f"{prefix}{stamp}.json"
         path.write_bytes(fetched.body)
+        _LAST_ARCHIVE[(str(self.archive_dir), prefix)] = (path, digest)
         return str(path)
 
     def run(self, query: SocQuery, *, fetched: AvailabilityFetch | None = None,
