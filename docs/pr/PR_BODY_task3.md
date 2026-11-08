@@ -49,7 +49,7 @@ Branch: `feature/task3-dn-fixes`. Roadmap phase 7.4 follow-up. Design notes: `do
 
 ## Migrations
 
-`t3dn01` (revises `t2quest02`). It is additive and nullable:
+`t3dn01` (revises `p10a02`). It is additive and nullable:
 
 - `degree_audit_import.confirmed_scope`, with the check `confirmed_scope_known`;
 - `degree_audit_requirement_row.mapping_role`.
@@ -116,3 +116,15 @@ See `docs/DN_MAPPING_SAS_CORE.md`: 6 requirements and 14 goal codes. Every entry
 None required. Existing confirmed SAS Core imports keep their old AH goal rows (`unmapped`) until the next import.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+## Migration re-pointed after the wizard merge
+
+Rebased onto origin/main (a34ccac). Migration t3dn01 now follows p10a02, keeping the wizard and DN changes in one chain; alembic heads reports only t3dn01 (head).
+
+Before changing dev, created C:\coursepilot-private\backups\coursepilot_pre_t3fix_20261107_223139.dump (25,635,795 bytes). Safety queries found zero non-NULL confirmed_scope rows, zero non-NULL mapping_role rows, and zero Degree Navigator imports. Dev was successfully downgraded from the old t3dn01 to t2quest02 and remains there pending merge. After merge, upgrade dev to head so p10a01, p10a02 and t3dn01 run in order. No backfill is needed.
+
+Validation for this update:
+- Single head: t3dn01 (head).
+- Fresh coursepilot_t3fix_test: upgrade head, downgrade p10a02, upgrade head, alembic check all passed (No new upgrade operations detected). Throwaway database dropped afterward.
+- coursepilot_test upgraded from p10a02 to t3dn01. Only backend/tests/test_degree_audit_import.py, test_degree_audit_overlay.py and test_dn_fixture.py ran: 45 passed in 23.04s. Test temporary folder removed.
+- No full suites run. Dev upgrade and health verification await the owner's merge confirmation.

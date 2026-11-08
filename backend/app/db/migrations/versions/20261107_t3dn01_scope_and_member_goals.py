@@ -1,6 +1,6 @@
 """Task 3: what-if Degree Navigator imports; member goals of one CoursePilot node.
 
-Revision ID: t3dn01; Revises: t2quest02.
+Revision ID: t3dn01; Revises: p10a02.
 
 * `degree_audit_import.confirmed_scope` - primary | what_if. NULL on every
   existing row means primary (the only kind that existed); a what-if import is
@@ -18,7 +18,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "t3dn01"
-down_revision = "t2quest02"
+down_revision = "p10a02"
 branch_labels = None
 depends_on = None
 
