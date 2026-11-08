@@ -35,6 +35,7 @@ one record serialize and a confirmation can never interleave with an edit.
 from __future__ import annotations
 
 import logging
+import re
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -56,6 +57,8 @@ from app.models.onboarding import TranscriptImport
 from app.services.programs import SupportStatus, version_info
 
 logger = logging.getLogger(__name__)
+
+_TERM_SHAPE = re.compile(r"\d{4}[0179]")
 
 
 class OnboardingError(Exception):
@@ -309,6 +312,38 @@ def set_declaration_status(session: Session, account_id: uuid.UUID,
     return student
 
 
+#: Prompt 10a setup wizard steps, in order. "welcome" and "about" come before a
+#: record exists (choosing the program creates it), so only the rest are saved.
+SETUP_STEPS = ("welcome", "about", "record", "intensity", "week", "schedule", "musts",
+               "build")
+
+
+class SetupInvalid(OnboardingError):
+    code = "SETUP_INVALID"
+
+
+def save_setup_progress(session: Session, account_id: uuid.UUID, *,
+                        steps: list[str], first_term: str | None,
+                        set_first_term: bool) -> Student:
+    """Record which setup steps the student has finished or skipped, and
+    (optionally) the first Rutgers semester they state. Navigation state and a
+    stated fact only: nothing academic is derived from either, so the cached
+    audit is left alone."""
+    student = lock_student(session, account_id)
+    if student is None:
+        raise ProfileMissing("No academic record exists for this account.")
+    unknown = [s for s in steps if s not in SETUP_STEPS]
+    if unknown:
+        raise SetupInvalid("Unknown setup step.")
+    if set_first_term and first_term is not None and not _TERM_SHAPE.fullmatch(first_term):
+        raise SetupInvalid("A first semester is a term code such as 20259.")
+    student.setup_steps = [s for s in SETUP_STEPS if s in set(steps)]
+    if set_first_term:
+        student.first_term = first_term
+    session.flush()
+    return student
+
+
 @dataclass(slots=True)
 class OnboardingStatus:
     state: str
@@ -375,6 +410,8 @@ def complete_onboarding(session: Session, account_id: uuid.UUID, now: datetime) 
 
 
 __all__ = ["OnboardingError", "OnboardingStatus", "OpenImportExists", "ProfileMissing",
-           "ProgramSelection", "SelectionWarning", "change_program", "complete_onboarding",
+           "ProgramSelection", "SETUP_STEPS", "SelectionWarning", "SetupInvalid",
+           "change_program", "complete_onboarding",
            "create_profile", "describe_selection", "invalidate_audit", "lifecycle_warnings",
-           "lock_student", "onboarding_status", "owned_student", "resolve_selection"]
+           "lock_student", "onboarding_status", "owned_student", "resolve_selection",
+           "save_setup_progress"]

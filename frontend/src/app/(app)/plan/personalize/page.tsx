@@ -2,11 +2,13 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Alert, ErrorState, PageHeader, Skeleton } from "@/components/ui/feedback";
-import { PreferencesForm } from "@/features/planning/preferences-form";
+import { DeclarationEditor } from "@/features/onboarding/declaration-editor";
+import { PreferencesForm, type PrefSectionId } from "@/features/planning/preferences-form";
+import { FirstTermEditor } from "@/features/setup/first-term-editor";
 import { ProfileSummary } from "@/features/planning/profile-summary";
 import { ApiError, api } from "@/lib/api";
 import type { PlanningProfileInput } from "@/types/personalization";
@@ -18,12 +20,20 @@ import type { PlanningProfileInput } from "@/types/personalization";
  * only way a planning preference changes (PUT /student/planning-profile);
  * the planner then reads exactly what was confirmed.
  */
+const SECTIONS: PrefSectionId[] = ["about", "intensity", "week", "schedule", "musts", "more"];
+
 export default function PersonalizePage() {
   const router = useRouter();
   const client = useQueryClient();
   const meta = useQuery({ queryKey: ["planning-profile"], queryFn: api.planningProfile, staleTime: 0 });
   const profile = useQuery({ queryKey: ["profile"], queryFn: api.profile });
   const [draft, setDraft] = useState<PlanningProfileInput | null>(null);
+  // Prompt 10a: /plan/personalize#week opens that section.
+  const [section, setSection] = useState<PrefSectionId>("about");
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (SECTIONS.includes(hash as PrefSectionId)) setSection(hash as PrefSectionId);
+  }, []);
 
   const confirm = useMutation({
     mutationFn: (value: PlanningProfileInput) => api.confirmPlanningProfile(value),
@@ -48,13 +58,21 @@ export default function PersonalizePage() {
         description="How you'd like your semesters to look. Your courses, grades and program come from your confirmed record - CoursePilot doesn't ask for them again."
       />
       {draft === null ? (
+        <>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <FirstTermEditor />
+          <DeclarationEditor />
+        </div>
         <PreferencesForm
+          key={section}
+          openSection={section}
           meta={meta.data}
           initial={initial}
           busy={false}
           submitLabel="Review"
           onSubmit={setDraft}
         />
+        </>
       ) : (
         <section aria-labelledby="review-heading" className="space-y-4">
           <h2 id="review-heading" className="text-base font-semibold text-fg">Here&apos;s how CoursePilot will plan for you</h2>
