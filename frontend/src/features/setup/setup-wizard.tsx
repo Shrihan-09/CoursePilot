@@ -181,7 +181,7 @@ export function SetupWizard() {
         <GenerationAnimation
           status={building}
           stages={buildStages(building)}
-          onResolved={() => { router.replace("/home"); router.refresh(); }}
+          onResolved={() => { router.replace("/plan"); router.refresh(); }}
         />
       </Frame>
     );
