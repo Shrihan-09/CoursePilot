@@ -54,6 +54,7 @@ from sqlalchemy import event, func, select
 
 from coursepilot_ingestion.loaders.requirements import RequirementLoader
 from coursepilot_ingestion.pipelines.availability import (
+    AvailabilityFetch,
     AvailabilityRefreshPipeline,
     from_archive,
 )
@@ -285,6 +286,33 @@ def test_the_pipeline_fetches_archives_and_records_without_the_network(world, tm
     replay = AvailabilityRefreshPipeline(world, tmp_path / "replay").run(
         query, fetched=from_archive(PAYLOAD, FALL_URL, T0))
     assert replay.verdict == "accepted" and replay.transitions == 0
+
+
+def test_only_a_changed_payload_is_archived_and_every_fetch_keeps_its_row(world, tmp_path) -> None:
+    """A 90 s poll of an unchanged payload must not write a new file each time:
+    the refresh row is still recorded (with its sha256) and points at the
+    earlier, byte-identical archive. A changed payload is archived."""
+    from coursepilot_ingestion.pipelines import availability as pipe
+
+    query = SocQuery(year=2026, term="9", campus="NB")
+    same = PAYLOAD.read_bytes()
+    changed = json.dumps([i for i in _payload() if i != "13384"]).encode()
+    live = tmp_path / "live"
+
+    def run(body, minutes):
+        return AvailabilityRefreshPipeline(world, live).run(
+            query, fetched=AvailabilityFetch(FALL_URL, T0 + timedelta(minutes=minutes), body))
+
+    first, second = run(same, 0), run(same, 2)
+    pipe._LAST_ARCHIVE.clear()                              # a worker restart: cold cache
+    third = run(same, 4)
+    fourth = run(changed, 6)
+    files = sorted(live.glob("openSections_2026_9_NB_*.json"))
+    assert len(files) == 2 and files[0].read_bytes() == same and files[1].read_bytes() == changed
+    assert first.archive_path == second.archive_path == third.archive_path == str(files[0])
+    assert fourth.archive_path == str(files[1])
+    assert {r.content_sha256 for r in (first, second, third)} == {hashlib.sha256(same).hexdigest()}
+    assert _count(world, AvailabilityRefresh) >= 4
 
 
 def test_the_refresh_never_touches_structural_rows(world) -> None:
