@@ -4,8 +4,12 @@ Retakes now count as blocking when they unlock a course needed within the first 
 
 Added `/records` as **My records**, directly below the `/profile` (Progress) navigation entry, in both the Academics sidebar and mobile More menu.
 
+Added `.claude/` to `.gitignore` so local assistant configuration stays out of commits. The existing retake/navigation implementation was already present in commit `5c59b9a` beyond main.
+
 ## Validation
 
+- Follow-up verification (2026-11-08): retake blocking-window and delay tests **9 passed, 6 deselected**; frontend setup follow-up tests **13 passed**. Python test configuration points only to `coursepilot_test`; selected Python cases use no database connections. No temporary folders created.
+- `git check-ignore .claude/`: passed.
 - `ingestion/tests/test_retake_timing.py`: **15 passed**, including the updated real planning scenario and boundaries for the first two regular terms, later/unplaced dependencies, and absent ASAP offering evidence.
 - Ran ingestion's session fixtures through a temporary PostgreSQL adapter using an isolated schema inside `coursepilot_test`; schema, adapter, and test temporary folder removed afterward. No dev test connections.
 - `frontend/tests/unit/setup-followup.test.tsx`: **13 passed**.
