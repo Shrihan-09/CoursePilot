@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Checkbox } from "@/components/ui/field";
+import { Alert } from "@/components/ui/feedback";
 import { api } from "@/lib/api";
 
 /**
@@ -22,6 +23,7 @@ export function GradesPersonalization() {
       void client.invalidateQueries({ queryKey: ["plan-choices"] });
     },
   });
+  if (q.isError) return <Alert tone="danger" title="Course suggestion setting couldn't be loaded">Refresh to try again.</Alert>;
   if (!q.data) return null;
   return (
     <section aria-labelledby="grades-personalization" className="space-y-2 rounded-xl border border-border bg-surface-elevated p-4">
@@ -32,6 +34,7 @@ export function GradesPersonalization() {
         disabled={set.isPending}
         onChange={(e) => set.mutate(e.target.checked)}
       />
+      {set.isError && <Alert tone="danger" title="Setting wasn't saved">Try again. Your previous setting still applies.</Alert>}
       <p className="text-xs text-fg-secondary">
         When on, options similar to courses you did well in (A to B) or marked &quot;doing well&quot; come first. Your grades
         only order your own suggestions - they never change what CoursePilot can plan, and nobody else sees them.

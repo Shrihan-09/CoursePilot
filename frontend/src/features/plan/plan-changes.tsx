@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Lock, LockOpen, MessageSquare, Search, Sparkles, Undo2 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Alert, Badge, Skeleton } from "@/components/ui/feedback";
@@ -74,12 +74,15 @@ export function usePlanChanges() {
   const settle = (plan: SavedPlan) => {
     client.setQueryData(["plan"], { plan });
     void client.invalidateQueries({ queryKey: ["plan-choices"] });
+    void client.invalidateQueries({ queryKey: ["course-options"] });
   };
   const confirm = useMutation({
     mutationFn: (id: string) => api.applyChange(id),
     onSuccess: (plan) => {
       settle(plan);
-      toast(`Saved: ${preview?.diff?.summary ?? "your change"}. Use "Undo last change" to go back.`, "success");
+      toast(`Saved: ${preview?.diff?.summary ?? "your change"}.`, "success", {
+        label: "Undo", onClick: () => undo.mutate(),
+      });
       setPreview(null);
     },
     onError: (e) => setError(e instanceof ApiError ? e.message : "The change couldn't be saved."),
@@ -300,6 +303,7 @@ export function CourseOptionsSheet({ target, onClose, changes }: {
           {!o.locked && o.groups.length === 0 && (
             <p className="text-sm text-fg-secondary">No other course passes every check for {termLabel(o.term_code)}.</p>
           )}
+          {!o.locked && <CourseSearchBox term={o.term_code} changes={changes} replacing={o.course} />}
           <div className="space-y-2 border-t border-border pt-4">
             {o.move_terms.length > 0 && (
               <div className="flex items-end gap-2">
@@ -358,18 +362,13 @@ export function StateLine({ state, reason }: { state: string; reason: string | n
 
 /* ------------------------------------------------------------ "Your choices" */
 
-const SKIPPED = "cp-choices-skipped";
-
-export function YourChoicesCard({ changes }: { changes: PlanChanges }) {
+export function YourChoicesCard({ changes, revision = 0 }: { changes: PlanChanges; revision?: number }) {
   const q = useQuery({ queryKey: ["plan-choices"], queryFn: api.planChoices, staleTime: 30_000 });
-  const [skipped, setSkipped] = useState<string[]>(() => {
-    if (typeof window === "undefined") return [];
-    try { return JSON.parse(window.localStorage.getItem(SKIPPED) ?? "[]") as string[]; } catch { return []; }
-  });
+  const [skipped, setSkipped] = useState<string[]>([]);
+  useEffect(() => setSkipped([]), [revision]);
   const skip = (key: string) => {
     const next = [...skipped, key];
     setSkipped(next);
-    window.localStorage.setItem(SKIPPED, JSON.stringify(next));
   };
   if (q.isPending) return <Skeleton className="h-40" />;
   if (q.isError || !q.data.term_code) return null;
@@ -446,10 +445,12 @@ function Question({ q, term, changes, onSkip }: { q: ChoiceQuestion; term: strin
 
 /* ------------------------------------------------------------ search */
 
-export function CourseSearchBox({ term, changes }: { term: string; changes: PlanChanges }) {
+export function CourseSearchBox({ term, changes, replacing }: { term: string; changes: PlanChanges; replacing?: string }) {
   const [text, setText] = useState("");
   const search = useMutation({
-    mutationFn: (body: { text: string; requirements?: string[][] }) => api.searchCourses({ ...body, limit: 8 }),
+    mutationFn: (body: { text: string; requirements?: string[][] }) => api.searchCourses({
+      ...body, term_code: /\b(spring|summer|fall|winter)\b/i.test(body.text) ? undefined : term, limit: 8,
+    }),
   });
   const r: CourseSearchResult | undefined = search.data;
   const shownTerm = r?.interpretation.term_code ?? term;
@@ -492,8 +493,10 @@ export function CourseSearchBox({ term, changes }: { term: string; changes: Plan
             <ul className="grid gap-2 sm:grid-cols-2">
               {r.results.map((h) => (
                 <OptionCard key={h.course} option={h} busy={changes.previewing}
-                  action={h.planned_term ? `Move here from ${termLabel(h.planned_term)}` : `Add to ${termLabel(shownTerm)}`}
-                  onChoose={() => changes.request(h.planned_term
+                  action={replacing ? "Preview swap" : h.planned_term ? `Move here from ${termLabel(h.planned_term)}` : `Add to ${termLabel(shownTerm)}`}
+                  onChoose={() => changes.request(replacing
+                    ? { kind: "swap", course: replacing, term_code: term, replacement: h.course }
+                    : h.planned_term
                     ? { kind: "move", course: h.course, term_code: h.planned_term, to_term: shownTerm }
                     : { kind: "add", course: h.course, term_code: shownTerm })} />
               ))}

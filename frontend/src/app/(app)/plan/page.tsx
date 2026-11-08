@@ -67,6 +67,7 @@ export default function PlanPage() {
     onSuccess: (plan: SavedPlan) => {
       client.setQueryData(["plan"], { plan });
       void client.invalidateQueries({ queryKey: ["readiness"] });
+      void client.invalidateQueries({ queryKey: ["plan-choices"] });
     },
     onError: () => setResolved(true),
   });
@@ -194,7 +195,7 @@ export default function PlanPage() {
         </section>
       ) : (
         <>
-          {plan.freshness.state === "current" && <YourChoicesCard changes={changes} />}
+          {plan.freshness.state === "current" && <YourChoicesCard changes={changes} revision={plan.revision} />}
           <PlanView
             plan={plan}
             actions={plan.freshness.state === "current" ? {
