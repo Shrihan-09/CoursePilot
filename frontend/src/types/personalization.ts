@@ -78,6 +78,8 @@ export interface PlanningProfileInput {
   additional_goals: AdditionalGoal[];
   workload_level?: WorkloadLevel | null;
   filler_preference?: FillerPreference;
+  /** Correctness fixes item 5: at least one major-own-subject course each term. */
+  major_subject_each_term?: boolean;
   pins?: CoursePin[];
   /** Phase 7.3: overrides the graduation target pace, e.g. "20281". */
   expected_graduation_term?: string | null;

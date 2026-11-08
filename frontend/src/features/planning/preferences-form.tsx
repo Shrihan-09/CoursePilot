@@ -82,6 +82,7 @@ export function PreferencesForm({
   const [goalProgram, setGoalProgram] = useState("");
   const [level, setLevel] = useState<WorkloadLevel | null>(initial.workload_level ?? null);
   const [filler, setFiller] = useState<FillerPreference>(initial.filler_preference ?? "no_preference");
+  const [ownSubject, setOwnSubject] = useState<boolean>(initial.major_subject_each_term ?? true);
   const [pins, setPins] = useState<CoursePin[]>(initial.pins ?? []);
   const [gradTerm, setGradTerm] = useState(initial.expected_graduation_term ?? "");
   const [answers, setAnswers] = useState<QuestionnaireValue>({
@@ -127,7 +128,7 @@ export function PreferencesForm({
           schedule: { ...initial.schedule, earliest_start: early || null, latest_end: late || null, avoid_days: avoid,
                       blocked_times: answers.blocked_times, preferred_campuses: answers.preferred_campuses },
           additional_goals: goals,
-          workload_level: level, filler_preference: filler, pins,
+          workload_level: level, filler_preference: filler, pins, major_subject_each_term: ownSubject,
           expected_graduation_term: gradTerm || null,
           commitments: answers.commitments, honors: answers.honors, term_overrides: answers.term_overrides,
           credit_min: answers.credit_min, credit_max: answers.credit_max,
@@ -187,6 +188,11 @@ export function PreferencesForm({
               ))}
             </div>
           </fieldset>
+        )}
+        {level && (
+          <Checkbox label="At least one course in my major's own subject each term (when eligible)"
+            description="For example a 01:198 course for Computer Science, ahead of an elective from a related department."
+            checked={ownSubject} onChange={(e) => setOwnSubject(e.target.checked)} />
         )}
         {(meta.strategies?.length ?? 0) > 0 && (
           <fieldset className="space-y-2">

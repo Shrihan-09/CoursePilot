@@ -53,6 +53,8 @@ def profile_input(row: StudentPlanningProfile) -> PlanningProfileInput:
         "credit_max": row.credit_max,
         "major_courses_min": row.major_courses_min,
         "major_courses_max": row.major_courses_max,
+        "major_subject_each_term": (True if row.major_subject_each_term is None
+                                    else row.major_subject_each_term),
     })
 
 
@@ -82,6 +84,13 @@ def confirm_profile(session: Session, student: Student, data: PlanningProfileInp
     row.term_overrides = [o.model_dump(mode="json") for o in data.term_overrides]
     row.credit_min, row.credit_max = data.credit_min, data.credit_max
     row.major_courses_min, row.major_courses_max = data.major_courses_min, data.major_courses_max
+    row.major_subject_each_term = data.major_subject_each_term
+    # Correctness fixes item 6: with a workload level its range is stored as
+    # the target/maximum too, so no screen can show two different ranges.
+    from app.domain.planning_profile import credit_range
+    span = credit_range(data)
+    if span is not None:
+        row.target_credits_per_term, row.max_credits_per_term = span
     row.source = source
     row.confirmed_at = now
     session.flush()

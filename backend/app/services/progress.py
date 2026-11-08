@@ -3,7 +3,10 @@
 Each terminal obligation has a fixed one-unit display budget. A choose-N
 course obligation is one unit, not N equal-credit courses; a credit obligation
 is likewise one unit. ALL_OF sums children without adding a parent unit.
-ANY_OF has N units, selecting the N largest normalized alternative fractions.
+ANY_OF has N units (a choose-one requirement is ONE unit): the alternative
+the plan chose counts (`choices`, the saved plan's alternative choices), else
+the N furthest-along alternatives. An alternative that does not count adds no
+unit, no uncertainty and nothing "still needed" (correctness fixes, item 3).
 These are presentation weights, never Rutgers credits, workload or eligibility.
 """
 
@@ -36,17 +39,38 @@ class Measure:
     budget_known: bool = True
 
 
+def _fraction(v: Measure) -> Fraction:
+    return v.earned / v.budget if v.budget else Fraction(0)
+
+
+def counted_alternatives(node: RequirementResult, values: list[Measure],
+                         choices: dict[str, list[str]] | None = None) -> list[int]:
+    """Indexes of the ANY_OF children that count: the chosen ones (when the
+    choice names this node's children), else the N furthest along (code order
+    breaks ties, so the pick is deterministic)."""
+    need = node.needed_count or 1
+    order = sorted(range(len(node.children)),
+                   key=lambda i: (-_fraction(values[i]), node.children[i].requirement_code))
+    chosen = set((choices or {}).get(node.requirement_code) or ())
+    picked = [i for i in order if node.children[i].requirement_code in chosen]
+    if picked:
+        # A choice of fewer than N alternatives: the furthest-along fill the rest.
+        picked += [i for i in order if i not in picked][:max(need - len(picked), 0)]
+        return picked[:need]
+    return order[:need]
+
+
 def measure(
-    node: RequirementResult, *, confirmed_only=False, uncertain_codes=frozenset()
+    node: RequirementResult, *, confirmed_only=False, uncertain_codes=frozenset(),
+    choices: dict[str, list[str]] | None = None,
 ) -> Measure:
     kind = node.requirement_type
+    kw = {"confirmed_only": confirmed_only, "uncertain_codes": uncertain_codes,
+          "choices": choices}
     if kind == "all_of":
         if not node.children:
             return Measure(Fraction(0), 0, 1, False)
-        values = [
-            measure(c, confirmed_only=confirmed_only, uncertain_codes=uncertain_codes)
-            for c in node.children
-        ]
+        values = [measure(c, **kw) for c in node.children]
         return Measure(
             sum((v.earned for v in values), Fraction(0)),
             sum(v.budget for v in values),
@@ -55,15 +79,10 @@ def measure(
         )
     if kind == "any_of":
         need = node.needed_count or 1
-        values = [
-            measure(c, confirmed_only=confirmed_only, uncertain_codes=uncertain_codes)
-            for c in node.children
-        ]
-        fractions = sorted(
-            (v.earned / v.budget if v.budget else Fraction(0) for v in values), reverse=True
-        )
-        unknown = min(need, sum(v.unknown > 0 or v.budget == 0 for v in values))
-        earned = sum(fractions[:need], Fraction(0))
+        values = [measure(c, **kw) for c in node.children]
+        counted = [values[i] for i in counted_alternatives(node, values, choices)]
+        unknown = min(need, sum(v.unknown > 0 or v.budget == 0 for v in counted))
+        earned = sum((_fraction(v) for v in counted), Fraction(0))
         if earned == need and node.status in MET:
             unknown = 0
         return Measure(earned, need, unknown)
@@ -118,7 +137,8 @@ def contribution(units: Fraction, budget: int) -> Contribution:
 
 
 def _scope_measure(
-    nodes, systems, wanted=None, *, confirmed_only=False, uncertain_codes=frozenset()
+    nodes, systems, wanted=None, *, confirmed_only=False, uncertain_codes=frozenset(),
+    choices=None,
 ):
     chosen = []
     for node in nodes:
@@ -130,7 +150,8 @@ def _scope_measure(
                 if wanted is None or leaf_systems <= wanted:
                     chosen.append(
                         measure(
-                            node, confirmed_only=confirmed_only, uncertain_codes=uncertain_codes
+                            node, confirmed_only=confirmed_only,
+                            uncertain_codes=uncertain_codes, choices=choices,
                         )
                     )
                 elif leaf_systems & wanted:
@@ -145,11 +166,13 @@ def _scope_measure(
                         wanted,
                         confirmed_only=confirmed_only,
                         uncertain_codes=uncertain_codes,
+                        choices=choices,
                     )
                 )
         elif wanted is None or systems.get(node.requirement_code) in wanted:
             chosen.append(
-                measure(node, confirmed_only=confirmed_only, uncertain_codes=uncertain_codes)
+                measure(node, confirmed_only=confirmed_only, uncertain_codes=uncertain_codes,
+                        choices=choices)
             )
     return Measure(
         sum((v.earned for v in chosen), Fraction(0)),
@@ -182,6 +205,30 @@ def _walk(nodes):
         yield from _walk(node.children)
 
 
+def counted_leaves(nodes, choices=None):
+    """Leaves that count toward progress: under an ANY_OF, only the counted
+    alternatives' leaves - an unchosen alternative is never "still needed"."""
+    for node in nodes:
+        if not node.children:
+            yield node
+            continue
+        children = node.children
+        if node.requirement_type == "any_of":
+            values = [measure(c, choices=choices) for c in children]
+            children = [children[i] for i in counted_alternatives(node, values, choices)]
+        yield from counted_leaves(children, choices)
+
+
+def plan_choices(plan) -> dict[str, list[str]]:
+    """requirement code -> chosen alternative codes, from a plan's metadata:
+    the student's selection or the planner's recommendation."""
+    out = {}
+    for choice in plan.metadata.alternative_choices:
+        if choice.chosen and choice.status != "undecided":
+            out[choice.requirement_code] = [a.code for a in choice.chosen]
+    return out
+
+
 def build_progress(session: Session, student: Student) -> ProgressResponse:
     from app.services.academic_context import composed_requirements, context_coverage
     from app.services.planning.saved import _decode, stale_reasons
@@ -195,7 +242,10 @@ def build_progress(session: Session, student: Student) -> ProgressResponse:
     saved = session.scalar(select(StudentPlan).where(StudentPlan.student_id == student.id))
     projected = None
     projection_state = "absent"
+    choices: dict[str, list[str]] = {}
     if saved is not None:
+        # The plan's choose-one commitments decide which alternative counts.
+        choices = plan_choices(_decode(saved.result_blob))
         if stale_reasons(session, student, saved):
             projection_state = "stale"
         else:
@@ -253,13 +303,16 @@ def build_progress(session: Session, student: Student) -> ProgressResponse:
             wanted,
             confirmed_only=True,
             uncertain_codes=uncertainty(baseline),
+            choices=choices,
         )
         b = _scope_measure(
-            current.requirements, systems, wanted, uncertain_codes=uncertainty(current)
+            current.requirements, systems, wanted, uncertain_codes=uncertainty(current),
+            choices=choices,
         )
         p = (
             _scope_measure(
-                projected.requirements, systems, wanted, uncertain_codes=uncertainty(projected)
+                projected.requirements, systems, wanted, uncertain_codes=uncertainty(projected),
+                choices=choices,
             )
             if projected
             else None
@@ -270,8 +323,8 @@ def build_progress(session: Session, student: Student) -> ProgressResponse:
             projection_state = "incomparable"
         codes = [
             n.requirement_code
-            for n in _walk(current.requirements)
-            if not n.children and (wanted is None or systems.get(n.requirement_code) in wanted)
+            for n in counted_leaves(current.requirements, choices)
+            if wanted is None or systems.get(n.requirement_code) in wanted
         ]
         denominator = display_denominator(a, b)
         metrics.append(

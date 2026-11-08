@@ -39,15 +39,55 @@ export function presentationFor(node: RequirementResult, review: ReadonlySet<str
   return MET.includes(node.status) && underReview(node, review) ? DN_REVIEW : REQUIREMENT_STATUS[node.status];
 }
 
-/** Show a node if it - or anything beneath it - has a status in the filter. */
+/**
+ * Correctness fixes item 3: a choose-one requirement's chosen alternatives -
+ * requirement code -> child codes, from the saved plan (the student's choice
+ * or the planner's recommendation).
+ */
+export type AlternativeChoices = Readonly<Record<string, readonly string[]>>;
+export const AlternativeChoicesContext = createContext<AlternativeChoices>({});
+
+/** Share of a node that is done, 0..1 - for picking the furthest-along alternative. */
+function doneFraction(node: RequirementResult): number {
+  if (MET.includes(node.status)) return 1;
+  if (node.children.length === 0) {
+    if (node.needed_credits !== null && Number(node.needed_credits) > 0) {
+      return Math.min(1, Number(node.satisfied_credits) / Number(node.needed_credits));
+    }
+    if (node.needed_count) return Math.min(1, node.satisfied_count / node.needed_count);
+    return 0;
+  }
+  const parts = node.children.map(doneFraction);
+  return parts.reduce((a, b) => a + b, 0) / parts.length;
+}
+
+/**
+ * The children of a node that COUNT. For an ANY_OF, only its chosen
+ * alternatives (else the furthest-along ones, code order breaking ties); an
+ * unchosen alternative is never "still needed". Every other node: all children.
+ */
+export function countedChildren(node: RequirementResult, choices: AlternativeChoices = {}): RequirementResult[] {
+  if (node.requirement_type !== "any_of" || node.children.length === 0) return node.children;
+  const need = node.needed_count || 1;
+  const order = [...node.children].sort((a, b) =>
+    doneFraction(b) - doneFraction(a) || a.requirement_code.localeCompare(b.requirement_code));
+  const chosen = new Set(choices[node.requirement_code] ?? []);
+  const picked = order.filter((c) => chosen.has(c.requirement_code));
+  if (picked.length === 0) return order.slice(0, need);
+  return [...picked, ...order.filter((c) => !chosen.has(c.requirement_code))].slice(0, need);
+}
+
+/** Show a node if it - or anything beneath it that counts - has a status in the filter. */
 export function matchesFilter(node: RequirementResult, filter: Filter,
-                              review: ReadonlySet<string> = new Set()): boolean {
+                              review: ReadonlySet<string> = new Set(),
+                              choices: AlternativeChoices = {}): boolean {
   if (filter === "all") return true;
+  const children = countedChildren(node, choices);
   if (filter === "complete" && MET.includes(node.status) && underReview(node, review)) {
-    return node.children.some((c) => matchesFilter(c, filter, review));
+    return children.some((c) => matchesFilter(c, filter, review, choices));
   }
   if (FILTER_STATES[filter].includes(node.status)) return true;
-  return node.children.some((c) => matchesFilter(c, filter, review));
+  return children.some((c) => matchesFilter(c, filter, review, choices));
 }
 
 export function progressText(node: RequirementResult): string | null {
@@ -97,11 +137,14 @@ export function RequirementNode({
   source?: (code: string) => React.ReactNode;
 }) {
   const review = useContext(DnReviewContext);
-  if (!matchesFilter(node, filter, review)) return null;
+  const choices = useContext(AlternativeChoicesContext);
+  if (!matchesFilter(node, filter, review, choices)) return null;
   const state = presentationFor(node, review);
   const progress = progressText(node);
   const own = evidence(node.requirement_code);
-  const children = node.children.filter((c) => matchesFilter(c, filter, review));
+  // "All" shows every alternative; a filter shows only the ones that count.
+  const children = (filter === "all" ? node.children : countedChildren(node, choices))
+    .filter((c) => matchesFilter(c, filter, review, choices));
   const headingLevel = Math.min(6, 3 + depth) as 3 | 4 | 5 | 6;
   const H = `h${headingLevel}` as const;
 
@@ -195,16 +238,32 @@ export function RequirementNode({
 }
 
 /** Leaf requirements tallied by the engine's status (a count, never a %).
- * A met leaf Degree Navigator says is not met counts under `needs_review`. */
-export function leafTally(nodes: RequirementResult[], review: ReadonlySet<string> = new Set()):
+ * A met leaf Degree Navigator says is not met counts under `needs_review`.
+ * Correctness fixes item 3: a choose-one requirement (ANY_OF) is ONE unit per
+ * alternative it needs - the chosen (else furthest-along) alternative's status;
+ * unchosen alternatives are not counted at all. */
+export function leafTally(nodes: RequirementResult[], review: ReadonlySet<string> = new Set(),
+                          choices: AlternativeChoices = {}):
     Record<RequirementStatus | "needs_review", number> {
   const out: Record<RequirementStatus | "needs_review", number> = {
     satisfied: 0, provisionally_satisfied: 0, partially_satisfied: 0,
     unsatisfied: 0, indeterminate: 0, not_evaluable: 0, needs_review: 0,
   };
+  const unit = (n: RequirementResult) => {
+    out[MET.includes(n.status) && underReview(n, review) ? "needs_review" : n.status] += 1;
+  };
   const walk = (n: RequirementResult) => {
     if (n.children.length === 0) {
-      out[MET.includes(n.status) && review.has(n.requirement_code) ? "needs_review" : n.status] += 1;
+      unit(n);
+      return;
+    }
+    if (n.requirement_type === "any_of") {
+      if (MET.includes(n.status)) {
+        for (let i = 0; i < (n.needed_count || 1); i += 1) unit(n);
+      } else {
+        countedChildren(n, choices).forEach(unit);
+      }
+      return;
     }
     n.children.forEach(walk);
   };

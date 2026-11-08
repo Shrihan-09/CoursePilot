@@ -20,7 +20,7 @@ import type { DegreeAudit, RequirementStatus } from "@/types/degree";
 import type { ProgramView } from "@/types/onboarding";
 
 import {
-  DnReviewContext, evidenceFor, leafTally, matchesFilter, RequirementNode, type Filter,
+  AlternativeChoicesContext, type AlternativeChoices, DnReviewContext, evidenceFor, leafTally, matchesFilter, RequirementNode, type Filter,
 } from "./requirement-tree";
 
 /**
@@ -63,14 +63,16 @@ const TALLY_ORDER: RequirementStatus[] = [
   "satisfied", "provisionally_satisfied", "partially_satisfied", "unsatisfied", "indeterminate", "not_evaluable",
 ];
 
-export function DegreeSummary({ audit, review = new Set<string>() }: {
+export function DegreeSummary({ audit, review = new Set<string>(), choices = {} }: {
   audit: DegreeAudit;
   /** Task 3: requirement codes Degree Navigator says are not met. */
   review?: ReadonlySet<string>;
+  /** Correctness fixes item 3: the saved plan's choose-one commitments. */
+  choices?: AlternativeChoices;
 }) {
   const state = review.size > 0 && (audit.status === "complete" || audit.status === "in_progress")
     ? DN_REVIEW : AUDIT_STATUS[audit.status];
-  const tally = leafTally(audit.requirements, review);
+  const tally = leafTally(audit.requirements, review, choices);
   const required = audit.credits_required_min;
   const applicable = Number(audit.credits_applicable_to_degree);
   return (
@@ -144,13 +146,15 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: "complete", label: "Complete" },
 ];
 
-export function DegreeView({ audit, program, source, dnNotMet = [] }: {
+export function DegreeView({ audit, program, source, dnNotMet = [], choices = {} }: {
   audit: DegreeAudit;
   program: ProgramView;
   /** Phase 7.4: per requirement, "from your Degree Navigator audit" or "estimated". */
   source?: (code: string) => React.ReactNode;
   /** Task 3: requirements Degree Navigator says are not met while CoursePilot says met. */
   dnNotMet?: { code: string; name: string }[];
+  /** Correctness fixes item 3: the saved plan's choose-one commitments. */
+  choices?: AlternativeChoices;
 }) {
   const review = useMemo(() => new Set(dnNotMet.map((i) => i.code)), [dnNotMet]);
   const [filter, setFilter] = useState<Filter>("all");
@@ -169,10 +173,11 @@ export function DegreeView({ audit, program, source, dnNotMet = [] }: {
 
   return (
     <DnReviewContext.Provider value={review}>
+    <AlternativeChoicesContext.Provider value={choices}>
     <div className="space-y-6">
       <PendingReviewNotice program={program} audit={audit} />
       <DnNotMetNotice items={dnNotMet} />
-      <DegreeSummary audit={audit} review={review} />
+      <DegreeSummary audit={audit} review={review} choices={choices} />
 
       {findings.length > 0 && (
         <section aria-labelledby="findings-heading" className="space-y-2">
@@ -194,7 +199,7 @@ export function DegreeView({ audit, program, source, dnNotMet = [] }: {
           </Link>
         </div>
         <Tabs label="Show requirements" value={filter} onChange={setFilter} items={FILTERS} />
-        {groups.some((g) => matchesFilter(g, filter, review)) ? (
+        {groups.some((g) => matchesFilter(g, filter, review, choices)) ? (
           <ul className="space-y-2">
             {groups.map((g) => (
               <RequirementNode key={g.requirement_code} node={g} evidence={evidence} filter={filter} source={source} />
@@ -253,6 +258,7 @@ export function DegreeView({ audit, program, source, dnNotMet = [] }: {
         </footer>
       )}
     </div>
+    </AlternativeChoicesContext.Provider>
     </DnReviewContext.Provider>
   );
 }

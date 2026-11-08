@@ -51,11 +51,46 @@ def test_in_progress_when_every_course_is_in_the_confirmed_current_schedule():
     assert status == "in_progress" and "confirmed current schedule" in rule
 
 
-def test_planned_when_a_current_course_is_not_in_the_confirmed_schedule():
+def test_planned_when_a_current_course_is_neither_on_the_transcript_nor_in_the_schedule():
+    """Correctness fixes item 2: only a course with NEITHER source is planned."""
     row = _row("in_progress_or_planned",
                [{"course": "01:999:102", "term_code": "20269", "kind": "current"}])
-    status, rule = planning_status(row, set())
-    assert status == "planned" and "01:999:102 is not in your confirmed current schedule" in rule
+    status, rule = planning_status(row, set(), set())
+    assert status == "planned"
+    assert ("01:999:102 is neither in progress on your confirmed transcript nor in your "
+            "confirmed current schedule") in rule
+
+
+def test_in_progress_on_the_confirmed_transcript_counts_like_a_webreg_schedule():
+    """Correctness fixes item 2: a course in progress on the confirmed unofficial
+    transcript is in progress without any WebReg import."""
+    row = _row("in_progress_or_planned",
+               [{"course": "11:999:301", "term_code": "20269", "kind": "current"}])
+    status, rule = planning_status(row, set(), {("20269", "11:999:301")})
+    assert status == "in_progress" and "in progress on your confirmed transcript" in rule
+
+
+def test_either_source_covers_each_course_behind_a_row():
+    row = _row("in_progress_or_planned",
+               [{"course": "01:999:102", "term_code": "20269", "kind": "current"},
+                {"course": "11:999:301", "term_code": "20269", "kind": "current"}])
+    status, rule = planning_status(row, {("20269", "01:999:102")}, {("20269", "11:999:301")})
+    assert status == "in_progress"
+    assert "confirmed transcript" in rule and "confirmed current schedule" in rule
+
+
+def test_a_goal_course_without_a_term_matches_its_confirmed_term():
+    """A goal row's course carries no term; it is matched by course."""
+    row = _row("in_progress_or_planned",
+               [{"course": "11:999:301", "term_code": None, "icon": "current", "kind": None}])
+    assert planning_status(row, set(), {("20269", "11:999:301")})[0] == "in_progress"
+    assert planning_status(row, set(), {("20269", "01:999:555")})[0] == "planned"
+
+
+def test_the_transcript_term_must_match_a_dated_course():
+    row = _row("in_progress_or_planned",
+               [{"course": "11:999:301", "term_code": "20269", "kind": "current"}])
+    assert planning_status(row, set(), {("20261", "11:999:301")})[0] == "planned"
 
 
 def test_planned_when_a_course_behind_it_is_only_planned():

@@ -52,6 +52,10 @@ export function profileLines(p: PlanningProfileInput, programName?: string): [st
     }
   }
   lines.push(["When several courses fit", STRATEGY_LABEL[p.strategy ?? "balanced"] ?? String(p.strategy)]);
+  if (p.workload_level) {
+    lines.push(["Major's own subject", p.major_subject_each_term === false
+      ? "No preference" : "At least one course each term (when eligible)"]);
+  }
   if (!p.workload_level) {
     lines.push(["Target semester load", `${p.target_credits_per_term} credits`]);
     lines.push(["Maximum semester load", `${p.max_credits_per_term} credits, never more`]);

@@ -142,7 +142,10 @@ function CurrentScheduleContent() {
                   <span className="text-fg-muted"> - imported from your schedule PDF, confirmed by you</span>
                 </p>
               ) : (
-                <p className="text-fg-muted">Section not chosen{c.sections_available ? ` · ${c.sections_available} Rutgers sections` : ""}</p>
+                <p className="text-fg-muted">
+                  In progress on your record - section not confirmed
+                  {c.sections_available ? ` · ${c.sections_available} Rutgers sections` : " · no Rutgers sections loaded for it"}
+                </p>
               )}
               {c.not_on_latest_webreg && (
                 <p className="text-warning">Not on your latest WebReg schedule - dropped? Nothing was removed; if you dropped it, update your record.</p>

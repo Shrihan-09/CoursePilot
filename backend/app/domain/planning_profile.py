@@ -136,6 +136,9 @@ class PlanningProfileInput(BaseModel):
     credit_max: int | None = Field(default=None, ge=1, le=24)
     major_courses_min: int | None = Field(default=None, ge=0, le=8)
     major_courses_max: int | None = Field(default=None, ge=0, le=8)
+    #: Correctness fixes item 5: at least one course in the major's own subject
+    #: each term (when eligible). Default ON.
+    major_subject_each_term: bool = True
 
     @model_validator(mode="after")
     def _load(self) -> "PlanningProfileInput":
@@ -150,16 +153,33 @@ class PlanningProfileInput(BaseModel):
         return self
 
 
+def credit_range(profile: PlanningProfileInput) -> tuple[Decimal, Decimal] | None:
+    """Correctness fixes item 6: with a workload level, ONE credit range rules
+    everywhere - the student's own range if set, else the level's (Semi-rigorous
+    16-19). The older target/maximum fields do not apply then. None: no level
+    (the target/maximum are the range)."""
+    if profile.workload_level is None:
+        return None
+    if profile.credit_min is not None and profile.credit_max is not None:
+        return Decimal(profile.credit_min), Decimal(profile.credit_max)
+    from app.services.planning.workload import LEVELS
+
+    floor, cap, _ = LEVELS[profile.workload_level]
+    return floor, cap
+
+
 def to_constraints(profile: PlanningProfileInput) -> PlanningConstraints:
     """The ONLY path from preferences to the planner."""
     horizon = (GRADUATION_TARGET_TERMS if profile.workload_level else DEFAULT_MAX_TERMS)
+    target, maximum = credit_range(profile) or (profile.target_credits_per_term,
+                                               profile.max_credits_per_term)
     return PlanningConstraints(
-        max_credits_per_term=profile.max_credits_per_term,
+        max_credits_per_term=maximum,
         max_courses_per_term=profile.max_courses_per_term,
         max_terms=profile.max_terms or horizon[profile.pace],
         include_summer=profile.include_summer,
         include_winter=profile.include_winter,
-        target_credits_per_term=profile.target_credits_per_term,
+        target_credits_per_term=target,
         pace=profile.pace,
         strategy=profile.strategy,
         workload_level=profile.workload_level,
@@ -172,6 +192,7 @@ def to_constraints(profile: PlanningProfileInput) -> PlanningConstraints:
         credit_max=profile.credit_max,
         major_courses_min=profile.major_courses_min,
         major_courses_max=profile.major_courses_max,
+        major_subject_each_term=profile.major_subject_each_term,
         # Fixed blocks shape SCHEDULES, not which courses: kept out of the
         # plan's constraints so editing a shift does not make a plan stale.
         term_overrides=[TermPlanningOverride.model_validate(
@@ -181,5 +202,6 @@ def to_constraints(profile: PlanningProfileInput) -> PlanningConstraints:
                         or o.commitments is not None])
 
 
-__all__ = ["AdditionalGoal", "DEFAULT_MAX_TERMS", "GRADUATION_TARGET_TERMS", "PlanningProfileInput",
+__all__ = ["AdditionalGoal", "DEFAULT_MAX_TERMS", "GRADUATION_TARGET_TERMS", "credit_range",
+           "PlanningProfileInput",
            "ScheduleDefaults", "TermAnswers", "to_constraints"]

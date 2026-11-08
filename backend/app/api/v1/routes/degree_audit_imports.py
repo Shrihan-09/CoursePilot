@@ -34,7 +34,7 @@ from app.services.degree_audit.overlay import (
     DN_NOT_MET_MESSAGE,
     ESTIMATED_LABEL,
     active_overlay,
-    current_schedule,
+    in_progress_evidence,
     freshness,
     planning_status,
 )
@@ -105,8 +105,8 @@ def _summary(imp, now) -> dict:
     }
 
 
-def _requirement(row, schedule) -> dict:
-    planned, rule = planning_status(row, schedule)
+def _requirement(row, evidence) -> dict:
+    planned, rule = planning_status(row, *evidence)
     return {
         "id": str(row.id), "kind": row.kind, "row_index": row.row_index,
         "parent_row_index": row.parent_row_index, "dn_number": row.dn_number,
@@ -152,7 +152,7 @@ def _history(row) -> dict:
 def _detail(session, imp, now) -> dict:
     out = _summary(imp, now)
     ready = service.readiness(session, imp, now)
-    schedule = current_schedule(session, imp.student_id)
+    schedule = in_progress_evidence(session, imp.student_id)
     timp = service.linked_transcript(session, imp)
     out.update({
         "requirements": [_requirement(r, schedule) for r in imp.requirement_rows],
@@ -221,7 +221,7 @@ async def progress(principal: Annotated[Principal, Depends(enforce_request_rate_
         with _session() as session:
             student = _owned_student(session, principal)
             overlay = active_overlay(session, student)
-            schedule = current_schedule(session, student.id)
+            schedule = in_progress_evidence(session, student.id)
             if not overlay.imports:
                 return {"source": "coursepilot_estimate", "label": ESTIMATED_LABEL,
                         "imports": [], "requirements": [],

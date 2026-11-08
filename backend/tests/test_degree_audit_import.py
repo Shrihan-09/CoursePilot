@@ -569,7 +569,9 @@ async def test_a_flipped_status_icon_needs_review_and_the_student_resolves_it(
 async def test_in_progress_counts_only_with_a_confirmed_webreg_schedule(ob, storage, mapping):
     """DN "In Progress or Planned" is IN PROGRESS only when its current course is
     in the student's confirmed current schedule - here a WebReg schedule import
-    (`student_registration`) - and PLANNED (not satisfied) before that."""
+    (`student_registration`) - or in progress on a confirmed unofficial
+    transcript (correctness fixes item 2), and PLANNED (not satisfied) before
+    that. The DN audit's own staged courses never vouch for themselves."""
     import datetime as dt
 
     from app.models.schedule_import import StudentRegistration
@@ -584,7 +586,8 @@ async def test_in_progress_counts_only_with_a_confirmed_webreg_schedule(ob, stor
         done = await _confirm(ac, imp)
         r2 = _req(done, 2)
         assert r2["planning_status"] == "planned"
-        assert "is not in your confirmed current schedule" in r2["planning_rule"]
+        assert ("neither in progress on your confirmed transcript nor in your confirmed "
+                "current schedule") in r2["planning_rule"]
     with _session() as s:
         student = s.scalar(select(Student).where(Student.user_id == ob["account"]))
         assert active_overlay(s, student).statuses["REQ_B"].planning_status == "planned"
@@ -594,6 +597,41 @@ async def test_in_progress_counts_only_with_a_confirmed_webreg_schedule(ob, stor
         status = active_overlay(s, student).statuses["REQ_B"]
         assert status.planning_status == "in_progress"
         assert "confirmed current schedule" in status.rule
+
+
+@requires_db
+async def test_in_progress_on_a_confirmed_unofficial_transcript_counts_without_webreg(
+        ob, storage, mapping):
+    """Correctness fixes item 2: the same DN row is IN PROGRESS once the course is
+    in progress on a CONFIRMED unofficial transcript - no WebReg import needed."""
+    import datetime as dt
+
+    from app.models import Course
+    from app.services.degree_audit.overlay import active_overlay
+
+    b = ob["code"]["B"]
+    async with _client(_app(storage), ob["account"]) as ac:
+        await _profile(ac, ob)
+        [imp] = await _upload(ac, build_audit_pdf(model(
+            ob, r2_status="in_progress_or_planned", r2_courses=[(b, 3, "Fall 2026", "current")])))
+        await _confirm(ac, imp)
+    with _session() as s:
+        student = s.scalar(select(Student).where(Student.user_id == ob["account"]))
+        assert active_overlay(s, student).statuses["REQ_B"].planning_status == "planned"
+        now = dt.datetime.now(dt.UTC)
+        transcript = TranscriptImport(student_id=student.id, state="confirmed",
+                                      content_sha256="0" * 64, byte_size=1, confirmed_at=now,
+                                      source_document="rutgers_unofficial_transcript")
+        s.add(transcript)
+        s.flush()
+        row = s.scalar(select(StudentCourse).join(Course, Course.id == StudentCourse.course_id)
+                       .where(StudentCourse.student_id == student.id,
+                              Course.course_string == b, StudentCourse.term_code == "20269"))
+        row.transcript_import_id = transcript.id
+        s.commit()
+        status = active_overlay(s, student).statuses["REQ_B"]
+        assert status.planning_status == "in_progress"
+        assert "in progress on your confirmed transcript" in status.rule
 
 
 @requires_db
