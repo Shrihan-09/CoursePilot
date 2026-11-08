@@ -154,7 +154,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
   const push = useCallback((message: string, tone: ToastTone = "neutral", action?: ToastItem["action"]) => {
     const id = Date.now() + Math.random();
-    setItems((xs) => [...xs, { id, message, tone, action }]);
+    // Only the most recent change can be undone by the plan endpoint.
+    setItems((xs) => [...(action ? xs.filter((x) => !x.action) : xs), { id, message, tone, action }]);
     window.setTimeout(() => setItems((xs) => xs.filter((x) => x.id !== id)), action ? 10000 : 5000);
   }, []);
   return (
