@@ -95,7 +95,8 @@ function CurrentScheduleContent() {
   // Prompt 11 A3: "doing well" orders the student's OWN suggestions only.
   const doingWell = useMutation({
     mutationFn: (c: CurrentCourse) => api.setDoingWell(c.course, c.term_code, !c.doing_well),
-    onSuccess: () => client.invalidateQueries({ queryKey: ["current-schedule"] }),
+    onSuccess: () => Promise.all(["current-schedule", "plan-choices", "course-options"].map(
+      (key) => client.invalidateQueries({ queryKey: [key] }))),
   });
 
   if (current.isPending) return <Skeleton className="h-64" />;

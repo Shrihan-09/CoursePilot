@@ -155,6 +155,8 @@ export default function PlanPage() {
           {error.status >= 500 ? "The planning engine hit a problem. Your saved plan, if any, is unchanged." : error.message}
         </Alert>
       )}
+      {changes.previewing && <p role="status" className="text-sm text-fg-secondary">Checking your change with the planning engine…</p>}
+      {changes.error && !changes.preview && <Alert tone="danger" title="The change couldn't be previewed">{changes.error}</Alert>}
 
       {(ready.state === "needs_program" || ready.state === "needs_academic_history") ? (
         <EmptyState icon={MapIcon} title="Finish setting up first"

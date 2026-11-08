@@ -275,7 +275,7 @@ export function CourseOptionsSheet({ target, onClose, changes }: {
   const [moveTo, setMoveTo] = useState("");
   if (!target) return null;
   const o: CourseOptions | undefined = q.data;
-  const run = (change: PlanChange) => changes.request(change);
+  const run = (change: PlanChange) => { changes.request(change); onClose(); };
   return (
     <Sheet open onClose={onClose} title={`Options for ${target.course}`}>
       {q.isPending ? <Skeleton className="h-64" /> : q.isError ? (
@@ -303,7 +303,7 @@ export function CourseOptionsSheet({ target, onClose, changes }: {
           {!o.locked && o.groups.length === 0 && (
             <p className="text-sm text-fg-secondary">No other course passes every check for {termLabel(o.term_code)}.</p>
           )}
-          {!o.locked && <CourseSearchBox term={o.term_code} changes={changes} replacing={o.course} />}
+          {!o.locked && <CourseSearchBox term={o.term_code} changes={{ ...changes, request: run }} replacing={o.course} />}
           <div className="space-y-2 border-t border-border pt-4">
             {o.move_terms.length > 0 && (
               <div className="flex items-end gap-2">
