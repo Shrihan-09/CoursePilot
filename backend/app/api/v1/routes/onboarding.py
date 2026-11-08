@@ -4,6 +4,8 @@
 GET    /api/v1/student/onboarding                     where am I? (200 even with no profile)
 POST   /api/v1/student/onboarding/complete            "I'm done" (idempotent)
 PUT    /api/v1/student/onboarding/setup               setup wizard progress (Prompt 10a)
+GET    /api/v1/student/grades-reminder                "your grades are in" (10a follow-up)
+POST   /api/v1/student/grades-reminder/dismiss        hide it until the next grades date
 POST   /api/v1/student/profile                        {program_key, catalog_year} -> 201 / 200
 GET    /api/v1/student/profile
 PUT    /api/v1/student/program                        {program_key, catalog_year}
@@ -53,7 +55,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Literal
 
@@ -168,6 +170,9 @@ class DeclarationChoice(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+ClassStanding = Literal["first_year", "sophomore", "junior", "senior", "transfer"]
+
+
 class SetupProgress(BaseModel):
     """Prompt 10a: the setup wizard steps finished or skipped (replaces the
     saved list), and optionally the first Rutgers semester the student states.
@@ -175,6 +180,8 @@ class SetupProgress(BaseModel):
 
     completed_steps: list[str] = Field(max_length=16)
     first_term: str | None = Field(default=None, max_length=5)
+    #: 10a follow-up: "What year are you?" - omit to leave it unchanged.
+    class_standing: ClassStanding | None = None
 
     model_config = {"extra": "forbid"}
 
@@ -239,6 +246,7 @@ class ProfileView(BaseModel):
     declaration_status: str | None = None
     #: Prompt 10a: the first Rutgers semester as the student stated it.
     first_term: str | None = None
+    class_standing: str | None = None
 
 
 class SetupView(BaseModel):
@@ -394,7 +402,7 @@ def _profile_view(session, student) -> ProfileView:
         transcript_reported_gpa=ReportedGpa(value=gpa[0], as_of=gpa[1]) if gpa else None,
         math_placement=student.math_placement,
         declaration_status=student.declaration_status,
-        first_term=student.first_term)
+        first_term=student.first_term, class_standing=student.class_standing)
 
 
 def _setup_view(student) -> SetupView:
@@ -598,10 +606,53 @@ async def save_setup(body: SetupProgress,
         with _session() as session:
             student = onboarding_service.save_setup_progress(
                 session, principal.account_id, steps=body.completed_steps,
-                first_term=body.first_term, set_first_term="first_term" in body.model_fields_set)
+                first_term=body.first_term, set_first_term="first_term" in body.model_fields_set,
+                class_standing=body.class_standing,
+                set_class_standing="class_standing" in body.model_fields_set)
             session.commit()
             return _setup_view(student)
     return await _run(work, "onboarding_setup_saved", principal)
+
+
+class GradesReminderView(BaseModel):
+    """10a follow-up: "Your grades are in - upload your updated ..." (Home)."""
+
+    show: bool
+    term_code: str | None
+    grades_date: date | None
+    source_url: str | None
+    kinds: list[str]
+
+
+@router.get("/grades-reminder", response_model=GradesReminderView,
+            summary="Whether to remind me to upload records after final grades")
+async def get_grades_reminder(principal: Principal = Depends(enforce_request_rate_limit)
+                              ) -> GradesReminderView:
+    from dataclasses import asdict
+
+    from app.services.grades_reminder import grades_reminder
+
+    def work():
+        with _session() as session:
+            return GradesReminderView(**asdict(
+                grades_reminder(session, principal.account_id, _now())))
+    return await _run(work, "grades_reminder_get", principal)
+
+
+@router.post("/grades-reminder/dismiss", response_model=GradesReminderView,
+             summary="Hide the grades reminder until the next term's grades date")
+async def dismiss_grades_reminder(principal: Principal = Depends(enforce_request_rate_limit)
+                                  ) -> GradesReminderView:
+    from dataclasses import asdict
+
+    from app.services import grades_reminder as svc
+
+    def work():
+        with _session() as session:
+            out = svc.dismiss_grades_reminder(session, principal.account_id, _now())
+            session.commit()
+            return GradesReminderView(**asdict(out))
+    return await _run(work, "grades_reminder_dismissed", principal)
 
 
 @router.post("/onboarding/complete", response_model=ProfileView,

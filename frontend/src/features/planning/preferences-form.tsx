@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/feedback";
 import { Checkbox, Field, Input, Radio, Select } from "@/components/ui/field";
 import { api } from "@/lib/api";
+import { RetakeChooser } from "@/features/setup/retakes";
 import { commitmentSummary } from "@/lib/academic/questionnaire";
 import { DAY_NAME } from "@/lib/academic/schedule-time";
 import { GOAL_KIND, termLabel, upcomingTerms } from "@/lib/academic/vocabulary";
@@ -258,20 +259,21 @@ export function PreferencesForm({
         ) : needsLevel}
       </PrefSection>
 
-      <PrefSection id="musts" title="Musts" summary={pins.length ? `${pins.length} pinned course${pins.length === 1 ? "" : "s"}` : "Courses you want in a specific semester"} open={openSection === "musts"}>
+      <PrefSection id="musts" title="Musts" summary={pins.length ? `${pins.length} pinned course${pins.length === 1 ? "" : "s"}` : "Retakes, and courses you want in a specific semester"} open={openSection === "musts"}>
         {level ? (
           <fieldset className="space-y-3">
-            <legend className="text-base font-semibold text-fg">Courses you want in a specific semester</legend>
+            <legend className="text-base font-semibold text-fg">Retakes, and courses you want in a specific semester</legend>
+            <RetakeChooser pins={pins} onChange={setPins} />
             <p className="text-sm text-fg-muted">
-              Retakes your record needs are added for you. A pinned course is placed in that semester or not at all.
+              A pinned course is placed in that semester or not at all.
               If it can&apos;t be (prerequisites, not offered, restricted), your plan explains why.
             </p>
-            {pins.length > 0 && (
+            {pins.some((p) => !p.retake) && (
               <ul className="divide-y divide-border rounded border border-border">
-                {pins.map((p, i) => (
+                {pins.filter((p) => !p.retake).map((p) => (
                   <li key={`${p.course}-${p.term_code}`} className="flex items-center justify-between gap-2 p-2 text-sm">
                     <span className="code">{p.course} <span className="text-fg-muted">in {termLabel(p.term_code)}</span></span>
-                    <Button type="button" variant="ghost" size="sm" aria-label={`Unpin ${p.course}`} onClick={() => setPins(pins.filter((_, j) => j !== i))}>
+                    <Button type="button" variant="ghost" size="sm" aria-label={`Unpin ${p.course}`} onClick={() => setPins(pins.filter((x) => x !== p))}>
                       <Trash2 aria-hidden className="size-4" />
                     </Button>
                   </li>

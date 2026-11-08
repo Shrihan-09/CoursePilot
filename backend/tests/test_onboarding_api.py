@@ -458,9 +458,34 @@ async def test_setup_wizard_progress_is_saved_validated_and_owned(ob) -> None:
         assert (await ac.get(PROFILE)).json()["first_term"] == "20249"
         await ac.put(url, json={"completed_steps": ["welcome"], "first_term": None})
         assert (await ac.get(PROFILE)).json()["first_term"] is None
+        # 10a follow-up: "What year are you?" - stored as stated; omitting leaves it.
+        await ac.put(url, json={"completed_steps": ["welcome"], "class_standing": "transfer"})
+        await ac.put(url, json={"completed_steps": ["welcome", "about"]})
+        assert (await ac.get(PROFILE)).json()["class_standing"] == "transfer"
         for bad in ({"completed_steps": ["nope"]}, {"completed_steps": [], "first_term": "2024F"},
+                    {"completed_steps": [], "class_standing": "freshman"},
                     {"completed_steps": [], "student_id": str(uuid.uuid4())}):
             assert (await ac.put(url, json=bad)).status_code == 422, bad
+        # The grades reminder is owner-resolved; dismissing stores the graded term.
+        reminder = (await ac.get("/api/v1/student/grades-reminder")).json()
+        assert set(reminder) == {"show", "term_code", "grades_date", "source_url", "kinds"}
+        dismissed = (await ac.post("/api/v1/student/grades-reminder/dismiss")).json()
+        assert dismissed["show"] is False and dismissed["term_code"] == reminder["term_code"]
     # Another account sees only its own (empty) progress.
     async with _client(_app(), ob["other"]) as ac:
         assert (await ac.get("/api/v1/student/onboarding")).json()["setup"]["completed_steps"] == []
+
+
+@requires_db
+@pytest.mark.asyncio
+async def test_the_retake_list_is_owner_resolved_and_read_only(ob) -> None:
+    """10a follow-up: GET /student/plans/retakes lists what the planner detects
+    (none for a record with nothing failed) and never writes."""
+    async with _client(_app(), ob["account"]) as ac:
+        await _profile(ac, ob)
+        r = await ac.get("/api/v1/student/plans/retakes")
+        assert r.status_code == 200, r.text
+        body = r.json()
+        assert set(body) == {"start_term", "retakes", "cost_note", "unavailable"}
+        assert body["retakes"] == [] and "$" not in body["cost_note"]
+        assert (await ac.get("/api/v1/student/plans/retakes?student_id=x")).status_code == 200

@@ -183,6 +183,12 @@ def _next_regular(term: str) -> str:
     return f"{year}9" if s in ("0", "1", "7") else f"{year + 1}1"
 
 
+def _previous_regular(term: str) -> str:
+    """The Fall/Spring term before `term` (20271 -> 20269, 20269 -> 20261)."""
+    year, s = int(term[:4]), term[4]
+    return f"{year}1" if s in ("7", "9") else f"{year - 1}9"
+
+
 def _regular(term: str) -> str:
     """The term itself when Fall/Spring, else the next Fall/Spring."""
     return term if term[4] in ("1", "9") else _next_regular(term)
@@ -775,6 +781,8 @@ class PlanningEngine:
                     self.in_progress[key] = a.term_code
         #: Passed courses the plan must repeat: a target needs a higher grade.
         self.retakes: set[str] = set()
+        #: 10a follow-up: why each retake is one, in words (shown to the student).
+        self.retake_why: dict[str, str] = {}
         self.last_term = max((a.term_code for atts in self.history.values() for a in atts),
                              default=None)
 
@@ -1048,7 +1056,7 @@ class PlanningEngine:
         self._record_progress = {n.requirement_code: _progress_of(n)
                                  for n in _walk(before.requirements)}
         self._open_at_start = {leaf.requirement_code for leaf in self._active(before.requirements)}
-        graduation = self._graduation_target(start_term)
+        graduation = self._graduation_target(start_term, student.first_term)
         self._graduation = graduation
         school = self.session.get(School, version.program.school_id)
         #: Spread task: the school's cited degree credit total (None: not modelled).
@@ -1078,6 +1086,22 @@ class PlanningEngine:
                              f"{label(start_term)}, the first semester planned. Plan from an "
                              "earlier semester or choose a later target."),
                     details={"graduation_term": graduation.term_code}))
+        # 10a follow-up: a winter/summer term the student pinned a course to
+        # (a retake's "Winter session"/"Summer" choice) is planned FOR THAT PIN
+        # ONLY - their general winter/summer preference does not change. The
+        # term may be the one just before the start (Winter 2027 before
+        # Spring 2027) but never one the record already reaches.
+        self._pin_only_terms = set()
+        if terms:
+            lower = _previous_regular(start_term)
+            for p in c.pins:
+                t = p.term_code
+                off = ((t[4] == "0" and not c.include_winter)
+                       or (t[4] == "7" and not c.include_summer))
+                if off and lower < t <= terms[-1] and t not in terms and (
+                        self.last_term is None or t > self.last_term):
+                    self._pin_only_terms.add(t)
+            terms = sorted(set(terms) | self._pin_only_terms)
         self._horizon = list(terms)
         self._choose_alternatives(current, student, version, terms, planned)
         self._initial_choices = dict(self._choice_metadata)
@@ -1105,15 +1129,17 @@ class PlanningEngine:
                     break
 
         final = self._prune(student, version, plan_terms, planned, info, current)
+        regular_or_chosen = [t for t in terms if t not in self._pin_only_terms]
         if c.pace is not None and plan_terms and c.workload_level is None:
             # With a workload level each term is already shaped by its budget;
             # levelling would move anchors and break the term's explanation.
-            final = self._level(student, version, terms, plan_terms, planned, info, final)
+            final = self._level(student, version, regular_or_chosen, plan_terms, planned, info,
+                                final)
         elif c.workload_level is not None and len(plan_terms) > 1:
             # Task 2 review: no stranded final term - the same all-or-nothing
             # compression, within each term's credit cap; nothing else moves.
-            final = self._level(student, version, terms, plan_terms, planned, info, final,
-                                compress_only=True)
+            final = self._level(student, version, regular_or_chosen, plan_terms, planned, info,
+                                final, compress_only=True)
         self._finalize_courses(plan_terms, final, info, planned)
         degree = self._free_electives(before, terms, plan_terms)
         if c.workload_level is not None:
@@ -1281,6 +1307,10 @@ class PlanningEngine:
         for k in elsewhere:
             serves.pop(k, None)
         dependencies = [k for k in dependencies if k not in elsewhere]
+        if term in self._pin_only_terms:
+            # A winter/summer term opened only for a pin: nothing else goes in.
+            serves.clear()
+            dependencies = []
         self._load_courses(set(pins_here))
         self._load_closure(set(serves) | set(dependencies) | set(pins_here))
         keys = sorted(set(serves) | set(dependencies)
@@ -1418,6 +1448,12 @@ class PlanningEngine:
                     unplaceable[code][key] = f"no_prerequisite_path:{path.reason}"
                     continue
                 self.retakes |= retake & set(path.courses)
+                for g in (b.prerequisite.evidence.grade_checks
+                          if b and b.prerequisite.evidence else []):
+                    if g["course"] in retake & set(path.courses):
+                        self.retake_why.setdefault(g["course"], (
+                            f"grade {g['earned_grade']} is below the "
+                            f"{g.get('required_grade') or 'minimum'} {key} needs"))
                 options.append((len(path.courses), key, path))
             for _, key, path in sorted(options, key=lambda o: (o[0], o[1])):
                 if have >= need:
@@ -1819,7 +1855,11 @@ class PlanningEngine:
         if key not in self.course_info or key not in evaluated:
             return "CoursePilot has no record of this course"
         a, b, ev = evaluated[key]
-        if key in self.passed and key not in self.retakes:
+        if key in self.passed and key not in self.retakes and not any(
+                p.course == key and p.term_code == term and p.retake
+                for p in self.constraints.pins):
+            # 10a follow-up: a pin marked `retake` is the student choosing
+            # WHEN to retake a course on their record - allowed.
             return "you have already completed it"
         if self._twin_taken(key, planned):
             return "the same class (cross-listed under another number) is already in your plan or record"
@@ -2309,14 +2349,17 @@ class PlanningEngine:
             met=running >= total.credits, source_title=total.title, source_url=total.url,
             source_quote=total.quote, retrieved_at=total.retrieved_at)
 
-    def _graduation_target(self, start_term: str) -> GraduationTarget | None:
+    def _graduation_target(self, start_term: str,
+                           stated_first: str | None = None) -> GraduationTarget | None:
         """The last term a personalized plan may use (Phase 7.3).
 
         An expected graduation term the student states wins. Otherwise the
         graduation target pace counts REGULAR semesters (Fall/Spring) from
         the student's entry term - their first Rutgers semester on record,
-        else the first planned one: On time 8, Early 7, No rush 10. A
-        stateless request (no pace) keeps the plain horizon."""
+        else the first semester they stated in setup (Prompt 10a follow-up:
+        a brand-new freshman, or nothing uploaded), else the first planned
+        one: On time 8, Early 7, No rush 10. A stateless request (no pace)
+        keeps the plain horizon."""
         c = self.constraints
         if c.expected_graduation_term:
             return GraduationTarget(term_code=c.expected_graduation_term,
@@ -2326,13 +2369,17 @@ class PlanningEngine:
         seen = sorted(a.term_code for atts in self.history.values() for a in atts
                       if a.credit_origin == "rutgers" and a.term_code
                       and a.term_code[4:] in ("1", "9"))
-        entry = seen[0] if seen else _regular(start_term)
+        if seen:
+            entry, source = seen[0], f"your first semester, {label(seen[0])}"
+        elif stated_first:
+            entry = _regular(stated_first)
+            source = f"the first semester you told us, {label(entry)}"
+        else:
+            entry, source = _regular(start_term), "the first planned semester"
         semesters = GRADUATION_SEMESTERS[c.pace]
         end = entry
         for _ in range(semesters - 1):
             end = _next_regular(end)
-        source = (f"your first semester, {label(entry)}" if seen
-                  else "the first planned semester")
         return GraduationTarget(term_code=end, entry_term=entry, semesters=semesters,
                                 basis=f"{semesters} semesters counted from {source}")
 
@@ -2387,7 +2434,26 @@ class PlanningEngine:
             topics=(self._topics(key, facts["term"]) if self._is_topics(key)
                     and ev.kind is OfferingEvidenceKind.CONFIRMED_IN_TERM else []),
             workload=facts.get("workload"), role=facts.get("role"),
-            role_reason=facts.get("role_reason"))
+            role_reason=facts.get("role_reason"), retake=self._retake_reason(key))
+
+    def _retake_reason(self, key: str) -> str | None:
+        """Why a planned course is a RETAKE (None: it is not one) - a course on
+        the record whose attempt does not count, or does not meet a grade a
+        later course needs (10a follow-up: listed on the Musts step)."""
+        attempts = [a for a in self.history.get(key, ()) if a.status == "completed"]
+        if not attempts:
+            return None
+        last = max(attempts, key=lambda a: a.term_code)
+        grade = (last.grade or "").upper()
+        if key in self.passed:
+            if key in self.retakes:
+                return self.retake_why.get(key, "your grade is below what a later course needs")
+            if any(p.course == key and p.retake for p in self.constraints.pins):
+                return f"you chose to retake it (grade {grade or 'on record'})"
+            return None
+        if grade == "W":
+            return "you withdrew (W)"
+        return f"grade {grade} earns no credit" if grade else "your attempt earned no credit"
 
     # ---- Phase 7.2.1: pace, target load, levelling -----------------------
 

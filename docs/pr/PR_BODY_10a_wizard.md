@@ -2,6 +2,193 @@
 
 New students now get a short step-by-step setup instead of one long preferences form. Returning students go straight Home. Planning preferences are now split into the same sections.
 
+> The original wizard (below "Starting checklist") was merged as PR #29. This PR is the **follow-up**: the owner's decisions on that STOP report, class-standing paths and retake timing. Read "Follow-up decisions" first.
+
+## Follow-up decisions
+
+| # | Item | Status | What changed |
+|---|---|---|---|
+| 1 | Rebase and migration order | **Done, differently from the brief** | See the note below the table. |
+| 2 | Program support labels | **Done** | See below. |
+| 3 | First semester as the fallback entry term | **Done** | See below. |
+| 4 | Retakes: list them, and choose when | **Done** | See below. |
+| 5 | Routing | **No change** | The rule is still "setup isn't finished → wizard". |
+| 6 | Class-standing paths and grades reminder | **Done** | See below. |
+
+### 1. Migration order
+
+The brief said task 3 is merged, but it isn't. `main` (87010aa) contains this branch (PR #29) and not `t3dn01`, which is still only on `feature/task3-dn-fixes`.
+
+So:
+- this branch was fast-forwarded to `main`;
+- `p10a01` stays on `t2quest02`;
+- the new `p10a02` follows `p10a01`;
+- `alembic heads` shows a single head, `p10a02`.
+
+Pointing `p10a01` at `t3dn01` would have broken `main`, because that revision doesn't exist there. **When task 3 merges, `t3dn01`'s `down_revision` must change from `t2quest02` to `p10a02`.** It's a one-line change on that branch.
+
+The round trip (upgrade → downgrade to `t2quest02` → upgrade) and `alembic check` pass on a throwaway database.
+
+### 2. Program support labels
+
+- **"Beta supported"** only when a version is published with `publication_basis = human_review`.
+- **"Preview — not yet reviewed"** for legacy-curated and pending-review programs. This includes CS B.A. and B.S. until you review them.
+- **"Coming soon"** for programs with nothing encoded.
+
+It's a frontend-only change in `programSupportLabel`.
+
+### 3. First semester as the fallback entry term
+
+- The order for counting the graduation target is now:
+  1. the first Rutgers Fall/Spring on the record;
+  2. otherwise **the first semester stated in the wizard**;
+  3. otherwise the first planned term.
+- The basis reads "8 semesters counted from the first semester you told us, Fall 2026".
+- The record still wins when it has a Rutgers semester.
+- The About you and Preferences hints say this now.
+
+### 4. Retakes
+
+**Endpoint: `GET /student/plans/retakes`**
+- It is read-only, owner-resolved and parameterless.
+- It runs the student's own plan with their confirmed preferences, minus retake pins, so the baseline is "no choice made". It lists the courses the planner marks as retakes. That marker is a new `PlannedCourse.retake` field holding the reason in words.
+- **Reasons:**
+  - "grade F earns no credit";
+  - "you withdrew (W)";
+  - "grade D is below the C 01:198:314 needs", taken from the prerequisite grade check.
+- **Unlocks:** the planner's own `unlocks`, meaning the courses whose prerequisite needs this course, in the plan or its targets.
+- **Options:**
+
+| Option | Term | When shown |
+|---|---|---|
+| ASAP | earliest Fall/Spring from the plan's start that has offering evidence | always |
+| Winter session | the next winter | **only** with offering evidence for that winter |
+| Next semester | the plan's first Fall/Spring | always; unselectable and labelled "Same semester as ASAP" when it is the same term |
+| Summer | the next summer | **only** with offering evidence for that summer |
+
+- **Evidence labels.** The evidence is the planner's own offering index: "Listed in the Spring 2027 Schedule of Classes", or "Historically offered (Summer 2024, Summer 2025, Summer 2026) — not yet confirmed for Summer 2027".
+- **Default.** ASAP when the retake unlocks a course the plan places within two Fall/Spring terms after the ASAP term; otherwise Next semester.
+- **Impact.** For each course whose prerequisite names the retake directly:
+  - the earliest term it could follow the chosen option, compared with the term the baseline plan gives it;
+  - shown as "This keeps 01:198:323 on track for Fall 2027" or "Summer delays 01:640:251 to Fall 2027";
+  - delay warnings also appear on options that aren't selected.
+- **Cost.** One line: "Winter and summer courses are billed separately — check Rutgers' tuition page." There are no dollar amounts.
+
+**Saving the choice**
+- The choice is saved as a pin `{course, term_code, retake: true}`.
+- **Engine:** a winter or summer term holding a pin is planned **for that pin only**, even with the student's winter/summer preference off, and the general preference is unchanged.
+- The term may be the one just before the plan start (Winter 2027 before Spring 2027), but never one the record already reaches.
+- Levelling never moves other courses into it.
+- `retake: true` also lets a pin place a course passed with too low a grade. Without the flag, the first-term pin is refused as "already completed".
+
+**Where it appears**
+- The wizard's Musts step.
+- Plan → Preferences → Musts, editable.
+- Ordinary pins are listed separately.
+
+### 6. Class-standing paths and grades reminder
+
+**"What year are you?"**
+- Added to About you, with the options First-year / Sophomore / Junior / Senior / Transfer.
+- Stored as `student.class_standing` via `PUT /student/onboarding/setup`.
+
+**Bring your record order**
+
+| Standing | Main cards | Collapsed |
+|---|---|---|
+| First-year | WebReg ("Upload your current schedule") | transcript and DN under "Later — we'll remind you after your grades come in" |
+| Transfer | DN ("Shows which transfer credits Rutgers accepted"), transcript, WebReg | none |
+| Sophomore / Junior / Senior / not stated | transcript, DN, WebReg | none |
+
+- For first-years, "Have AP or transfer credit? Upload your Degree Navigator audit now" moves the DN card up.
+- There is no CSP import.
+
+**Reminder: `GET /student/grades-reminder` and `POST /student/grades-reminder/dismiss`**
+- It shows after the latest published final-grades date in `app/core/grade_calendar.py`. Dates are copied from the Registrar's calendar and never estimated.
+- It shows only for kinds whose latest confirmed import is older than that date.
+- A kind never imported counts only when the stated first semester is no later than the graded term. That way a first-year isn't reminded before their first grades.
+- Dismissing stores the graded term (`student.grades_reminder_dismissed_term`). The reminder returns at the next term's grades date.
+- It appears as a dismissible Home alert with an **Upload** link to the new **`/records`** page. That page shows the same three cards after setup; there was no transcript upload page for students who had finished setup.
+
+### Follow-up tests
+
+**Root suite (PG):** see the results table in "Follow-up results" below.
+
+
+**New tests: backend and ingestion**
+
+`ingestion/tests/test_retake_timing.py` (7 tests, real SOC samples and the curated CS B.A.):
+- a retake is listed with its reason, unlocks and cost note, with no "$";
+- **a blocking retake defaults to ASAP**;
+- **winter appears only when offered that winter**: there are no winter or summer options without winter data, and a Winter 2026 offering adds Winter 2027, labelled historical;
+- **a summer choice shows the delay warning**;
+- **the choice is saved as a term pin and the planner respects it**: Winter 2027 is opened for Calc II only, and with no pin no winter term is planned;
+- a `retake` pin places a D-graded course, and is refused without the flag.
+
+`ingestion/tests/test_graduation_target.py` (+2 tests):
+- a stated first semester is the entry term when the record has none;
+- the record wins over a stated first semester.
+
+`backend/tests/test_grades_reminder.py` (3 tests, pure):
+- the reminder shows only after the grades date and only for older imports;
+- it stays dismissed until the next term's date;
+- a first-year with no grades yet isn't reminded.
+
+`backend/tests/test_onboarding_api.py`:
+- class standing is saved, omitted, and rejected when unknown;
+- the reminder's shape, and dismissing it;
+- the retake list's shape, and that it is read-only.
+
+The route inventory now has 3 new routes.
+
+**New tests: frontend**
+
+`frontend/tests/unit/setup-followup.test.tsx` (13 tests):
+- the **card order and collapsed sections for each standing**;
+- **the AP line reveals DN**;
+- the retake defaults, with winter only when listed;
+- the summer delay warning;
+- the choice becoming a retake pin;
+- the "same semester as ASAP" handling;
+- no dollar amounts;
+- the reminder's wording, dismissal, and hiding.
+
+The label test in `setup-wizard.test.tsx` was updated.
+
+**Browser walkthrough:** `frontend/tests/visual/wizard-followup.mjs` (local only). It ran at phone width (390px) in dark and light against a throwaway copy of the dev database, since dropped:
+- 16 screens, with **0 axe (WCAG 2 A/AA) violations, 0 overflow, 0 failed checks**;
+- it covers first-year and transfer card order, the AP reveal, a failed Calc II listed on Musts, the Summer choice saved as a retake pin, the Home reminder shown then staying dismissed after reload, and the retake editable in Preferences.
+
+### Follow-up migrations
+
+`p10a02` (revises `p10a01`) is additive and nullable:
+- `student.class_standing`: `VARCHAR(16)`, with a CHECK on the 5 values;
+- `student.grades_reminder_dismissed_term`: `VARCHAR(5)`.
+
+The downgrade drops both. `PlannedCourse.retake` and `CoursePin.retake` are JSON fields with defaults, so saved plans and profiles still load.
+
+### Follow-up: for you to decide or check
+
+1. **Task 3's migration** must be re-pointed to `p10a02` when it merges (see 1).
+2. **What counts as "blocking."** Right now it means a course the plan places within two Fall/Spring terms after the ASAP term. Tell me if you'd prefer it measured from the plan's start instead.
+3. **The impact compares the earliest possible term with the baseline plan's term,** and only for courses that name the retake directly. Later links in a chain move with their own prerequisites; this read-only check doesn't re-plan them.
+4. **A summer delay is rare in practice.** Summer comes after a Spring ASAP and before Fall, so it only delays a course the plan had put in a summer term.
+5. **The wizard writes the default as a retake pin** when Musts opens, so the plan matches what's shown. "Skip for now" drops it, and the planner then places the retake itself.
+6. **`/records`** is a new small page, so the reminder has somewhere to upload. It isn't in the navigation; tell me if it should be.
+
+### Follow-up results
+
+| Suite | Result |
+|---|---|
+| Root (backend + ingestion, PG), 2,331 tests | **2,326 passed, 5 skipped, 0 failed** (Part A: 2,313 + 5; +18 new). The single full run stopped at about 92% because the C: drive ran out of space, which errored the last tests. Tests 1-2,126 had passed by then. The 236 tests from `test_retake_timing.py` to the end were re-run on their own after space was freed: 236 passed. |
+| Frontend `tsc` / vitest / `next build` | clean / **134 passed** (121 + 13 new) / built |
+| Migration round trip + `alembic check` + single head | **OK** (`p10a02`) |
+| `wizard-followup.mjs`: phone width, dark and light, 16 screens | **0 violations, 0 overflow, 0 failed checks** |
+
+**Data and backfill:** none. Existing students keep `class_standing` and `grades_reminder_dismissed_term` as NULL.
+
+---
+
 ## Starting checklist (what existed before this PR)
 
 | Area | Before | Now |

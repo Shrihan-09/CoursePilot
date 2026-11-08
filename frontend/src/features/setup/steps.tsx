@@ -18,14 +18,17 @@ import { CAMPUSES, JOB_BANDS, commitmentSummary } from "@/lib/academic/questionn
 import { PACE_LABEL, termLabel, upcomingTerms } from "@/lib/academic/vocabulary";
 import { ApiError, api } from "@/lib/api";
 import {
+  CLASS_STANDINGS,
   IMPORT_CARD_LABEL,
   firstTermChoices,
+  recordCardOrder,
+  type RecordCardId,
   importCardState,
   programSupportLabel,
   type ImportCardState,
 } from "@/lib/setup";
 import { cn } from "@/lib/utils";
-import type { Profile, Program } from "@/types/onboarding";
+import type { ClassStanding, Profile, Program } from "@/types/onboarding";
 import {
   NO_COMMITMENTS,
   type Commitments,
@@ -35,6 +38,7 @@ import {
 import type { Pace } from "@/types/plan";
 
 import { ChipGroup, ChoiceCard, Chip, GlowRule } from "./choices";
+import { RetakeChooser } from "./retakes";
 
 export type Draft = PlanningProfileInput;
 export type SetDraft = (d: Draft) => void;
@@ -46,6 +50,7 @@ export interface AboutAnswers {
   catalogYear: string;
   declaration: "declared" | "undeclared" | null;
   firstTerm: string | null;
+  classStanding: ClassStanding | null;
   pace: Pace;
   gradTerm: string | null;
 }
@@ -56,6 +61,7 @@ export function initialAbout(profile: Profile | null | undefined, draft: Draft |
     catalogYear: profile?.program.catalog_year ?? "",
     declaration: profile?.declaration_status ?? null,
     firstTerm: profile?.first_term ?? null,
+    classStanding: profile?.class_standing ?? null,
     pace: draft?.pace ?? "balanced",
     gradTerm: draft?.expected_graduation_term ?? null,
   };
@@ -126,7 +132,14 @@ export function AboutStep({ value, onChange }: { value: AboutAnswers; onChange: 
 
       <GlowRule />
 
-      <Field label="First semester at Rutgers" hint="Shown on your profile. Your plan still counts from the courses on your record.">
+      <ChipGroup legend="What year are you?" hint="Decides which records to ask you for first.">
+        {CLASS_STANDINGS.map((c) => (
+          <Chip key={c.value} name="class_standing" label={c.label} checked={value.classStanding === c.value}
+            onChange={() => set({ classStanding: c.value })} />
+        ))}
+      </ChipGroup>
+
+      <Field label="First semester at Rutgers" hint="If your record has no Rutgers semesters yet, your graduation target counts from this one.">
         {({ id, describedBy }) => (
           <Select id={id} aria-describedby={describedBy} value={value.firstTerm ?? ""} onChange={(e) => set({ firstTerm: e.target.value || null })}>
             <option value="">Not saying</option>
@@ -179,7 +192,7 @@ const CARD_TONE: Record<ImportCardState, "neutral" | "warning" | "success"> = {
   not_added: "neutral", processing: "neutral", needs_review: "warning", confirmed: "success",
 };
 
-export function RecordStep() {
+export function RecordStep({ standing = null }: { standing?: ClassStanding | null }) {
   const client = useQueryClient();
   const transcripts = useQuery({ queryKey: ["transcript-imports"], queryFn: api.imports });
   const dn = useQuery({ queryKey: ["dn-imports"], queryFn: api.dnImports });
@@ -189,6 +202,8 @@ export function RecordStep() {
   const [dropError, setDropError] = useState<{ card: string; message: string } | null>(null);
   const [importId, setImportId] = useState<string | null>(null);
   const [manual, setManual] = useState(false);
+  // First-years: "Have AP or transfer credit?" brings the DN card forward.
+  const [showDn, setShowDn] = useState(false);
 
   const refresh = async () => {
     await Promise.all([["transcript-imports"], ["onboarding"], ["dn-imports"], ["dn-progress"], ["schedule-imports"],
@@ -223,8 +238,9 @@ export function RecordStep() {
   }
 
   const states = (list: { state: string }[] | undefined) => (list ?? []).map((i) => i.state);
-  return (
-    <div className="space-y-4">
+  const { main, later } = recordCardOrder(standing, showDn);
+  const card: Record<RecordCardId, React.ReactNode> = {
+    transcript: (
       <RecordCard
         id="transcript" icon={ScrollText} title="Unofficial transcript" what="Your completed courses."
         how={["Sign in to myRutgers yourself.", "Open your unofficial transcript and download the PDF.", "Drop it here. You check every course before it's saved."]}
@@ -244,9 +260,10 @@ export function RecordStep() {
         </Button>
         {manual && <ManualEntry />}
       </RecordCard>
-
+    ),
+    dn: (
       <RecordCard
-        id="dn" icon={GraduationCap} title="Degree Navigator audit (PDF)" what="Rutgers' own view of your requirements."
+        id="dn" icon={GraduationCap} title="Degree Navigator audit (PDF)" what={standing === "transfer" ? "Shows which transfer credits Rutgers accepted, and your requirements." : "Rutgers' own view of your requirements."}
         how={["Sign in to Degree Navigator (dn.rutgers.edu) and open your audit.",
           "In Chrome, choose Print → Save as PDF (not Microsoft Print to PDF).", "Drop the PDF here and review it."]}
         state={importCardState(states(dn.data?.imports), uploading === "dn")}
@@ -255,9 +272,10 @@ export function RecordStep() {
       >
         <DegreeNavigatorImport />
       </RecordCard>
-
+    ),
+    webreg: (
       <RecordCard
-        id="webreg" icon={CalendarDays} title="WebReg schedule (PDF)" what="What you're taking now."
+        id="webreg" icon={CalendarDays} title="WebReg schedule (PDF)" what={standing === "first_year" ? "Upload your current schedule: the classes you registered for." : "What you're taking now."}
         how={["Sign in to WebReg and open View / Print Schedule.",
           "In Chrome, choose Print → Save as PDF (not Microsoft Print to PDF).", "Drop the PDF here and review it."]}
         state={importCardState(states(webreg.data?.imports), uploading === "webreg")}
@@ -266,6 +284,28 @@ export function RecordStep() {
       >
         <ScheduleImportReview />
       </RecordCard>
+    ),
+  };
+  return (
+    <div className="space-y-4" data-standing={standing ?? "unstated"}>
+      {main.map((id) => <div key={id} data-card={id}>{card[id]}</div>)}
+      {standing === "first_year" && !showDn && (
+        <p className="text-sm text-fg-secondary">
+          Have AP or transfer credit?{" "}
+          <Button variant="link" onClick={() => setShowDn(true)}>Upload your Degree Navigator audit now</Button>
+        </p>
+      )}
+      {later.length > 0 && (
+        <details className="group rounded-lg border border-border bg-surface" data-later>
+          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 text-sm font-medium text-fg [&::-webkit-details-marker]:hidden">
+            Later — we&apos;ll remind you after your grades come in
+            <ChevronDown aria-hidden className="size-4 text-fg-muted transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="space-y-4 p-3">
+            {later.map((id) => <div key={id} data-card={id}>{card[id]}</div>)}
+          </div>
+        </details>
+      )}
 
       <details className="group rounded-lg border border-border bg-surface-elevated">
         <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 text-sm font-medium text-fg [&::-webkit-details-marker]:hidden">
@@ -449,16 +489,20 @@ export function ScheduleStep({ meta, draft, setDraft }: { meta: PlanningProfileR
 
 export function MustsStep({ draft, setDraft }: { draft: Draft; setDraft: SetDraft }) {
   const terms = upcomingTerms(new Date(), 8, { summer: draft.include_summer, winter: draft.include_winter });
+  const all = draft.pins ?? [];
+  const retakePins = all.filter((p) => p.retake);
   return (
     <div className="space-y-5">
-      <Alert tone="info" title="Retakes are found for you">
-        If your record shows a course you need to take again, CoursePilot adds it to your plan and marks it as a retake.
-        You don&apos;t need to add it here.
-      </Alert>
+      <div className="space-y-2">
+        <p className="text-sm font-semibold text-fg">Retakes</p>
+        <RetakeChooser pins={all} onChange={(pins) => setDraft({ ...draft, pins })} />
+      </div>
+      <GlowRule />
       <div className="space-y-2">
         <p className="text-sm font-semibold text-fg">Pin a course to a semester</p>
         <p className="text-xs text-fg-muted">It goes in that semester or not at all, and your plan says why.</p>
-        <PinFields value={draft.pins ?? []} terms={terms} onChange={(pins) => setDraft({ ...draft, pins })} />
+        <PinFields value={all.filter((p) => !p.retake)} terms={terms}
+          onChange={(pins) => setDraft({ ...draft, pins: [...retakePins.filter((r) => !pins.some((p) => p.course === r.course)), ...pins] })} />
       </div>
     </div>
   );

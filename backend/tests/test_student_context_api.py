@@ -450,6 +450,9 @@ async def test_no_path_parameterised_student_route_exists(app) -> None:
         # Phase 7.6: the student's own declared/undeclared statement (body has
         # no identity field; extra fields are a 422 - test_onboarding_api).
         "/api/v1/student/declaration",
+        # 10a follow-up: the grades-are-in reminder (parameterless, owner-resolved).
+        "/api/v1/student/grades-reminder",
+        "/api/v1/student/grades-reminder/dismiss",
         "/api/v1/student/onboarding",
         "/api/v1/student/onboarding/complete",
         # Prompt 10a: setup wizard progress (PUT, parameterless, owner-resolved,
@@ -462,6 +465,8 @@ async def test_no_path_parameterised_student_route_exists(app) -> None:
         "/api/v1/student/plans/context",
         "/api/v1/student/plans/current",
         "/api/v1/student/plans/generate",
+        # 10a follow-up: read-only retake listing (parameterless, owner-resolved).
+        "/api/v1/student/plans/retakes",
         "/api/v1/student/profile",
         "/api/v1/student/program",
         "/api/v1/student/progress",

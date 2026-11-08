@@ -127,9 +127,17 @@ class Student(Base, TimestampMixin):
     setup_steps: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
     # Prompt 10a: the first Rutgers semester AS THE STUDENT STATES IT ("20259").
-    # Shown back to them only; planning still derives the entry term from the
-    # record. NULL: not stated.
+    # Planning uses it as the entry term for the graduation target ONLY when
+    # the record has no Rutgers Fall/Spring semester (10a follow-up). NULL:
+    # not stated.
     first_term: Mapped[str | None] = mapped_column(String(5), nullable=True)
+
+    # 10a follow-up: "What year are you?" as stated. Orders the setup wizard's
+    # upload cards only; no engine reads it. NULL: not stated.
+    class_standing: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    # The term whose final-grades reminder the student dismissed (it returns
+    # at the next term's grades date). NULL: never dismissed.
+    grades_reminder_dismissed_term: Mapped[str | None] = mapped_column(String(5), nullable=True)
 
     courses: Mapped[list[StudentCourse]] = relationship(
         back_populates="student", cascade="all, delete-orphan"
@@ -142,6 +150,9 @@ class Student(Base, TimestampMixin):
                         "('declared','undeclared')", name="student_declaration_status_known"),
         CheckConstraint("first_term IS NULL OR length(first_term) = 5",
                         name="student_first_term_shape"),
+        CheckConstraint("class_standing IS NULL OR class_standing IN "
+                        "('first_year','sophomore','junior','senior','transfer')",
+                        name="student_class_standing_known"),
     )
 
     def __repr__(self) -> str:

@@ -109,7 +109,8 @@ export function SetupWizard() {
       else if (meta.data) setDraft(asProfileInput(meta.data.profile ?? meta.data.defaults)); // skipped: drop unsaved edits
       let list = withStepDone(done, step!);
       if (step === "about") list = withStepDone(list, "welcome");
-      await api.saveSetup(list, step === "about" ? (firstTerm ?? about?.firstTerm ?? null) : undefined);
+      await api.saveSetup(list, step === "about" ? (firstTerm ?? about?.firstTerm ?? null) : undefined,
+        step === "about" ? (about?.classStanding ?? null) : undefined);
       setDone(list);
       await client.invalidateQueries({ queryKey: ["onboarding"] });
       if (next) setStep(next);
@@ -220,7 +221,7 @@ export function SetupWizard() {
           </div>
         )}
         {step === "about" && (about ? <AboutStep value={about} onChange={setAbout} /> : <Skeleton className="h-64" />)}
-        {step === "record" && <RecordStep />}
+        {step === "record" && <RecordStep standing={about?.classStanding ?? status.data?.profile?.class_standing ?? null} />}
         {needsMeta && !metaReady && (meta.isError
           ? <Alert tone="danger">Your planning settings couldn&apos;t be loaded. You can skip this step and set it later.</Alert>
           : <Skeleton className="h-48" />)}

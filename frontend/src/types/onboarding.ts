@@ -75,6 +75,47 @@ export interface Profile {
   declaration_status?: "declared" | "undeclared" | null;
   /** Prompt 10a: the first Rutgers semester as the student stated it ("20259"). */
   first_term?: string | null;
+  /** 10a follow-up: "What year are you?" as stated; orders the record cards. */
+  class_standing?: ClassStanding | null;
+}
+
+export type ClassStanding = "first_year" | "sophomore" | "junior" | "senior" | "transfer";
+
+/** 10a follow-up: GET /student/grades-reminder. */
+export interface GradesReminder {
+  show: boolean;
+  term_code: string | null;
+  grades_date: string | null;
+  source_url: string | null;
+  kinds: ("transcript" | "degree_navigator")[];
+}
+
+/** 10a follow-up: GET /student/plans/retakes - read-only, the planner's own detection. */
+export type RetakeOptionKey = "asap" | "winter" | "next_semester" | "summer";
+export interface RetakeOption {
+  key: RetakeOptionKey;
+  term_code: string | null;
+  label: string;
+  evidence: "confirmed" | "historical" | "none";
+  evidence_label: string;
+  recommended: boolean;
+  impacts: { course: string; term_code: string | null; planned_term: string | null; delayed: boolean; message: string }[];
+}
+export interface Retake {
+  course: string;
+  title: string;
+  reason: string;
+  unlocks: { course: string; title: string | null; planned_term: string | null }[];
+  blocking: boolean;
+  default: "asap" | "next_semester";
+  options: RetakeOption[];
+  chosen_term: string | null;
+}
+export interface RetakesResponse {
+  start_term: string | null;
+  retakes: Retake[];
+  cost_note: string;
+  unavailable: string | null;
 }
 
 export type RowState = "matched" | "needs_review" | "unrecognized" | "conflict" | "invalid";

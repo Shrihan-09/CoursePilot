@@ -34,7 +34,7 @@ export function FirstTermEditor() {
   return (
     <div className="rounded-xl border border-border bg-surface-elevated p-4">
       <Field label="First semester at Rutgers" error={error ?? undefined}
-        hint="Shown on your profile. Your plan counts from the courses on your record.">
+        hint="If your record has no Rutgers semesters yet, your graduation target counts from this one.">
         {({ id, describedBy, invalid }) => (
           <Select id={id} aria-describedby={describedBy} aria-invalid={invalid} disabled={saving}
             value={current} onChange={(e) => save(e.target.value)}>

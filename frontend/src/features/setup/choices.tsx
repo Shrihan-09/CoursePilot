@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
  */
 
 /** A big tappable card for one choice in a group (single select). */
-export function ChoiceCard({ name, checked, onSelect, title, detail, body }: {
+export function ChoiceCard({ name, checked, onSelect, title, detail, body, disabled = false, children }: {
   name: string;
   checked: boolean;
   onSelect: () => void;
@@ -19,16 +19,19 @@ export function ChoiceCard({ name, checked, onSelect, title, detail, body }: {
   /** One line: e.g. its credit and major-course ranges. */
   detail?: string;
   body?: string;
+  disabled?: boolean;
+  children?: React.ReactNode;
 }) {
   return (
     <label
       className={cn(
-        "relative flex min-h-24 cursor-pointer flex-col gap-1 rounded-lg border bg-surface-elevated p-4 transition-[border-color,box-shadow] duration-200",
+        "relative flex min-h-24 flex-col gap-1 rounded-lg border bg-surface-elevated p-4 transition-[border-color,box-shadow] duration-200",
         "has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus",
-        checked ? "cp-glow-selected" : "border-border hover:border-border-strong",
+        disabled ? "cursor-not-allowed border-dashed border-border bg-surface" :
+          checked ? "cursor-pointer cp-glow-selected" : "cursor-pointer border-border hover:border-border-strong",
       )}
     >
-      <input type="radio" name={name} checked={checked} onChange={onSelect} className="sr-only" />
+      <input type="radio" name={name} checked={checked} onChange={onSelect} disabled={disabled} className="sr-only" />
       <span className="flex items-start justify-between gap-3">
         <span className="text-base font-semibold text-fg">{title}</span>
         <span
@@ -41,6 +44,7 @@ export function ChoiceCard({ name, checked, onSelect, title, detail, body }: {
       </span>
       {detail && <span className="tabular text-sm font-medium text-primary-text">{detail}</span>}
       {body && <span className="text-sm text-fg-secondary">{body}</span>}
+      {children}
     </label>
   );
 }
