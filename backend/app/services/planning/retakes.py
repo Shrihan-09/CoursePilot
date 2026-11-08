@@ -90,7 +90,7 @@ class Retake:
     title: str
     reason: str
     unlocks: tuple[Unlock, ...]
-    #: It unlocks a course the baseline plan needs in its next two terms.
+    #: It unlocks a course needed within the first two Fall/Spring terms from start.
     blocking: bool
     default: str
     options: tuple[RetakeOption, ...]
@@ -201,11 +201,11 @@ def detect_retakes(session: Session, student: Student, on: date | None = None) -
                                    d.course for d in planned[u].prerequisite.conditional_on})
                         for u in pc.unlocks)
         asap = next((t for t in regular if _evidence(index, pc.course, t)[0] != "none"), None)
-        # Blocking: the plan needs something it unlocks within the two
-        # Fall/Spring terms after the earliest retake - ASAP is then the default.
-        soon = _regular_from(_next_regular(asap), 2)[-1] if asap else None
-        blocking = soon is not None and any(
-            u.planned_term is not None and u.planned_term <= soon for u in unlocks)
+        # Anchor urgency to the plan's start, even when the retake's earliest
+        # offering is later. The first two Fall/Spring terms include start.
+        soon = regular[1]
+        blocking = any(
+            u.planned_term is not None and start <= u.planned_term <= soon for u in unlocks)
         winter = _next_season(floor, "0")
         summer = _next_season(floor, "7")
         options = []

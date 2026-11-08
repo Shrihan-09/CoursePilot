@@ -68,9 +68,12 @@ def test_a_retake_is_listed_with_why_and_what_it_unlocks(cs):  # noqa: F811
     assert "billed separately" in view.cost_note and "$" not in view.cost_note
 
 
-def test_a_blocking_retake_defaults_to_asap(cs):  # noqa: F811
+def test_a_later_unlock_does_not_make_a_retake_blocking(cs):  # noqa: F811
     (retake,) = detect_retakes(cs, _student(cs, FAILED_CALC2), NOV_2026).retakes
-    assert retake.blocking and retake.default == "asap"
+    assert not retake.blocking and retake.default == "next_semester"
+    # Start is Spring 2027; only Spring/Fall 2027 count for urgency, even
+    # though ASAP is Fall 2027 and its unlocked courses come afterward.
+    assert all(u.planned_term is None or u.planned_term > "20279" for u in retake.unlocks)
     asap = next(o for o in retake.options if o.key == "asap")
     assert asap.recommended and asap.term_code == "20279"      # Spring 2027 omits Calc II
     assert asap.evidence == "historical" and "Historically offered" in asap.evidence_label
@@ -102,6 +105,34 @@ class _Index:
         kind = (OfferingEvidenceKind.CONFIRMED_IN_TERM if term in self.offered.get(course, ())
                 else OfferingEvidenceKind.NOT_OFFERED_IN_TERM)
         return OfferingEvidence(kind=kind, target_term=term)
+
+
+@pytest.mark.parametrize("needed,blocking", [("20271", True), ("20279", True),
+                                            ("20281", False), (None, False)])
+@pytest.mark.parametrize("offered", [{"20279"}, set()])
+def test_blocking_window_starts_with_the_plan_not_the_asap_offering(
+    monkeypatch, needed, blocking, offered,
+):
+    from types import SimpleNamespace as NS
+
+    from app.services.planning import retakes
+
+    course = NS(course=CALC2, title="Calc II", retake="grade F earns no credit",
+                term_code="20279", unlocks=["01:198:206"])
+    courses = [course]
+    if needed is not None:
+        courses.append(NS(course="01:198:206", title="Discrete II", retake=None,
+                          term_code=needed, prerequisite=NS(conditional_on=[])))
+    monkeypatch.setattr(retakes, "latest_history_term", lambda *args: None)
+    monkeypatch.setattr(retakes, "get_profile", lambda *args: None)
+    monkeypatch.setattr(retakes, "_baseline", lambda *args: NS(terms=[NS(courses=courses)]))
+    monkeypatch.setattr(retakes, "OfferingIndex", lambda *args: _Index({CALC2: offered}))
+
+    view = detect_retakes(None, None, NOV_2026)
+    (retake,) = view.retakes
+    assert view.start_term == "20271"
+    assert retake.blocking is blocking
+    assert retake.default == ("asap" if blocking else "next_semester")
 
 
 def test_summer_shows_a_delay_warning_when_it_pushes_back_an_unlocked_course():
