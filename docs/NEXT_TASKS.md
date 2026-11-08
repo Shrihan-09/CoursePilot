@@ -93,6 +93,25 @@ the one CoursePilot plans against, the plan and the Degree page show a notice:
 "planned against the 2026-27 catalog". The notice names both years and never
 changes the student's catalog year by itself.
 
+## Backlog: registration (from Prompt 11 follow-ups)
+
+- **WebReg autofill helper (post-beta).** A browser extension running only on
+  the student's own device. The student logs into WebReg and approves Duo
+  themselves; the extension reads the student's "Ready for WebReg" index list
+  from CoursePilot and fills the WebReg add form. The student clicks Submit.
+  Never: storing credentials or sessions, auto-submit, auto-refresh/retry
+  loops, server-side access to WebReg. Before building, check Rutgers
+  acceptable-use wording on browser extensions/automation or ask the
+  Registrar.
+- **Show each student their registration window** from their degree credits,
+  with a reminder. The Spring 2027 tiers are on file
+  (`backend/app/core/data/registration_schedule_20271.json`,
+  `RegistrationSchedule.tier_for_credits`); done means the Plan/Schedule page
+  names the student's tier and opening time ("You register from Thu, Nov 12,
+  9:00 am - 60+ degree credits"), labelled as computed from CoursePilot's
+  credit count (Degree Navigator's degree credits are authoritative), plus a
+  reminder before it opens.
+
 ## Backlog: tooling
 
 - Free-elective credits: show them as a course slot (e.g. "one 3-credit

@@ -163,6 +163,8 @@ STUDENT_COURSE_NON_AUDIT_COLUMNS = frozenset({
     "id", "student_id", "created_at", "updated_at",
     # Phase 7.0 provenance: which confirmed import wrote the entry.
     "transcript_import_id",
+    # Prompt 11 A3: the student's "doing well" mark (suggestion ordering only).
+    "doing_well",
 })
 
 #: Columns whose value changes without the meaning changing.

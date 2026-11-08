@@ -66,6 +66,10 @@ class StudentPlanningProfile(Base, TimestampMixin):
                                                           server_default="true")
     source: Mapped[str] = mapped_column(String(32), default="student_form")
     confirmed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    #: Prompt 11 A3: "Use my grades to personalize suggestions" (default ON).
+    #: Orders the student's OWN options only; not a planning constraint.
+    use_grades_for_suggestions: Mapped[bool] = mapped_column(Boolean, default=True,
+                                                             server_default="true")
 
     def __repr__(self) -> str:
         return f"<StudentPlanningProfile {self.student_id} v{self.version} {self.pace}>"

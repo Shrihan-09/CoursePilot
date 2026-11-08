@@ -22,6 +22,7 @@ from enum import StrEnum
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -197,6 +198,10 @@ class StudentCourse(Base, TimestampMixin):
     # audit input - see app.services.audit.cache.STUDENT_COURSE_NON_AUDIT_COLUMNS.
     transcript_import_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("transcript_import.id", ondelete="SET NULL"), index=True)
+    #: Prompt 11 A3: the student's own "doing well" mark on an IN-PROGRESS
+    #: course - an ordering signal for their own suggestions only. Never an
+    #: audit input (STUDENT_COURSE_NON_AUDIT_COLUMNS), never shown to anyone else.
+    doing_well: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
     student: Mapped[Student] = relationship(back_populates="courses")
 

@@ -215,7 +215,11 @@ def unmapped_degree_navigator_issues(session: Session, student: Student,
 
 def generate_plan(session: Session, student: Student, *, start_term: str,
                   program_key_: str | None = None, catalog_year: str | None = None,
-                  constraints: PlanningConstraints | None = None) -> PlanResult:
+                  constraints: PlanningConstraints | None = None,
+                  holds: dict[str, str] | None = None,
+                  prior_choices: list | None = None) -> PlanResult:
+    """`holds` and `prior_choices` (Prompt 11 previews) carry the plan being
+    changed: its placements as soft preferences, its one-of estimates."""
     if not is_term(start_term) or start_term[4] not in "0179":
         raise InvalidStartTerm(f"{start_term!r} is not a Rutgers term code (YYYYT, T in 0/1/7/9).")
     last = latest_history_term(session, student)
@@ -250,8 +254,9 @@ def generate_plan(session: Session, student: Student, *, start_term: str,
             code="planning_toward_undeclared_major",
             message=(f"{declaration.label}. Sections restricted to declared majors are treated "
                      "as closed to you; minor and honors restrictions stay unconfirmed.")))
-    result = PlanningEngine(session, constraints, overlay).plan(student, version, target,
-                                                                start_term, assumptions)
+    result = PlanningEngine(session, constraints, overlay, holds=holds,
+                            prior_choices=prior_choices).plan(student, version, target,
+                                                              start_term, assumptions)
     result.assumptions += pending_term_assumptions(session, start_term, result)
     result.school_core = core
     result.declaration = declaration

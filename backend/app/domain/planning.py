@@ -159,6 +159,23 @@ class CoursePin(BaseModel):
     #: grade too low for a later course; a winter/summer pin term is planned
     #: for this pin only (the general winter/summer preference is unchanged).
     retake: bool = False
+    #: Prompt 11 A2: where the pin comes from. "must" - the Planning
+    #: Profile's Musts (an anchor); "lock" - the student locked a planned
+    #: course to its term (LOCKED); "selection" - the student picked this
+    #: course from its Options (USER_SELECTED). The planner treats all three
+    #: as hard; only the wording and what the Options sheet offers differ.
+    source: Literal["must", "lock", "selection"] = "must"
+
+
+class CourseAvoid(BaseModel):
+    """Prompt 11 A2: "not this course in this term" (term None: in no term) -
+    the course the student swapped out, removed, or moved out of a semester.
+    A HARD constraint, like a pin."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    course: str = Field(pattern=r"^\d{2}:\d{3}:\d{3}$")
+    term_code: str | None = Field(default=None, pattern=r"^\d{4}[0179]$")
 
 
 class GreekLife(StrEnum):
@@ -275,7 +292,7 @@ class PlanningConstraints(BaseModel):
     #: behaviour (stateless requests, older saved plans).
     workload_level: WorkloadLevel | None = None
     filler_preference: FillerPreference = FillerPreference.NO_PREFERENCE
-    pins: list[CoursePin] = Field(default_factory=list, max_length=24)
+    pins: list[CoursePin] = Field(default_factory=list, max_length=48)
     #: Phase 7.3: the term the student expects to graduate in; overrides the
     #: graduation target pace (On time / Early / No rush) when set.
     expected_graduation_term: str | None = Field(default=None, pattern=r"^\d{4}[0179]$")
@@ -299,6 +316,9 @@ class PlanningConstraints(BaseModel):
     #: the major's own subject (01:198 for CS) before a related-department
     #: elective fills the major-related range. Default ON.
     major_subject_each_term: bool = True
+    #: Prompt 11 A2: courses kept out of a term (or every term) by the
+    #: student's own plan changes (swap, remove, move, lighten).
+    avoid: list[CourseAvoid] = Field(default_factory=list, max_length=48)
 
     @model_validator(mode="after")
     def _target_within_max(self) -> "PlanningConstraints":
@@ -745,7 +765,7 @@ class PlanResult(BaseModel):
 
 
 __all__ = ["CONSTRAINTS_SOURCE", "PLANNING_ENGINE_VERSION",
-           "ConditionalDependency", "EligibilityState",
+           "ConditionalDependency", "CourseAvoid", "EligibilityState",
            "GraduationTarget", "OfferingEvidence", "OfferingEvidenceKind", "PlacementBasis",
            "PlanMetadata",
            "PlanResult", "PlanStatus", "Pace", "PlanObservation", "PlanTerm", "PlannedCourse",

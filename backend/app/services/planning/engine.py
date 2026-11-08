@@ -61,6 +61,7 @@ import math
 import re
 import uuid
 from collections import defaultdict
+from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 
 from sqlalchemy import func, select
@@ -154,6 +155,22 @@ def _plain(value: Decimal) -> Decimal:
 
 #: Prompt 09 s1.2: a course whose catalog title names it an honors course.
 HONORS_TITLE = re.compile(r"\bHONORS?\b", re.IGNORECASE)
+
+
+@dataclass
+class CandidateVerdict:
+    """Prompt 11 A1: one candidate course against the planner's gates."""
+
+    course: str
+    ok: bool
+    #: Closed code when not ok (already_taken, prerequisites_not_met, ...).
+    reason: str | None = None
+    #: The requirements it would count toward (Core codes the term's listing
+    #: does not certify removed).
+    requirements: list[str] = field(default_factory=list)
+    offering: OfferingEvidence | None = None
+    prerequisite: PrerequisiteEvidence | None = None
+    workload: WorkloadEvidence | None = None
 
 
 class InvalidAlternativeSelection(ValueError):
@@ -507,10 +524,22 @@ class PlanningEngine:
             if node.requirement_type != "any_of":
                 continue
             need = max((node.needed_count or 1) - sum(c.status in MET for c in node.children), 0)
-            costs = {c.requirement_code: (0 if c.status in MET else self._estimate(
-                c, student, version, terms, planned) if need else None) for c in node.children}
-            previous = self.alternative_choices.get(node.requirement_code, [])
             requested = self.constraints.alternative_selections.get(node.requirement_code, [])
+            prior = self.prior_choices.get(node.requirement_code)
+            if prior is not None and list(prior.selected) == list(requested) and need:
+                known = {a.code: a.estimated_terms
+                         for a in [*prior.chosen, *prior.recommended, *prior.alternatives]}
+                costs = {c.requirement_code: (0 if c.status in MET
+                                              else known.get(c.requirement_code))
+                         for c in node.children}
+                previous = self.alternative_choices.get(
+                    node.requirement_code, [a.code for a in prior.chosen])
+            else:
+                prior = None
+                costs = {c.requirement_code: (0 if c.status in MET else self._estimate(
+                    c, student, version, terms, planned) if need else None)
+                    for c in node.children}
+                previous = self.alternative_choices.get(node.requirement_code, [])
             feasible = [c for c in node.children if c.status not in MET
                         and costs.get(c.requirement_code) is not None
                         and (node.requirement_code, c.requirement_code) not in blocked]
@@ -525,6 +554,9 @@ class PlanningEngine:
             recommended = (retained + sorted([c for c in feasible if c not in retained],
                                              key=rank))[:need]
             reason = self._recommendation_reason(recommended, feasible, rank, costs)
+            if prior is not None and [c.requirement_code for c in recommended] == [
+                    a.code for a in prior.recommended]:
+                reason = prior.recommendation_reason      # same recommendation, same words
             met = [c for c in node.children if c.status in MET][:(node.needed_count or 1)]
             if requested:
                 chosen = [c for c in node.children
@@ -583,9 +615,21 @@ class PlanningEngine:
                 "alternatives are offered in the catalog's order.")
 
     def __init__(self, session: Session, constraints: PlanningConstraints | None = None,
-                 status_overlay=None) -> None:
+                 status_overlay=None, holds: dict[str, str] | None = None,
+                 prior_choices: list | None = None) -> None:
         self.session = session
         self.constraints = constraints or PlanningConstraints()
+        #: Prompt 11 A2: SOFT placements carried over from the plan being
+        #: changed (course -> term). A held course is never planned before its
+        #: term and comes first among its role's candidates there; it is a
+        #: preference, never a pin - if it no longer fits it is planned freely.
+        self.holds: dict[str, str] = dict(holds or {})
+        self._held_now: set[str] = set()
+        #: Prompt 11 A2 (previews): the plan being changed already estimated
+        #: each one-of requirement's alternatives. When the student's request
+        #: for that requirement is unchanged, its estimates and its choice are
+        #: reused instead of replayed (the replay is ~60% of a plan's time).
+        self.prior_choices = {c.requirement_code: c for c in (prior_choices or [])}
         #: Phase 7.6: the DN overlay, read again for each recommendation's trace.
         self.overlay = status_overlay or None
         if status_overlay:
@@ -1330,9 +1374,16 @@ class PlanningEngine:
         # Phase 7.3 pins: a pinned course goes in ITS term or nowhere.
         pins_here = sorted({p.course for p in c.pins if p.term_code == term} - set(planned))
         elsewhere = {p.course for p in c.pins if p.term_code != term}
-        for k in elsewhere:
+        # Prompt 11 A2: a course the student kept out of this term (avoid) is
+        # no candidate here. A held course whose term is later stays a
+        # candidate for every reading of the term (scarcity, prerequisite
+        # paths, alternatives) - it is only never PLACED before its term.
+        avoided = {a.course for a in c.avoid if a.term_code in (None, term)} - set(pins_here)
+        for k in elsewhere | avoided:
             serves.pop(k, None)
-        dependencies = [k for k in dependencies if k not in elsewhere]
+        dependencies = [k for k in dependencies if k not in elsewhere and k not in avoided]
+        self._held_now = {k for k, t in self.holds.items() if t == term}
+        held_later = {k for k, t in self.holds.items() if t > term}
         if term in self._pin_only_terms:
             # A winter/summer term opened only for a pin: nothing else goes in.
             serves.clear()
@@ -1608,7 +1659,8 @@ class PlanningEngine:
             roles = {k: (role, why) for k, role, why in ranked}
         else:
             # Fixed-content courses before generic topics courses (Phase 7.3).
-            order = sorted(ready | coreq_pending, key=lambda k: (self._is_topics(k), rank(k)))
+            order = sorted(ready | coreq_pending,
+                           key=lambda k: (self._hold_first(k), self._is_topics(k), rank(k)))
         credits = Decimal(0)
         count = 0
         topics_here = 0
@@ -1655,6 +1707,8 @@ class PlanningEngine:
                 return "skip"            # fillers only fill up to the level's credit floor
             if key in planned or self._twin_taken(key, planned):
                 return "skip"            # never the same class twice, under any number
+            if key in held_later:
+                return "skip"            # Prompt 11: held for a later term
             if major and role != "anchor" and major_count >= major_cap and not beyond_major \
                     and not (key in coreq_pending and any(
                         planned.get(p) == term for p in self._coreq_partners(key))):
@@ -1824,7 +1878,8 @@ class PlanningEngine:
                         w = self.workload_index.weight(self.course_info[k], term)
                         reaches = (credits + self.course_info[k].credits >= stop_at
                                    and weight_total + w.weight <= budget)
-                        return (filler_rank(w.delivery, c.filler_preference.value), not reaches,
+                        return (self._hold_first(k),
+                                filler_rank(w.delivery, c.filler_preference.value), not reaches,
                                 w.weight, self._is_topics(k), rank(k))
                     pick = min(pool, key=choice)
                     pool.remove(pick)
@@ -2067,6 +2122,111 @@ class PlanningEngine:
                                 components=w.components, delivery=w.delivery,
                                 basis_term=w.basis_term)
 
+    # ---- Prompt 11 A1: the validity gates, for a list of candidates --------
+
+    def prepare(self, student: Student, version: ProgramVersion) -> None:
+        """Load what the gates read (once per engine): the program's pools and
+        rules, the student's record and attributes."""
+        if getattr(self, "_prepared", None) == (student.id, version.id):
+            return
+        self._load_static(version)
+        self._history(student)
+        from app.services.scheduling.candidates import student_attributes
+        self.attributes = student_attributes(self.session, student)
+        self.undeclared = student.declaration_status == "undeclared"
+        self._restricted = {}
+        self._prepared = (student.id, version.id)
+
+    def check_candidates(self, student: Student, version: ProgramVersion, term: str,
+                         planned: dict[str, str], candidates: dict[str, list[str]],
+                         ) -> dict[str, CandidateVerdict]:
+        """Would each candidate pass EVERY gate the planner applies to a course
+        in `term`, given the plan's other courses (`planned`: course -> term)?
+
+        The same checks `_fill_term` makes, in its order: on the record or in
+        the plan (or its cross-listed twin), a program exclusion, the student's
+        own avoid, offering evidence, variable credit, prerequisites and
+        co-requisites against the record plus courses planned EARLIER, the
+        honors gate, permission-only sections, section restrictions, and the
+        term's SOC coreCodes for each Core requirement. Caps are the caller's
+        (they depend on what the candidate replaces). Read-only."""
+        self.prepare(student, version)
+        c = self.constraints
+        keys = sorted(candidates)
+        self._load_courses(set(keys))
+        self._load_closure(set(keys))
+        out: dict[str, CandidateVerdict] = {}
+        live = []
+        for key in keys:
+            why = None
+            if key not in self.course_info:
+                why = "unknown_course"
+            elif (key in self.passed and key not in self.retakes) or key in self.in_progress:
+                why = "already_taken"
+            elif key in planned:
+                why = "already_planned"
+            elif self._twin_taken(key, planned):
+                why = "cross_listed_twin_taken_or_planned"
+            elif key in self.excluded:
+                why = "excluded_by_program"
+            elif any(a.course == key and a.term_code in (None, term) for a in c.avoid):
+                why = "you_removed_it_from_this_term"
+            elif self.course_info[key].credits is None:
+                why = "variable_credit"
+            if why:
+                out[key] = CandidateVerdict(key, False, why)
+            else:
+                live.append(key)
+        evaluated = self._evaluate(student, live, term, planned)
+        placeable = [k for k in live if evaluated[k][2].kind in PLACEABLE]
+        self._prefetch_restrictions(term, placeable)
+        self._prefetch_honors(placeable)
+        self._prefetch_core(term, {k: evaluated[k][2] for k in placeable})
+        for key in live:
+            a, b, ev = evaluated[key]
+            state = self._state(a, b)
+            codes = list(candidates[key])
+            why = None
+            if ev.kind not in PLACEABLE:
+                why = ev.kind.value
+            elif not self._placeable_state(state, b):
+                needs_partner = (b is not None and b.corequisite.has_corequisite
+                                 and _partner_may_help(b.corequisite))
+                why = ("needs_a_corequisite_in_the_same_term" if needs_partner
+                       else "prerequisites_need_confirmation"
+                       if state is EligibilityState.NEEDS_CONFIRMATION
+                       else "prerequisites_not_met")
+            elif c.honors is not True and self._honors_only(term, key):
+                why = "honors_only"
+            elif self._permission_only(term, key):
+                why = "special_permission_required"
+            elif self._restriction(term, key).outcome == "not_satisfied":
+                why = "restricted_sections"
+            else:
+                for code in list(codes):
+                    if self._is_core(code) and self._core_supported(key, code, term, ev) is False:
+                        codes.remove(code)
+                if candidates[key] and not codes:
+                    why = "core_code_not_listed_for_term"
+            out[key] = CandidateVerdict(
+                key, why is None, why, requirements=codes if why is None else [],
+                offering=ev, prerequisite=self._prereq_evidence(a, b, state, planned, term),
+                workload=self._workload(key, term) if why is None else None)
+        if self.session.new or self.session.dirty or self.session.deleted:
+            raise RuntimeError("candidate checks must not modify state")
+        return out
+
+    def _hold_first(self, key: str) -> int:
+        """Prompt 11 A2: 0 for a course held in the term being filled - it
+        keeps its place ahead of its role's other candidates."""
+        return 0 if key in self._held_now else 1
+
+    def _pin_reason(self, key: str) -> str:
+        source = next((p.source for p in self.constraints.pins if p.course == key), "must")
+        return {"lock": "you locked it to this term",
+                "selection": "you chose it for this term"}.get(source,
+                                                               "you pinned it to this term")
+
     def _workload_order(self, term, ready_or_pending, pins, serves, dependency_targets,
                         rank, budget_left) -> list[tuple[str, str, str]]:
         """(course, role, why) in the Phase 7.3 fill order: anchors (pins,
@@ -2091,7 +2251,7 @@ class PlanningEngine:
             k in self.retakes or (k in self.history and k not in self.passed))), key=rank)
         take(retakes, "anchor", lambda k: "a retake you need (your recorded attempt does not "
                                          "count yet)")
-        take(pins, "anchor", lambda k: "you pinned it to this term")
+        take(pins, "anchor", self._pin_reason)
 
         def own_subject(k) -> bool:
             return bool(self.major_subject) and k.split(":")[1] == self.major_subject
@@ -2112,8 +2272,9 @@ class PlanningEngine:
         # also counts toward the major first (a science for Core AND the B.S.).
         # The caller keeps room for the term's major-related minimum, so Core
         # double-counters never crowd out the major (Task 2).
+        hold = self._hold_first
         multi = sorted((k for k in ready_or_pending if self._usable(serves.get(k, ())) >= 2),
-                       key=lambda k: (not self._major_related(k, serves), rank(k)))
+                       key=lambda k: (hold(k), not self._major_related(k, serves), rank(k)))
         if not MULTI_BEFORE_MAJOR:
             # The alternative order: major-related first (a double-counter
             # among them keeps its role), other double-counters after.
@@ -2128,7 +2289,7 @@ class PlanningEngine:
             # from an eligible 198 course.
             own = sorted((k for k in ready_or_pending
                           if own_subject(k) and self._major_related(k, serves)),
-                         key=lambda k: (self._is_topics(k), rank(k)))
+                         key=lambda k: (hold(k), self._is_topics(k), rank(k)))
             take(own[:1], "major", lambda k: major_why(k) + (
                 f"; your preference: a {k.rsplit(':', 1)[0]} course every term"))
             # The preference is about eligibility, not the budget: like an
@@ -2140,7 +2301,7 @@ class PlanningEngine:
         # opens prerequisites or is needed sooner comes first. How many the
         # term takes is the caller's (the term's major-related range).
         major = sorted((k for k in ready_or_pending if self._major_related(k, serves)),
-                       key=lambda k: (self._is_topics(k), rank(k)))       # fixed content first
+                       key=lambda k: (hold(k), self._is_topics(k), rank(k)))  # fixed content first
         take(major, "major", major_why)
         if not MULTI_BEFORE_MAJOR:
             take(sorted((k for k in ready_or_pending if self._usable(serves.get(k, ())) >= 2),
@@ -2149,7 +2310,7 @@ class PlanningEngine:
 
         def filler_key(k):
             w = self.workload_index.weight(self.course_info[k], term)
-            return (filler_rank(w.delivery, c.filler_preference.value),
+            return (hold(k), filler_rank(w.delivery, c.filler_preference.value),
                     w.weight if nearly_used else Decimal(0), self._is_topics(k), rank(k))
 
         # Fillers: everything else that completes a remaining requirement or
@@ -2589,6 +2750,10 @@ class PlanningEngine:
         credits = self.course_info[key].credits
         if facts["group"] or credits is None:
             return None
+        c = self.constraints
+        if any(p.course == key for p in c.pins) or any(
+                a.course == key and a.term_code in (None, term) for a in c.avoid):
+            return None              # Prompt 11: a pin stays; an avoided term stays empty of it
         before = {d.course for d in facts["prereq"].conditional_on
                   if d.source == "planned" and d.course in planned}
         if any(planned[p] >= term for p in before):

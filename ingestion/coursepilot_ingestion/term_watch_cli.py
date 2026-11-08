@@ -28,6 +28,9 @@ from coursepilot_ingestion.pipelines.sections import SectionIngestionPipeline
 from coursepilot_ingestion.sources.soc import SocQuery
 from coursepilot_ingestion.term_watch import classify, promotion_evidence, watch
 
+#: openSections archives - the same directory as live_cli's worker.
+LIVE_ARCHIVE = ROOT / "data" / "raw" / "live"
+
 
 def default_watch(cache: pathlib.Path = DEFAULT_CACHE):
     """The production wiring: real fetcher, pipelines, availability, baseline."""
@@ -51,8 +54,12 @@ def default_watch(cache: pathlib.Path = DEFAULT_CACHE):
             return SectionIngestionPipeline(session, cache).run(q)
 
         def load_availability(s, term):
+            # The live worker's archive (data/raw/live): the one directory the
+            # worker container mounts, and the one the sha256 dedupe compares
+            # against. `cache / "availability"` was neither - its files stayed
+            # inside the container and were lost on recreate.
             q = SocQuery(year=int(term[:4]), term=term[4], campus="NB")
-            return AvailabilityRefreshPipeline(s, cache / "availability").run(q)
+            return AvailabilityRefreshPipeline(s, LIVE_ARCHIVE).run(q)
 
         def baseline():
             ref = session.scalar(select(DataSource.raw_payload_ref).where(

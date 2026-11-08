@@ -39,6 +39,7 @@ from app.api.v1.routes.programs import PROGRAM_KEY_MAX_LENGTH, PROGRAM_KEY_PATTE
 from app.api.v1.routes.scenarios import _translate
 from app.api.v1.routes.student import _resolve, _unlinked
 from app.db.session import get_sync_sessionmaker
+from app.domain.plan_edits import PlanEdits, PlannedCourseState
 from app.domain.planning import CONSTRAINTS_SOURCE, PlanningConstraints, PlanResult
 from app.domain.planning_profile import to_constraints
 from app.services.planning.engine import InvalidAlternativeSelection
@@ -182,6 +183,13 @@ class BlockedCourseView(BaseModel):
     prerequisite_term: str | None
 
 
+class ReselectionView(BaseModel):
+    course: str
+    term_code: str
+    source: str
+    message: str
+
+
 class SavedPlanView(BaseModel):
     id: str
     created_at: datetime
@@ -191,6 +199,14 @@ class SavedPlanView(BaseModel):
     freshness: Freshness
     blocked_courses: list[BlockedCourseView]
     result: PlanResult
+    #: Prompt 11: the plan's revision (a preview applies only to it), the
+    #: student's own edits, each planned course's state, the student's choices
+    #: the plan could not keep, and what "Undo last change" would undo.
+    revision: int = 1
+    edits: PlanEdits = Field(default_factory=PlanEdits)
+    course_states: list[PlannedCourseState] = Field(default_factory=list)
+    needs_reselection: list[ReselectionView] = Field(default_factory=list)
+    last_change: str | None = None
 
 
 class CurrentPlanResponse(BaseModel):
@@ -216,7 +232,11 @@ def _saved_view(saved: SavedPlan) -> SavedPlanView:
         freshness=Freshness(state="stale" if saved.stale_reasons else "current",
                             reasons=saved.stale_reasons),
         blocked_courses=[BlockedCourseView(**vars(b)) for b in saved.blocked_courses],
-        result=saved.result)
+        result=saved.result, revision=saved.revision,
+        edits=PlanEdits.model_validate(saved.edits or {}),
+        course_states=saved.course_states,
+        needs_reselection=[ReselectionView(**r) for r in saved.needs_reselection],
+        last_change=saved.last_change)
 
 
 @router.get("/context", response_model=PlanningContextView,
