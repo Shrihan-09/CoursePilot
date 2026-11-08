@@ -184,6 +184,23 @@ different kinds of "loading":
 - **7.1 builds the component only.** It connects to the Planning Engine UI in
   the core-product phase.
 
+### Glow accents (Prompt 10a)
+
+Tokens `--glow-accent`, `--glow-accent-2` (logo core and highlight blue),
+`--glow-edge` and `--glow-halo` (strength; stronger in dark mode), in
+`globals.css`, reusable on Home and the progress rings. Classes, all plain CSS:
+
+- `.cp-glow-card` - the active card: a 1px conic-gradient ring whose angle
+  (`@property --cp-glow-angle`) turns once every 9s, so light travels round
+  the edge, plus a soft outer halo.
+- `.cp-glow-fill` - progress fill (blue gradient with a glow).
+- `.cp-glow-selected` - a selected choice card or chip: blue edge glow.
+- `.cp-glow-rule` - a faint glowing divider between sections.
+
+The glow is only ever on borders and halos, never behind text, so text
+contrast is unchanged (AA verified by axe in light and dark). Under
+`prefers-reduced-motion` the ring is a static gradient.
+
 ## Board layout (Sunsama-inspired refresh)
 
 The planning surfaces borrow a daily-planner's *structure and motion*, not its

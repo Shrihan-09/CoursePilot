@@ -62,18 +62,30 @@ async function signIn(context, subject) {
   return page;
 }
 
+// Prompt 10a setup wizard: Welcome -> About you -> Bring your record.
 async function chooseCs(page) {
-  await page.getByRole("button", { name: /get started/i }).click();
-  await page.getByRole("radio").first().waitFor();
+  await page.getByRole("button", { name: /^start/i }).click();
   await page.getByPlaceholder("Search programs").fill("computer science");
-  await page.getByRole("radio").first().click();
-  await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByRole("heading", { name: /add the courses/i }).waitFor();
+  await page.locator("label:has(input[name=program])").first().click();
+  await page.getByRole("button", { name: /^next/i }).click();
+  await page.locator("#setup-step-title", { hasText: "Bring your record" }).waitFor();
 }
 
 async function upload(page, file) {
-  await page.getByRole("button", { name: /upload unofficial transcript/i }).click();
+  await page.getByRole("button", { name: /add/i }).first().click();   // the transcript card
   await page.setInputFiles("#transcript-file", path.join(FIX, file));
+}
+
+// The remaining wizard steps, skipped, then Build my plan -> Home.
+async function finishWizard(page) {
+  await page.getByRole("button", { name: /^next/i }).click();          // leave Bring your record
+  for (const title of ["How intense?", "Your week", "Schedule shape", "Musts"]) {
+    await page.locator("#setup-step-title", { hasText: title }).waitFor();
+    await page.getByRole("button", { name: "Skip for now" }).click();
+  }
+  await page.locator("#setup-step-title", { hasText: "Build my plan" }).waitFor();
+  await page.getByRole("button", { name: /build my plan/i }).click();
+  await page.waitForURL(/\/home/, { timeout: 120000 });
 }
 
 for (const scheme of ["light", "dark"]) {
@@ -98,18 +110,9 @@ for (const scheme of ["light", "dark"]) {
   // Onboarding: standard transcript through to completion.
   const page = await signIn(context, `qa-${stamp}`);
   await shot(page, `${scheme}-onboarding-welcome`);
-  await page.getByRole("button", { name: /get started/i }).click();
-  await page.getByRole("radio").first().waitFor();
-  await shot(page, `${scheme}-onboarding-program`, { full: true });
-  await page.getByPlaceholder("Search programs").fill("computer science");
-  await page.getByRole("radio").first().click();
-  await shot(page, `${scheme}-onboarding-program-selected`);
-  await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByRole("heading", { name: /add the courses/i }).waitFor();
+  await chooseCs(page);
   await shot(page, `${scheme}-onboarding-history`);
-  await page.getByRole("button", { name: /upload unofficial transcript/i }).click();
-  await shot(page, `${scheme}-onboarding-upload`);
-  await page.setInputFiles("#transcript-file", path.join(FIX, "standard.pdf"));
+  await upload(page, "standard.pdf");
   await page.getByRole("heading", { name: /review your transcript/i }).waitFor({ timeout: 60000 });
   await shot(page, `${scheme}-review-needs-you`, { full: true });
   for (const [vp, size] of Object.entries(VIEWPORTS)) {
@@ -134,10 +137,9 @@ for (const scheme of ["light", "dark"]) {
   }
   await shot(page, `${scheme}-review-ready`, { full: true });
   await page.getByRole("button", { name: /confirm and save/i }).click();
-  await page.getByRole("heading", { name: /you.re set up/i }).waitFor({ timeout: 30000 });
-  await shot(page, `${scheme}-onboarding-complete`);
-  await page.getByRole("button", { name: /go to coursepilot/i }).click();
-  await page.waitForURL(/\/home/);
+  await page.getByText("Confirmed").first().waitFor({ timeout: 30000 });
+  await shot(page, `${scheme}-onboarding-confirmed`);
+  await finishWizard(page);
   await page.getByRole("heading", { name: /your plan at a glance/i }).waitFor();
   for (const [vp, size] of Object.entries(VIEWPORTS)) {
     await page.setViewportSize(size);
@@ -160,14 +162,14 @@ for (const scheme of ["light", "dark"]) {
   // Error, empty, dense and interleaved states on fresh accounts.
   const p2 = await signIn(context, `qa-${stamp}-b`);
   await chooseCs(p2);
+  await p2.getByRole("button", { name: /add/i }).first().click();     // open the transcript card
   await p2.getByRole("button", { name: /enter courses yourself/i }).click();
   await shot(p2, `${scheme}-manual-empty`, { full: true });
   await p2.fill("input.code", "01:999:000");
   await p2.getByRole("button", { name: "Add course" }).click();
   await p2.getByText(/no course with this code/i).waitFor();
   await shot(p2, `${scheme}-manual-error`, { full: true });
-  await p2.getByRole("button", { name: "Back" }).click();
-  await upload(p2, "not-a-pdf.png");
+  await p2.setInputFiles("#transcript-file", path.join(FIX, "not-a-pdf.png"));
   await p2.getByText(/isn.t a PDF/i).waitFor();
   await shot(p2, `${scheme}-upload-error`);
   await p2.setInputFiles("#transcript-file", path.join(FIX, "dense.pdf"));
@@ -189,7 +191,7 @@ for (const scheme of ["light", "dark"]) {
     await new Promise((r) => setTimeout(r, 4000));
     await route.continue();
   });
-  await p4.getByRole("button", { name: /get started/i }).click();
+  await p4.getByRole("button", { name: /^start/i }).click();
   await shot(p4, `${scheme}-program-loading`, { audit: false });
 
   // Motion language.

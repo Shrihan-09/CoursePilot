@@ -21,6 +21,7 @@ from decimal import Decimal
 from enum import StrEnum
 
 from sqlalchemy import (
+    JSON,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -120,6 +121,16 @@ class Student(Base, TimestampMixin):
     # read as declared, the behaviour before 7.6. Never inferred.
     declaration_status: Mapped[str | None] = mapped_column(String(16), nullable=True)
 
+    # Prompt 10a: the setup wizard steps the student has finished or skipped
+    # (step keys), so leaving and coming back resumes at the first unfinished
+    # one. Navigation state only: no academic engine reads it.
+    setup_steps: Mapped[list | None] = mapped_column(JSON, nullable=True)
+
+    # Prompt 10a: the first Rutgers semester AS THE STUDENT STATES IT ("20259").
+    # Shown back to them only; planning still derives the entry term from the
+    # record. NULL: not stated.
+    first_term: Mapped[str | None] = mapped_column(String(5), nullable=True)
+
     courses: Mapped[list[StudentCourse]] = relationship(
         back_populates="student", cascade="all, delete-orphan"
     )
@@ -129,6 +140,8 @@ class Student(Base, TimestampMixin):
         UniqueConstraint("external_ref", name="uq_student_external_ref"),
         CheckConstraint("declaration_status IS NULL OR declaration_status IN "
                         "('declared','undeclared')", name="student_declaration_status_known"),
+        CheckConstraint("first_term IS NULL OR length(first_term) = 5",
+                        name="student_first_term_shape"),
     )
 
     def __repr__(self) -> str:

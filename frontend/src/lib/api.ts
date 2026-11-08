@@ -98,6 +98,10 @@ export const api = {
   profile: () => request<Profile>("/student/profile"),
   changeProgram: (program_key: string, catalog_year: string) =>
     request<Profile>("/student/program", json("PUT", { program_key, catalog_year })),
+  /** Prompt 10a: wizard progress; omit firstTerm to leave it unchanged. */
+  saveSetup: (completed_steps: string[], firstTerm?: string | null) =>
+    request<{ steps: string[]; completed_steps: string[] }>("/student/onboarding/setup",
+      json("PUT", firstTerm === undefined ? { completed_steps } : { completed_steps, first_term: firstTerm })),
   completeOnboarding: () => request<Profile>("/student/onboarding/complete", { method: "POST" }),
   setPlacement: (math_placement: string | null) =>
     request<Profile>("/student/placement", json("PUT", { math_placement })),

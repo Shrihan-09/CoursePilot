@@ -452,6 +452,9 @@ async def test_no_path_parameterised_student_route_exists(app) -> None:
         "/api/v1/student/declaration",
         "/api/v1/student/onboarding",
         "/api/v1/student/onboarding/complete",
+        # Prompt 10a: setup wizard progress (PUT, parameterless, owner-resolved,
+        # extra="forbid" body of step keys - test_onboarding_api).
+        "/api/v1/student/onboarding/setup",
         "/api/v1/student/placement",
         "/api/v1/student/planning-profile",
         "/api/v1/student/planning-readiness",

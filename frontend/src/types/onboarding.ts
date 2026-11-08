@@ -73,6 +73,8 @@ export interface Profile {
   math_placement?: string | null;
   /** Phase 7.6: "undeclared" = the program is the major the student intends to declare. */
   declaration_status?: "declared" | "undeclared" | null;
+  /** Prompt 10a: the first Rutgers semester as the student stated it ("20259"). */
+  first_term?: string | null;
 }
 
 export type RowState = "matched" | "needs_review" | "unrecognized" | "conflict" | "invalid";
@@ -162,6 +164,8 @@ export interface Onboarding {
   history_counts: Record<string, number>;
   open_imports: ImportSummary[];
   next_steps: string[];
+  /** Prompt 10a: setup wizard steps finished or skipped (navigation state only). */
+  setup?: { steps: string[]; completed_steps: string[] };
 }
 
 export interface Entry {

@@ -134,7 +134,7 @@ export function CommitmentFields({ meta, value, onChange, idPrefix }: {
   );
 }
 
-function BlockedTimes({ value, onChange }: { value: BlockedTime[]; onChange: (v: BlockedTime[]) => void }) {
+export function BlockedTimes({ value, onChange }: { value: BlockedTime[]; onChange: (v: BlockedTime[]) => void }) {
   const [kind, setKind] = useState<BlockKind>("job");
   const [days, setDays] = useState<DayCode[]>([]);
   const [start, setStart] = useState("");
@@ -182,7 +182,7 @@ function BlockedTimes({ value, onChange }: { value: BlockedTime[]; onChange: (v:
   );
 }
 
-function TermOverrides({ meta, value, onChange, terms, level }: {
+export function TermOverrides({ meta, value, onChange, terms, level }: {
   meta: PlanningProfileResponse; value: TermAnswers[]; onChange: (v: TermAnswers[]) => void; terms: string[]; level: WorkloadLevel | null;
 }) {
   const free = terms.filter((t) => !value.some((o) => o.term_code === t));
@@ -254,7 +254,7 @@ function TermOverrides({ meta, value, onChange, terms, level }: {
   );
 }
 
-function PinFields({ value, onChange, terms }: { value: CoursePin[]; onChange: (v: CoursePin[]) => void; terms: string[] }) {
+export function PinFields({ value, onChange, terms }: { value: CoursePin[]; onChange: (v: CoursePin[]) => void; terms: string[] }) {
   const [course, setCourse] = useState("");
   const [term, setTerm] = useState(terms[0] ?? "");
   const valid = /^\d{2}:\d{3}:\d{3}$/.test(course.trim());
@@ -292,7 +292,7 @@ function PinFields({ value, onChange, terms }: { value: CoursePin[]; onChange: (
   );
 }
 
-function CreditRange({ min, max, levelText, onChange, name }: {
+export function CreditRange({ min, max, levelText, onChange, name }: {
   min: number | null; max: number | null; levelText: string; name: string;
   onChange: (min: number | null, max: number | null) => void;
 }) {
@@ -316,20 +316,15 @@ function CreditRange({ min, max, levelText, onChange, name }: {
   );
 }
 
-export function QuestionnaireFields({ meta, value, onChange, terms, level, pace }: {
-  meta: PlanningProfileResponse;
-  value: QuestionnaireValue;
-  onChange: (v: QuestionnaireValue) => void;
-  /** Semesters the student may give separate answers for. */
-  terms: string[];
-  level: WorkloadLevel | null;
-  pace: Pace | null;
-}) {
+type SectionProps = { meta: PlanningProfileResponse; value: QuestionnaireValue; onChange: (v: QuestionnaireValue) => void };
+type ValueProps = Omit<SectionProps, "meta">;
+
+/** Credits and major-related courses per semester (Intensity). */
+export function RangeQuestions({ meta, value, onChange, level, pace }: SectionProps & { level: WorkloadLevel | null; pace: Pace | null }) {
   const conflict = paceLevelConflict(pace, level);
   const range = meta.workload_levels?.find((w) => w.value === (level ?? "balanced"));
   const levelMajor = range ? (range.major_min === range.major_max ? `${range.major_min}` : `${range.major_min}-${range.major_max}`) : "";
   const focus = MAJOR_FOCUS.find((f) => f.min === value.major_min && f.max === value.major_max) ?? MAJOR_FOCUS[0]!;
-  const shape = value.schedule_shape;
   return (
     <div className="space-y-6">
       {conflict && <Alert tone="warning">{conflict}</Alert>}
@@ -350,26 +345,54 @@ export function QuestionnaireFields({ meta, value, onChange, terms, level, pace 
           ))}
         </div>
       </fieldset>
-      {value.pins && (
-        <fieldset className="space-y-2">
-          <legend className="text-base font-semibold text-fg">Any course you need to retake or must take in a semester? (optional)</legend>
-          <p className="text-sm text-fg-muted">Retakes from your record are added for you. A course you add here goes in that semester or not at all, and your plan says why.</p>
-          <PinFields value={value.pins} terms={terms} onChange={(p) => onChange({ ...value, pins: p })} />
-        </fieldset>
-      )}
+    </div>
+  );
+}
+
+/** Pins (Musts). Shown only where the value carries pins. */
+export function PinQuestion({ value, onChange, terms }: ValueProps & { terms: string[] }) {
+  if (!value.pins) return null;
+  return (
+    <fieldset className="space-y-2">
+      <legend className="text-base font-semibold text-fg">Any course you need to retake or must take in a semester? (optional)</legend>
+      <p className="text-sm text-fg-muted">Retakes from your record are added for you. A course you add here goes in that semester or not at all, and your plan says why.</p>
+      <PinFields value={value.pins} terms={terms} onChange={(p) => onChange({ ...value, pins: p })} />
+    </fieldset>
+  );
+}
+
+/** Commitments and honors (Your week). */
+export function WeekQuestions({ meta, value, onChange }: SectionProps) {
+  return (
+    <div className="space-y-6">
       <fieldset className="space-y-2">
         <legend className="text-base font-semibold text-fg">What else takes your week? (optional)</legend>
         {meta.commitments_text && <p className="text-sm text-fg-muted">{meta.commitments_text}</p>}
         <CommitmentFields meta={meta} idPrefix="usual" value={value.commitments}
           onChange={(c) => onChange({ ...value, commitments: c })} />
       </fieldset>
-      <fieldset className="space-y-1">
-        <legend className="text-base font-semibold text-fg">Are you in an honors program? (optional)</legend>
-        <p className="text-sm text-fg-muted">Courses open only to honors programs are planned only if you are in one. CoursePilot can&apos;t verify membership, so they still need your confirmation.</p>
-        <Radio name="honors" label="Yes" checked={value.honors === true} onChange={() => onChange({ ...value, honors: true })} />
-        <Radio name="honors" label="No" checked={value.honors === false} onChange={() => onChange({ ...value, honors: false })} />
-        <Radio name="honors" label="Skip (treated as no)" checked={value.honors === null} onChange={() => onChange({ ...value, honors: null })} />
-      </fieldset>
+      <HonorsQuestion value={value} onChange={onChange} />
+    </div>
+  );
+}
+
+export function HonorsQuestion({ value, onChange }: ValueProps) {
+  return (
+    <fieldset className="space-y-1">
+      <legend className="text-base font-semibold text-fg">Are you in an honors program? (optional)</legend>
+      <p className="text-sm text-fg-muted">Courses open only to honors programs are planned only if you are in one. CoursePilot can&apos;t verify membership, so they still need your confirmation.</p>
+      <Radio name="honors" label="Yes" checked={value.honors === true} onChange={() => onChange({ ...value, honors: true })} />
+      <Radio name="honors" label="No" checked={value.honors === false} onChange={() => onChange({ ...value, honors: false })} />
+      <Radio name="honors" label="Skip (treated as no)" checked={value.honors === null} onChange={() => onChange({ ...value, honors: null })} />
+    </fieldset>
+  );
+}
+
+/** Times off, campuses and fixed weekly times (Schedule shape). */
+export function ShapeQuestions({ value, onChange }: ValueProps) {
+  const shape = value.schedule_shape;
+  return (
+    <div className="space-y-6">
       {shape && (
         <fieldset className="space-y-1">
           <legend className="text-base font-semibold text-fg">When do you NOT want class? (optional)</legend>
@@ -381,34 +404,76 @@ export function QuestionnaireFields({ meta, value, onChange, terms, level, pace 
             onChange={(e) => onChange({ ...value, schedule_shape: { ...shape, latest_end: e.target.checked ? "18:00" : null } })} />
         </fieldset>
       )}
-      <fieldset className="space-y-1">
-        <legend className="text-base font-semibold text-fg">Preferred campuses (optional)</legend>
-        <p className="text-sm text-fg-muted">Schedules on these campuses are listed first; no section is ruled out.</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3">
-          {CAMPUSES.map((c) => (
-            <Checkbox key={c.code} label={c.label} checked={value.preferred_campuses.includes(c.code)}
-              onChange={(e) => onChange({ ...value, preferred_campuses: e.target.checked
-                ? [...value.preferred_campuses, c.code] : value.preferred_campuses.filter((x) => x !== c.code) })} />
-          ))}
-        </div>
-      </fieldset>
-      <fieldset className="space-y-2">
-        <legend className="text-base font-semibold text-fg">Fixed weekly times (optional)</legend>
-        <p className="text-sm text-fg-muted">Job shifts, club meetings and other set times. When you build a schedule, no class is placed during them.</p>
-        <BlockedTimes value={value.blocked_times} onChange={(b) => onChange({ ...value, blocked_times: b })} />
-      </fieldset>
-      <fieldset className="space-y-2">
-        <legend className="text-base font-semibold text-fg">A semester that&apos;s different (optional)</legend>
-        <p className="text-sm text-fg-muted">Change the number of major-related courses, your commitments or your fixed times for one semester only.</p>
-        <TermOverrides meta={meta} value={value.term_overrides} terms={terms} level={level}
-          onChange={(t) => onChange({ ...value, term_overrides: t })} />
-      </fieldset>
-      <div>
-        <Button type="button" variant="ghost" size="sm" onClick={() => onChange(clearedAnswers(value))}>
-          <Trash2 aria-hidden className="size-4" /> Clear my answers
-        </Button>
-        <p className="text-xs text-fg-muted">Sets every answer above back to its default. Saved when you save.</p>
+      <CampusQuestion value={value} onChange={onChange} />
+      <BlockedTimesQuestion value={value} onChange={onChange} />
+    </div>
+  );
+}
+
+export function BlockedTimesQuestion({ value, onChange }: ValueProps) {
+  return (
+    <fieldset className="space-y-2">
+      <legend className="text-base font-semibold text-fg">Fixed weekly times (optional)</legend>
+      <p className="text-sm text-fg-muted">Job shifts, club meetings and other set times. When you build a schedule, no class is placed during them.</p>
+      <BlockedTimes value={value.blocked_times} onChange={(b) => onChange({ ...value, blocked_times: b })} />
+    </fieldset>
+  );
+}
+
+export function CampusQuestion({ value, onChange }: ValueProps) {
+  return (
+    <fieldset className="space-y-1">
+      <legend className="text-base font-semibold text-fg">Preferred campuses (optional)</legend>
+      <p className="text-sm text-fg-muted">Schedules on these campuses are listed first; no section is ruled out.</p>
+      <div className="grid grid-cols-2 sm:grid-cols-3">
+        {CAMPUSES.map((c) => (
+          <Checkbox key={c.code} label={c.label} checked={value.preferred_campuses.includes(c.code)}
+            onChange={(e) => onChange({ ...value, preferred_campuses: e.target.checked
+              ? [...value.preferred_campuses, c.code] : value.preferred_campuses.filter((x) => x !== c.code) })} />
+        ))}
       </div>
+    </fieldset>
+  );
+}
+
+/** One semester that's different. */
+export function TermOverrideQuestion({ meta, value, onChange, terms, level }: SectionProps & { terms: string[]; level: WorkloadLevel | null }) {
+  return (
+    <fieldset className="space-y-2">
+      <legend className="text-base font-semibold text-fg">A semester that&apos;s different (optional)</legend>
+      <p className="text-sm text-fg-muted">Change the number of major-related courses, your commitments or your fixed times for one semester only.</p>
+      <TermOverrides meta={meta} value={value.term_overrides} terms={terms} level={level}
+        onChange={(t) => onChange({ ...value, term_overrides: t })} />
+    </fieldset>
+  );
+}
+
+export function ClearAnswers({ value, onChange }: ValueProps) {
+  return (
+    <div>
+      <Button type="button" variant="ghost" size="sm" onClick={() => onChange(clearedAnswers(value))}>
+        <Trash2 aria-hidden className="size-4" /> Clear my answers
+      </Button>
+      <p className="text-xs text-fg-muted">Sets every questionnaire answer back to its default. Saved when you save.</p>
+    </div>
+  );
+}
+
+/** The whole questionnaire in one column. */
+export function QuestionnaireFields({ meta, value, onChange, terms, level, pace }: SectionProps & {
+  /** Semesters the student may give separate answers for. */
+  terms: string[];
+  level: WorkloadLevel | null;
+  pace: Pace | null;
+}) {
+  return (
+    <div className="space-y-6">
+      <RangeQuestions meta={meta} value={value} onChange={onChange} level={level} pace={pace} />
+      <PinQuestion value={value} onChange={onChange} terms={terms} />
+      <WeekQuestions meta={meta} value={value} onChange={onChange} />
+      <ShapeQuestions value={value} onChange={onChange} />
+      <TermOverrideQuestion meta={meta} value={value} onChange={onChange} terms={terms} level={level} />
+      <ClearAnswers value={value} onChange={onChange} />
     </div>
   );
 }

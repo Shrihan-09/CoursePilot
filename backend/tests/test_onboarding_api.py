@@ -59,9 +59,11 @@ async def test_a_new_account_is_told_to_create_a_profile(ob) -> None:
     async with _client(_app(), ob["account"]) as ac:
         status = await ac.get("/api/v1/student/onboarding")
         assert status.status_code == 200
-        assert status.json() == {"state": "needs_profile", "profile": None,
-                                 "history_counts": {}, "open_imports": [],
-                                 "next_steps": ["create_profile"]}
+        body = status.json()
+        assert body.pop("setup")["completed_steps"] == []
+        assert body == {"state": "needs_profile", "profile": None,
+                        "history_counts": {}, "open_imports": [],
+                        "next_steps": ["create_profile"]}
         context = await ac.get("/api/v1/student/context")
         assert context.status_code == 409
         body = context.json()
@@ -429,3 +431,36 @@ async def test_onboarding_walks_to_complete(ob) -> None:
         again = await ac.post("/api/v1/student/onboarding/complete")
         assert again.json()["onboarding_completed_at"] == done.json()["onboarding_completed_at"]
         assert (await ac.get("/api/v1/student/onboarding")).json()["state"] == "complete"
+
+
+@requires_db
+async def test_setup_wizard_progress_is_saved_validated_and_owned(ob) -> None:
+    """Prompt 10a: the wizard resumes at the first unfinished step. Progress is
+    navigation state only; the stated first semester is shown, never derived."""
+    url = "/api/v1/student/onboarding/setup"
+    async with _client(_app(), ob["account"]) as ac:
+        fresh = (await ac.get("/api/v1/student/onboarding")).json()
+        assert fresh["setup"]["completed_steps"] == []
+        assert fresh["setup"]["steps"][:3] == ["welcome", "about", "record"]
+        # Before a record exists there is nothing to save progress on.
+        assert (await ac.put(url, json={"completed_steps": ["welcome"]})).status_code == 409
+        await _profile(ac, ob)
+        ok = await ac.put(url, json={"completed_steps": ["record", "about", "welcome", "about"],
+                                     "first_term": "20249"})
+        assert ok.status_code == 200
+        # Stored in wizard order, once each.
+        assert ok.json()["completed_steps"] == ["welcome", "about", "record"]
+        st = (await ac.get("/api/v1/student/onboarding")).json()
+        assert st["setup"]["completed_steps"] == ["welcome", "about", "record"]
+        assert st["profile"]["first_term"] == "20249"
+        # Omitting first_term leaves it; null clears it.
+        await ac.put(url, json={"completed_steps": ["welcome", "about", "record", "intensity"]})
+        assert (await ac.get(PROFILE)).json()["first_term"] == "20249"
+        await ac.put(url, json={"completed_steps": ["welcome"], "first_term": None})
+        assert (await ac.get(PROFILE)).json()["first_term"] is None
+        for bad in ({"completed_steps": ["nope"]}, {"completed_steps": [], "first_term": "2024F"},
+                    {"completed_steps": [], "student_id": str(uuid.uuid4())}):
+            assert (await ac.put(url, json=bad)).status_code == 422, bad
+    # Another account sees only its own (empty) progress.
+    async with _client(_app(), ob["other"]) as ac:
+        assert (await ac.get("/api/v1/student/onboarding")).json()["setup"]["completed_steps"] == []

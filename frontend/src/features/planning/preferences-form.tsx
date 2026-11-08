@@ -1,15 +1,26 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Trash2 } from "lucide-react";
+import { ChevronDown, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Alert } from "@/components/ui/feedback";
 import { Checkbox, Field, Input, Radio, Select } from "@/components/ui/field";
 import { api } from "@/lib/api";
+import { commitmentSummary } from "@/lib/academic/questionnaire";
 import { DAY_NAME } from "@/lib/academic/schedule-time";
 import { GOAL_KIND, termLabel, upcomingTerms } from "@/lib/academic/vocabulary";
-import { answersInvalid, QuestionnaireFields, type QuestionnaireValue } from "@/features/planning/questionnaire-fields";
+import {
+  answersInvalid,
+  BlockedTimesQuestion,
+  CampusQuestion,
+  ClearAnswers,
+  RangeQuestions,
+  TermOverrideQuestion,
+  WeekQuestions,
+  type QuestionnaireValue,
+} from "@/features/planning/questionnaire-fields";
 import type {
   AdditionalGoal,
   CoursePin,
@@ -24,7 +35,9 @@ import type { Pace } from "@/types/plan";
 import type { DayCode } from "@/types/schedule";
 
 /**
- * Planning preferences, as a plain guided form (Phase 7.2.1).
+ * Planning preferences, as a plain guided form (Phase 7.2.1), grouped (Prompt 10a)
+ * into the same sections as the setup wizard: About you, Intensity, Your week,
+ * Schedule shape, Musts and More.
  *
  * Deliberately NOT an AI interview: no model is involved. It asks only for
  * what CoursePilot cannot already know (the record is never re-asked), and
@@ -41,12 +54,15 @@ export function PreferencesForm({
   busy,
   submitLabel,
   onSubmit,
+  openSection = "about",
 }: {
   meta: PlanningProfileResponse;
   initial: PlanningProfileInput;
   busy: boolean;
   submitLabel: string;
   onSubmit: (value: PlanningProfileInput) => void;
+  /** Which section starts open (the rest are collapsed so the page isn't one wall of fields). */
+  openSection?: PrefSectionId;
 }) {
   const programs = useQuery({ queryKey: ["programs"], queryFn: api.programs });
   const [pace, setPace] = useState<Pace>(initial.pace);
@@ -95,9 +111,12 @@ export function PreferencesForm({
   const valid = !Object.values(errors).some(Boolean);
   const programChoices = (programs.data?.programs ?? []).filter((p) => p.versions.some((v) => v.support_status !== "unavailable"));
 
+  const needsLevel = <p className="text-sm text-fg-muted">Choose how intense your semesters should be (under Intensity) to answer these.</p>;
+  const errorList = Object.values(errors).filter(Boolean) as string[];
+
   return (
     <form
-      className="space-y-6"
+      className="space-y-3"
       onSubmit={(e) => {
         e.preventDefault();
         if (!valid) return;
@@ -115,227 +134,264 @@ export function PreferencesForm({
         });
       }}
     >
-      <fieldset className="space-y-2">
-        <legend className="text-base font-semibold text-fg">When do you want to graduate?</legend>
-        <p className="text-sm text-fg-muted">This sets how many semesters your plan has, counted from your first semester. On time is the default; CoursePilot never assumes you want to finish early.</p>
-        <Field label="Expected graduation term (optional)" hint="Overrides the choice below when set.">
-          {({ id, describedBy }) => (
-            <Select id={id} aria-describedby={describedBy} value={gradTerm} onChange={(e) => setGradTerm(e.target.value)}>
-              <option value="">Not sure</option>
-              {upcomingTerms(new Date(), 14).filter((t) => t.endsWith("1") || t.endsWith("9"))
-                .map((t) => <option key={t} value={t}>{termLabel(t)}</option>)}
-            </Select>
-          )}
-        </Field>
-        <div className="space-y-1">
-          {meta.paces.map((p) => (
-            <Radio key={p.value} name="pace" label={p.label} description={p.description}
-              checked={pace === p.value} onChange={() => setPace(p.value)} />
-          ))}
-        </div>
-      </fieldset>
-
-      {(meta.workload_levels?.length ?? 0) > 0 && (
+      <PrefSection id="about" title="About you" summary="When you want to graduate" open={openSection === "about"}>
         <fieldset className="space-y-2">
-          <legend className="text-base font-semibold text-fg">How intense should each semester be?</legend>
-          <p className="text-sm text-fg-muted">
-            Each level sets a credit range and a workload budget per semester. Courses you must take (a retake,
-            or one you pin) always stay - if they go over the budget, your plan says so.
-          </p>
+          <legend className="text-base font-semibold text-fg">When do you want to graduate?</legend>
+          <p className="text-sm text-fg-muted">This sets how many semesters your plan has, counted from your first semester. On time is the default; CoursePilot never assumes you want to finish early.</p>
+          <Field label="Expected graduation term (optional)" hint="Overrides the choice below when set.">
+            {({ id, describedBy }) => (
+              <Select id={id} aria-describedby={describedBy} value={gradTerm} onChange={(e) => setGradTerm(e.target.value)}>
+                <option value="">Not sure</option>
+                {upcomingTerms(new Date(), 14).filter((t) => t.endsWith("1") || t.endsWith("9"))
+                  .map((t) => <option key={t} value={t}>{termLabel(t)}</option>)}
+              </Select>
+            )}
+          </Field>
           <div className="space-y-1">
-            {meta.workload_levels!.map((w) => (
-              <Radio key={w.value} name="workload_level" label={w.label} description={w.description}
-                checked={level === w.value} onChange={() => setLevel(w.value)} />
-            ))}
-          </div>
-          {meta.workload_weight && <p className="text-xs text-fg-muted">{meta.workload_weight}</p>}
-        </fieldset>
-      )}
-
-      {level && (
-        <QuestionnaireFields meta={meta} value={answers} onChange={setAnswers} terms={termsAhead} level={level} pace={pace} />
-      )}
-
-      {(meta.filler_preferences?.length ?? 0) > 0 && level && (
-        <fieldset className="space-y-2">
-          <legend className="text-base font-semibold text-fg">For the rest of a semester&apos;s credits</legend>
-          <p className="text-sm text-fg-muted">After the courses you need, CoursePilot fills up to your credit range with courses that complete a requirement.</p>
-          <div className="space-y-1">
-            {meta.filler_preferences!.map((f) => (
-              <Radio key={f.value} name="filler_preference" label={f.label} description={f.description}
-                checked={filler === f.value} onChange={() => setFiller(f.value)} />
+            {meta.paces.map((p) => (
+              <Radio key={p.value} name="pace" label={p.label} description={p.description}
+                checked={pace === p.value} onChange={() => setPace(p.value)} />
             ))}
           </div>
         </fieldset>
-      )}
+        <p className="text-xs text-fg-muted">Change your program under Settings.</p>
+      </PrefSection>
 
-      {level && (
+      <PrefSection id="intensity" title="Intensity" summary="Credits and major courses per semester" open={openSection === "intensity"}>
+        {(meta.workload_levels?.length ?? 0) > 0 && (
+          <fieldset className="space-y-2">
+            <legend className="text-base font-semibold text-fg">How intense should each semester be?</legend>
+            <p className="text-sm text-fg-muted">
+              Each level sets a credit range and a workload budget per semester. Courses you must take (a retake,
+              or one you pin) always stay - if they go over the budget, your plan says so.
+            </p>
+            <div className="space-y-1">
+              {meta.workload_levels!.map((w) => (
+                <Radio key={w.value} name="workload_level" label={w.label} description={w.description}
+                  checked={level === w.value} onChange={() => setLevel(w.value)} />
+              ))}
+            </div>
+            {meta.workload_weight && <p className="text-xs text-fg-muted">{meta.workload_weight}</p>}
+          </fieldset>
+        )}
+        {level && <RangeQuestions meta={meta} value={answers} onChange={setAnswers} level={level} pace={pace} />}
+        {(meta.filler_preferences?.length ?? 0) > 0 && level && (
+          <fieldset className="space-y-2">
+            <legend className="text-base font-semibold text-fg">For the rest of a semester&apos;s credits</legend>
+            <p className="text-sm text-fg-muted">After the courses you need, CoursePilot fills up to your credit range with courses that complete a requirement.</p>
+            <div className="space-y-1">
+              {meta.filler_preferences!.map((f) => (
+                <Radio key={f.value} name="filler_preference" label={f.label} description={f.description}
+                  checked={filler === f.value} onChange={() => setFiller(f.value)} />
+              ))}
+            </div>
+          </fieldset>
+        )}
+        {(meta.strategies?.length ?? 0) > 0 && (
+          <fieldset className="space-y-2">
+            <legend className="text-base font-semibold text-fg">When several courses fit, which should come first?</legend>
+            <p className="text-sm text-fg-muted">
+              This only changes the order of courses CoursePilot has already checked you can take. It never skips a
+              prerequisite, goes over your maximum, or plans a course Rutgers isn&apos;t offering.
+            </p>
+            <div className="space-y-1">
+              {meta.strategies!.map((s) => (
+                <Radio key={s.value} name="strategy" label={s.label} description={s.description}
+                  checked={strategy === s.value} onChange={() => setStrategy(s.value)} />
+              ))}
+            </div>
+          </fieldset>
+        )}
         <fieldset className="space-y-3">
-          <legend className="text-base font-semibold text-fg">Courses you want in a specific semester</legend>
+          <legend className="text-base font-semibold text-fg">Semester load</legend>
+          {level && <p className="text-sm text-fg-muted">Your workload level sets the credit range; the course limit below still applies.</p>}
+          <div className="grid gap-4 sm:grid-cols-3">
+            {!level && <Field label="Aim for (credits)" hint="CoursePilot aims near this; it isn't a minimum." error={errors.target}>
+              {({ id, describedBy, invalid }) => <Input id={id} aria-describedby={describedBy} aria-invalid={invalid} type="number" inputMode="decimal" min={1} max={24} step={0.5} value={target} onChange={(e) => setTarget(e.target.value)} />}
+            </Field>}
+            {!level && <Field label="Never more than (credits)" hint="A hard limit for every semester." error={errors.max}>
+              {({ id, describedBy, invalid }) => <Input id={id} aria-describedby={describedBy} aria-invalid={invalid} type="number" inputMode="decimal" min={1} max={24} step={0.5} value={max} onChange={(e) => setMax(e.target.value)} />}
+            </Field>}
+            <Field label="Courses per semester, at most" error={errors.courses}>
+              {({ id, invalid }) => <Input id={id} aria-invalid={invalid} type="number" inputMode="numeric" min={1} max={8} value={courses} onChange={(e) => setCourses(e.target.value)} />}
+            </Field>
+          </div>
+          <p className="text-xs text-fg-muted">{meta.disclaimer}</p>
+        </fieldset>
+        <fieldset className="space-y-1">
+          <legend className="text-base font-semibold text-fg">Extra sessions</legend>
+          <Checkbox label="I'd consider summer courses" checked={summer} onChange={(e) => setSummer(e.target.checked)} />
+          <Checkbox label="I'd consider winter courses" checked={winter} onChange={(e) => setWinter(e.target.checked)} />
+        </fieldset>
+      </PrefSection>
+
+      <PrefSection id="week" title="Your week" summary={level ? commitmentSummary(answers.commitments) : "Commitments and honors"} open={openSection === "week"}>
+        {level ? <WeekQuestions meta={meta} value={answers} onChange={setAnswers} /> : needsLevel}
+      </PrefSection>
+
+      <PrefSection id="schedule" title="Schedule shape" summary="Class times, campuses and fixed weekly times" open={openSection === "schedule"}>
+        <fieldset className="space-y-3">
+          <legend className="text-base font-semibold text-fg">Class times</legend>
           <p className="text-sm text-fg-muted">
-            A pinned course is placed in that semester or not at all. If it can&apos;t be (prerequisites, not offered,
-            restricted), your plan explains why.
+            Used as limits when you build a schedule: a section outside them isn&apos;t used. You can change them each time.
           </p>
-          {pins.length > 0 && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="No classes before" error={errors.window}>
+              {({ id }) => <Input id={id} type="time" value={early} onChange={(e) => setEarly(e.target.value)} />}
+            </Field>
+            <Field label="No classes after">
+              {({ id }) => <Input id={id} type="time" value={late} onChange={(e) => setLate(e.target.value)} />}
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3">
+            {WEEKDAYS.map((d) => (
+              <Checkbox key={d} label={`No classes ${DAY_NAME[d]}`} checked={avoid.includes(d)}
+                onChange={(e) => setAvoid(e.target.checked ? [...avoid, d] : avoid.filter((x) => x !== d))} />
+            ))}
+          </div>
+        </fieldset>
+        {level ? (
+          <>
+            <CampusQuestion value={answers} onChange={setAnswers} />
+            <BlockedTimesQuestion value={answers} onChange={setAnswers} />
+          </>
+        ) : needsLevel}
+      </PrefSection>
+
+      <PrefSection id="musts" title="Musts" summary={pins.length ? `${pins.length} pinned course${pins.length === 1 ? "" : "s"}` : "Courses you want in a specific semester"} open={openSection === "musts"}>
+        {level ? (
+          <fieldset className="space-y-3">
+            <legend className="text-base font-semibold text-fg">Courses you want in a specific semester</legend>
+            <p className="text-sm text-fg-muted">
+              Retakes your record needs are added for you. A pinned course is placed in that semester or not at all.
+              If it can&apos;t be (prerequisites, not offered, restricted), your plan explains why.
+            </p>
+            {pins.length > 0 && (
+              <ul className="divide-y divide-border rounded border border-border">
+                {pins.map((p, i) => (
+                  <li key={`${p.course}-${p.term_code}`} className="flex items-center justify-between gap-2 p-2 text-sm">
+                    <span className="code">{p.course} <span className="text-fg-muted">in {termLabel(p.term_code)}</span></span>
+                    <Button type="button" variant="ghost" size="sm" aria-label={`Unpin ${p.course}`} onClick={() => setPins(pins.filter((_, j) => j !== i))}>
+                      <Trash2 aria-hidden className="size-4" />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="grid gap-3 sm:grid-cols-[1fr_12rem_auto] sm:items-end">
+              <Field label="Course" hint="e.g. 01:640:152">
+                {({ id, describedBy }) => <Input id={id} aria-describedby={describedBy} value={pinCourse} placeholder="01:640:152" onChange={(e) => setPinCourse(e.target.value)} />}
+              </Field>
+              <Field label="Semester">
+                {({ id }) => (
+                  <Select id={id} value={pinTerm} onChange={(e) => setPinTerm(e.target.value)}>
+                    {termsAhead.map((t) => <option key={t} value={t}>{termLabel(t)}</option>)}
+                  </Select>
+                )}
+              </Field>
+              <Button type="button" variant="secondary" disabled={!pinValid || pins.length >= 24}
+                onClick={() => {
+                  const pin = { course: pinCourse.trim(), term_code: pinTerm };
+                  if (!pins.some((p) => p.course === pin.course)) setPins([...pins, pin]);
+                  setPinCourse("");
+                }}>
+                <Plus aria-hidden className="size-4" /> Pin
+              </Button>
+            </div>
+          </fieldset>
+        ) : needsLevel}
+      </PrefSection>
+
+      <PrefSection id="more" title="More" summary="Other programs, one-off semesters and limits" open={openSection === "more"}>
+        <fieldset className="space-y-3">
+          <legend className="text-base font-semibold text-fg">Anything else you&apos;re considering?</legend>
+          <p className="text-sm text-fg-muted">
+            Recorded as something you&apos;re exploring. Your plan doesn&apos;t include it: CoursePilot can&apos;t combine
+            programs yet. You can compare a major in Degree → What-if.
+          </p>
+          {goals.length > 0 && (
             <ul className="divide-y divide-border rounded border border-border">
-              {pins.map((p, i) => (
-                <li key={`${p.course}-${p.term_code}`} className="flex items-center justify-between gap-2 p-2 text-sm">
-                  <span className="code">{p.course} <span className="text-fg-muted">in {termLabel(p.term_code)}</span></span>
-                  <Button type="button" variant="ghost" size="sm" aria-label={`Unpin ${p.course}`} onClick={() => setPins(pins.filter((_, j) => j !== i))}>
+              {goals.map((g, i) => (
+                <li key={`${g.kind}-${g.label}-${i}`} className="flex items-center justify-between gap-2 p-2 text-sm">
+                  <span className="min-w-0 [overflow-wrap:anywhere]">{GOAL_KIND[g.kind]}: {g.label} <span className="text-fg-muted">- exploring</span></span>
+                  <Button type="button" variant="ghost" size="sm" aria-label={`Remove ${g.label}`} onClick={() => setGoals(goals.filter((_, j) => j !== i))}>
                     <Trash2 aria-hidden className="size-4" />
                   </Button>
                 </li>
               ))}
             </ul>
           )}
-          <div className="grid gap-3 sm:grid-cols-[1fr_12rem_auto] sm:items-end">
-            <Field label="Course" hint="e.g. 01:640:152">
-              {({ id, describedBy }) => <Input id={id} aria-describedby={describedBy} value={pinCourse} placeholder="01:640:152" onChange={(e) => setPinCourse(e.target.value)} />}
-            </Field>
-            <Field label="Semester">
-              {({ id }) => (
-                <Select id={id} value={pinTerm} onChange={(e) => setPinTerm(e.target.value)}>
-                  {termsAhead.map((t) => <option key={t} value={t}>{termLabel(t)}</option>)}
-                </Select>
-              )}
-            </Field>
-            <Button type="button" variant="secondary" disabled={!pinValid || pins.length >= 24}
-              onClick={() => {
-                const pin = { course: pinCourse.trim(), term_code: pinTerm };
-                if (!pins.some((p) => p.course === pin.course)) setPins([...pins, pin]);
-                setPinCourse("");
-              }}>
-              <Plus aria-hidden className="size-4" /> Pin
-            </Button>
-          </div>
+          {goals.length < 4 && (
+            <div className="grid gap-3 sm:grid-cols-[12rem_1fr_auto] sm:items-end">
+              <Field label="Kind">
+                {({ id }) => (
+                  <Select id={id} value={goalKind} onChange={(e) => setGoalKind(e.target.value as AdditionalGoal["kind"])}>
+                    {Object.entries(GOAL_KIND).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  </Select>
+                )}
+              </Field>
+              <Field label="Program" hint={goalKind === "second_major" ? undefined : "Minors and certificates aren't in CoursePilot's data yet; describe it in words."}>
+                {({ id, describedBy }) => goalKind === "second_major" ? (
+                  <Select id={id} aria-describedby={describedBy} value={goalProgram} onChange={(e) => setGoalProgram(e.target.value)}>
+                    <option value="">Choose a program</option>
+                    {programChoices.map((p) => <option key={p.program_key} value={p.program_key}>{p.name} ({p.degree_type})</option>)}
+                  </Select>
+                ) : (
+                  <Input id={id} aria-describedby={describedBy} value={goalProgram} maxLength={120} placeholder="e.g. Mathematics minor" onChange={(e) => setGoalProgram(e.target.value)} />
+                )}
+              </Field>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={!goalProgram.trim()}
+                onClick={() => {
+                  const program = programChoices.find((p) => p.program_key === goalProgram);
+                  setGoals([...goals, program
+                    ? { kind: goalKind, program_key: program.program_key, label: program.name, status: "exploring" }
+                    : { kind: goalKind, program_key: null, label: goalProgram.trim(), status: "exploring" }]);
+                  setGoalProgram("");
+                }}
+              >
+                <Plus aria-hidden className="size-4" /> Add
+              </Button>
+            </div>
+          )}
         </fieldset>
+        {level && <TermOverrideQuestion meta={meta} value={answers} onChange={setAnswers} terms={termsAhead} level={level} />}
+        <Field label="Plan at most this many semesters" hint="Leave empty to let your graduation target decide." error={errors.terms}>
+          {({ id, describedBy, invalid }) => <Input id={id} aria-describedby={describedBy} aria-invalid={invalid} type="number" inputMode="numeric" min={1} max={12} value={terms} onChange={(e) => setTerms(e.target.value)} />}
+        </Field>
+        {level && <ClearAnswers value={answers} onChange={setAnswers} />}
+      </PrefSection>
+
+      {errorList.length > 0 && (
+        <Alert tone="danger" title="Check these before saving">
+          {errorList.map((e) => <span key={e} className="block">{e}</span>)}
+        </Alert>
       )}
-
-      {(meta.strategies?.length ?? 0) > 0 && (
-        <fieldset className="space-y-2">
-          <legend className="text-base font-semibold text-fg">When several courses fit, which should come first?</legend>
-          <p className="text-sm text-fg-muted">
-            This only changes the order of courses CoursePilot has already checked you can take. It never skips a
-            prerequisite, goes over your maximum, or plans a course Rutgers isn&apos;t offering.
-          </p>
-          <div className="space-y-1">
-            {meta.strategies!.map((s) => (
-              <Radio key={s.value} name="strategy" label={s.label} description={s.description}
-                checked={strategy === s.value} onChange={() => setStrategy(s.value)} />
-            ))}
-          </div>
-        </fieldset>
-      )}
-
-      <fieldset className="space-y-3">
-        <legend className="text-base font-semibold text-fg">Semester load</legend>
-        {level && <p className="text-sm text-fg-muted">Your workload level sets the credit range; the course limit below still applies.</p>}
-        <div className="grid gap-4 sm:grid-cols-3">
-          {!level && <Field label="Aim for (credits)" hint="CoursePilot aims near this; it isn't a minimum." error={errors.target}>
-            {({ id, describedBy, invalid }) => <Input id={id} aria-describedby={describedBy} aria-invalid={invalid} type="number" inputMode="decimal" min={1} max={24} step={0.5} value={target} onChange={(e) => setTarget(e.target.value)} />}
-          </Field>}
-          {!level && <Field label="Never more than (credits)" hint="A hard limit for every semester." error={errors.max}>
-            {({ id, describedBy, invalid }) => <Input id={id} aria-describedby={describedBy} aria-invalid={invalid} type="number" inputMode="decimal" min={1} max={24} step={0.5} value={max} onChange={(e) => setMax(e.target.value)} />}
-          </Field>}
-          <Field label="Courses per semester, at most" error={errors.courses}>
-            {({ id, invalid }) => <Input id={id} aria-invalid={invalid} type="number" inputMode="numeric" min={1} max={8} value={courses} onChange={(e) => setCourses(e.target.value)} />}
-          </Field>
-        </div>
-        <p className="text-xs text-fg-muted">{meta.disclaimer}</p>
-      </fieldset>
-
-      <fieldset className="space-y-1">
-        <legend className="text-base font-semibold text-fg">Extra sessions</legend>
-        <Checkbox label="I'd consider summer courses" checked={summer} onChange={(e) => setSummer(e.target.checked)} />
-        <Checkbox label="I'd consider winter courses" checked={winter} onChange={(e) => setWinter(e.target.checked)} />
-      </fieldset>
-
-      <fieldset className="space-y-3">
-        <legend className="text-base font-semibold text-fg">Class times</legend>
-        <p className="text-sm text-fg-muted">
-          Used as limits when you build a schedule: a section outside them isn&apos;t used. You can change them each time.
-        </p>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="No classes before" error={errors.window}>
-            {({ id }) => <Input id={id} type="time" value={early} onChange={(e) => setEarly(e.target.value)} />}
-          </Field>
-          <Field label="No classes after">
-            {({ id }) => <Input id={id} type="time" value={late} onChange={(e) => setLate(e.target.value)} />}
-          </Field>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3">
-          {WEEKDAYS.map((d) => (
-            <Checkbox key={d} label={`No classes ${DAY_NAME[d]}`} checked={avoid.includes(d)}
-              onChange={(e) => setAvoid(e.target.checked ? [...avoid, d] : avoid.filter((x) => x !== d))} />
-          ))}
-        </div>
-      </fieldset>
-
-      <fieldset className="space-y-3">
-        <legend className="text-base font-semibold text-fg">Anything else you&apos;re considering?</legend>
-        <p className="text-sm text-fg-muted">
-          Recorded as something you&apos;re exploring. Your plan doesn&apos;t include it: CoursePilot can&apos;t combine
-          programs yet. You can compare a major in Degree → What-if.
-        </p>
-        {goals.length > 0 && (
-          <ul className="divide-y divide-border rounded border border-border">
-            {goals.map((g, i) => (
-              <li key={`${g.kind}-${g.label}-${i}`} className="flex items-center justify-between gap-2 p-2 text-sm">
-                <span className="min-w-0 [overflow-wrap:anywhere]">{GOAL_KIND[g.kind]}: {g.label} <span className="text-fg-muted">- exploring</span></span>
-                <Button type="button" variant="ghost" size="sm" aria-label={`Remove ${g.label}`} onClick={() => setGoals(goals.filter((_, j) => j !== i))}>
-                  <Trash2 aria-hidden className="size-4" />
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
-        {goals.length < 4 && (
-          <div className="grid gap-3 sm:grid-cols-[12rem_1fr_auto] sm:items-end">
-            <Field label="Kind">
-              {({ id }) => (
-                <Select id={id} value={goalKind} onChange={(e) => setGoalKind(e.target.value as AdditionalGoal["kind"])}>
-                  {Object.entries(GOAL_KIND).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </Select>
-              )}
-            </Field>
-            <Field label="Program" hint={goalKind === "second_major" ? undefined : "Minors and certificates aren't in CoursePilot's data yet; describe it in words."}>
-              {({ id, describedBy }) => goalKind === "second_major" ? (
-                <Select id={id} aria-describedby={describedBy} value={goalProgram} onChange={(e) => setGoalProgram(e.target.value)}>
-                  <option value="">Choose a program</option>
-                  {programChoices.map((p) => <option key={p.program_key} value={p.program_key}>{p.name} ({p.degree_type})</option>)}
-                </Select>
-              ) : (
-                <Input id={id} aria-describedby={describedBy} value={goalProgram} maxLength={120} placeholder="e.g. Mathematics minor" onChange={(e) => setGoalProgram(e.target.value)} />
-              )}
-            </Field>
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={!goalProgram.trim()}
-              onClick={() => {
-                const program = programChoices.find((p) => p.program_key === goalProgram);
-                setGoals([...goals, program
-                  ? { kind: goalKind, program_key: program.program_key, label: program.name, status: "exploring" }
-                  : { kind: goalKind, program_key: null, label: goalProgram.trim(), status: "exploring" }]);
-                setGoalProgram("");
-              }}
-            >
-              <Plus aria-hidden className="size-4" /> Add
-            </Button>
-          </div>
-        )}
-      </fieldset>
-
-      <details className="rounded border border-border">
-        <summary className="min-h-11 cursor-pointer p-3 text-sm font-medium text-fg">More settings</summary>
-        <div className="border-t border-border p-3">
-          <Field label="Plan at most this many semesters" hint="Leave empty to let your graduation target decide." error={errors.terms}>
-            {({ id, describedBy, invalid }) => <Input id={id} aria-describedby={describedBy} aria-invalid={invalid} type="number" inputMode="numeric" min={1} max={12} value={terms} onChange={(e) => setTerms(e.target.value)} />}
-          </Field>
-        </div>
-      </details>
-
-      <Button type="submit" variant="primary" disabled={!valid} loading={busy}>{submitLabel}</Button>
+      <div className="pt-3">
+        <Button type="submit" variant="primary" disabled={!valid} loading={busy}>{submitLabel}</Button>
+      </div>
     </form>
+  );
+}
+
+export type PrefSectionId = "about" | "intensity" | "week" | "schedule" | "musts" | "more";
+
+/** One collapsible group of Planning preferences - the same sections as the setup wizard. */
+function PrefSection({ id, title, summary, open, children }: {
+  id: PrefSectionId; title: string; summary: string; open: boolean; children: React.ReactNode;
+}) {
+  return (
+    <details id={`prefs-${id}`} open={open} className="group rounded-lg border border-border bg-surface-elevated open:pb-4">
+      <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0">
+          <span className="block text-base font-semibold text-fg">{title}</span>
+          <span className="block truncate text-sm text-fg-muted">{summary}</span>
+        </span>
+        <ChevronDown aria-hidden className="size-4 shrink-0 text-fg-muted transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="space-y-6 px-4 pt-2">{children}</div>
+    </details>
   );
 }

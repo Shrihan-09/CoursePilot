@@ -3,6 +3,7 @@
 ```
 GET    /api/v1/student/onboarding                     where am I? (200 even with no profile)
 POST   /api/v1/student/onboarding/complete            "I'm done" (idempotent)
+PUT    /api/v1/student/onboarding/setup               setup wizard progress (Prompt 10a)
 POST   /api/v1/student/profile                        {program_key, catalog_year} -> 201 / 200
 GET    /api/v1/student/profile
 PUT    /api/v1/student/program                        {program_key, catalog_year}
@@ -167,6 +168,17 @@ class DeclarationChoice(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+class SetupProgress(BaseModel):
+    """Prompt 10a: the setup wizard steps finished or skipped (replaces the
+    saved list), and optionally the first Rutgers semester the student states.
+    Omit `first_term` to leave it unchanged; `null` clears it."""
+
+    completed_steps: list[str] = Field(max_length=16)
+    first_term: str | None = Field(default=None, max_length=5)
+
+    model_config = {"extra": "forbid"}
+
+
 class ConfirmRequest(BaseModel):
     expected_version: int = Field(ge=1)
 
@@ -225,6 +237,15 @@ class ProfileView(BaseModel):
     #: Phase 7.6: declared | undeclared (the program is the INTENDED major) |
     #: null (not stated, read as declared).
     declaration_status: str | None = None
+    #: Prompt 10a: the first Rutgers semester as the student stated it.
+    first_term: str | None = None
+
+
+class SetupView(BaseModel):
+    """Prompt 10a: setup wizard progress - navigation state, not a fact."""
+
+    steps: list[str]
+    completed_steps: list[str]
 
 
 class ProfileCreated(BaseModel):
@@ -261,6 +282,7 @@ class OnboardingView(BaseModel):
     history_counts: dict[str, int]
     open_imports: list[ImportSummary]
     next_steps: list[str]
+    setup: SetupView
 
 
 class EntryView(BaseModel):
@@ -371,7 +393,13 @@ def _profile_view(session, student) -> ProfileView:
         onboarding_completed_at=student.onboarding_completed_at,
         transcript_reported_gpa=ReportedGpa(value=gpa[0], as_of=gpa[1]) if gpa else None,
         math_placement=student.math_placement,
-        declaration_status=student.declaration_status)
+        declaration_status=student.declaration_status,
+        first_term=student.first_term)
+
+
+def _setup_view(student) -> SetupView:
+    return SetupView(steps=list(onboarding_service.SETUP_STEPS),
+                     completed_steps=list(student.setup_steps or []) if student else [])
 
 
 def _entry_view(record, course) -> EntryView:
@@ -501,6 +529,9 @@ async def _run(work, event: str, principal: Principal):
     except onboarding_service.PlacementInvalid as exc:
         raise _issues_error(422, str(exc), [Issue(exc.code, "math_placement",
                                                   IssueSeverity.INVALID, str(exc))]) from None
+    except onboarding_service.SetupInvalid as exc:
+        raise _issues_error(422, str(exc), [Issue(exc.code, None, IssueSeverity.INVALID,
+                                                  str(exc))]) from None
     except onboarding_service.OpenImportExists as exc:
         raise _issues_error(422, str(exc), [Issue(exc.code, None, IssueSeverity.INVALID,
                                                   str(exc))]) from None
@@ -554,8 +585,23 @@ async def onboarding(principal: Principal = Depends(enforce_request_rate_limit)
                 profile=_profile_view(session, st.student) if st.student else None,
                 history_counts=st.counts,
                 open_imports=[ImportSummary(**_summary(i, now)) for i in st.open_imports],
-                next_steps=st.next_steps)
+                next_steps=st.next_steps,
+                setup=_setup_view(st.student))
     return await _run(work, "onboarding_status", principal)
+
+
+@router.put("/onboarding/setup", response_model=SetupView,
+            summary="Save setup wizard progress (and my stated first semester)")
+async def save_setup(body: SetupProgress,
+                     principal: Principal = Depends(enforce_request_rate_limit)) -> SetupView:
+    def work():
+        with _session() as session:
+            student = onboarding_service.save_setup_progress(
+                session, principal.account_id, steps=body.completed_steps,
+                first_term=body.first_term, set_first_term="first_term" in body.model_fields_set)
+            session.commit()
+            return _setup_view(student)
+    return await _run(work, "onboarding_setup_saved", principal)
 
 
 @router.post("/onboarding/complete", response_model=ProfileView,
