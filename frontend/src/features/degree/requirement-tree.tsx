@@ -1,7 +1,8 @@
 import { ChevronRight } from "lucide-react";
+import { createContext, useContext } from "react";
 
 import { StateBadge } from "@/components/academic/status";
-import { REQUIREMENT_STATUS, termLabel } from "@/lib/academic/vocabulary";
+import { DN_REVIEW, REQUIREMENT_STATUS, termLabel } from "@/lib/academic/vocabulary";
 import { cn } from "@/lib/utils";
 import type { Allocation, GradeEvaluation, RequirementResult, RequirementStatus } from "@/types/degree";
 
@@ -21,11 +22,32 @@ const FILTER_STATES: Record<Exclude<Filter, "all">, RequirementStatus[]> = {
   complete: ["satisfied", "provisionally_satisfied"],
 };
 
+/**
+ * Task 3: requirement codes Degree Navigator says are NOT met while
+ * CoursePilot says they are. A node at or above one never reads "Complete".
+ */
+export const DnReviewContext = createContext<ReadonlySet<string>>(new Set());
+
+export function underReview(node: RequirementResult, review: ReadonlySet<string>): boolean {
+  return review.has(node.requirement_code) || node.children.some((c) => underReview(c, review));
+}
+
+const MET: RequirementStatus[] = ["satisfied", "provisionally_satisfied"];
+
+/** What the node shows: its status, or "Needs review" while DN disagrees. */
+export function presentationFor(node: RequirementResult, review: ReadonlySet<string>) {
+  return MET.includes(node.status) && underReview(node, review) ? DN_REVIEW : REQUIREMENT_STATUS[node.status];
+}
+
 /** Show a node if it - or anything beneath it - has a status in the filter. */
-export function matchesFilter(node: RequirementResult, filter: Filter): boolean {
+export function matchesFilter(node: RequirementResult, filter: Filter,
+                              review: ReadonlySet<string> = new Set()): boolean {
   if (filter === "all") return true;
+  if (filter === "complete" && MET.includes(node.status) && underReview(node, review)) {
+    return node.children.some((c) => matchesFilter(c, filter, review));
+  }
   if (FILTER_STATES[filter].includes(node.status)) return true;
-  return node.children.some((c) => matchesFilter(c, filter));
+  return node.children.some((c) => matchesFilter(c, filter, review));
 }
 
 export function progressText(node: RequirementResult): string | null {
@@ -74,11 +96,12 @@ export function RequirementNode({
   /** Phase 7.4: which source decided this node's status (Degree Navigator or estimate). */
   source?: (code: string) => React.ReactNode;
 }) {
-  if (!matchesFilter(node, filter)) return null;
-  const state = REQUIREMENT_STATUS[node.status];
+  const review = useContext(DnReviewContext);
+  if (!matchesFilter(node, filter, review)) return null;
+  const state = presentationFor(node, review);
   const progress = progressText(node);
   const own = evidence(node.requirement_code);
-  const children = node.children.filter((c) => matchesFilter(c, filter));
+  const children = node.children.filter((c) => matchesFilter(c, filter, review));
   const headingLevel = Math.min(6, 3 + depth) as 3 | 4 | 5 | 6;
   const H = `h${headingLevel}` as const;
 
@@ -171,14 +194,18 @@ export function RequirementNode({
   );
 }
 
-/** Leaf requirements tallied by the engine's status (a count, never a %). */
-export function leafTally(nodes: RequirementResult[]): Record<RequirementStatus, number> {
-  const out: Record<RequirementStatus, number> = {
+/** Leaf requirements tallied by the engine's status (a count, never a %).
+ * A met leaf Degree Navigator says is not met counts under `needs_review`. */
+export function leafTally(nodes: RequirementResult[], review: ReadonlySet<string> = new Set()):
+    Record<RequirementStatus | "needs_review", number> {
+  const out: Record<RequirementStatus | "needs_review", number> = {
     satisfied: 0, provisionally_satisfied: 0, partially_satisfied: 0,
-    unsatisfied: 0, indeterminate: 0, not_evaluable: 0,
+    unsatisfied: 0, indeterminate: 0, not_evaluable: 0, needs_review: 0,
   };
   const walk = (n: RequirementResult) => {
-    if (n.children.length === 0) out[n.status] += 1;
+    if (n.children.length === 0) {
+      out[MET.includes(n.status) && review.has(n.requirement_code) ? "needs_review" : n.status] += 1;
+    }
     n.children.forEach(walk);
   };
   nodes.forEach(walk);

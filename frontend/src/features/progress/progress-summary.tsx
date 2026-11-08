@@ -1,5 +1,8 @@
 "use client";
-import { RequirementNode, evidenceFor } from "@/features/degree/requirement-tree";
+import { DnReviewContext, RequirementNode, evidenceFor } from "@/features/degree/requirement-tree";
+import { DnNotMetNotice } from "@/features/degree/degree-view";
+import { dnNotMet, useDnProgress } from "@/features/degree/degree-navigator";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { Alert, ErrorState, Progress, Skeleton } from "@/components/ui/feedback";
@@ -7,11 +10,16 @@ import { Alert, ErrorState, Progress, Skeleton } from "@/components/ui/feedback"
 /** Minimal contract proof. The backend owns all ratios and percentages. */
 export function ProgressSummary() {
   const query = useQuery({ queryKey: ["modeled-progress"], queryFn: api.progress, staleTime: 0 });
+  const dn = useDnProgress();
+  const notMet = useMemo(() => dnNotMet(dn.data), [dn.data]);
+  const review = useMemo(() => new Set(notMet.map((i) => i.code)), [notMet]);
   if (query.isPending) return <Skeleton className="h-40" />;
   if (query.isError) return <ErrorState onRetry={() => query.refetch()}>Modeled progress could not be loaded.</ErrorState>;
   const data = query.data;
   return (
+    <DnReviewContext.Provider value={review}>
     <section className="space-y-4" aria-label="Modeled requirement progress">
+      <DnNotMetNotice items={notMet} />
       <Alert tone="info">These percentages describe modeled obligations. They do not establish eligibility to graduate.</Alert>
       {data.metrics.map((metric, i) => (
         <section id={metric.scope} key={metric.scope} style={{ animationDelay: `${i * 70}ms` }} className="cp-lift space-y-2 animate-cp-rise rounded-xl border border-border bg-surface-elevated p-4">
@@ -42,5 +50,6 @@ export function ProgressSummary() {
         <ul className="list-disc space-y-1 pl-5">{data.coverage_limitations.map((text) => <li key={text}>{text}</li>)}</ul>
       </details>
     </section>
+    </DnReviewContext.Provider>
   );
 }

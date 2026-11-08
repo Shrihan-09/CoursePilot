@@ -62,7 +62,7 @@ DN_ROW_STATES = (DnRowState.MATCHED, DnRowState.NEEDS_REVIEW, DnRowState.UNMAPPE
 #: The status DN printed, normalized (the student may correct it in review).
 DN_STATUSES = ("satisfied", "in_progress_or_planned", "not_satisfied", "unknown")
 RECONCILIATIONS = ("agrees", "dn_satisfied_cp_not", "cp_satisfied_dn_not",
-                   "allocation_differs", "unmapped", "unknown")
+                   "allocation_differs", "unmapped", "member_goal", "unknown")
 
 
 class DegreeAuditImport(Base, TimestampMixin):
@@ -111,6 +111,9 @@ class DegreeAuditImport(Base, TimestampMixin):
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     discarded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    #: Task 3: primary (the student's record and plan) | what_if (a DN block for
+    #: ANOTHER program, used only by that program's what-if plans). NULL: primary.
+    confirmed_scope: Mapped[str | None] = mapped_column(String(16))
     #: A newer confirmed import of the same mapping replaced this one.
     superseded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     reconciled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -126,6 +129,8 @@ class DegreeAuditImport(Base, TimestampMixin):
         CheckConstraint("state IN ('processing','extracted','failed','confirmed','discarded')",
                         name="state_known"),
         CheckConstraint("version >= 1", name="version_positive"),
+        CheckConstraint("confirmed_scope IS NULL OR confirmed_scope IN ('primary','what_if')",
+                        name="confirmed_scope_known"),
         Index("uq_degree_audit_import_open_block", "student_id", "content_sha256",
               "block_index", unique=True, postgresql_where=text(_OPEN),
               sqlite_where=text(_OPEN)),
@@ -163,6 +168,10 @@ class DegreeAuditRequirementRow(Base, TimestampMixin):
 
     # --- normalized ---
     requirement_code: Mapped[str | None] = mapped_column(String(64))
+    #: Task 3: node (this row's status is the node's) | member_goal (one of
+    #: several DN goals of ONE CoursePilot node - AHo..AHr of CORE_AH - which
+    #: never decides the node's status). NULL: node.
+    mapping_role: Mapped[str | None] = mapped_column(String(16))
     mapping_review_status: Mapped[str | None] = mapped_column(String(24))
     dn_status: Mapped[str] = mapped_column(String(24))
 

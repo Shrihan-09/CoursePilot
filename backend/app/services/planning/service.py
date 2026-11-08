@@ -69,7 +69,7 @@ def pending_term_assumptions(session: Session, start_term: str,
 
 
 def degree_navigator_overlay(session: Session, student: Student, version: ProgramVersion,
-                             key: str) -> tuple:
+                             key: str, *, what_if: bool = False) -> tuple:
     """(overlay for this program and its school Core, plan notes) - Phase 7.4.
 
     No confirmed DN audit: CoursePilot's own audit decides, labelled
@@ -79,7 +79,9 @@ def degree_navigator_overlay(session: Session, student: Student, version: Progra
     from app.services.degree_audit.overlay import DISAGREE_LABEL, ESTIMATED_LABEL, active_overlay
 
     keys = {key} | {s.code for s in school_requirement_sets(session, version)}
-    overlay = active_overlay(session, student).for_keys(keys)
+    # Task 3: a what-if plan may use a what-if DN import for ITS program; the
+    # main plan never does (for_keys also keeps another program's rows out).
+    overlay = active_overlay(session, student, include_what_if=what_if).for_keys(keys)
     if not overlay:
         return None, [ScenarioAssumption(
             code="requirement_status_estimated",
@@ -232,7 +234,8 @@ def generate_plan(session: Session, student: Student, *, start_term: str,
     if not target.is_current_program:
         assumptions += _assumptions(session, student, target)
 
-    overlay, dn_notes = degree_navigator_overlay(session, student, version, key)
+    overlay, dn_notes = degree_navigator_overlay(session, student, version, key,
+                                                 what_if=not target.is_current_program)
     assumptions += dn_notes
     core = school_core_status(session, version)
     if core.status == "unknown":
@@ -259,6 +262,15 @@ def generate_plan(session: Session, student: Student, *, start_term: str,
     result.issues += unmapped_degree_navigator_issues(session, student, version, key)
     if overlay:
         annotate_recommendations(result, overlay, requirement_parents(session, version))
+        from app.services.degree_audit.overlay import DN_NOT_MET_MESSAGE
+        for status in overlay.dn_not_met():
+            # Task 3: planning keeps CoursePilot's "met"; the plan says so, loudly.
+            result.issues.append(PlanningIssue(
+                severity=Severity.NEEDS_CONFIRMATION, code="DN_SAYS_NOT_MET",
+                requirement_code=status.requirement_code,
+                message=f"{status.name or status.requirement_code}: {DN_NOT_MET_MESSAGE}",
+                details={"name": status.name or status.requirement_code,
+                         "dn_status": status.dn_status}))
     if session.new or session.dirty or session.deleted:
         session.rollback()
         raise ScenarioWouldWrite("plan generation attempted to modify state")

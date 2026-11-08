@@ -27,6 +27,9 @@ class MappingEntry:
     requirement_code: str | None
     review_status: str
     reason: str | None = None
+    #: node | member_goal (Task 3: one of several DN goals of ONE node - it is
+    #: mapped and shown, but never decides the node's status).
+    role: str = "node"
 
     @property
     def usable(self) -> bool:
@@ -86,7 +89,7 @@ def load_mappings(catalog_year: str, root: pathlib.Path | None = None) -> list[D
                 e.get("reason")) for e in data.get("requirements", [])},
             goals={e["dn_code"]: MappingEntry(
                 e.get("requirement_code"), e.get("review_status", "pending_review"),
-                e.get("reason")) for e in data.get("goals", [])}))
+                e.get("reason"), e.get("role", "node")) for e in data.get("goals", [])}))
     return out
 
 

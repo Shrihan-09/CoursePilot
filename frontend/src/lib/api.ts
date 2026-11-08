@@ -153,8 +153,9 @@ export const api = {
   dnImport: (id: string) => request<import("@/types/degree-audit").DnImportDetail>(`/degree-audit-imports/${id}`),
   resolveDnRow: (id: string, rowId: string, body: Record<string, unknown>) =>
     request<import("@/types/degree-audit").DnImportDetail>(`/degree-audit-imports/${id}/rows/${rowId}`, json("PATCH", body)),
-  confirmDn: (id: string, expected_version: number) =>
-    request<import("@/types/degree-audit").DnImportDetail>(`/degree-audit-imports/${id}/confirm`, json("POST", { expected_version })),
+  /** Task 3: scope "what_if" - a block for another program, used only by that program's what-if plans. */
+  confirmDn: (id: string, expected_version: number, scope: "primary" | "what_if" = "primary") =>
+    request<import("@/types/degree-audit").DnImportDetail>(`/degree-audit-imports/${id}/confirm`, json("POST", { expected_version, scope })),
   discardDn: (id: string) => request<import("@/types/degree-audit").DnImportSummary>(`/degree-audit-imports/${id}`, { method: "DELETE" }),
   dnProgress: () => request<import("@/types/degree-audit").DnProgress>("/degree-audit-imports/progress"),
   progress: () => request<ProgressResponse>("/student/progress"),

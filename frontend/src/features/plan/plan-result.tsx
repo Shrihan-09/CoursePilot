@@ -6,6 +6,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Alert, Progress } from "@/components/ui/feedback";
 import {
   blockedReasonText,
+  DN_NOT_MET_MESSAGE,
+  DN_REVIEW,
   ELIGIBILITY_STATE,
   OFFERING_KIND,
   PLAN_SEVERITY,
@@ -405,11 +407,22 @@ export function PlanView({
   regenerating: boolean;
 }) {
   const r = plan.result;
-  const status = PLAN_STATUS[r.status];
+  // Task 3: while Degree Navigator says a requirement CoursePilot counts as met
+  // is NOT met, the plan never reads as covering everything or on track.
+  const dnNotMet = r.issues.filter((i) => i.code === "DN_SAYS_NOT_MET");
+  const status = dnNotMet.length > 0 && r.status !== "partial" ? DN_REVIEW : PLAN_STATUS[r.status];
   const earlier = (r.observations ?? []).find((o) => o.code === "earlier_completion_possible");
   return (
     <div className="space-y-6">
       <StaleNotice plan={plan} onRegenerate={onRegenerate} regenerating={regenerating} />
+      {dnNotMet.length > 0 && (
+        <Alert tone="warning" title={DN_NOT_MET_MESSAGE}>
+          <ul className="list-disc pl-5">
+            {dnNotMet.map((i) => <li key={i.requirement_code ?? i.message}>{String(i.details.name ?? i.requirement_code)}</li>)}
+          </ul>
+          <span className="block">This plan counts {dnNotMet.length === 1 ? "it" : "them"} as met (CoursePilot&apos;s audit) and does not guess which course Degree Navigator is missing.</span>
+        </Alert>
+      )}
       <section aria-labelledby="plan-summary" className="space-y-2 animate-cp-rise rounded-xl border border-border bg-surface-elevated p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">

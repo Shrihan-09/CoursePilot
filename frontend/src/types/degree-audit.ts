@@ -11,6 +11,7 @@ export type Reconciliation =
   | "cp_satisfied_dn_not"
   | "allocation_differs"
   | "unmapped"
+  | "member_goal"
   | "unknown";
 
 export interface DnIssue {
@@ -48,6 +49,8 @@ export interface DnRequirementRow {
   planning_rule: string;
   requirement_code: string | null;
   mapping_review_status: string | null;
+  /** Task 3: "member_goal" - one of several DN goals of one CoursePilot node (AHo..AHr of CORE_AH). */
+  mapping_role?: "node" | "member_goal" | null;
   state: "matched" | "needs_review" | "unmapped";
   issues: DnIssue[];
   excluded: boolean;
@@ -111,6 +114,10 @@ export interface DnImportSummary {
   expires_at: string | null;
   confirmed_at: string | null;
   superseded_at: string | null;
+  /** Task 3: primary (your record and plan) | what_if (another program's what-if plans only). */
+  confirmed_scope?: "primary" | "what_if" | null;
+  /** Task 3: a block for another program CoursePilot has a mapping for. */
+  what_if_available?: boolean;
 }
 
 export interface DnImportDetail extends DnImportSummary {

@@ -45,6 +45,7 @@ const RECONCILIATION: Record<Reconciliation, { label: string; tone: "success" | 
   cp_satisfied_dn_not: { label: "Needs review: Degree Navigator doesn't count it", tone: "warning" },
   allocation_differs: { label: "Needs review: different courses used", tone: "warning" },
   unmapped: { label: "Unmapped - shown, not used", tone: "neutral" },
+  member_goal: { label: "Goal of its requirement - the requirement row decides", tone: "neutral" },
   unknown: { label: "Can't compare", tone: "neutral" },
 };
 
@@ -87,6 +88,22 @@ export function DnSourceNotice({ progress, onImport }: { progress?: DnProgress; 
       )}
     </Alert>
   );
+}
+
+/**
+ * Task 3: requirements Degree Navigator says are NOT fulfilled while
+ * CoursePilot says they are met. Planning keeps CoursePilot's status; every
+ * surface shows "Needs review" instead of complete / on track for them.
+ */
+export function dnNotMet(progress?: DnProgress): { code: string; name: string }[] {
+  const out = new Map<string, string>();
+  for (const r of progress?.requirements ?? []) {
+    if (r.requirement_code && !r.excluded && r.mapping_role !== "member_goal"
+        && r.reconciliation === "cp_satisfied_dn_not" && r.dn_status === "not_satisfied") {
+      out.set(r.requirement_code, r.title ?? r.dn_heading ?? r.requirement_code);
+    }
+  }
+  return [...out].map(([code, name]) => ({ code, name }));
 }
 
 /** Per requirement node: which source decided it (used by the requirement tree). */
@@ -247,7 +264,10 @@ function DnReview({ id, onChanged }: { id: string; onChanged: () => void }) {
       api.resolveDnRow(id, rowId, { expected_version: detail.data!.version, ...body }),
     onSuccess: set,
   });
-  const confirm = useMutation({ mutationFn: () => api.confirmDn(id, detail.data!.version), onSuccess: set });
+  const confirm = useMutation({
+    mutationFn: (scope: "primary" | "what_if") => api.confirmDn(id, detail.data!.version, scope),
+    onSuccess: set,
+  });
   const discard = useMutation({ mutationFn: () => api.discardDn(id), onSuccess: () => onChanged() });
 
   if (detail.isPending) return <Skeleton className="h-64" />;
@@ -260,20 +280,23 @@ function DnReview({ id, onChanged }: { id: string; onChanged: () => void }) {
       confirming={confirm.isPending}
       error={error instanceof ApiError ? { message: error.message, issues: error.issues } : null}
       onResolve={(rowId, body) => resolve.mutate({ rowId, body })}
-      onConfirm={() => confirm.mutate()}
+      onConfirm={() => confirm.mutate("primary")}
+      onConfirmWhatIf={() => confirm.mutate("what_if")}
       onDiscard={() => discard.mutate()}
     />
   );
 }
 
 /** The staged review and reconciliation view, rendered from the API's detail only. */
-export function DnReviewBody({ detail: d, busy, confirming = false, error, onResolve, onConfirm, onDiscard }: {
+export function DnReviewBody({ detail: d, busy, confirming = false, error, onResolve, onConfirm, onConfirmWhatIf, onDiscard }: {
   detail: DnImportDetail;
   busy: boolean;
   confirming?: boolean;
   error: { message: string; issues: { code: string; message: string }[] } | null;
   onResolve: (rowId: string, body: Record<string, unknown>) => void;
   onConfirm: () => void;
+  /** Task 3: confirm a block for ANOTHER program into that program's what-if plans only. */
+  onConfirmWhatIf?: () => void;
   onDiscard: () => void;
 }) {
   const requirements = d.requirements.filter((r) => r.kind === "requirement");
@@ -352,13 +375,20 @@ export function DnReviewBody({ detail: d, busy, confirming = false, error, onRes
           </p>
           <div className="flex gap-2">
             <Button variant="secondary" onClick={onDiscard} disabled={busy}>Discard</Button>
-            <Button variant="primary" onClick={onConfirm} disabled={!d.readiness.ready || busy} loading={confirming}>
-              <CheckCircle2 aria-hidden className="size-4" /> Confirm
-            </Button>
+            {d.what_if_available && onConfirmWhatIf ? (
+              <Button variant="primary" onClick={onConfirmWhatIf} disabled={d.readiness.blocking > 0 || busy} loading={confirming}>
+                <CheckCircle2 aria-hidden className="size-4" /> Use for a what-if only
+              </Button>
+            ) : (
+              <Button variant="primary" onClick={onConfirm} disabled={!d.readiness.ready || busy} loading={confirming}>
+                <CheckCircle2 aria-hidden className="size-4" /> Confirm
+              </Button>
+            )}
           </div>
         </div>
       ) : (
-        <StatusBadge tone={d.state === "confirmed" ? "success" : "neutral"} label={d.state === "confirmed" ? "Confirmed" : d.state} />
+        <StatusBadge tone={d.state === "confirmed" ? "success" : "neutral"}
+          label={d.state === "confirmed" ? (d.confirmed_scope === "what_if" ? "Confirmed for what-if plans only - not your record" : "Confirmed") : d.state} />
       )}
     </section>
   );

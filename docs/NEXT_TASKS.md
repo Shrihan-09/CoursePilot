@@ -82,6 +82,17 @@ Follow-ups it leaves:
   warning that names the rule.
 
 
+## Backlog: catalog year notice (from Task 3)
+
+The owner's stored catalog year is 2026-2027. Their first Rutgers term is
+Fall 2025, though, so their real catalog year is likely 2025-2026, and
+CoursePilot only has the 2026-2027 catalog. Not built.
+
+Done means: when a student's entry term implies an earlier catalog year than
+the one CoursePilot plans against, the plan and the Degree page show a notice:
+"planned against the 2026-27 catalog". The notice names both years and never
+changes the student's catalog year by itself.
+
 ## Backlog: tooling
 
 - Free-elective credits: show them as a course slot (e.g. "one 3-credit

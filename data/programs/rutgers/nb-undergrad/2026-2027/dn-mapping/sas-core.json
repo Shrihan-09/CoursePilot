@@ -5,7 +5,8 @@
     "Built 2026-10-24 from the developer's own DN audit print (kept local, never committed): every heading and goal code below appeared in it.",
     "review_status: pending_review = built, not yet checked by a named reviewer (used, and shown as such); reviewed = checked; unmapped = no one-to-one CoursePilot node (never used).",
     "A mapping decides only WHICH node a DN status belongs to. It never changes a CoursePilot requirement rule.",
-    "A goal maps only where DN's goal set is a one-course goal (a choose-1 node); a goal set that is a multi-course requirement's own pool (NS) is left to its requirement row."
+    "A goal maps only where DN's goal set is a one-course goal (a choose-1 node); a goal set that is a multi-course requirement's own pool (NS) is left to its requirement row.",
+    "Task 3: AHo, AHp, AHq and AHr are MEMBER goals of the one CoursePilot node CORE_AH (role member_goal, many-to-one): they are mapped, shown with R4, and never decide CORE_AH's status - requirement R4 does."
   ],
   "mapping_version": "1",
   "program_key": "sas-core",
@@ -105,27 +106,31 @@
     },
     {
       "dn_code": "AHo",
-      "requirement_code": null,
-      "review_status": "unmapped",
-      "reason": "CoursePilot encodes Arts and Humanities as ONE node (CORE_AH, choose 2 courses over goals AHo/AHp/AHq/AHr); there is no one-to-one node for a single AH goal. R4 carries the requirement's status."
+      "requirement_code": "CORE_AH",
+      "role": "member_goal",
+      "review_status": "pending_review",
+      "reason": "One of the four Arts and Humanities goals of CoursePilot's single node CORE_AH (choose 2 courses meeting 2 goals). Requirement R4 decides CORE_AH's status; a goal alone never does."
     },
     {
       "dn_code": "AHp",
-      "requirement_code": null,
-      "review_status": "unmapped",
-      "reason": "CoursePilot encodes Arts and Humanities as ONE node (CORE_AH, choose 2 courses over goals AHo/AHp/AHq/AHr); there is no one-to-one node for a single AH goal. R4 carries the requirement's status."
+      "requirement_code": "CORE_AH",
+      "role": "member_goal",
+      "review_status": "pending_review",
+      "reason": "One of the four Arts and Humanities goals of CoursePilot's single node CORE_AH (choose 2 courses meeting 2 goals). Requirement R4 decides CORE_AH's status; a goal alone never does."
     },
     {
       "dn_code": "AHq",
-      "requirement_code": null,
-      "review_status": "unmapped",
-      "reason": "CoursePilot encodes Arts and Humanities as ONE node (CORE_AH, choose 2 courses over goals AHo/AHp/AHq/AHr); there is no one-to-one node for a single AH goal. R4 carries the requirement's status."
+      "requirement_code": "CORE_AH",
+      "role": "member_goal",
+      "review_status": "pending_review",
+      "reason": "One of the four Arts and Humanities goals of CoursePilot's single node CORE_AH (choose 2 courses meeting 2 goals). Requirement R4 decides CORE_AH's status; a goal alone never does."
     },
     {
       "dn_code": "AHr",
-      "requirement_code": null,
-      "review_status": "unmapped",
-      "reason": "CoursePilot encodes Arts and Humanities as ONE node (CORE_AH, choose 2 courses over goals AHo/AHp/AHq/AHr); there is no one-to-one node for a single AH goal. R4 carries the requirement's status."
+      "requirement_code": "CORE_AH",
+      "role": "member_goal",
+      "review_status": "pending_review",
+      "reason": "One of the four Arts and Humanities goals of CoursePilot's single node CORE_AH (choose 2 courses meeting 2 goals). Requirement R4 decides CORE_AH's status; a goal alone never does."
     }
   ]
 }
