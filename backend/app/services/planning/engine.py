@@ -525,7 +525,7 @@ class PlanningEngine:
                 continue
             need = max((node.needed_count or 1) - sum(c.status in MET for c in node.children), 0)
             requested = self.constraints.alternative_selections.get(node.requirement_code, [])
-            prior = self.prior_choices.get(node.requirement_code)
+            prior = getattr(self, "prior_choices", {}).get(node.requirement_code)
             if prior is not None and list(prior.selected) == list(requested) and need:
                 known = {a.code: a.estimated_terms
                          for a in [*prior.chosen, *prior.recommended, *prior.alternatives]}
@@ -1382,8 +1382,8 @@ class PlanningEngine:
         for k in elsewhere | avoided:
             serves.pop(k, None)
         dependencies = [k for k in dependencies if k not in elsewhere and k not in avoided]
-        self._held_now = {k for k, t in self.holds.items() if t == term}
-        held_later = {k for k, t in self.holds.items() if t > term}
+        self._held_now = {k for k, t in getattr(self, "holds", {}).items() if t == term}
+        held_later = {k for k, t in getattr(self, "holds", {}).items() if t > term}
         if term in self._pin_only_terms:
             # A winter/summer term opened only for a pin: nothing else goes in.
             serves.clear()
@@ -2219,7 +2219,7 @@ class PlanningEngine:
     def _hold_first(self, key: str) -> int:
         """Prompt 11 A2: 0 for a course held in the term being filled - it
         keeps its place ahead of its role's other candidates."""
-        return 0 if key in self._held_now else 1
+        return 0 if key in getattr(self, "_held_now", ()) else 1
 
     def _pin_reason(self, key: str) -> str:
         source = next((p.source for p in self.constraints.pins if p.course == key), "must")

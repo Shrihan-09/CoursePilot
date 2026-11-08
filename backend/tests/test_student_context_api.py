@@ -444,6 +444,10 @@ async def test_no_path_parameterised_student_route_exists(app) -> None:
         "/api/v1/student/audit",
         "/api/v1/student/context",
         "/api/v1/student/courses",
+        # Prompt 11 A3: MY "doing well" mark on one of MY in-progress courses -
+        # {course}/{term} name a course on the caller's own record (anything
+        # else is a 404); extra="forbid" body - test_plan_changes_api.
+        "/api/v1/student/courses/{course}/{term}/doing-well",
         "/api/v1/student/courses/{entry_id}",
         "/api/v1/student/current-schedule",
         "/api/v1/student/current-schedule/sections",
@@ -464,7 +468,20 @@ async def test_no_path_parameterised_student_route_exists(app) -> None:
         "/api/v1/student/plans",
         "/api/v1/student/plans/context",
         "/api/v1/student/plans/current",
+        # Prompt 11 Part A: options / preview / apply / undo / choices / search
+        # on MY saved plan. {course}/{term} name a course IN the caller's own
+        # plan (a course not in it is a 404); a preview id belongs to its
+        # owner (another account's is a 409); bodies are extra="forbid" -
+        # test_plan_changes_api.
+        "/api/v1/student/plans/current/changes/apply",
+        "/api/v1/student/plans/current/changes/preview",
+        "/api/v1/student/plans/current/choices",
+        "/api/v1/student/plans/current/courses/{course}/{term}/options",
+        "/api/v1/student/plans/current/search",
+        "/api/v1/student/plans/current/undo",
         "/api/v1/student/plans/generate",
+        # Prompt 11 A3: "use my grades to personalize suggestions" (owner-resolved).
+        "/api/v1/student/plans/personalization",
         # 10a follow-up: read-only retake listing (parameterless, owner-resolved).
         "/api/v1/student/plans/retakes",
         "/api/v1/student/profile",
@@ -486,7 +503,7 @@ async def test_no_path_parameterised_student_route_exists(app) -> None:
     import re
 
     params = {m for p in student_self_service for m in re.findall(r"\{(\w+)\}", p)}
-    assert params == {"entry_id", "import_id", "row_id"}
+    assert params == {"entry_id", "import_id", "row_id", "course", "term"}
     # The only parameterised student path in the API is the ADMIN linking one,
     # which Phase 5.5 gates on is_admin.
     assert all(

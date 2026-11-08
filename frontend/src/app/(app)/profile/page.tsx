@@ -2,6 +2,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/ui/feedback";
 import { DeclarationEditor } from "@/features/onboarding/declaration-editor";
 import { PlacementEditor } from "@/features/onboarding/placement-step";
+import { GradesPersonalization } from "@/features/planning/grades-personalization";
 import { ProgressSummary } from "@/features/progress/progress-summary";
 
 export default function ProfilePage() {
@@ -10,6 +11,7 @@ export default function ProfilePage() {
     <ProgressSummary />
     <DeclarationEditor />
     <PlacementEditor />
+    <GradesPersonalization />
     <div className="flex flex-wrap gap-4 text-sm text-primary-text">
       <Link className="inline-flex min-h-11 items-center underline" href="/plan/personalize">Planning preferences</Link>
       <Link className="inline-flex min-h-11 items-center underline" href="/schedule">Current schedule</Link>

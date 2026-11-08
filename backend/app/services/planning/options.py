@@ -34,6 +34,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.domain.grades import Tri, meets_minimum, outcome
 from app.domain.planning import OfferingEvidenceKind, PlanningConstraints, PlanResult
 from app.models import Course, ProgramVersion, Student, StudentCourse
 from app.services.planning.edits import MET_STATUSES, course_states
@@ -41,7 +42,9 @@ from app.services.planning.engine import CandidateVerdict, PlanningEngine
 from app.services.planning.terms import label
 from app.services.planning.workload import filler_rank
 
-GOOD_GRADES = ("A", "A-", "B+", "B")
+#: "Did well": B or better, by the grade domain (app.domain.grades) - Rutgers
+#: letters A, B+, B. No grade rule lives here.
+WELL_MINIMUM = "B"
 #: Candidates checked per requirement (pre-sorted by offering confidence).
 POOL_LIMIT = 60
 _WORD = re.compile(r"[a-z]{4,}")
@@ -111,7 +114,7 @@ def uses_grades(session: Session, student: Student) -> bool:
 
 
 def liked_courses(session: Session, student: Student) -> list[Liked]:
-    """The student's OWN signals: completed with A/A-/B+/B, or in progress and
+    """The student's OWN signals: completed with B or better, or in progress and
     marked "doing well". Empty when the student turned the setting off."""
     if not uses_grades(session, student):
         return []
@@ -122,7 +125,7 @@ def liked_courses(session: Session, student: Student) -> list[Liked]:
         .where(StudentCourse.student_id == student.id)).all()
     out = []
     for key, title, status, grade, well in rows:
-        if status == "completed" and (grade or "").strip().upper() in GOOD_GRADES:
+        if status == "completed" and meets_minimum(outcome(status, grade), WELL_MINIMUM) is Tri.YES:
             out.append(Liked(key, title or "", "did_well"))
         elif status == "in_progress" and well:
             out.append(Liked(key, title or "", "doing_well"))
@@ -373,7 +376,9 @@ def course_options(ctx: OptionsContext, course: str, term_code: str, *,
             out.groups.append(group)
 
     # (2) a different open requirement instead (fillers and electives only)
-    if pc.role in ("filler", None) and not any(ctx.engine._is_major_node(c) for c in own):
+    # (Fillers and Core/elective picks only: a major course's requirement is
+    # the major's, and swapping it for another requirement is not an option.)
+    if not any(ctx.engine._is_major_node(c) for c in own):
         later = {r.requirement_code: (o.course, tt.term_code) for tt in ctx.plan.terms
                  if tt.term_code > term_code for o in tt.courses for r in o.requirements}
         others = [c for c in ctx.open if c not in own and not ctx.engine._is_major_node(c)
@@ -440,6 +445,22 @@ class ChoiceQuestion:
     reason: str | None = None
 
 
+#: Requirement types where the student picks from a list (a Core goal, an
+#: elective pool) - as opposed to one named course.
+PICK_TYPES = ("choose_n", "credits")
+
+
+def _flexible(ctx: OptionsContext, pc) -> bool:
+    """A flexible slot: a filler, or a planner-chosen course whose requirement
+    is a pick-from-a-list one (Core goals, electives) - never a named course."""
+    if pc.role == "filler":
+        return True
+    codes = [r.requirement_code for r in pc.requirements]
+    reqs = [ctx.engine.requirements.get(c) for c in codes]
+    return bool(codes) and all(r is not None and r.requirement_type in PICK_TYPES
+                               and len(ctx.engine.pools.get(r.code, ())) > 1 for r in reqs)
+
+
 def next_term_choices(ctx: OptionsContext) -> tuple[str | None, list[ChoiceQuestion]]:
     if not ctx.plan.terms:
         return None, []
@@ -455,7 +476,7 @@ def next_term_choices(ctx: OptionsContext) -> tuple[str | None, list[ChoiceQuest
         elif s.state.value == "user_selected":
             out.append(ChoiceQuestion("your_choice", term, f"Your choice: {pc.title}",
                                       course=pc.course, title=pc.title))
-        elif pc.role == "filler":
+        elif _flexible(ctx, pc):
             opts = course_options(ctx, pc.course, term, per_group=3, other_requirements=3)
             groups = [g for g in opts.groups if g.options]
             if groups:

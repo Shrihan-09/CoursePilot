@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronRight, RefreshCw } from "lucide-react";
+import { CalendarDays, ChevronRight, Feather, Lock, LockOpen, RefreshCw, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 
 import { StateBadge, STATUS_ICON } from "@/components/academic/status";
@@ -26,7 +26,16 @@ import {
 } from "@/lib/academic/vocabulary";
 import { courseTone } from "@/lib/tone";
 import { cn } from "@/lib/utils";
-import type { BlockedCourse, PlannedCourse, PlanningIssue, PlanObservation, PlanTerm, SavedPlan } from "@/types/plan";
+import type { BlockedCourse, PlannedCourse, PlannedCourseState, PlanningIssue, PlanObservation, PlanTerm, SavedPlan } from "@/types/plan";
+import { type PlanChanges, StateLine, UndoBar } from "./plan-changes";
+
+/** Prompt 11: what the board can ask for (all through preview -> confirm). */
+export interface BoardActions {
+  changes: PlanChanges;
+  states: Map<string, PlannedCourseState>;
+  lockedTerms: string[];
+  onOptions: (course: string, term: string) => void;
+}
 import { conditionalLabel, creditsText, electiveSlotText, loadText } from "@/lib/academic/plan-text";
 
 /**
@@ -204,9 +213,10 @@ function DeclarationPanel({ declaration: d }: { declaration: NonNullable<SavedPl
 }
 
 /** One planned course as a board card: code + credits chip, title, # requirement tags. */
-function CourseCard({ course: c, index }: { course: PlannedCourse; index: number }) {
+function CourseCard({ course: c, index, actions }: { course: PlannedCourse; index: number; actions?: BoardActions }) {
   const tone = courseTone(c.course);
   const toward = [...new Set(c.requirements.map((r) => r.requirement_name))];
+  const state = actions?.states.get(`${c.course}@${c.term_code}`);
   return (
     <li
       className={cn("cp-lift animate-cp-rise space-y-2 rounded-lg border border-border bg-surface-elevated p-3", tone)}
@@ -218,6 +228,7 @@ function CourseCard({ course: c, index }: { course: PlannedCourse; index: number
           {c.credits} cr
         </span>
       </div>
+      {state && <StateLine state={state.state} reason={state.locked_reason} />}
       <p className="text-sm leading-snug text-fg [overflow-wrap:anywhere]">
         {c.title}
         {topicsText(c) && <span className="text-fg-secondary"> — {topicsText(c)}</span>}
@@ -259,7 +270,15 @@ function CourseCard({ course: c, index }: { course: PlannedCourse; index: number
           {note}
         </p>
       ))}
-      <WhyHere course={c} />
+      <div className="flex items-center justify-between gap-2">
+        <WhyHere course={c} />
+        {actions && (
+          <Button size="sm" variant="ghost" className="shrink-0" onClick={() => actions.onOptions(c.course, c.term_code)}
+            aria-label={`Options for ${c.course}`}>
+            <SlidersHorizontal aria-hidden className="size-4" /> Options
+          </Button>
+        )}
+      </div>
     </li>
   );
 }
@@ -269,13 +288,16 @@ export function SemesterCard({
   scheduleHref,
   note,
   maxCredits,
+  actions,
 }: {
   term: PlanTerm;
   scheduleHref: string | null;
   note?: string;
   /** The student's hard maximum: the column's load bar is measured against it. */
   maxCredits?: number;
+  actions?: BoardActions;
 }) {
+  const locked = actions?.lockedTerms.includes(term.term_code) ?? false;
   const electives = Number(term.free_elective_credits ?? 0);
   const credits = Number(term.credits) + electives;
   return (
@@ -310,6 +332,19 @@ export function SemesterCard({
           <Progress value={Math.min(credits, maxCredits)} max={maxCredits}
             label={`${term.label}: ${credits} of at most ${maxCredits} credits`} className="h-1" />
         ) : null}
+        {actions && term.courses.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            <Button size="sm" variant="ghost" loading={actions.changes.previewing}
+              onClick={() => actions.changes.request({ kind: locked ? "unlock_term" : "lock_term", term_code: term.term_code })}>
+              {locked ? <LockOpen aria-hidden className="size-4" /> : <Lock aria-hidden className="size-4" />}
+              {locked ? "Unlock semester" : "Lock semester"}
+            </Button>
+            <Button size="sm" variant="ghost" loading={actions.changes.previewing}
+              onClick={() => actions.changes.request({ kind: "lighten_term", term_code: term.term_code })}>
+              <Feather aria-hidden className="size-4" /> Lighten
+            </Button>
+          </div>
+        )}
       </header>
       {scheduleHref && (
         <Link href={scheduleHref}
@@ -321,7 +356,7 @@ export function SemesterCard({
       )}
       {note && <p className="px-1 text-xs text-fg-secondary">{note}</p>}
       <ul className="space-y-2">
-        {term.courses.map((c, i) => <CourseCard key={c.course} course={c} index={i} />)}
+        {term.courses.map((c, i) => <CourseCard key={c.course} course={c} index={i} actions={actions} />)}
         {electives > 0 && (
           <li className="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-fg-secondary">
             Free elective: {electiveSlotText(electives)} - any degree-credit course you choose ({creditsText(electives)} toward the degree total).
@@ -405,6 +440,7 @@ export function PlanView({
   regenerating,
   onApplyLight,
   applyingLight = false,
+  actions,
 }: {
   plan: SavedPlan;
   onRegenerate: () => void;
@@ -412,6 +448,8 @@ export function PlanView({
   /** Correctness fixes item 10: apply the "Consider Light" suggestion to its semester. */
   onApplyLight?: (suggestion: PlanObservation) => void;
   applyingLight?: boolean;
+  /** Prompt 11: options, locks and undo (absent on read-only views). */
+  actions?: BoardActions;
 }) {
   const r = plan.result;
   // Task 3: while Degree Navigator says a requirement CoursePilot counts as met
@@ -423,6 +461,15 @@ export function PlanView({
   return (
     <div className="space-y-6">
       <StaleNotice plan={plan} onRegenerate={onRegenerate} regenerating={regenerating} />
+      {actions && <UndoBar plan={plan} changes={actions.changes} />}
+      {(plan.needs_reselection ?? []).length > 0 && (
+        <Alert tone="warning" title="Some of your choices no longer fit">
+          <p>CoursePilot kept them and didn&apos;t pick anything else for you. Choose again from each course&apos;s Options:</p>
+          <ul className="mt-1 list-disc pl-5">
+            {(plan.needs_reselection ?? []).map((r) => <li key={r.course}>{r.message}</li>)}
+          </ul>
+        </Alert>
+      )}
       {dnNotMet.length > 0 && (
         <Alert tone="warning" title={DN_NOT_MET_MESSAGE}>
           <ul className="list-disc pl-5">
@@ -506,6 +553,7 @@ export function PlanView({
         <div className="-mx-1 flex snap-x flex-col gap-4 px-1 pb-2 md:flex-row md:items-start md:overflow-x-auto">
           {r.terms.map((t) => (
             <SemesterCard key={t.term_code} term={t} scheduleHref={`/schedule?term=${t.term_code}`}
+              actions={actions}
               maxCredits={Number(plan.constraints.max_credits_per_term) || undefined}
               note={(r.observations ?? []).find((o) => o.code === "light_term" && o.term_code === t.term_code)?.message} />
           ))}

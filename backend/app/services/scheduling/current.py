@@ -64,6 +64,8 @@ class CurrentCourse:
     #: Phase 7.4: a newer confirmed WebReg import of this term does not list
     #: this course - "not on your latest WebReg schedule - dropped?".
     not_on_latest_webreg: bool = False
+    #: Prompt 11 A3: the student's own "doing well" mark (suggestions only).
+    doing_well: bool = False
 
 
 @dataclass
@@ -134,6 +136,7 @@ def current_schedule(session: Session, student: Student) -> CurrentSchedule:
             transcript_section=_hint(session, sc.id),
             sections_available=len({c.index_number for c in cands}),
             not_on_latest_webreg=latest is not None and course.course_string not in latest,
+            doing_well=bool(sc.doing_well),
         )
         for row in sorted(
             confirmations.get(sc.id, []), key=lambda r: (r.component, r.supplement_code)

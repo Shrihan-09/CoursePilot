@@ -171,6 +171,22 @@ export const api = {
   savePlan: (start_term?: string) =>
     request<SavedPlan>("/student/plans", json("POST", start_term ? { start_term } : {})),
   deletePlan: () => request<void>("/student/plans/current", { method: "DELETE" }),
+  /** Prompt 11 Part A: options, preview -> apply (revision-checked), undo. */
+  courseOptions: (course: string, term: string) =>
+    request<import("@/types/plan").CourseOptions>(`/student/plans/current/courses/${course.replace(/:/g, "-")}/${term}/options`),
+  previewChange: (change: import("@/types/plan").PlanChange) =>
+    request<import("@/types/plan").PlanPreview>("/student/plans/current/changes/preview", json("POST", change)),
+  applyChange: (preview_id: string) =>
+    request<SavedPlan>("/student/plans/current/changes/apply", json("POST", { preview_id })),
+  undoChange: () => request<SavedPlan>("/student/plans/current/undo", { method: "POST" }),
+  planChoices: () => request<import("@/types/plan").Choices>("/student/plans/current/choices"),
+  searchCourses: (body: { text?: string; term_code?: string | null; requirements?: string[][] | null; topic?: string | null; limit?: number }) =>
+    request<import("@/types/plan").CourseSearchResult>("/student/plans/current/search", json("POST", body)),
+  setDoingWell: (course: string, term: string, doing_well: boolean) =>
+    request<void>(`/student/courses/${course.replace(/:/g, "-")}/${term}/doing-well`, json("PUT", { doing_well })),
+  personalization: () => request<{ use_grades_for_suggestions: boolean }>("/student/plans/personalization"),
+  setPersonalization: (use_grades_for_suggestions: boolean) =>
+    request<{ use_grades_for_suggestions: boolean }>("/student/plans/personalization", json("PUT", { use_grades_for_suggestions })),
 
   schedules: (body: ScheduleRequest) =>
     request<ScheduleResult>("/student/schedules/generate", json("POST", body)),

@@ -39,6 +39,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["plan changes"])
 
 COURSE = r"^\d{2}:\d{3}:\d{3}$"
+#: In a PATH the course may be written with dashes (01-198-111): the web proxy
+#: allows only [A-Za-z0-9._~-] in a path segment. Normalised to colons.
+PATH_COURSE = r"^\d{2}[:-]\d{3}[:-]\d{3}$"
+
+
+def _course(value: str) -> str:
+    return value.replace("-", ":")
 TERM = r"^\d{4}[0179]$"
 
 
@@ -199,7 +206,7 @@ async def _run(work, what: str):
 @router.get("/student/plans/current/courses/{course}/{term}/options",
             response_model=CourseOptionsView,
             summary="Valid options for one planned course (same requirement / another one)")
-async def options(course: str = Path(pattern=COURSE), term: str = Path(pattern=TERM),
+async def options(course: str = Path(pattern=PATH_COURSE), term: str = Path(pattern=TERM),
                   principal: Principal = Depends(enforce_request_rate_limit)
                   ) -> CourseOptionsView:
     from app.services.planning.change_intent import CourseNotInPlan
@@ -214,7 +221,7 @@ async def options(course: str = Path(pattern=COURSE), term: str = Path(pattern=T
                 return None
             ctx = _context(session, student)
             try:
-                o = course_options(ctx, course, term)
+                o = course_options(ctx, _course(course), term)
             except CourseNotInPlan as exc:
                 raise HTTPException(status_code=404, detail=str(exc)) from None
             session.rollback()
@@ -341,7 +348,7 @@ async def search(body: SearchRequest, principal: Principal = Depends(enforce_req
 
 @router.put("/student/courses/{course}/{term}/doing-well", status_code=204,
             summary="Mark an in-progress course of mine as going well (or not)")
-async def doing_well(body: DoingWell, course: str = Path(pattern=COURSE),
+async def doing_well(body: DoingWell, course: str = Path(pattern=PATH_COURSE),
                      term: str = Path(pattern=TERM),
                      principal: Principal = Depends(enforce_request_rate_limit)) -> None:
     from sqlalchemy import select
@@ -355,7 +362,7 @@ async def doing_well(body: DoingWell, course: str = Path(pattern=COURSE),
                 return None
             row = session.scalar(
                 select(StudentCourse).join(Course, Course.id == StudentCourse.course_id)
-                .where(StudentCourse.student_id == student.id, Course.course_string == course,
+                .where(StudentCourse.student_id == student.id, Course.course_string == _course(course),
                        StudentCourse.term_code == term))
             if row is None or row.status != "in_progress":
                 raise HTTPException(status_code=404,
