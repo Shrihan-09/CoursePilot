@@ -41,3 +41,15 @@ def test_search_accepts_combined_structured_filters():
     request = SearchRequest(text="writing", filters={"campus": "CAC", "earliest": "10:00",
                             "latest": "15:00", "open_only": True, "avoid_days": ["F"]})
     assert request.filters.open_only and request.filters.campus == "CAC"
+
+
+def test_named_goal_needs_that_goal_in_the_offering_listing():
+    from types import SimpleNamespace as NS
+    from app.services.planning.course_search import _goal_filters_match
+
+    ctx = NS(engine=NS(_core_evidence=lambda *args: NS(codes=["AHp"])))
+    verdict = NS(course="01:999:101", offering=object())
+    request = Interpretation(term_code="20271", requirements=[["CORE_AH#AHo"]])
+    assert not _goal_filters_match(ctx, verdict, request)
+    request.requirements = [["CORE_AH#AHp"]]
+    assert _goal_filters_match(ctx, verdict, request)

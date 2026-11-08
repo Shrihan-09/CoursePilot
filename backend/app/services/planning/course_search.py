@@ -436,6 +436,17 @@ def _section_fits(meetings, it: Interpretation, blocked) -> bool:
                                avoid_days=it.avoid_days) and not overlaps_blocked(meetings, blocked)
 
 
+def _goal_filters_match(ctx, verdict, it: Interpretation) -> bool:
+    """A named goal must be certified by the actual offering evidence, not just a pool."""
+    for group in it.requirements:
+        if group and all("#" in entry for entry in group):
+            wanted = {entry.partition("#")[2] for entry in group}
+            evidence = ctx.engine._core_evidence(verdict.course, it.term_code, verdict.offering)
+            if evidence is None or not wanted.intersection(evidence.codes):
+                return False
+    return True
+
+
 def _search(ctx: OptionsContext, it: Interpretation, limit: int) -> SearchResult:
 
     out = SearchResult(interpretation=it)
@@ -487,6 +498,8 @@ def _search(ctx: OptionsContext, it: Interpretation, limit: int) -> SearchResult
         bases = [{e.split("#")[0] for e in g} for g in it.requirements]
         if not all(b & set(codes) for b in bases if b & set(ctx.open)):
             continue                                  # the term's Core codes did not certify
+        if not _goal_filters_match(ctx, v, it):
+            continue
         if it.async_only and "async" not in delivery:
             continue
         if it.online and not {"async", "online"} & set(delivery):
