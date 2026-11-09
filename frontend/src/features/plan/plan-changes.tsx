@@ -3,7 +3,7 @@
 import { useAssistantPanel } from "@/features/assistant/assistant-panel";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Lock, LockOpen, MessageSquare, Search, Sparkles, Undo2 } from "lucide-react";
+import { ArrowRight, Lock, LockOpen, MapPin, Monitor, Search, Sparkles, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -214,42 +214,16 @@ export function PlanDiffView({ diff: d }: { diff: PlanDiff }) {
 
 /* ------------------------------------------------------------ one option */
 
-function OptionCard({ option: o, onChoose, busy, action = "Choose" }: {
-  option: CourseOption | SearchHit;
-  onChoose: () => void;
-  busy?: boolean;
-  action?: string;
+export function OptionCard({ option: o, onChoose, busy, action = "Choose" }: {
+  option: CourseOption | SearchHit; onChoose: () => void; busy?: boolean; action?: string;
 }) {
-  const impact = "impact" in o ? o.impact : null;
-  const open = "open_status" in o ? o.open_status : null;
-  return (
-    <li className="space-y-1.5 rounded-lg border border-border bg-surface-elevated p-3 text-sm" data-testid="option-card">
-      <div className="flex items-start justify-between gap-2">
-        <span className="code font-semibold text-fg">{o.course}</span>
-        <span className="tabular shrink-0 rounded-md bg-surface-hover px-1.5 py-0.5 text-2xs font-medium text-fg-secondary">{Number(o.credits)} cr</span>
-      </div>
-      <p className="leading-snug text-fg [overflow-wrap:anywhere]">{o.title}</p>
-      {o.requirements.length > 0 && (
-        <p className="flex flex-wrap gap-1">
-          {o.requirements.map((r) => <Badge key={r} tone="info">{r}</Badge>)}
-          {o.fills_multiple && <Badge tone="success">Counts twice</Badge>}
-        </p>
-      )}
-      <p className={cn("text-xs font-medium", o.offering === "confirmed" ? "text-success" : "text-warning")}>
-        {o.offering === "confirmed" ? "Confirmed for this semester" : "Historically offered this season"}
-        {open === "closed" ? " · listed closed" : open === "open" ? " · listed open" : open === "unknown" ? " · current seat status unknown" : ""}
-      </p>
-      <p className="tabular text-2xs text-fg-muted">
-        {deliveryText(o.delivery)}
-        {o.workload_weight != null && ` · workload ${Number(o.workload_weight)}`}
-        {o.contact_hours != null && ` · ${Number(o.contact_hours)} contact hrs/week`}
-      </p>
-      {"why" in o && <p className="text-xs text-fg-secondary">{o.why}</p>}
-      {o.similar_to && <p className="text-xs text-fg-secondary"><Sparkles aria-hidden className="mr-1 inline size-3" />{o.similar_to}</p>}
-      {impact && <p className="text-xs text-fg-secondary">{impact}</p>}
-      <Button size="sm" variant="secondary" loading={busy} onClick={onChoose}>{action}</Button>
-    </li>
-  );
+  const open = "open_status" in o ? o.open_status : "unknown";
+  const DeliveryIcon = o.delivery.some((d) => d === "async" || d === "online") ? Monitor : MapPin;
+  return <li className="min-w-0 rounded-lg border border-border bg-surface-elevated p-3 text-sm" data-testid="option-card">
+    <div className="flex min-w-0 flex-wrap items-start justify-between gap-2"><div className="min-w-0 flex-1 basis-36"><h4 className="font-semibold leading-snug [overflow-wrap:anywhere]">{o.title}</h4><p className="code mt-1 text-xs text-fg-muted">{o.course} / {Number(o.credits)} credits</p></div><Button size="sm" variant="secondary" loading={busy} onClick={onChoose}>{action}</Button></div>
+    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-fg-secondary">{o.requirements[0] && <Badge tone="info">{o.requirements[0]}</Badge>}<span><DeliveryIcon aria-hidden className="mr-1 inline size-3" />{deliveryText(o.delivery)}</span><span>{open === "open" ? "Open" : open === "closed" ? "Closed" : "Seats unknown"}</span></div>
+    <details className="mt-1 text-xs text-fg-secondary"><summary className="cursor-pointer py-1">Details</summary><p>{o.offering === "confirmed" ? "Confirmed for this semester" : "Historically offered this season"}</p>{o.requirements.length > 1 && <p>Also fills: {o.requirements.slice(1).join(", ")}</p>}{"why" in o && <p>{o.why}</p>}{o.similar_to && <p>{o.similar_to}</p>}{"impact" in o && <p>{o.impact}</p>}<p>{o.workload_weight != null && `Workload ${Number(o.workload_weight)}`}{o.contact_hours != null && ` / ${Number(o.contact_hours)} contact hrs/week`}</p></details>
+  </li>;
 }
 
 function Group({ group, onChoose, busy }: { group: OptionGroup; onChoose: (o: CourseOption) => void; busy: boolean }) {
@@ -379,86 +353,44 @@ export function StateLine({ state, reason }: { state: string; reason: string | n
 
 /* ------------------------------------------------------------ "Your choices" */
 
-export function YourChoicesCard({ changes, revision = 0 }: { changes: PlanChanges; revision?: number }) {
+export function YourChoicesCard({ changes, revision = 0, onBuild }: { changes: PlanChanges; revision?: number; onBuild?: (term: string) => void }) {
   const q = useQuery({ queryKey: ["plan-choices"], queryFn: api.planChoices, staleTime: 30_000 });
-  const [skipped, setSkipped] = useState<string[]>([]);
-  useEffect(() => setSkipped([]), [revision]);
-  const skip = (key: string) => {
-    const next = [...skipped, key];
-    setSkipped(next);
-  };
-  if (q.isPending) return <Skeleton className="h-40" />;
+  const [kept, setKept] = useState<string[]>([]);
+  const [review, setReview] = useState<boolean | null>(null);
+  const [selected, setSelected] = useState<ChoiceQuestion | null>(null);
+  const [groupIndex, setGroupIndex] = useState(0);
+  const [more, setMore] = useState(false);
+  useEffect(() => { setKept([]); setReview(null); setSelected(null); }, [revision]);
+  if (q.isPending) return <Skeleton className="h-24" />;
   if (q.isError || !q.data.term_code) return null;
   const term = q.data.term_code;
-  const questions = q.data.questions.filter((x) => !skipped.includes(`${term}:${x.kind}:${x.course ?? x.requirement_code}`));
-  return (
-    <section aria-labelledby="choices-heading" className="space-y-4 animate-cp-rise rounded-xl border border-primary/25 bg-surface-elevated p-4" data-testid="your-choices">
-      <div className="space-y-1">
-        <h2 id="choices-heading" className="text-base font-semibold text-fg">Your choices for {termLabel(term)}</h2>
-        <p className="text-sm text-fg-secondary">
-          CoursePilot filled the flexible spots. Pick one yourself, or let CoursePilot choose. Every pick shows a preview first.
-        </p>
-      </div>
-      {questions.map((x) => (
-        <Question key={`${x.kind}-${x.course ?? x.requirement_code}`} q={x} term={term} changes={changes}
-          onSkip={() => skip(`${term}:${x.kind}:${x.course ?? x.requirement_code}`)} />
-      ))}
-      <div className="space-y-2 border-t border-border pt-3">
-        <p className="flex items-center gap-1.5 text-sm text-fg-secondary">
-          <MessageSquare aria-hidden className="size-4" />
-          Want a specific course? Ask the assistant{" "}
-          <Link href="/assistant" className="font-medium text-primary-text underline">(open it)</Link>, or search:
-        </p>
-        <CourseSearchBox term={term} changes={changes} />
-      </div>
-    </section>
-  );
-}
-
-function Question({ q, term, changes, onSkip }: { q: ChoiceQuestion; term: string; changes: PlanChanges; onSkip: () => void }) {
-  if (q.kind === "already_set" || q.kind === "your_choice") {
-    return <p className="flex items-center gap-2 text-sm text-fg-secondary"><Lock aria-hidden className="size-4" />{q.prompt}</p>;
-  }
-  if (q.kind === "alternative") {
-    return (
-      <div className="space-y-2">
-        <p className="text-sm font-medium text-fg">{q.prompt}</p>
-        {q.reason && <p className="text-xs text-fg-secondary">{q.reason}</p>}
-        <div className="flex flex-wrap gap-2">
-          {q.alternatives.map((a) => (
-            <Button key={a.code} size="sm" variant={q.recommended.includes(a.code) ? "primary" : "secondary"}
-              className="h-auto min-h-9 whitespace-normal py-1.5 text-left" loading={changes.previewing}
-              onClick={() => changes.request({ kind: "choose_alternative", requirement_code: q.requirement_code, alternatives: [a.code] })}>
-              {a.name}{q.recommended.includes(a.code) ? " (recommended)" : ""}
-              {a.estimated_terms != null ? ` · about ${a.estimated_terms} semester${a.estimated_terms === 1 ? "" : "s"}` : ""}
-            </Button>
-          ))}
-          <Button size="sm" variant="ghost" onClick={onSkip}>Skip for now</Button>
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className="space-y-2">
-      <p className="text-sm font-medium text-fg">{q.prompt}</p>
-      <div className="-mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-1">
-        {q.groups.map((g) => (
-          <div key={`${g.kind}-${g.requirement_code}`} className="w-[17rem] shrink-0 snap-start space-y-2">
-            <p className="text-xs font-semibold text-fg">{g.requirement_name}</p>
-            <ul className="space-y-2">
-              {g.options.map((o) => (
-                <OptionCard key={o.course} option={o} busy={changes.previewing}
-                  onChoose={() => changes.request({ kind: "swap", course: q.course, term_code: term, replacement: o.course })} />
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
-      <div className="flex gap-2">
-        <Button size="sm" variant="ghost" onClick={onSkip}>Let CoursePilot choose</Button>
-      </div>
+  const key = (x: ChoiceQuestion) => `${x.kind}:${x.course ?? x.requirement_code}`;
+  const fixed = (x: ChoiceQuestion) => x.kind === "already_set" || x.kind === "your_choice";
+  const allSet = q.data.questions.every((x) => fixed(x) || kept.includes(key(x)));
+  const expanded = review ?? !allSet;
+  const group = selected?.groups[groupIndex];
+  const choose = (change: PlanChange) => { changes.request(change); setSelected(null); };
+  return <section className="min-w-0 rounded-xl border border-primary/25 bg-surface-elevated p-3" data-testid="your-choices">
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <h2 id="choices-heading" className="text-sm font-semibold">{allSet ? `All set for ${termLabel(term)}` : `Your choices for ${termLabel(term)}`}</h2>
+      <Button size="sm" variant="ghost" aria-expanded={expanded} onClick={() => setReview(!expanded)}>{expanded ? "Collapse" : "Review"}</Button>
     </div>
-  );
+    {expanded && <div className="divide-y divide-border">
+      {q.data.questions.map((x) => <div key={key(x)} className="flex min-w-0 flex-wrap items-center justify-between gap-2 py-2 text-sm">
+        <p className="min-w-0 flex-1 basis-40 [overflow-wrap:anywhere]">{fixed(x) ? <><Lock aria-hidden className="mr-1 inline size-3" />{x.prompt.replace(/^Your choice:/, "Already set:")}</> : <>{x.kind === "alternative" ? x.prompt : `${x.groups[0]?.requirement_name ?? "Core slot"} / pick 1`}<span className="block text-xs text-fg-secondary">CoursePilot picked {x.title ?? x.alternatives.find((a) => x.recommended.includes(a.code))?.name ?? "the recommended option"}</span></>}</p>
+        {!fixed(x) && <div className="flex gap-1"><Button size="sm" variant="ghost" onClick={() => { setKept([...kept, key(x)]); setReview(null); }}>{kept.includes(key(x)) ? "Kept" : "Keep"}</Button><Button size="sm" variant="secondary" onClick={() => { setSelected(x); setGroupIndex(0); setMore(false); }}>Change</Button></div>}
+      </div>)}
+    </div>}
+    <Dialog open={!!selected} onClose={() => setSelected(null)} title="Change your choice" description="Choose a course, then review its impact before confirming.">
+      {selected?.kind === "alternative" ? <div className="grid gap-2">{selected.alternatives.map((a) => <Button key={a.code} className="h-auto whitespace-normal text-left" onClick={() => choose({ kind: "choose_alternative", requirement_code: selected.requirement_code, alternatives: [a.code] })}>{a.name}{selected.recommended.includes(a.code) ? " (recommended)" : ""}</Button>)}</div> : <>
+        <div role="group" aria-label="Requirement groups" className="flex flex-wrap gap-1">{selected?.groups.map((g, i) => <Button key={`${g.kind}-${g.requirement_code}`} size="sm" variant={i === groupIndex ? "primary" : "secondary"} aria-pressed={i === groupIndex} onClick={() => { setGroupIndex(i); setMore(false); }}>{g.requirement_name}</Button>)}</div>
+        <ul className="mt-3 grid min-w-0 gap-2">{group?.options.slice(0, more ? undefined : 3).map((o) => <OptionCard key={o.course} option={o} busy={changes.previewing} onChoose={() => choose({ kind: "swap", course: selected!.course, term_code: term, replacement: o.course })} />)}</ul>
+        {!group?.options.length && <p className="py-3 text-sm text-fg-secondary">No alternatives pass every check for this group.</p>}
+        {!more && (group?.options.length ?? 0) > 3 && <Button size="sm" variant="ghost" onClick={() => setMore(true)}>Show more</Button>}
+      </>}
+      {onBuild && <Button className="mt-3 h-auto whitespace-normal" variant="secondary" onClick={() => { setSelected(null); onBuild(term); }}>Browse all in the semester builder</Button>}
+    </Dialog>
+  </section>;
 }
 
 /* ------------------------------------------------------------ search */

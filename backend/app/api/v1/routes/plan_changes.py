@@ -23,7 +23,7 @@ import logging
 import time
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Path
 from fastapi.concurrency import run_in_threadpool
@@ -179,6 +179,39 @@ class SearchView(BaseModel):
     interpretation: InterpretationView
     results: list[SearchHitView]
     not_available: list[dict]
+
+
+class BuilderRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    term_code: str = Field(pattern=TERM)
+    selection: list[Annotated[str, Field(pattern=COURSE)]] | None = Field(default=None, max_length=24)
+    text: str = Field(default="", max_length=300)
+    requirements: list[list[str]] | None = Field(default=None, max_length=4)
+    filters: SearchFilters | None = None
+    delivery: Literal["any", "hybrid"] = "any"
+    still_needed: bool = True
+    degree_credit_only: bool = False
+    sort: Literal["recommended", "name", "credits", "fills"] = "recommended"
+    offset: int = Field(default=0, ge=0)
+    limit: int = Field(default=30, ge=1, le=100)
+
+
+@router.post("/student/plans/current/builder", summary="Browse every SOC course for a semester, with gates visible")
+async def builder(body: BuilderRequest, principal: Principal = Depends(enforce_request_rate_limit)):
+    from app.services.planning.semester_builder import browse
+
+    def work():
+        with get_sync_sessionmaker()() as session:
+            student = _resolve(session, principal.account_id)
+            if student is None:
+                return None
+            ctx = _context(session, student)
+            if ctx.term(body.term_code) is None:
+                raise HTTPException(status_code=422, detail="Choose a semester in your saved plan.")
+            result = browse(ctx, body)
+            session.rollback()
+            return result
+    return await _run(work, "semester_builder")
 
 
 class DoingWell(BaseModel):

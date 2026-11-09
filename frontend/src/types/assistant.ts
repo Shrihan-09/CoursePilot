@@ -113,6 +113,7 @@ export type StreamEvent =
 export interface MessageBody {
   conversation_id?: string;
   context_term?: string;
+  builder_selection?: string[];
   text?: string;
   chip?: Chip;
   answers?: Record<string, string>;

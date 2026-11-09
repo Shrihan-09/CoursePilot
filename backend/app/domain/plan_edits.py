@@ -65,7 +65,7 @@ class PlanEdits(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     locks: list[CoursePin] = Field(default_factory=list, max_length=48)
-    selections: list[CoursePin] = Field(default_factory=list, max_length=24)
+    selections: list[CoursePin] = Field(default_factory=list, max_length=48)
     avoid: list[CourseAvoid] = Field(default_factory=list, max_length=48)
     #: Semesters the student locked whole (each of their courses is in `locks`).
     locked_terms: list[str] = Field(default_factory=list, max_length=16)
@@ -80,7 +80,7 @@ class PlanEdits(BaseModel):
 
 
 ChangeKind = Literal["swap", "move", "remove", "add", "lock", "unlock", "lock_term",
-                     "unlock_term", "lighten_term", "choose_alternative"]
+                     "unlock_term", "lighten_term", "choose_alternative", "set_term"]
 
 
 class PlanChange(BaseModel):
@@ -99,9 +99,21 @@ class PlanChange(BaseModel):
     #: choose_alternative: the one-of requirement and the children chosen.
     requirement_code: str | None = Field(default=None, max_length=64)
     alternatives: list[str] = Field(default_factory=list, max_length=4)
+    courses: list[str] = Field(default_factory=list, max_length=24)
+    expected_revision: int | None = Field(default=None, ge=1)
+    pin_explanations: dict[str, str] = Field(default_factory=dict, max_length=24)
 
     @model_validator(mode="after")
     def _fields(self) -> PlanChange:
+        if self.kind == "set_term":
+            import re
+            if not self.term_code or self.expected_revision is None:
+                raise ValueError("set_term names its term and expected revision")
+            if len(set(self.courses)) != len(self.courses) or any(not re.fullmatch(COURSE, k) for k in self.courses):
+                raise ValueError("set_term requires unique canonical course codes")
+            if any(k not in self.courses or not 3 <= len(v.strip()) <= 300 for k, v in self.pin_explanations.items()):
+                raise ValueError("pin explanations name selected courses and contain 3–300 characters")
+            return self
         if self.kind == "choose_alternative":
             if not self.requirement_code or not self.alternatives:
                 raise ValueError("choose_alternative names the requirement and its choice")
