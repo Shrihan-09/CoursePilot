@@ -250,12 +250,17 @@ def execute_action(session: Session, student: Student, token: str, *, tools=None
     row = session.scalar(select(AssistantAction).where(AssistantAction.token_sha256 == digest)
                          .with_for_update())
     now = _today()
-    expires = row.expires_at if row is None or row.expires_at.tzinfo else \
-        row.expires_at.replace(tzinfo=UTC)
+    expires = None
+    if row is not None:
+        expires = row.expires_at if row.expires_at.tzinfo else \
+            row.expires_at.replace(tzinfo=UTC)
     if row is None or row.student_id != student.id or row.used_at is not None or expires < now:
         raise InvalidAction("This option has expired. Ask again for fresh options.")
-    row.used_at = now                        # single use, even if the action fails
-    session.flush()
+    # Single use, even if the action fails: committed BEFORE it runs, so no
+    # rollback inside the action can make the token valid again. The row lock
+    # (FOR UPDATE above) means a double tap sees used_at and is refused.
+    row.used_at = now
+    session.commit()
     reply = actions.execute(tools or DbAssistantTools(session, student), row.payload)
     _tokenize(session, student, reply)
     _persist(session, student, None, reply)
