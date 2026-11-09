@@ -129,7 +129,8 @@ for (const scheme of ["dark", "light"]) {
     findings.push({ name: `${scheme}-retake-pin`, pin });
     check(Boolean(pin?.retake), `${scheme} retake choice saved as a pin`);
     await page.getByRole("button", { name: /Build my plan/ }).click();
-    await page.waitForURL(/\/home/, { timeout: 180000 });
+    await page.waitForURL(/\/plan$/, { timeout: 180000 });
+    await page.goto(`${BASE}/home`);
     await page.waitForLoadState("networkidle");
     const reminder = page.getByText(/Your grades are in/);
     await reminder.first().waitFor({ timeout: 20000 }).catch(() => {});
