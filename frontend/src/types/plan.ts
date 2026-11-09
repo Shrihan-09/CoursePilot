@@ -476,6 +476,7 @@ export interface SearchHit {
   why: string;
   similar_to: string | null;
   planned_term: string | null;
+  fills_multiple?: boolean;
 }
 
 export interface CourseSearchResult {

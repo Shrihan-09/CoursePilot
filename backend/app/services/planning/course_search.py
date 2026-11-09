@@ -144,6 +144,7 @@ class SearchHit:
     similar_to: str | None = None
     #: Already in the plan for a LATER term: choosing it moves it here.
     planned_term: str | None = None
+    fills_multiple: bool = False
 
 
 @dataclass
@@ -548,7 +549,7 @@ def _search(ctx: OptionsContext, it: Interpretation, limit: int) -> SearchResult
             delivery=delivery, workload_weight=w.weight if w else None,
             contact_hours=w.contact_hours if w else None, open_status=status,
             why=" · ".join(reasons) or f"offered in {label(term)}", similar_to=note,
-            planned_term=ctx.where.get(v.course)))
+            planned_term=ctx.where.get(v.course), fills_multiple=ctx.engine._usable(codes) >= 2))
     pref = ctx.c.filler_preference.value
 
     def key(h: SearchHit):

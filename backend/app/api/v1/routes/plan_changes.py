@@ -151,6 +151,7 @@ class SearchHitView(BaseModel):
     why: str
     similar_to: str | None = None
     planned_term: str | None = None
+    fills_multiple: bool = False
 
 
 class InterpretationView(BaseModel):

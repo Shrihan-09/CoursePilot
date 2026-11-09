@@ -222,7 +222,7 @@ function OptionCard({ option: o, onChoose, busy, action = "Choose" }: {
       {o.requirements.length > 0 && (
         <p className="flex flex-wrap gap-1">
           {o.requirements.map((r) => <Badge key={r} tone="info">{r}</Badge>)}
-          {o.requirements.length > 1 && <Badge tone="success">Counts twice</Badge>}
+          {o.fills_multiple && <Badge tone="success">Counts twice</Badge>}
         </p>
       )}
       <p className={cn("text-xs font-medium", o.offering === "confirmed" ? "text-success" : "text-warning")}>
