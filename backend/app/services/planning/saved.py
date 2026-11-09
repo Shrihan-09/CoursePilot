@@ -187,6 +187,13 @@ class SavedPlan:
     result: PlanResult
     stale_reasons: list[str]
     blocked_courses: list[BlockedCourse]
+    #: Prompt 11: the plan's revision, the student's edits, each planned
+    #: course's state, choices the plan could not keep, and what undo undoes.
+    revision: int = 1
+    edits: dict = field(default_factory=dict)
+    course_states: list = field(default_factory=list)
+    needs_reselection: list = field(default_factory=list)
+    last_change: str | None = None
 
 
 def _encode(result: PlanResult) -> bytes:
@@ -208,15 +215,22 @@ def save_plan(session: Session, student: Student, *, start_term: str | None,
     `generate_plan` runs read-only (it raises if the engine would write); the
     single write is the upsert below, committed by the caller's transaction.
     """
+    from app.services.planning.edits import edits_of, plan_constraints, push_history_for_rebuild
+
     if start_term is None:
         start_term = default_start(latest_history_term(session, student))
     check_start(session, student, start_term)
+    row = session.scalar(select(StudentPlan).where(StudentPlan.student_id == student.id))
+    # Prompt 11: the student's own plan changes carry into every rebuild.
+    constraints = plan_constraints(constraints, edits_of(row))
     result = generate_plan(session, student, start_term=start_term, constraints=constraints)
     meta = result.metadata
-    row = session.scalar(select(StudentPlan).where(StudentPlan.student_id == student.id))
     if row is None:
-        row = StudentPlan(student_id=student.id)
+        row = StudentPlan(student_id=student.id, revision=0, edits={})
         session.add(row)
+    else:
+        push_history_for_rebuild(session, row)
+    row.revision = (row.revision or 0) + 1
     row.program_version_id = student.program_version_id
     row.catalog_year = student.catalog_year
     row.start_term = start_term
@@ -244,6 +258,13 @@ def delete_plan(session: Session, student: Student) -> bool:
     row = session.scalar(select(StudentPlan).where(StudentPlan.student_id == student.id))
     if row is None:
         return False
+    from sqlalchemy import delete
+
+    from app.models.plans import PlanChangePreview, StudentPlanHistory
+
+    # Prompt 11: a deleted plan leaves no undo history or previews behind.
+    session.execute(delete(StudentPlanHistory).where(StudentPlanHistory.student_id == student.id))
+    session.execute(delete(PlanChangePreview).where(PlanChangePreview.student_id == student.id))
     session.delete(row)
     session.flush()
     return True
@@ -314,22 +335,32 @@ def stale_reasons(session: Session, student: Student, row: StudentPlan) -> list[
     profile = get_profile(session, student)
     if profile is not None:
         from app.domain.planning_profile import to_constraints
+        from app.services.planning.edits import edits_of, plan_constraints
 
-        if to_constraints(profile_input(profile)).model_dump(mode="json") !=                 PlanningConstraints.model_validate(row.constraints).model_dump(mode="json"):
+        expected = plan_constraints(to_constraints(profile_input(profile)), edits_of(row))
+        saved = PlanningConstraints.model_validate(row.constraints)
+        if expected.model_dump(mode="json") != saved.model_dump(mode="json"):
             reasons.append("planning_preferences_changed")
     return reasons
 
 
 def _view(session: Session, student: Student, row: StudentPlan, *,
           result: PlanResult | None = None) -> SavedPlan:
+    from app.services.planning.edits import course_states, last_change, needs_reselection
+
     result = result or _decode(row.result_blob)
+    constraints = PlanningConstraints.model_validate(row.constraints)
     return SavedPlan(
         id=str(row.id), created_at=row.created_at, updated_at=row.updated_at,
         start_term=row.start_term,
-        constraints=PlanningConstraints.model_validate(row.constraints),
+        constraints=constraints,
         result=result,
         stale_reasons=stale_reasons(session, student, row),
-        blocked_courses=blocked_courses(session, result))
+        blocked_courses=blocked_courses(session, result),
+        revision=row.revision or 1, edits=dict(row.edits or {}),
+        course_states=course_states(result, constraints),
+        needs_reselection=[vars(r) for r in needs_reselection(result, constraints)],
+        last_change=last_change(session, student))
 
 
 def _plain(text: str | None) -> str | None:

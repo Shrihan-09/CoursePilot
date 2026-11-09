@@ -112,7 +112,8 @@ for (const scheme of ["dark", "light"]) {
     const label = await page.getByText(/^Estimated — import your audit/).count();
     if (!label) failures.push(`${stamp}: build step not labelled estimated`);
     await page.getByRole("button", { name: /Build my plan/ }).click();
-    await page.waitForURL(/\/home/, { timeout: 120000 });
+    await page.waitForURL(/\/plan$/, { timeout: 120000 });
+    await page.goto(`${BASE}/home`);
     await page.waitForLoadState("networkidle");
     await shot(page, `${scheme}-${vp}-9-home`);
 

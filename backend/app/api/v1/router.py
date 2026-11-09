@@ -15,6 +15,7 @@ from app.api.v1.routes import (
     explanations,
     health,
     meta,
+    plan_changes,
     plans,
     programs,
     scenarios,
@@ -40,6 +41,7 @@ api_router.include_router(degree_audit_imports.router)
 api_router.include_router(programs.router)
 api_router.include_router(scenarios.router)
 api_router.include_router(plans.router)
+api_router.include_router(plan_changes.router)
 api_router.include_router(personalization.router)
 api_router.include_router(schedules.router)
 api_router.include_router(schedule_imports.router)

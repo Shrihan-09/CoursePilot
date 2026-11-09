@@ -38,7 +38,7 @@ section restriction lists, cross-program double-counting policy.
 
 from app.models.academic import Course, CourseOffering, Subject
 from app.models.audit_cache import StudentAuditCache
-from app.models.plans import StudentPlan
+from app.models.plans import PlanChangePreview, StudentPlan, StudentPlanHistory
 from app.models.planning_profile import StudentPlanningProfile
 from app.models.current_section import StudentCurrentSection
 from app.models.provenance import DataSource
@@ -163,7 +163,9 @@ __all__ = [
     "Student",
     "StudentAuditCache",
     "StudentLinkEvent",
+    "PlanChangePreview",
     "StudentPlan",
+    "StudentPlanHistory",
     "StudentPlanningProfile",
     "StudentCurrentSection",
     "UserAccount",

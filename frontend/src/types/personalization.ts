@@ -140,6 +140,8 @@ export interface CurrentCourse {
   confirmed_identities?: {term_code: string; course_string: string; section_number: string | null; index_number: string; supplement_code: string; source: string; confirmed_at: string}[];
   /** Phase 7.4: a newer confirmed WebReg import of this term does not list it. */
   not_on_latest_webreg?: boolean;
+  /** Prompt 11 A3: the student's own "doing well" mark (orders their suggestions only). */
+  doing_well?: boolean;
 }
 
 export interface CurrentSchedule {

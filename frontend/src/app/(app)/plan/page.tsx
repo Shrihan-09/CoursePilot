@@ -3,12 +3,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Map as MapIcon, SlidersHorizontal, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { GenerationAnimation } from "@/components/brand/generation";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Alert, EmptyState, ErrorState, PageHeader, Skeleton } from "@/components/ui/feedback";
 import { Field, Select } from "@/components/ui/field";
+import { AddCourseSheet, ChangePreviewDialog, CourseOptionsSheet, usePlanChanges, YourChoicesCard } from "@/features/plan/plan-changes";
 import { PlanView } from "@/features/plan/plan-result";
 import { ProfileSummary, ReadinessList } from "@/features/planning/profile-summary";
 import { ApiError, api } from "@/lib/api";
@@ -51,6 +52,15 @@ export default function PlanPage() {
   const profile = useQuery({ queryKey: ["profile"], queryFn: api.profile });
   const [start, setStart] = useState<string | null>(null);
   const [resolved, setResolved] = useState(true);
+  // Prompt 11: options, swaps, locks and undo - always preview, then confirm.
+  const changes = usePlanChanges();
+  const [optionsFor, setOptionsFor] = useState<{ course: string; term: string } | null>(null);
+  const [addFor, setAddFor] = useState<string | null>(null);
+  const saved = current.data?.plan ?? null;
+  const states = useMemo(
+    () => new Map((saved?.course_states ?? []).map((s) => [`${s.course}@${s.term_code}`, s])),
+    [saved],
+  );
 
   const generate = useMutation({
     mutationFn: (startTerm?: string) => api.savePlan(startTerm),
@@ -58,6 +68,7 @@ export default function PlanPage() {
     onSuccess: (plan: SavedPlan) => {
       client.setQueryData(["plan"], { plan });
       void client.invalidateQueries({ queryKey: ["readiness"] });
+      void client.invalidateQueries({ queryKey: ["plan-choices"] });
     },
     onError: () => setResolved(true),
   });
@@ -145,6 +156,8 @@ export default function PlanPage() {
           {error.status >= 500 ? "The planning engine hit a problem. Your saved plan, if any, is unchanged." : error.message}
         </Alert>
       )}
+      {changes.previewing && <p role="status" className="text-sm text-fg-secondary">Checking your change with the planning engine…</p>}
+      {changes.error && !changes.preview && <Alert tone="danger" title="The change couldn't be previewed">{changes.error}</Alert>}
 
       {(ready.state === "needs_program" || ready.state === "needs_academic_history") ? (
         <EmptyState icon={MapIcon} title="Finish setting up first"
@@ -185,8 +198,14 @@ export default function PlanPage() {
         </section>
       ) : (
         <>
+          {plan.freshness.state === "current" && <YourChoicesCard changes={changes} revision={plan.revision} />}
           <PlanView
             plan={plan}
+            actions={plan.freshness.state === "current" ? {
+              changes, states, lockedTerms: plan.edits?.locked_terms ?? [],
+              onOptions: (course, term) => setOptionsFor({ course, term }),
+                onAddCourse: setAddFor,
+            } : undefined}
             regenerating={generate.isPending}
             onApplyLight={(o) => applyLight.mutate(o)}
             applyingLight={applyLight.isPending}
@@ -206,6 +225,9 @@ export default function PlanPage() {
           </details>
         </>
       )}
+      <CourseOptionsSheet target={optionsFor} onClose={() => setOptionsFor(null)} changes={changes} />
+      <AddCourseSheet term={addFor} changes={changes} onClose={() => setAddFor(null)} />
+      <ChangePreviewDialog changes={changes} />
     </div>
   );
 }

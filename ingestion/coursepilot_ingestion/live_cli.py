@@ -54,6 +54,8 @@ def build_parser() -> argparse.ArgumentParser:
     demand = sub.add_parser("demand", help="roll up course_demand_snapshot (no Rutgers request)")
     demand.add_argument("--term", help="YYYYT; with --date, recompute that one day")
     demand.add_argument("--date", help="YYYY-MM-DD (America/New_York day)")
+    tiers = sub.add_parser("tiers", help="status changes per registration credit tier")
+    tiers.add_argument("--term", required=True, help="YYYYT, e.g. 20271")
     run = sub.add_parser("run", help="the production loop")
     run.add_argument("--idle", type=float, default=5.0, help="seconds between ticks")
     run.add_argument("--max-ticks", type=int, default=None)
@@ -108,6 +110,17 @@ def _demand(session: Session, args) -> int:
     return 0
 
 
+def _tiers(session: Session, args) -> int:
+    from app.services.demand import changes_by_registration_phase
+
+    rows = changes_by_registration_phase(session, args.term)
+    if not rows:
+        print(f"{args.term}: no registration schedule on file")
+    for r in rows:
+        print(f"{r.phase:28} opened {r.opened:5}  closed {r.closed:5}  other {r.other:5}")
+    return 0
+
+
 def _worker(factory, stop: threading.Event | None = None) -> LiveWorker:
     settings = get_settings()
     owner = f"{socket.gethostname()}:{os.getpid()}:{uuid.uuid4().hex[:6]}"
@@ -131,6 +144,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "demand":
             with factory() as s:
                 return _demand(s, args)
+        if args.command == "tiers":
+            with factory() as s:
+                return _tiers(s, args)
         if args.command == "tick":
             report = _worker(factory).tick()
             print(f"polled {report.polled}  openings {report.openings}  events {report.events}"

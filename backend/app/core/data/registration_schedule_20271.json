@@ -1,0 +1,24 @@
+{
+  "term_code": "20271",
+  "term_label": "Spring 2027",
+  "timezone": "America/New_York",
+  "source": {
+    "title": "Office of the Registrar, New Brunswick - Spring 2027 Registration Schedule",
+    "url": "https://nbregistrar.rutgers.edu/undergrad/s27prereg.htm",
+    "basis": "owner-provided screenshot of the page",
+    "recorded_on": "2026-11-08",
+    "note": "Tiers are by DEGREE CREDITS earned. Each tier may register from 9:00 am on its date; 'all students' from Nov 19. WebReg is closed nightly 2:00-6:00 am."
+  },
+  "tiers": [
+    {"min_degree_credits": 105, "label": "105+ degree credits", "opens_at": "2026-11-09T09:00"},
+    {"min_degree_credits": 90,  "label": "90+ degree credits",  "opens_at": "2026-11-10T09:00"},
+    {"min_degree_credits": 75,  "label": "75+ degree credits",  "opens_at": "2026-11-11T09:00"},
+    {"min_degree_credits": 60,  "label": "60+ degree credits",  "opens_at": "2026-11-12T09:00"},
+    {"min_degree_credits": 40,  "label": "40+ degree credits",  "opens_at": "2026-11-13T09:00"},
+    {"min_degree_credits": 25,  "label": "25+ degree credits",  "opens_at": "2026-11-16T09:00"},
+    {"min_degree_credits": 1,   "label": "1+ degree credits (001)", "opens_at": "2026-11-17T09:00"},
+    {"min_degree_credits": 0,   "label": "0 degree credits",    "opens_at": "2026-11-18T09:00"}
+  ],
+  "all_students_opens_at": "2026-11-19T09:00",
+  "nightly_closure": {"start": "02:00", "end": "06:00"}
+}

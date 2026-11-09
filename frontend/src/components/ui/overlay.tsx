@@ -145,16 +145,18 @@ interface ToastItem {
   id: number;
   message: string;
   tone: ToastTone;
+  action?: { label: string; onClick: () => void };
 }
 
-const ToastContext = createContext<((message: string, tone?: ToastTone) => void) | null>(null);
+const ToastContext = createContext<((message: string, tone?: ToastTone, action?: ToastItem["action"]) => void) | null>(null);
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
-  const push = useCallback((message: string, tone: ToastTone = "neutral") => {
+  const push = useCallback((message: string, tone: ToastTone = "neutral", action?: ToastItem["action"]) => {
     const id = Date.now() + Math.random();
-    setItems((xs) => [...xs, { id, message, tone }]);
-    window.setTimeout(() => setItems((xs) => xs.filter((x) => x.id !== id)), 5000);
+    // Only the most recent change can be undone by the plan endpoint.
+    setItems((xs) => [...(action ? xs.filter((x) => !x.action) : xs), { id, message, tone, action }]);
+    window.setTimeout(() => setItems((xs) => xs.filter((x) => x.id !== id)), action ? 10000 : 5000);
   }, []);
   return (
     <ToastContext.Provider value={push}>
@@ -174,6 +176,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             )}
           >
             {t.message}
+            {t.action && <button type="button" className="ml-3 font-semibold underline" onClick={() => {
+              setItems((xs) => xs.filter((x) => x.id !== t.id));
+              t.action?.onClick();
+            }}>{t.action.label}</button>}
           </div>
         ))}
       </div>

@@ -220,5 +220,45 @@ def _aware(value: datetime) -> datetime:
     return value if value.tzinfo else value.replace(tzinfo=UTC)
 
 
-__all__ = ["LOOKBACK_DAYS", "DayRollup", "day_bounds", "due_days", "eastern_day",
-           "rollup_day", "rollup_due"]
+@dataclass
+class PhaseChanges:
+    """Recorded open/closed transitions while one registration phase was active."""
+
+    phase: str                    # tier label, "all students", "nightly closure", ...
+    opened: int = 0               # closed -> open
+    closed: int = 0               # open -> closed
+    other: int = 0                # first observations and other transitions
+
+
+def changes_by_registration_phase(session: Session, term_code: str, *,
+                                  since: datetime | None = None,
+                                  schedules=None) -> list[PhaseChanges]:
+    """Tag every recorded status change with the credit tier that was
+    registering when it was observed (app.core.registration_windows). Computed
+    from the stored timestamps - nothing new is stored. Empty when the term
+    has no registration schedule on file."""
+    from app.core.registration_windows import registration_phase, registration_schedule
+
+    if registration_schedule(term_code, schedules) is None:
+        return []
+    out: dict[str, PhaseChanges] = {}
+    q = select(SectionAvailabilityChange.from_status, SectionAvailabilityChange.to_status,
+               SectionAvailabilityChange.observed_at).where(
+        SectionAvailabilityChange.term_code == term_code)
+    if since is not None:
+        q = q.where(SectionAvailabilityChange.observed_at >= since)
+    for from_status, to_status, observed_at in session.execute(
+            q.order_by(SectionAvailabilityChange.observed_at)):
+        phase = registration_phase(term_code, _aware(observed_at), schedules)
+        row = out.setdefault(phase.label, PhaseChanges(phase.label))
+        if from_status == "closed" and to_status == "open":
+            row.opened += 1
+        elif from_status == "open" and to_status == "closed":
+            row.closed += 1
+        else:
+            row.other += 1
+    return list(out.values())
+
+
+__all__ = ["LOOKBACK_DAYS", "DayRollup", "PhaseChanges", "changes_by_registration_phase",
+           "day_bounds", "due_days", "eastern_day", "rollup_day", "rollup_due"]

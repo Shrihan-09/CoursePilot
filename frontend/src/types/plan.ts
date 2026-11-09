@@ -317,6 +317,191 @@ export interface SavedPlan {
   freshness: { state: "current" | "stale"; reasons: StaleReason[] };
   blocked_courses: BlockedCourse[];
   result: PlanResult;
+  /** Prompt 11: a preview applies only to this revision. */
+  revision?: number;
+  edits?: PlanEdits;
+  course_states?: PlannedCourseState[];
+  needs_reselection?: Reselection[];
+  /** What "Undo last change" would undo (null: nothing). */
+  last_change?: string | null;
+}
+
+/* ------------------------------------------------------------ Prompt 11 A */
+
+export type CourseState = "locked" | "user_selected" | "planner_selected" | "proposed_change";
+
+export interface PlannedCourseState {
+  course: string;
+  term_code: string;
+  state: CourseState;
+  /** anchor (Musts pin / needed retake) | locked | user_selected | null */
+  locked_reason: string | null;
+}
+
+export interface CoursePinEdit { course: string; term_code: string; retake?: boolean; source?: "must" | "lock" | "selection" }
+
+export interface PlanEdits {
+  locks: CoursePinEdit[];
+  selections: CoursePinEdit[];
+  avoid: { course: string; term_code: string | null }[];
+  locked_terms: string[];
+  term_caps: { term_code: string; credit_min: number; credit_max: number }[];
+  alternative_selections: Record<string, string[]>;
+}
+
+export interface Reselection { course: string; term_code: string; source: string; message: string }
+
+export type ChangeKind =
+  | "swap" | "move" | "remove" | "add" | "lock" | "unlock" | "lock_term" | "unlock_term"
+  | "lighten_term" | "choose_alternative";
+
+export interface PlanChange {
+  kind: ChangeKind;
+  course?: string | null;
+  term_code?: string | null;
+  replacement?: string | null;
+  to_term?: string | null;
+  requirement_code?: string | null;
+  alternatives?: string[];
+}
+
+export interface CourseLine { course: string; title: string; credits: string | number; state: CourseState }
+
+export interface TermDiff {
+  term_code: string;
+  label: string;
+  before: CourseLine[];
+  after: CourseLine[];
+  added: string[];
+  removed: string[];
+  credits_before: string | number;
+  credits_after: string | number;
+  workload_before: string | number | null;
+  workload_after: string | number | null;
+  budget: string | number | null;
+}
+
+export interface ForcedMove { course: string; title: string; from_term: string | null; to_term: string | null; reason: string }
+
+export interface PlanDiff {
+  terms: TermDiff[];
+  forced_moves: ForcedMove[];
+  graduation_before: string | null;
+  graduation_after: string | null;
+  last_term_before: string | null;
+  last_term_after: string | null;
+  requirements_lost: string[];
+  requirements_gained: string[];
+  new_issues: string[];
+  summary: string;
+  big: boolean;
+}
+
+export interface PlanPreview {
+  preview_id: string;
+  base_revision: number;
+  change: PlanChange;
+  valid: boolean;
+  errors: string[];
+  diff: PlanDiff | null;
+  expires_at: string;
+  applied: false;
+}
+
+export interface CourseOption {
+  course: string;
+  title: string;
+  credits: string | number;
+  requirement_codes: string[];
+  requirements: string[];
+  offering: "confirmed" | "historically offered";
+  offering_term: string;
+  workload_weight: string | number | null;
+  contact_hours: string | number | null;
+  delivery: string[];
+  fills_multiple: boolean;
+  impact: string;
+  similar_to: string | null;
+  group: "same_requirement" | "different_requirement";
+}
+
+export interface OptionGroup {
+  kind: "same_requirement" | "different_requirement";
+  requirement_code: string;
+  requirement_name: string;
+  options: CourseOption[];
+}
+
+export interface CourseOptions {
+  course: string;
+  term_code: string;
+  title: string;
+  state: CourseState;
+  role: string | null;
+  locked: boolean;
+  locked_reason: string | null;
+  requirements: string[];
+  groups: OptionGroup[];
+  move_terms: string[];
+  can_remove: boolean;
+  not_available: { course: string; reason: string }[];
+}
+
+export interface ChoiceQuestion {
+  kind: "slot" | "alternative" | "already_set" | "your_choice";
+  term_code: string;
+  prompt: string;
+  course: string | null;
+  title: string | null;
+  groups: OptionGroup[];
+  requirement_code: string | null;
+  alternatives: { code: string; name: string; estimated_terms: number | null }[];
+  recommended: string[];
+  reason: string | null;
+}
+
+export interface Choices { term_code: string | null; questions: ChoiceQuestion[] }
+
+export interface SearchHit {
+  course: string;
+  title: string;
+  credits: string | number;
+  requirement_codes: string[];
+  requirements: string[];
+  offering: string;
+  delivery: string[];
+  workload_weight: string | number | null;
+  contact_hours: string | number | null;
+  open_status: "open" | "closed" | "unknown" | "not_published";
+  why: string;
+  similar_to: string | null;
+  planned_term: string | null;
+  fills_multiple?: boolean;
+}
+
+export interface CourseSearchResult {
+  interpretation: {
+    term_code: string;
+    requirements: string[][];
+    requirement_names: string[];
+    topic: string | null;
+    online: boolean;
+    async_only: boolean;
+    in_person: boolean;
+    campus?: string | null;
+    earliest?: string | null;
+    latest?: string | null;
+    avoid_days: string[];
+    level: number | null;
+    credits: string | number | null;
+    open_only: boolean;
+    fills_two: boolean;
+    exclude: string[];
+    did_you_mean: { phrase: string; options: { requirements: string[]; names: string[] }[] }[];
+    notes: string[];
+  };
+  results: SearchHit[];
+  not_available: { course: string; reason: string }[];
 }
 
 export interface LoadedTerm {

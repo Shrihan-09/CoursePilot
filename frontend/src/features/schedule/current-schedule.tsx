@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, ThumbsUp } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -92,6 +92,12 @@ function CurrentScheduleContent() {
     mutationFn: (course: string) => api.forgetSection(course),
     onSuccess: () => client.invalidateQueries({ queryKey: ["current-schedule"] }),
   });
+  // Prompt 11 A3: "doing well" orders the student's OWN suggestions only.
+  const doingWell = useMutation({
+    mutationFn: (c: CurrentCourse) => api.setDoingWell(c.course, c.term_code, !c.doing_well),
+    onSuccess: () => Promise.all(["current-schedule", "plan-choices", "course-options"].map(
+      (key) => client.invalidateQueries({ queryKey: [key] }))),
+  });
 
   if (current.isPending) return <Skeleton className="h-64" />;
   if (current.isError) return <ErrorState onRetry={() => current.refetch()}>Your current courses couldn&apos;t be loaded.</ErrorState>;
@@ -157,6 +163,12 @@ function CurrentScheduleContent() {
               ))}
             </div>
             <div className="flex shrink-0 gap-2">
+              <Button size="sm" variant={c.doing_well ? "secondary" : "ghost"} aria-pressed={!!c.doing_well}
+                title="Used only to order your own course suggestions"
+                loading={doingWell.isPending && doingWell.variables?.course === c.course}
+                onClick={() => doingWell.mutate(c)}>
+                <ThumbsUp aria-hidden className="size-4" /> {c.doing_well ? "Doing well" : "Doing well?"}
+              </Button>
               {cs.term_published && (
                 <Button size="sm" variant={c.confirmed.length ? "secondary" : "primary"} onClick={() => setPicking(c)}>
                   {c.confirmed.length ? "Change" : "Choose my section"}
