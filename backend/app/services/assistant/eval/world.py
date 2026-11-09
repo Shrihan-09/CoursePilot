@@ -211,7 +211,7 @@ STUDENTS: dict[str, dict] = {
     # Freshman with only a WebReg schedule import; a Preview program.
     "casey": {
         "profile": {"program": {"name": "Economics B.A.",
-                                "support": "Preview - not yet reviewed"},
+                                "support": "Preview — not yet reviewed"},
                     "catalog_year": "2026-2027", "declared": False, "pace": "balanced",
                     "preferences": {"delivery": None, "avoid_days": [], "earliest": None,
                                     "latest": None, "max_credits_per_term": 17,

@@ -190,3 +190,10 @@ from app.models.degree_audit import (  # noqa: E402 - Phase 7.4
     DegreeAuditRequirementRow,
 )
 from app.models.core_codes import OfferingCoreCode  # noqa: E402 - Phase 7.6
+from app.models.assistant import (  # noqa: E402 - Prompt 11 Part B
+    AssistantAction,
+    AssistantConversation,
+    AssistantMessage,
+    AssistantUsage,
+    StudentPlannedSection,
+)
