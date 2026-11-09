@@ -34,8 +34,8 @@ export const NAV: NavItem[] = [
   { href: "/records", label: "My records", icon: FileText, available: true, mobile: "more", group: "Academics" },
   { href: "/plan", label: "Plan", icon: Map, available: true, mobile: "tab", group: "Planning" },
   { href: "/schedule", label: "Schedule", icon: CalendarDays, available: true, mobile: "tab", group: "Planning" },
+  { href: "/assistant", label: "Assistant", icon: MessageSquareText, available: true, mobile: "more", group: "Planning" },
   { href: "/courses", label: "Courses", icon: BookOpen, available: false, mobile: "more", group: "Coming later" },
   { href: "/notifications", label: "Notifications", icon: Bell, available: false, mobile: "more", group: "Coming later" },
-  { href: "/assistant", label: "Assistant", icon: MessageSquareText, available: false, mobile: "more", group: "Coming later" },
   { href: "/settings", label: "Settings", icon: Settings, available: true, mobile: "more", group: "Account" },
 ];

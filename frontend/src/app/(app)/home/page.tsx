@@ -170,7 +170,7 @@ export default function HomePage() {
       </section>
 
       <p className="text-xs text-fg-muted">
-        Coming later: course search, notifications and the CoursePilot assistant.
+        Coming later: course search and notifications. The CoursePilot assistant is in Planning.
       </p>
     </div>
   );

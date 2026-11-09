@@ -1,7 +1,12 @@
 # Agent Architecture
 
-Status: **design only.** No agent, router, planner, or validator is
-implemented. `AnthropicProvider` is a stub that raises `NotImplementedError`.
+Status: **the chat assistant is implemented (Prompt 11 Part B)** - see
+`docs/ASSISTANT.md`. It follows this design with one deliberate difference:
+the model never plans. Course planning stays deterministic (Phase 6.5); the
+assistant's model chooses typed tools, phrases answers from their results, and
+proposes changes that the planning engine previews and the student confirms.
+OpenAI is the provider in use; Anthropic is an optional adapter behind the
+same registry. The rest of this document is the original design record.
 
 ---
 

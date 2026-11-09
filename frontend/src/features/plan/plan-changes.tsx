@@ -2,6 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Lock, LockOpen, MessageSquare, Search, Sparkles, Undo2 } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -18,6 +19,7 @@ import type {
   CourseSearchResult,
   OptionGroup,
   PlanChange,
+  PlanDiff,
   PlanPreview,
   SavedPlan,
   SearchHit,
@@ -114,7 +116,6 @@ export function ChangePreviewDialog({ changes }: { changes: PlanChanges }) {
   const p = changes.preview;
   if (!p) return null;
   const d = p.diff;
-  const changed = d?.terms.filter((t) => t.added.length || t.removed.length) ?? [];
   return (
     <Dialog
       open
@@ -134,71 +135,78 @@ export function ChangePreviewDialog({ changes }: { changes: PlanChanges }) {
         </ul>
       )}
       {changes.error && <Alert tone="danger" title="Not saved">{changes.error}</Alert>}
-      {d && (
-        <div className="space-y-4 text-sm" data-testid="change-preview">
-          <p className="font-medium text-fg">{d.summary}</p>
-          {d.big && (
-            <Alert tone="warning" title="This change affects more than one course">
-              Review what else moves before you confirm.
-            </Alert>
-          )}
-          {changed.map((t) => (
-            <section key={t.term_code} className="space-y-1 rounded border border-border p-3">
-              <h3 className="flex flex-wrap items-baseline justify-between gap-2 font-semibold text-fg">
-                {t.label}
-                <span className="tabular text-xs font-normal text-fg-secondary">
-                  {Number(t.credits_before)} → {Number(t.credits_after)} credits
-                  {t.workload_after != null && t.budget != null &&
-                    ` · workload ${Number(t.workload_before ?? 0)} → ${Number(t.workload_after)} of ${Number(t.budget)}`}
-                </span>
-              </h3>
-              <ul className="space-y-0.5">
-                {t.removed.map((c) => (
-                  <li key={`-${c}`} className="text-fg-secondary">
-                    <span aria-hidden className="mr-1 font-semibold text-danger">−</span>
-                    <span className="sr-only">Removed: </span>
-                    <span className="code">{c}</span> {t.before.find((x) => x.course === c)?.title}
-                  </li>
-                ))}
-                {t.added.map((c) => (
-                  <li key={`+${c}`} className="text-fg">
-                    <span aria-hidden className="mr-1 font-semibold text-success">+</span>
-                    <span className="sr-only">Added: </span>
-                    <span className="code">{c}</span> {t.after.find((x) => x.course === c)?.title}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
-          {d.forced_moves.length > 0 && (
-            <section className="space-y-1">
-              <h3 className="text-xs font-medium uppercase tracking-wide text-fg-muted">Also changes</h3>
-              <ul className="space-y-1">
-                {d.forced_moves.map((m) => (
-                  <li key={m.course} className="text-fg-secondary">
-                    <span className="code text-fg">{m.course}</span> {m.title}:{" "}
-                    {m.from_term ? termLabel(m.from_term) : "not planned"} <ArrowRight aria-label="to" className="inline size-3" />{" "}
-                    {m.to_term ? termLabel(m.to_term) : "out of the plan"} - {m.reason}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-          <p className="text-fg-secondary">
-            Last planned semester: {d.last_term_before ? termLabel(d.last_term_before) : "-"}
-            {d.last_term_after !== d.last_term_before && <> → <strong className="text-fg">{d.last_term_after ? termLabel(d.last_term_after) : "-"}</strong></>}
-            {d.graduation_after && <> · graduation target {termLabel(d.graduation_after)}</>}
-          </p>
-          {d.requirements_lost.length > 0 && (
-            <p className="font-medium text-warning">No longer completed by this plan: {d.requirements_lost.join(", ")}</p>
-          )}
-          {d.requirements_gained.length > 0 && (
-            <p className="text-success">Now completed: {d.requirements_gained.join(", ")}</p>
-          )}
-          {d.new_issues.map((i) => <p key={i} className="text-warning">{i}</p>)}
-        </div>
-      )}
+      {d && <PlanDiffView diff={d} />}
     </Dialog>
+  );
+}
+
+/** A preview's effect: per-term before -> after, forced moves, graduation,
+ * requirements. Shared by the Confirm dialog and the assistant's proposal cards. */
+export function PlanDiffView({ diff: d }: { diff: PlanDiff }) {
+  const changed = d.terms.filter((t) => t.added.length || t.removed.length);
+  return (
+    <div className="space-y-4 text-sm" data-testid="change-preview">
+      <p className="font-medium text-fg">{d.summary}</p>
+      {d.big && (
+        <Alert tone="warning" title="This change affects more than one course">
+          Review what else moves before you confirm.
+        </Alert>
+      )}
+      {changed.map((t) => (
+        <section key={t.term_code} className="space-y-1 rounded border border-border p-3">
+          <h3 className="flex flex-wrap items-baseline justify-between gap-2 font-semibold text-fg">
+            {t.label}
+            <span className="tabular text-xs font-normal text-fg-secondary">
+              {Number(t.credits_before)} → {Number(t.credits_after)} credits
+              {t.workload_after != null && t.budget != null &&
+                ` · workload ${Number(t.workload_before ?? 0)} → ${Number(t.workload_after)} of ${Number(t.budget)}`}
+            </span>
+          </h3>
+          <ul className="space-y-0.5">
+            {t.removed.map((c) => (
+              <li key={`-${c}`} className="text-fg-secondary">
+                <span aria-hidden className="mr-1 font-semibold text-danger">−</span>
+                <span className="sr-only">Removed: </span>
+                <span className="code">{c}</span> {t.before.find((x) => x.course === c)?.title}
+              </li>
+            ))}
+            {t.added.map((c) => (
+              <li key={`+${c}`} className="text-fg">
+                <span aria-hidden className="mr-1 font-semibold text-success">+</span>
+                <span className="sr-only">Added: </span>
+                <span className="code">{c}</span> {t.after.find((x) => x.course === c)?.title}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+      {d.forced_moves.length > 0 && (
+        <section className="space-y-1">
+          <h3 className="text-xs font-medium uppercase tracking-wide text-fg-muted">Also changes</h3>
+          <ul className="space-y-1">
+            {d.forced_moves.map((m) => (
+              <li key={m.course} className="text-fg-secondary">
+                <span className="code text-fg">{m.course}</span> {m.title}:{" "}
+                {m.from_term ? termLabel(m.from_term) : "not planned"} <ArrowRight aria-label="to" className="inline size-3" />{" "}
+                {m.to_term ? termLabel(m.to_term) : "out of the plan"} - {m.reason}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      <p className="text-fg-secondary">
+        Last planned semester: {d.last_term_before ? termLabel(d.last_term_before) : "-"}
+        {d.last_term_after !== d.last_term_before && <> → <strong className="text-fg">{d.last_term_after ? termLabel(d.last_term_after) : "-"}</strong></>}
+        {d.graduation_after && <> · graduation target {termLabel(d.graduation_after)}</>}
+      </p>
+      {d.requirements_lost.length > 0 && (
+        <p className="font-medium text-warning">No longer completed by this plan: {d.requirements_lost.join(", ")}</p>
+      )}
+      {d.requirements_gained.length > 0 && (
+        <p className="text-success">Now completed: {d.requirements_gained.join(", ")}</p>
+      )}
+      {d.new_issues.map((i) => <p key={i} className="text-warning">{i}</p>)}
+    </div>
   );
 }
 
@@ -390,7 +398,8 @@ export function YourChoicesCard({ changes, revision = 0 }: { changes: PlanChange
       <div className="space-y-2 border-t border-border pt-3">
         <p className="flex items-center gap-1.5 text-sm text-fg-secondary">
           <MessageSquare aria-hidden className="size-4" />
-          Want a specific course? Ask the assistant <Badge>coming soon</Badge>, or search:
+          Want a specific course? Ask the assistant{" "}
+          <Link href="/assistant" className="font-medium text-primary-text underline">(open it)</Link>, or search:
         </p>
         <CourseSearchBox term={term} changes={changes} />
       </div>
