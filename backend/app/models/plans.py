@@ -104,7 +104,7 @@ class StudentPlanHistory(Base, TimestampMixin):
     #: The plan's revision this snapshot WAS.
     revision: Mapped[int] = mapped_column(Integer)
     #: What the student changed next (shown as "Undo: <summary>").
-    change_summary: Mapped[str] = mapped_column(Text, default="")
+    change_summary: Mapped[str] = mapped_column(Text, default="", server_default="")
     program_version_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("program_version.id", ondelete="CASCADE"))
     catalog_year: Mapped[str] = mapped_column(String(16))
@@ -117,7 +117,7 @@ class StudentPlanHistory(Base, TimestampMixin):
     offering_dataset: Mapped[list] = mapped_column(JSON)
     plan_status: Mapped[str] = mapped_column(String(32))
     result_blob: Mapped[bytes] = mapped_column(LargeBinary)
-    edits: Mapped[dict] = mapped_column(JSON, default=dict)
+    edits: Mapped[dict] = mapped_column(JSON, default=dict, server_default="{}")
 
 
 class PlanChangePreview(Base, TimestampMixin):
@@ -132,7 +132,7 @@ class PlanChangePreview(Base, TimestampMixin):
         Uuid, ForeignKey("student.id", ondelete="CASCADE"), index=True)
     base_revision: Mapped[int] = mapped_column(Integer)
     change: Mapped[dict] = mapped_column(JSON)
-    summary: Mapped[str] = mapped_column(Text, default="")
+    summary: Mapped[str] = mapped_column(Text, default="", server_default="")
     edits: Mapped[dict] = mapped_column(JSON)
     program_version_id: Mapped[uuid.UUID] = mapped_column(
         Uuid, ForeignKey("program_version.id", ondelete="CASCADE"))

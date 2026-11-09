@@ -14,6 +14,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import get_settings
 from app.db.base import Base
+from app.db.migration_defaults import compare_server_default
 
 # Importing app.models registers every ORM class on Base.metadata so that
 # `alembic revision --autogenerate` can see them. Currently a no-op.
@@ -68,7 +69,7 @@ def run_migrations_online() -> None:
             # Without these, autogenerate misses column type and server-default
             # changes, silently producing incomplete migrations.
             compare_type=True,
-            compare_server_default=True,
+            compare_server_default=compare_server_default,
         )
         with context.begin_transaction():
             context.run_migrations()
