@@ -1,0 +1,305 @@
+{
+  "core_tags": [
+    {
+      "code": "AHo",
+      "description": "Philosophical and Theoretical Issues",
+      "offerings": 913
+    },
+    {
+      "code": "AHp",
+      "description": "Arts and Literatures",
+      "offerings": 1257
+    },
+    {
+      "code": "AHq",
+      "description": "Nature of Languages",
+      "offerings": 476
+    },
+    {
+      "code": "AHr",
+      "description": "Critical Creative Expression",
+      "offerings": 129
+    },
+    {
+      "code": "CCD",
+      "description": "Diversities and Social Inequalities",
+      "offerings": 955
+    },
+    {
+      "code": "CCO",
+      "description": "Our Common Future",
+      "offerings": 1000
+    },
+    {
+      "code": "CE",
+      "description": "Non-Core: Community Engagement",
+      "offerings": 1098
+    },
+    {
+      "code": "ECN",
+      "description": "SEBS Core: Economic Analysis",
+      "offerings": 48
+    },
+    {
+      "code": "GVT",
+      "description": "SEBS Core: Government/Regulatory Analysis",
+      "offerings": 91
+    },
+    {
+      "code": "HST",
+      "description": "Historical Analysis",
+      "offerings": 1154
+    },
+    {
+      "code": "ITR",
+      "description": "Information Technology and Research",
+      "offerings": 597
+    },
+    {
+      "code": "NS",
+      "description": "Natural Sciences",
+      "offerings": 967
+    },
+    {
+      "code": "QQ",
+      "description": "Quantitative Information",
+      "offerings": 595
+    },
+    {
+      "code": "QR",
+      "description": "Mathematical or Formal Reasoning",
+      "offerings": 565
+    },
+    {
+      "code": "SCL",
+      "description": "Social Analysis",
+      "offerings": 985
+    },
+    {
+      "code": "SOC",
+      "description": "Social Sciences",
+      "offerings": 1
+    },
+    {
+      "code": "SOEHS",
+      "description": "SOE: Approved Humanities/Social Science",
+      "offerings": 3816
+    },
+    {
+      "code": "W",
+      "description": "Writing Course",
+      "offerings": 11
+    },
+    {
+      "code": "WC",
+      "description": "Writing and Communication 01:355:101",
+      "offerings": 33
+    },
+    {
+      "code": "WCd",
+      "description": "Writing and Communication in a Discipline",
+      "offerings": 1327
+    },
+    {
+      "code": "WCr",
+      "description": "Writing and Communication, Revision",
+      "offerings": 877
+    },
+    {
+      "code": "XPL",
+      "description": "Experiential Learning",
+      "offerings": 1
+    }
+  ],
+  "terms": [
+    {
+      "term_code": "20211",
+      "codes": 748
+    },
+    {
+      "term_code": "20217",
+      "codes": 268
+    },
+    {
+      "term_code": "20219",
+      "codes": 738
+    },
+    {
+      "term_code": "20220",
+      "codes": 76
+    },
+    {
+      "term_code": "20221",
+      "codes": 729
+    },
+    {
+      "term_code": "20227",
+      "codes": 275
+    },
+    {
+      "term_code": "20229",
+      "codes": 703
+    },
+    {
+      "term_code": "20230",
+      "codes": 69
+    },
+    {
+      "term_code": "20231",
+      "codes": 787
+    },
+    {
+      "term_code": "20237",
+      "codes": 309
+    },
+    {
+      "term_code": "20239",
+      "codes": 747
+    },
+    {
+      "term_code": "20240",
+      "codes": 77
+    },
+    {
+      "term_code": "20241",
+      "codes": 768
+    },
+    {
+      "term_code": "20247",
+      "codes": 350
+    },
+    {
+      "term_code": "20249",
+      "codes": 923
+    },
+    {
+      "term_code": "20250",
+      "codes": 84
+    },
+    {
+      "term_code": "20251",
+      "codes": 1573
+    },
+    {
+      "term_code": "20257",
+      "codes": 555
+    },
+    {
+      "term_code": "20259",
+      "codes": 1624
+    },
+    {
+      "term_code": "20261",
+      "codes": 1626
+    },
+    {
+      "term_code": "20267",
+      "codes": 541
+    },
+    {
+      "term_code": "20269",
+      "codes": 1540
+    },
+    {
+      "term_code": "20270",
+      "codes": 147
+    },
+    {
+      "term_code": "20271",
+      "codes": 1639
+    }
+  ],
+  "programs": [
+    {
+      "school": "SAS",
+      "code": "198",
+      "degree_type": "BA",
+      "variant": "",
+      "catalog_year": "2026-2027",
+      "lifecycle_state": "needs_rereview",
+      "publication_basis": "legacy_curated"
+    },
+    {
+      "school": "SAS",
+      "code": "198",
+      "degree_type": "BS",
+      "variant": "",
+      "catalog_year": "2026-2027",
+      "lifecycle_state": "validated",
+      "publication_basis": null
+    },
+    {
+      "school": "SAS",
+      "code": "220",
+      "degree_type": "major",
+      "variant": "",
+      "catalog_year": "2026-2027",
+      "lifecycle_state": "validated",
+      "publication_basis": null
+    },
+    {
+      "school": "SAS",
+      "code": "615",
+      "degree_type": "major",
+      "variant": "",
+      "catalog_year": "2026-2027",
+      "lifecycle_state": "validated",
+      "publication_basis": null
+    },
+    {
+      "school": "SAS",
+      "code": "640",
+      "degree_type": "BA",
+      "variant": "option-a",
+      "catalog_year": "2026-2027",
+      "lifecycle_state": "validated",
+      "publication_basis": null
+    },
+    {
+      "school": "SAS",
+      "code": "730",
+      "degree_type": "major",
+      "variant": "",
+      "catalog_year": "2026-2027",
+      "lifecycle_state": "validated",
+      "publication_basis": null
+    },
+    {
+      "school": "SAS",
+      "code": "830",
+      "degree_type": "major",
+      "variant": "",
+      "catalog_year": "2026-2027",
+      "lifecycle_state": "validated",
+      "publication_basis": null
+    },
+    {
+      "school": "SAS",
+      "code": "920",
+      "degree_type": "major",
+      "variant": "",
+      "catalog_year": "2026-2027",
+      "lifecycle_state": "validated",
+      "publication_basis": null
+    },
+    {
+      "school": "SAS",
+      "code": "960",
+      "degree_type": "major",
+      "variant": "",
+      "catalog_year": "2026-2027",
+      "lifecycle_state": "validated",
+      "publication_basis": null
+    }
+  ],
+  "school_sets": [
+    {
+      "school": "SAS",
+      "code": "sas-core",
+      "catalog_year": "2026-2027",
+      "lifecycle_state": "pending_review"
+    }
+  ],
+  "inspection_date": "2026-11-09",
+  "method": "SET TRANSACTION READ ONLY; public academic metadata only; no student records"
+}
