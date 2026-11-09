@@ -1,2 +1,5 @@
 # Binary fixtures must never have line endings converted (Phase 7.3).
 *.pdf binary
+# Preserve the exact fixture bytes named in its SHA-256 provenance manifest.
+ingestion/tests/fixtures/soc_async_requirements_20271.json text eol=lf
+ingestion/tests/fixtures/soc_async_requirements_20271.provenance.json text eol=lf

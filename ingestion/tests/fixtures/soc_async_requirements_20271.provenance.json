@@ -1,0 +1,15 @@
+{
+  "source_url": "https://classes.rutgers.edu/soc/api/courses.json?year=2027&term=1&campus=NB",
+  "source_archive_sha256": "78fa72147639655271b48c891b9154d61338277b9e18cb1e57a74a033480343d",
+  "original_retrieved_at_utc": null,
+  "extracted_at_utc": "2026-11-09T22:23:37.590038+00:00",
+  "fixture_sha256": "2450e899969876c15e89cb02cf254b5627098953aa14cdfd0afbe8cb46cd1940",
+  "transformation": "Unmodified official course fields; retain first two all-async sections and first other section per course. No student records. Original retrieval time was not recorded alongside this local archive.",
+  "courses": [
+    "01:355:101",
+    "01:355:201",
+    "01:840:305",
+    "04:189:152",
+    "37:575:202"
+  ]
+}

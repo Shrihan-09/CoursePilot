@@ -253,6 +253,8 @@ export function SemesterCard({ term, scheduleHref, note, maxCredits, actions, op
     </summary>
     <div className="mt-3 space-y-4">
       {choices}
+      {(term.warnings ?? []).map((w) => <p key={w} className="text-sm text-warning">{w}</p>)}
+      {(term.user_edited || !!term.warnings?.length) && actions?.onAddCourse && <Button size="sm" variant="secondary" onClick={() => actions.onAddCourse?.(term.term_code)}>Suggest a replacement</Button>}
       <div className="flex flex-wrap gap-1">{actions?.onAddCourse && <Button size="sm" variant="primary" onClick={() => actions.onAddCourse?.(term.term_code)}>Build / change this semester</Button>}
         {scheduleHref && <Link href={scheduleHref} className={buttonVariants({ variant: "ghost", size: "sm" })}><CalendarDays aria-hidden className="size-4" />Compare schedules</Link>}
         {actions && <><Button size="sm" variant="ghost" onClick={() => actions.changes.request({ kind: locked ? "unlock_term" : "lock_term", term_code: term.term_code })}>{locked ? <LockOpen aria-hidden className="size-3" /> : <Lock aria-hidden className="size-3" />}{locked ? "Unlock semester" : "Lock semester"}</Button><Button size="sm" variant="ghost" onClick={() => actions.changes.request({ kind: "lighten_term", term_code: term.term_code })}><Feather aria-hidden className="size-3" />Lighten</Button></>}

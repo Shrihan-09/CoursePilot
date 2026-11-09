@@ -34,7 +34,7 @@ from app.domain.course_ranking import CourseRankingEvidence
 from app.domain.scenario import ScenarioAssumption, ScenarioTarget
 
 #: Bumped whenever the same inputs could produce a different plan.
-PLANNING_ENGINE_VERSION = "7.8.1"   # preserve elective pins; exclude non-credit pins from degree total
+PLANNING_ENGINE_VERSION = "7.8.2"   # explicit user drops retain their unfilled term roster
 
 
 class EligibilityState(StrEnum):
@@ -227,6 +227,10 @@ class TermPlanningOverride(BaseModel):
     credit_max: int | None = Field(default=None, ge=1, le=24)
     #: This term's commitments (None: the student's usual ones).
     commitments: Commitments | None = None
+    #: A user-edited term is never automatically refilled, even below its floor.
+    manual_courses: list[str] | None = Field(default=None, max_length=24)
+    manual_free_elective_credits: Decimal = Field(default=Decimal(0), ge=0, le=24)
+    allow_below_minimum: bool = False
 
     @model_validator(mode="after")
     def _range(self) -> "TermPlanningOverride":
@@ -566,6 +570,8 @@ class PlanTerm(BaseModel):
     #: Degree credits after this term: record (completed + in progress) plus
     #: every planned course and free-elective credit so far.
     cumulative_credits: Decimal | None = None
+    warnings: list[str] = Field(default_factory=list)
+    user_edited: bool = False
 
 
 class DegreeCredits(BaseModel):

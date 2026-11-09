@@ -264,14 +264,16 @@ class DbAssistantTools:
                        filters: dict | None, exclude: list[str], limit: int) -> dict:
         from app.services.planning.course_search import search_courses
 
-        r = search_courses(self._context(), text, term_code=term_code,
+        ctx = self._context()
+        r = search_courses(ctx, text, term_code=term_code,
                            requirements=requirements, topic=topic, filters=filters,
-                           limit=min(25, limit + len(exclude)))
+                           limit=limit + len(exclude))
         term = r.interpretation.term_code
         hits = [{**vars(h), "term_code": term} for h in r.results
                 if h.course not in exclude][:limit]
         return {"interpretation": vars(r.interpretation), "results":
-                self._with_descriptions(hits), "not_available": r.not_available}
+                self._with_descriptions(hits), "not_available": r.not_available,
+                "requirement_names": ctx.names}
 
     def get_course_details(self, course: str) -> dict:
         from app.models.academic import CourseOffering

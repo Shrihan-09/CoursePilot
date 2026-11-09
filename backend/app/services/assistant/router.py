@@ -125,6 +125,8 @@ def extract_known(text: str) -> Known:
     elif re.search(r"\b(whatever|what(ever)?) counts (the )?most\b|\bfills? the most\b"
                    r"|\bdouble[- ]count|\btwo requirements\b|\bcounts? for more\b", t):
         k.instead = "most"
+    elif re.search(r"\b(?:a )?(different|another|dif) requirement\b", t):
+        k.instead = "different"
     elif m := re.search(r"\b(?:rather (?:do|take|have)|instead (?:do|take)) (?:a |an |some )?"
                         r"([a-z&\- ]{3,40}?) (?:course|class)", t):
         k.instead = m.group(1).strip()

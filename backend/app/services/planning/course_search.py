@@ -239,13 +239,13 @@ def interpret(ctx: OptionsContext, text: str, *, term_code: str | None = None) -
         out.exclude.append(code)
     q = re.sub(r"\b(?:not|except|other than|besides)\s+(?:in\s+)?"
                r"(\d{2}:\d{3}(?::\d{3})?|\d{3}:\d{3})\b", " ", q)
-    if re.search(r"\basync(hronous)?\b", q):
+    if re.search(r"\basync(?:h(?:ronous)?)?\b", q):
         out.async_only = out.online = True
     elif re.search(r"\b(online|remote)\b", q):
         out.online = True
     if re.search(r"\bin[- ]person\b", q):
         out.in_person, out.online, out.async_only = True, False, False
-    q = re.sub(r"\b(asynchronous|async|online|remote|in[- ]person)\b", " ", q)
+    q = re.sub(r"\b(asynchronous|asynch|async|online|remote|in[- ]person)\b", " ", q)
     for phrase, campus in {"college avenue": "CAC", "busch": "BUS", "livingston": "LIV",
                            "cook": "COOK", "douglass": "D/C"}.items():
         if re.search(rf"\b{phrase}\b", q):
@@ -401,7 +401,7 @@ def search_courses(ctx: OptionsContext, text: str = "", *, term_code: str | None
     if requirements:
         it.requirements = [[c for c in group if c.split("#")[0] in ctx.engine.requirements]
                            for group in requirements]
-    if topic:
+    if topic is not None:
         it.topic = topic
     for key, value in (filters or {}).items():
         if key in {"online", "async_only", "in_person", "campus", "earliest", "latest",
@@ -491,7 +491,7 @@ def _search(ctx: OptionsContext, it: Interpretation, limit: int) -> SearchResult
     index = ctx.engine.offerings
     ranked = sorted(pool, key=lambda k: (-topic_score.get(k, 0) if topic_score else 0,
                                          index.evidence(k, term).kind
-                                         is not OfferingEvidenceKind.CONFIRMED_IN_TERM, k))[:240]
+                                         is not OfferingEvidenceKind.CONFIRMED_IN_TERM, k))
     verdicts = ctx.check(term, {k: ctx.fills(k) for k in ranked}, replacing=None)
     passed = [v for v in verdicts.values() if v.ok]
     out.not_available = [{"course": v.course, "reason": v.reason}

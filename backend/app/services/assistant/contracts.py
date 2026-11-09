@@ -297,6 +297,8 @@ class AssistantReply(BaseModel):
     sections: list[SectionCard] = Field(default_factory=list)
     suggestions: list[Chip] = Field(default_factory=list)
     activity: list[Activity] = Field(default_factory=list)
+    #: Owned conversation diagnostics: structured search filters/results, never credentials.
+    searches: list[dict] = Field(default_factory=list)
     #: A term whose "Ready for WebReg" panel the UI should show.
     webreg_term: str | None = None
     #: Shown after a choice was applied: the 10-second Undo toast.

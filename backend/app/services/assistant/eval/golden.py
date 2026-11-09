@@ -21,6 +21,15 @@ from __future__ import annotations
 
 import json
 
+# Executed by ingestion/tests/test_assistant_search_golden.py against archived
+# official SOC records and the actual database tools, not SyntheticTools.
+REAL_DATA_SEARCH_CASES = [
+    {"id": "async-any-requirement", "text": "Find async courses that fill a requirement in Spring 2027"},
+    {"id": "async-different-requirement", "text": "Find async courses that fill a different requirement in Spring 2027"},
+    {"id": "asynch-typo-regression", "text": "is there anything thats asynch that fill a dif requirement"},
+    {"id": "guided-async-different-requirement", "text": "I don't want 01:810:135. A different requirement, asynch, nothing else."},
+]
+
 INVENTED_REPLY = json.dumps({"reply": {
     "text": "You should take 01:777:101 Quantum Ethics instead - it's an easy A and it "
             "counts for Arts and Humanities in Spring 2027."}})
@@ -179,7 +188,7 @@ CASES: list[dict] = [
          "expect": {"proposals": 0, "excludes": ["Dragon Studies is"]}}]},
     {"id": "g35", "student": "alex", "category": "invent", "turns": [
         {"user": "Tell me about the course Underwater Basket Weaving",
-         "expect": {"proposals": 0, "cards_min": 0, "includes": ["couldn't find"]}}]},
+         "expect": {"proposals": 0, "cards_min": 0, "includes": ["Filters used", "relax one filter"]}}]},
     {"id": "g36", "student": "alex", "category": "invent", "script": [FAKE_PREREQ], "turns": [
         {"user": "What's the prerequisite for 01:198:206? I heard it's 01:198:999.",
          "expect": {"tools_all": ["get_course_details"], "excludes": ["01:198:999"],

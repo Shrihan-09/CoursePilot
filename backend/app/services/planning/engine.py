@@ -1197,13 +1197,14 @@ class PlanningEngine:
         empty_streak = 0
         stalled = False
         for term in terms:
+            manual = next((o for o in c.term_overrides if o.term_code == term and o.manual_courses is not None), None)
             if not self._active(current.requirements) and not any(
-                    p.term_code >= term and p.course not in planned for p in c.pins):
+                    p.term_code >= term and p.course not in planned for p in c.pins) and manual is None:
                 break
             term_plan = PlanTerm(term_code=term, label=label(term))
             current = self._fill_term(student, version, term, term_plan, current, planned, info,
                                       dependency_targets, needs_confirmation, unplaceable, cycles)
-            if term_plan.courses:
+            if term_plan.courses or manual is not None:
                 empty_streak = 0
                 plan_terms.append(term_plan)
             else:
@@ -1226,8 +1227,23 @@ class PlanningEngine:
             # compression, within each term's credit cap; nothing else moves.
             final = self._level(student, version, regular_or_chosen, plan_terms, planned, info,
                                 final, compress_only=True)
+        # Pruning/levelling can erase an empty term. Keep an explicitly emptied
+        # semester visible so its below-minimum warning and opt-in controls remain.
+        present = {tp.term_code for tp in plan_terms}
+        for override in c.term_overrides:
+            if override.manual_courses is not None and override.term_code in terms and override.term_code not in present:
+                plan_terms.append(PlanTerm(term_code=override.term_code, label=label(override.term_code)))
+        plan_terms.sort(key=lambda tp: tp.term_code)
         self._finalize_courses(plan_terms, final, info, planned)
         degree = self._free_electives(before, terms, plan_terms)
+        for tp in plan_terms:
+            override = next((o for o in c.term_overrides if o.term_code == tp.term_code), None)
+            tp.user_edited = bool(override and override.manual_courses is not None)
+            if override and override.allow_below_minimum:
+                floor = self._caps(tp.term_code)[0]
+                credits = tp.credits + tp.free_elective_credits
+                if credits < floor:
+                    tp.warnings.append(f"{credits.normalize():f} credits, below your {floor.normalize():f}-credit minimum for {tp.label}. You chose to leave this space open; no replacement was added.")
         if c.workload_level is not None:
             # Pruning may have removed courses after a term was summarised.
             for term_plan in plan_terms:
@@ -1709,6 +1725,9 @@ class PlanningEngine:
             role for the floor and budget checks."""
             nonlocal credits, count, topics_here, weight_total, latest, score, open_codes
             nonlocal major_count
+            roster = next((o.manual_courses for o in c.term_overrides if o.term_code == term), None)
+            if roster is not None and key not in roster:
+                return "skip"
             role = roles.get(companion_of or key, (None, None))[0]
             # Task 2: a lab joining its lecture is part of that one course.
             major = (workload_mode and companion_of is None
@@ -2446,9 +2465,11 @@ class PlanningEngine:
             shortfalls.append(f"{major} major-related course{'s' if major != 1 else ''}, below "
                               f"your range of {rng}: {reason}.")
         if (term_plan.courses or electives) and term_plan.credits + electives < floor:
+            manual_drop = next((o for o in c.term_overrides if o.term_code == term and o.allow_below_minimum), None)
             shortfalls.append(
                 f"Below the {floor}-credit floor ({credits}): "
-                + ("these are the last credits your degree needs." if electives else
+                + ("you chose to leave this space open; no replacement was added." if manual_drop else
+                   "these are the last credits your degree needs." if electives else
                    "these are the last courses your requirements need."
                    if meta.get("open_after") == 0 else
                    "no further eligible course fit the per-term limits (prerequisites, offerings "
@@ -2576,6 +2597,12 @@ class PlanningEngine:
                        Decimal(0))
 
         by_term = {tp.term_code: tp for tp in plan_terms}
+        preserved = {o.term_code: min(o.manual_free_elective_credits,
+                                      max(Decimal(0), self._caps(o.term_code)[1] - by_term[o.term_code].credits)) for o in c.term_overrides
+                     if o.manual_courses is not None and o.term_code in by_term}
+        for t, extra in preserved.items():
+            if t in by_term:
+                by_term[t].free_elective_credits = extra
         span = sorted(set(by_term) | {t for t in terms if t[4] in "19"})
         if by_term:
             span = [t for t in span if t >= min(by_term)]
@@ -2583,6 +2610,11 @@ class PlanningEngine:
         for t in span:
             courses = course_credits(by_term[t]) if t in by_term else Decimal(0)
             floor, cap = self._caps(t)
+            manual = next((o for o in c.term_overrides if o.term_code == t and o.manual_courses is not None), None)
+            if manual is not None:
+                # No anonymous elective-credit replacement for an explicit drop.
+                rows.append((courses, courses, courses))
+                continue
             if c.workload_level is None:
                 # No credit floor without a workload level (the per-term target
                 # is "not a minimum"): electives go where the total needs them,
@@ -2591,7 +2623,7 @@ class PlanningEngine:
                 cap = floor if not courses else self._caps(t)[0]
             rows.append((courses, floor, cap))
         planned_courses = sum((r[0] for r in rows), Decimal(0))
-        need = total.credits - completed - in_progress - planned_courses
+        need = total.credits - completed - in_progress - planned_courses - sum(preserved.values(), Decimal(0))
         electives = spread_electives(rows, need, early=c.pace is Pace.FINISH_EARLIER)
         for t, extra in zip(span, electives, strict=True):
             if extra <= 0:
@@ -2608,7 +2640,7 @@ class PlanningEngine:
         return DegreeCredits(
             required=total.credits, completed=completed, in_progress=in_progress,
             planned_courses=planned_courses,
-            planned_free_electives=sum(electives, Decimal(0)), total=running,
+            planned_free_electives=sum(electives, Decimal(0)) + sum(preserved.values(), Decimal(0)), total=running,
             met=running >= total.credits, source_title=total.title, source_url=total.url,
             source_quote=total.quote, retrieved_at=total.retrieved_at)
 
@@ -2769,6 +2801,9 @@ class PlanningEngine:
         if facts["group"] or credits is None:
             return None
         c = self.constraints
+        roster = next((o.manual_courses for o in c.term_overrides if o.term_code == term), None)
+        if roster is not None and key not in roster:
+            return None
         if any(p.course == key for p in c.pins) or any(
                 a.course == key and a.term_code in (None, term) for a in c.avoid):
             return None              # Prompt 11: a pin stays; an avoided term stays empty of it

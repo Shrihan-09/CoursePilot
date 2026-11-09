@@ -96,12 +96,26 @@ def plan_constraints(base: PlanningConstraints, edits: PlanEdits) -> PlanningCon
     edit_pins = [*edits.locks, *edits.selections]
     pinned = {p.course for p in edit_pins}
     pins = [p for p in base.pins if p.course not in pinned] + edit_pins
+    # The remaining courses are what the student kept, not a planner invitation
+    # to fill a credit floor. Preserve existing anchor/lock sources.
+    pin_keys = {p.course for p in pins}
+    for term, roster in edits.term_rosters.items():
+        for key in roster:
+            if key not in pin_keys:
+                pins.append(CoursePin(course=key, term_code=term, source="selection"))
+                pin_keys.add(key)
     overrides = {o.term_code: o for o in base.term_overrides}
     for cap in edits.term_caps:
         old = overrides.get(cap.term_code)
         fields = old.model_dump() if old is not None else {"term_code": cap.term_code}
         fields |= {"credit_min": cap.credit_min, "credit_max": cap.credit_max}
         overrides[cap.term_code] = TermPlanningOverride.model_validate(fields)
+    for term, roster in edits.term_rosters.items():
+        old = overrides.get(term)
+        fields = old.model_dump() if old else {"term_code": term}
+        overrides[term] = TermPlanningOverride.model_validate(fields | {
+            "manual_courses": roster, "allow_below_minimum": True,
+            "manual_free_elective_credits": edits.term_free_electives.get(term, Decimal(0))})
     selections = {**base.alternative_selections, **edits.alternative_selections}
     data = base.model_dump()
     data |= {"pins": [p.model_dump() for p in pins],
@@ -247,6 +261,8 @@ def build_edit(plan: PlanResult, constraints: PlanningConstraints, edits: PlanEd
             PlanEdits.model_validate(e.model_dump())
         except ValueError:
             errors.append("too_many_changes: Your selections or removals exceed this plan's supported limits.")
+        e.term_rosters[term] = sorted(selected)
+        e.term_free_electives[term] = Decimal(0)
         return Edit(e, holds, errors, f"Build {label(term)}", touched | selected)
     if k == "swap":
         if state.locked_reason == "anchor":
@@ -290,8 +306,10 @@ def build_edit(plan: PlanResult, constraints: PlanningConstraints, edits: PlanEd
             errors.append(f"locked: you locked {course} to {label(term)}. Unlock it first.")
         else:
             e.selections = _without(e.selections, course)
-            e.avoid = [a for a in e.avoid if a.course != course] + [
+            e.avoid = [a for a in e.avoid if not (a.course == course and a.term_code == term)] + [
                 CourseAvoid(course=course, term_code=term)]
+            e.term_rosters[term] = sorted(k for k, t in where.items() if t == term and k != course)
+            e.term_free_electives[term] = term_plan.free_elective_credits
             release |= {course} | _dependents(plan, course)
             touched = {course}
             summary = f"Remove {course} from {label(term)}"
@@ -360,6 +378,18 @@ def build_edit(plan: PlanResult, constraints: PlanningConstraints, edits: PlanEd
             if set(change.alternatives) != {a.code for a in choice.chosen}:
                 release |= set(where)
 
+    # Explicit additions/swaps/moves can change a previously edited roster;
+    # ordinary regeneration cannot. Swap itself retains its existing behavior.
+    if not errors:
+        if k == "add" and term in e.term_rosters:
+            e.term_rosters[term] = sorted(set(e.term_rosters[term]) | {course})
+        elif k == "swap" and term in e.term_rosters:
+            e.term_rosters[term] = sorted((set(e.term_rosters[term]) - {course}) | {change.replacement})
+        elif k == "move":
+            if term in e.term_rosters:
+                e.term_rosters[term] = [c for c in e.term_rosters[term] if c != course]
+            if change.to_term in e.term_rosters:
+                e.term_rosters[change.to_term] = sorted(set(e.term_rosters[change.to_term]) | {course})
     if errors:
         return Edit(e, {}, errors, summary, touched)
     holds = {c: t for c, t in where.items() if c not in release}
@@ -447,6 +477,16 @@ def plan_diff(before: PlanResult, after: PlanResult, before_c: PlanningConstrain
         bl = _lines(b, sb) if b else []
         al = _lines(a, sa) if a else []
         bc, ac = {x.course for x in bl}, {x.course for x in al}
+        affected = {r.requirement_code: r.requirement_name for pc in (b.courses if b else [])
+                    if pc.course in bc - ac for r in pc.requirements}
+        effects = []
+        for req, name in sorted(affected.items()):
+            locations = [t.label for t in after.terms if any(
+                r.requirement_code == req for pc in t.courses for r in pc.requirements)]
+            if a and any(r.requirement_code == req for pc in a.courses for r in pc.requirements):
+                continue
+            effects.append(f"{name}: planned contributions now in {', '.join(locations)}."
+                           if locations else f"{name}: no remaining planned course fills it; review the unmet requirement.")
         terms.append(TermDiff(
             term_code=code, label=label(code), before=bl, after=al,
             added=sorted(ac - bc), removed=sorted(bc - ac),
@@ -454,7 +494,8 @@ def plan_diff(before: PlanResult, after: PlanResult, before_c: PlanningConstrain
             credits_after=(a.credits + a.free_elective_credits) if a else Decimal(0),
             workload_before=b.workload.total if b and b.workload else None,
             workload_after=a.workload.total if a and a.workload else None,
-            budget=(a or b).workload.budget if (a or b).workload else None))
+            budget=(a or b).workload.budget if (a or b).workload else None,
+            warnings=list(a.warnings) if a else [], requirement_effects=effects))
     moved = []
     after_reqs = {pc.course: sorted({r.requirement_name for r in pc.requirements})
                   for t in after.terms for pc in t.courses}

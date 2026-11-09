@@ -70,13 +70,16 @@ class PlanEdits(BaseModel):
     #: Semesters the student locked whole (each of their courses is in `locks`).
     locked_terms: list[str] = Field(default_factory=list, max_length=16)
     term_caps: list[TermCap] = Field(default_factory=list, max_length=16)
+    #: Explicit course roster after a user drop/build. The planner may not refill it.
+    term_rosters: dict[str, list[str]] = Field(default_factory=dict, max_length=16)
+    term_free_electives: dict[str, Decimal] = Field(default_factory=dict, max_length=16)
     #: One-of requirements the student decided ("Physics or Chemistry?"):
     #: requirement code -> chosen child codes (PlanningConstraints semantics).
     alternative_selections: dict[str, list[str]] = Field(default_factory=dict)
 
     def is_empty(self) -> bool:
         return not (self.locks or self.selections or self.avoid or self.locked_terms
-                    or self.term_caps or self.alternative_selections)
+                    or self.term_caps or self.term_rosters or self.term_free_electives or self.alternative_selections)
 
 
 ChangeKind = Literal["swap", "move", "remove", "add", "lock", "unlock", "lock_term",
@@ -151,6 +154,8 @@ class TermDiff(BaseModel):
     workload_before: Decimal | None = None
     workload_after: Decimal | None = None
     budget: Decimal | None = None
+    warnings: list[str] = Field(default_factory=list)
+    requirement_effects: list[str] = Field(default_factory=list)
 
 
 class ForcedMove(BaseModel):

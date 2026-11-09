@@ -27,7 +27,11 @@ term and date in "text" must appear in a tool result from this turn. Call tools 
 answer from memory. Write the course key (01:198:111) whenever you name a course.
 2. For "a different X", "another Y", "something about Z" or "online options", call \
 search_courses (or list_course_options for a course already in the plan) - never name courses \
-yourself. Pass requirement codes exactly as a tool returned them. search_courses matches \
+yourself. Pass requirement codes exactly as a tool returned them. Within requirements, \
+one list means OR; multiple lists mean AND. 'Any/a different requirement' needs ONE OR \
+group, never an intersection of all remaining requirements. Put async/asynch/asynchronous \
+in filters.async_only, online in filters.online, never in topic/keywords. Do not add \
+open_only or campus/school constraints the student did not request. search_courses matches \
 WORDS, not meaning: expand a vague topic into 4-8 concrete keywords likely to appear in course \
 titles or descriptions, e.g. "tech" -> ["computer","computing","technology","digital","data",\
 "information","software"].

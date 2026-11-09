@@ -1,0 +1,1414 @@
+[
+  {
+    "campusLocations": [
+      {
+        "code": "1",
+        "description": "College Avenue"
+      },
+      {
+        "code": "2",
+        "description": "Busch"
+      },
+      {
+        "code": "3",
+        "description": "Livingston"
+      },
+      {
+        "code": "4",
+        "description": "Cook/Douglass"
+      },
+      {
+        "code": "O",
+        "description": "O"
+      }
+    ],
+    "subject": "355",
+    "openSections": 103,
+    "synopsisUrl": "https://wp.rutgers.edu/academics/undergraduate/courses",
+    "title": "COLLEGE WRITING",
+    "preReqNotes": "(01:355:100 BASIC COMPOSITION )<em> OR </em>(01:356:156 ENGLISH FOR ACADEMIC PURPOSES II: ACADEMIC WRITING IN THE UNITED STATES )",
+    "courseString": "01:355:101",
+    "school": {
+      "code": "01",
+      "description": "School of Arts and Sciences"
+    },
+    "credits": 3,
+    "subjectDescription": "English - Composition and Writing",
+    "coreCodes": [
+      {
+        "id": "2027101355101  26",
+        "year": "2027",
+        "term": "1",
+        "coreCode": "WC",
+        "coreCodeDescription": "Writing and Communication 01:355:101",
+        "supplement": "  ",
+        "description": "Writing and Communication 01:355:101",
+        "lastUpdated": 1468423812000,
+        "course": "101",
+        "subject": "355",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "code": "WC",
+        "unit": "01",
+        "effective": "20271",
+        "coreCodeReferenceId": "26"
+      }
+    ],
+    "expandedTitle": "COLLEGE WRITING",
+    "courseFeeDescr": "",
+    "mainCampus": "NB",
+    "subjectNotes": "",
+    "courseNumber": "101",
+    "creditsObject": {
+      "code": "3_0",
+      "description": "3.0 credits"
+    },
+    "level": "U",
+    "campusCode": "NB",
+    "subjectGroupNotes": "",
+    "offeringUnitCode": "01",
+    "offeringUnitTitle": null,
+    "courseDescription": "",
+    "sections": [
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "N",
+        "examCode": "A",
+        "specialPermissionAddCode": null,
+        "crossListedSections": [],
+        "sectionNotes": "",
+        "specialPermissionDropCode": "1",
+        "crossListedSectionType": "0",
+        "instructors": [
+          {
+            "name": "MALANGA, TARA"
+          }
+        ],
+        "number": "91",
+        "finalExam": null,
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": "1",
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [
+          {
+            "code": "56",
+            "description": "Online Course"
+          },
+          {
+            "code": "05",
+            "description": "Go to http://canvas.rutgers.edu"
+          }
+        ],
+        "instructorsText": "MALANGA, TARA",
+        "minors": [],
+        "examCodeText": "By arrangement",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "O",
+            "description": "O"
+          }
+        ],
+        "index": "14758",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": null,
+        "commentsText": "Online Course, Go to http://canvas.rutgers.edu",
+        "subtitle": "",
+        "crossListedSectionsText": "",
+        "sectionCourseType": "O",
+        "meetingTimes": [
+          {
+            "campusLocation": "O",
+            "roomNumber": "",
+            "campusAbbrev": "ONL",
+            "campusName": "ONLINE",
+            "startTimeMilitary": "",
+            "buildingCode": "",
+            "meetingModeDesc": "ONLINE INSTRUCTION(INTERNET)",
+            "endTimeMilitary": "",
+            "meetingModeCode": "90",
+            "baClassHours": "B",
+            "pmCode": "",
+            "meetingDay": "",
+            "startTime": "",
+            "endTime": ""
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      },
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "N",
+        "examCode": "A",
+        "specialPermissionAddCode": null,
+        "crossListedSections": [],
+        "sectionNotes": "",
+        "specialPermissionDropCode": "1",
+        "crossListedSectionType": "0",
+        "instructors": [
+          {
+            "name": "MORRONE, PETER"
+          }
+        ],
+        "number": "92",
+        "finalExam": null,
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": "1",
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [
+          {
+            "code": "05",
+            "description": "Go to http://canvas.rutgers.edu"
+          },
+          {
+            "code": "56",
+            "description": "Online Course"
+          }
+        ],
+        "instructorsText": "MORRONE, PETER",
+        "minors": [],
+        "examCodeText": "By arrangement",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "O",
+            "description": "O"
+          }
+        ],
+        "index": "14759",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": null,
+        "commentsText": "Go to http://canvas.rutgers.edu, Online Course",
+        "subtitle": "",
+        "crossListedSectionsText": "",
+        "sectionCourseType": "O",
+        "meetingTimes": [
+          {
+            "campusLocation": "O",
+            "roomNumber": "",
+            "campusAbbrev": "ONL",
+            "campusName": "ONLINE",
+            "startTimeMilitary": "",
+            "buildingCode": "",
+            "meetingModeDesc": "ONLINE INSTRUCTION(INTERNET)",
+            "endTimeMilitary": "",
+            "meetingModeCode": "90",
+            "baClassHours": "B",
+            "pmCode": "",
+            "meetingDay": "",
+            "startTime": "",
+            "endTime": ""
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      },
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "N",
+        "examCode": "A",
+        "specialPermissionAddCode": null,
+        "crossListedSections": [],
+        "sectionNotes": "",
+        "specialPermissionDropCode": "1",
+        "crossListedSectionType": "0",
+        "instructors": [
+          {
+            "name": "JOVANOSKI"
+          }
+        ],
+        "number": "AB",
+        "finalExam": null,
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": "1",
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [
+          {
+            "code": "05",
+            "description": "Go to http://canvas.rutgers.edu"
+          }
+        ],
+        "instructorsText": "JOVANOSKI",
+        "minors": [],
+        "examCodeText": "By arrangement",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "1",
+            "description": "College Avenue"
+          }
+        ],
+        "index": "14765",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": null,
+        "commentsText": "Go to http://canvas.rutgers.edu",
+        "subtitle": "",
+        "crossListedSectionsText": "",
+        "sectionCourseType": "T",
+        "meetingTimes": [
+          {
+            "campusLocation": "1",
+            "roomNumber": "B4",
+            "campusAbbrev": "CAC",
+            "campusName": "COLLEGE AVENUE",
+            "startTimeMilitary": "1400",
+            "buildingCode": "HH",
+            "meetingModeDesc": "LEC",
+            "endTimeMilitary": "1520",
+            "meetingModeCode": "02",
+            "baClassHours": "",
+            "pmCode": "P",
+            "meetingDay": "T",
+            "startTime": "0200",
+            "endTime": "0320"
+          },
+          {
+            "campusLocation": "1",
+            "roomNumber": "B4",
+            "campusAbbrev": "CAC",
+            "campusName": "COLLEGE AVENUE",
+            "startTimeMilitary": "1400",
+            "buildingCode": "HH",
+            "meetingModeDesc": "LEC",
+            "endTimeMilitary": "1520",
+            "meetingModeCode": "02",
+            "baClassHours": "",
+            "pmCode": "P",
+            "meetingDay": "H",
+            "startTime": "0200",
+            "endTime": "0320"
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      }
+    ],
+    "supplementCode": "  ",
+    "courseFee": "0",
+    "unitNotes": "",
+    "courseNotes": "CREDIT NOT GIVEN FOR BOTH 355:101 AND 355:104"
+  },
+  {
+    "campusLocations": [
+      {
+        "code": "1",
+        "description": "College Avenue"
+      },
+      {
+        "code": "3",
+        "description": "Livingston"
+      },
+      {
+        "code": "4",
+        "description": "Cook/Douglass"
+      },
+      {
+        "code": "O",
+        "description": "O"
+      }
+    ],
+    "subject": "355",
+    "openSections": 18,
+    "synopsisUrl": "https://wp.rutgers.edu/academics/undergraduate/courses",
+    "title": "RESRCH IN DISCIPLNS",
+    "preReqNotes": "(01:355:101 COLLEGE WRITING )<em> OR </em>(01:355:103 EXPOSITION &ARGUMENT )<em> OR </em>(01:355:104 COLLEGE WRITING EXTENDED )<em> OR </em>(21:355:102 ENGLISH COMPOSITION )<em> OR </em>(50:989:102 ENGLISH COMPOSITION II )",
+    "courseString": "01:355:201",
+    "school": {
+      "code": "01",
+      "description": "School of Arts and Sciences"
+    },
+    "credits": 3,
+    "subjectDescription": "English - Composition and Writing",
+    "coreCodes": [
+      {
+        "id": "2027101355201  121",
+        "year": "2027",
+        "term": "1",
+        "coreCode": "SOEHS",
+        "coreCodeDescription": "SOE: Approved Humanities/Social Science",
+        "supplement": "  ",
+        "description": "SOE: Approved Humanities/Social Science",
+        "lastUpdated": 1728323919000,
+        "course": "201",
+        "subject": "355",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "code": "SOEHS",
+        "unit": "01",
+        "effective": "20271",
+        "coreCodeReferenceId": "121"
+      },
+      {
+        "id": "2027101355201  27",
+        "year": "2027",
+        "term": "1",
+        "coreCode": "WCd",
+        "coreCodeDescription": "Writing and Communication in a Discipline",
+        "supplement": "  ",
+        "description": "Writing and Communication in a Discipline",
+        "lastUpdated": 1468423822000,
+        "course": "201",
+        "subject": "355",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "code": "WCd",
+        "unit": "01",
+        "effective": "20271",
+        "coreCodeReferenceId": "27"
+      },
+      {
+        "id": "2027101355201  28",
+        "year": "2027",
+        "term": "1",
+        "coreCode": "WCr",
+        "coreCodeDescription": "Writing and Communication, Revision",
+        "supplement": "  ",
+        "description": "Writing and Communication, Revision",
+        "lastUpdated": 1468423831000,
+        "course": "201",
+        "subject": "355",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "code": "WCr",
+        "unit": "01",
+        "effective": "20271",
+        "coreCodeReferenceId": "28"
+      }
+    ],
+    "expandedTitle": "RESEARCH IN DISCIPLINES                                                         ",
+    "courseFeeDescr": "",
+    "mainCampus": "NB",
+    "subjectNotes": "",
+    "courseNumber": "201",
+    "creditsObject": {
+      "code": "3_0",
+      "description": "3.0 credits"
+    },
+    "level": "U",
+    "campusCode": "NB",
+    "subjectGroupNotes": "",
+    "offeringUnitCode": "01",
+    "offeringUnitTitle": null,
+    "courseDescription": "",
+    "sections": [
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "N",
+        "examCode": "O",
+        "specialPermissionAddCode": null,
+        "crossListedSections": [],
+        "sectionNotes": "",
+        "specialPermissionDropCode": null,
+        "crossListedSectionType": "0",
+        "instructors": [
+          {
+            "name": "MORRONE, PETER"
+          }
+        ],
+        "number": "91",
+        "finalExam": null,
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": null,
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [
+          {
+            "code": "05",
+            "description": "Go to http://canvas.rutgers.edu"
+          }
+        ],
+        "instructorsText": "MORRONE, PETER",
+        "minors": [],
+        "examCodeText": "No final exam",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "O",
+            "description": "O"
+          }
+        ],
+        "index": "14896",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": null,
+        "commentsText": "Go to http://canvas.rutgers.edu",
+        "subtitle": "Heroes and Villains",
+        "crossListedSectionsText": "",
+        "sectionCourseType": "O",
+        "meetingTimes": [
+          {
+            "campusLocation": "O",
+            "roomNumber": "",
+            "campusAbbrev": "ONL",
+            "campusName": "ONLINE",
+            "startTimeMilitary": "",
+            "buildingCode": "",
+            "meetingModeDesc": "ONLINE INSTRUCTION(INTERNET)",
+            "endTimeMilitary": "",
+            "meetingModeCode": "90",
+            "baClassHours": "B",
+            "pmCode": "",
+            "meetingDay": "",
+            "startTime": "",
+            "endTime": ""
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      },
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "N",
+        "examCode": "O",
+        "specialPermissionAddCode": null,
+        "crossListedSections": [],
+        "sectionNotes": "",
+        "specialPermissionDropCode": null,
+        "crossListedSectionType": "0",
+        "instructors": [
+          {
+            "name": "JOVANOSKI"
+          }
+        ],
+        "number": "A5",
+        "finalExam": null,
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": null,
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [
+          {
+            "code": "05",
+            "description": "Go to http://canvas.rutgers.edu"
+          }
+        ],
+        "instructorsText": "JOVANOSKI",
+        "minors": [],
+        "examCodeText": "No final exam",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "1",
+            "description": "College Avenue"
+          }
+        ],
+        "index": "14900",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": null,
+        "commentsText": "Go to http://canvas.rutgers.edu",
+        "subtitle": "Leaders and Leadership",
+        "crossListedSectionsText": "",
+        "sectionCourseType": "T",
+        "meetingTimes": [
+          {
+            "campusLocation": "1",
+            "roomNumber": "B4",
+            "campusAbbrev": "CAC",
+            "campusName": "COLLEGE AVENUE",
+            "startTimeMilitary": "1550",
+            "buildingCode": "HH",
+            "meetingModeDesc": "LEC",
+            "endTimeMilitary": "1710",
+            "meetingModeCode": "02",
+            "baClassHours": "",
+            "pmCode": "P",
+            "meetingDay": "M",
+            "startTime": "0350",
+            "endTime": "0510"
+          },
+          {
+            "campusLocation": "1",
+            "roomNumber": "B4",
+            "campusAbbrev": "CAC",
+            "campusName": "COLLEGE AVENUE",
+            "startTimeMilitary": "1550",
+            "buildingCode": "HH",
+            "meetingModeDesc": "LEC",
+            "endTimeMilitary": "1710",
+            "meetingModeCode": "02",
+            "baClassHours": "",
+            "pmCode": "P",
+            "meetingDay": "W",
+            "startTime": "0350",
+            "endTime": "0510"
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      }
+    ],
+    "supplementCode": "  ",
+    "courseFee": "0",
+    "unitNotes": "",
+    "courseNotes": ""
+  },
+  {
+    "campusLocations": [
+      {
+        "code": "O",
+        "description": "O"
+      }
+    ],
+    "subject": "840",
+    "openSections": 1,
+    "synopsisUrl": "http://www.religion.rutgers.edu/downloads/undergraduate-syllabi",
+    "title": "APOCALYPSE NOW?",
+    "preReqNotes": "(01:355:101 COLLEGE WRITING )<em> OR </em>(01:355:103 EXPOSITION &ARGUMENT )<em> OR </em>(01:355:104 COLLEGE WRITING EXTENDED )<em> OR </em>(21:355:102 ENGLISH COMPOSITION )<em> OR </em>(50:989:102 ENGLISH COMPOSITION II )",
+    "courseString": "01:840:305",
+    "school": {
+      "code": "01",
+      "description": "School of Arts and Sciences"
+    },
+    "credits": 3,
+    "subjectDescription": "Religion",
+    "coreCodes": [
+      {
+        "id": "2027101840305  20",
+        "year": "2027",
+        "term": "1",
+        "coreCode": "HST",
+        "coreCodeDescription": "Historical Analysis",
+        "supplement": "  ",
+        "description": "Historical Analysis",
+        "lastUpdated": 1468423759000,
+        "course": "305",
+        "subject": "840",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "code": "HST",
+        "unit": "01",
+        "effective": "20271",
+        "coreCodeReferenceId": "20"
+      },
+      {
+        "id": "2027101840305  121",
+        "year": "2027",
+        "term": "1",
+        "coreCode": "SOEHS",
+        "coreCodeDescription": "SOE: Approved Humanities/Social Science",
+        "supplement": "  ",
+        "description": "SOE: Approved Humanities/Social Science",
+        "lastUpdated": 1728323919000,
+        "course": "305",
+        "subject": "840",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "code": "SOEHS",
+        "unit": "01",
+        "effective": "20271",
+        "coreCodeReferenceId": "121"
+      },
+      {
+        "id": "2027101840305  27",
+        "year": "2027",
+        "term": "1",
+        "coreCode": "WCd",
+        "coreCodeDescription": "Writing and Communication in a Discipline",
+        "supplement": "  ",
+        "description": "Writing and Communication in a Discipline",
+        "lastUpdated": 1468423822000,
+        "course": "305",
+        "subject": "840",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "code": "WCd",
+        "unit": "01",
+        "effective": "20271",
+        "coreCodeReferenceId": "27"
+      },
+      {
+        "id": "2027101840305  28",
+        "year": "2027",
+        "term": "1",
+        "coreCode": "WCr",
+        "coreCodeDescription": "Writing and Communication, Revision",
+        "supplement": "  ",
+        "description": "Writing and Communication, Revision",
+        "lastUpdated": 1468423831000,
+        "course": "305",
+        "subject": "840",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "code": "WCr",
+        "unit": "01",
+        "effective": "20271",
+        "coreCodeReferenceId": "28"
+      }
+    ],
+    "expandedTitle": "APOCALYPSE NOW?  RELIGIOUS MOVEMENTS    AND THE END OF TIME                     ",
+    "courseFeeDescr": "",
+    "mainCampus": "NB",
+    "subjectNotes": "PLEASE LOOK FOR ADDITIONAL ONLINE RELIGION COURSES IN NEW BRUNSWICK ONLINE COURSES, HYBRID AND OFF CAMPUS ONLINE COURSES UNDER THE DROP DOWN BOXES LOCATED ON http://sis.rutgers.edu/soc/",
+    "courseNumber": "305",
+    "creditsObject": {
+      "code": "3_0",
+      "description": "3.0 credits"
+    },
+    "level": "U",
+    "campusCode": "NB",
+    "subjectGroupNotes": "",
+    "offeringUnitCode": "01",
+    "offeringUnitTitle": null,
+    "courseDescription": "",
+    "sections": [
+      {
+        "sectionEligibility": "ALL EXCEPT SENIORS",
+        "sessionDatePrintIndicator": "N",
+        "examCode": "A",
+        "specialPermissionAddCode": null,
+        "crossListedSections": [],
+        "sectionNotes": "INTERESTED SENIORS PLEASE EMAIL AA, NAVI KAUR NAVI.KAUR@RELIGION.RUTGERS.EDU ",
+        "specialPermissionDropCode": null,
+        "crossListedSectionType": "0",
+        "instructors": [
+          {
+            "name": "KETCHUM"
+          }
+        ],
+        "number": "90",
+        "finalExam": null,
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": null,
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [],
+        "instructorsText": "KETCHUM",
+        "minors": [],
+        "examCodeText": "By arrangement",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "O",
+            "description": "O"
+          }
+        ],
+        "index": "16654",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": null,
+        "commentsText": "",
+        "subtitle": "",
+        "crossListedSectionsText": "",
+        "sectionCourseType": "O",
+        "meetingTimes": [
+          {
+            "campusLocation": "O",
+            "roomNumber": "",
+            "campusAbbrev": "ONL",
+            "campusName": "ONLINE",
+            "startTimeMilitary": "",
+            "buildingCode": "",
+            "meetingModeDesc": "ONLINE INSTRUCTION(INTERNET)",
+            "endTimeMilitary": "",
+            "meetingModeCode": "90",
+            "baClassHours": "B",
+            "pmCode": "",
+            "meetingDay": "",
+            "startTime": "",
+            "endTime": ""
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      }
+    ],
+    "supplementCode": "  ",
+    "courseFee": "0",
+    "unitNotes": "",
+    "courseNotes": ""
+  },
+  {
+    "campusLocations": [
+      {
+        "code": "1",
+        "description": "College Avenue"
+      },
+      {
+        "code": "O",
+        "description": "O"
+      }
+    ],
+    "subject": "189",
+    "openSections": 15,
+    "synopsisUrl": "https://comminfo.rutgers.edu/academics/courses?courses=&program=39",
+    "title": "STRUCTURE OF INFO",
+    "preReqNotes": "(01:355:101 COLLEGE WRITING )<em> OR </em>(01:355:103 EXPOSITION &ARGUMENT )<em> OR </em>(01:355:104 COLLEGE WRITING EXTENDED )<em> OR </em>(21:355:102 ENGLISH COMPOSITION )<em> OR </em>(50:989:102 ENGLISH COMPOSITION II )",
+    "courseString": "04:189:152",
+    "school": {
+      "code": "04",
+      "description": "School of Communication and Information  (Undergraduate)"
+    },
+    "credits": 3,
+    "subjectDescription": "Communication and Media Studies",
+    "coreCodes": [
+      {
+        "id": "2027104189152  21",
+        "year": "2027",
+        "term": "1",
+        "coreCode": "ITR",
+        "coreCodeDescription": "Information Technology and Research",
+        "supplement": "  ",
+        "description": "Information Technology and Research",
+        "lastUpdated": 1468423768000,
+        "course": "152",
+        "subject": "189",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "code": "ITR",
+        "unit": "04",
+        "effective": "20271",
+        "coreCodeReferenceId": "21"
+      },
+      {
+        "id": "2027104189152  27",
+        "year": "2027",
+        "term": "1",
+        "coreCode": "WCd",
+        "coreCodeDescription": "Writing and Communication in a Discipline",
+        "supplement": "  ",
+        "description": "Writing and Communication in a Discipline",
+        "lastUpdated": 1468423822000,
+        "course": "152",
+        "subject": "189",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "code": "WCd",
+        "unit": "04",
+        "effective": "20271",
+        "coreCodeReferenceId": "27"
+      }
+    ],
+    "expandedTitle": "STRUCTURE OF INFORMATION                                                        ",
+    "courseFeeDescr": "",
+    "mainCampus": "NB",
+    "subjectNotes": "",
+    "courseNumber": "152",
+    "creditsObject": {
+      "code": "3_0",
+      "description": "3.0 credits"
+    },
+    "level": "U",
+    "campusCode": "NB",
+    "subjectGroupNotes": "",
+    "offeringUnitCode": "04",
+    "offeringUnitTitle": null,
+    "courseDescription": "",
+    "sections": [
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "N",
+        "examCode": "A",
+        "specialPermissionAddCode": null,
+        "crossListedSections": [],
+        "sectionNotes": "",
+        "specialPermissionDropCode": null,
+        "crossListedSectionType": "0",
+        "instructors": [
+          {
+            "name": "EDRIDGE, GLENN"
+          }
+        ],
+        "number": "90",
+        "finalExam": null,
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": null,
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [
+          {
+            "code": "05",
+            "description": "Go to http://canvas.rutgers.edu"
+          },
+          {
+            "code": "56",
+            "description": "Online Course"
+          }
+        ],
+        "instructorsText": "EDRIDGE, GLENN",
+        "minors": [],
+        "examCodeText": "By arrangement",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "O",
+            "description": "O"
+          }
+        ],
+        "index": "17059",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": null,
+        "commentsText": "Go to http://canvas.rutgers.edu, Online Course",
+        "subtitle": "",
+        "crossListedSectionsText": "",
+        "sectionCourseType": "O",
+        "meetingTimes": [
+          {
+            "campusLocation": "O",
+            "roomNumber": "",
+            "campusAbbrev": "ONL",
+            "campusName": "ONLINE",
+            "startTimeMilitary": "",
+            "buildingCode": "",
+            "meetingModeDesc": "ONLINE INSTRUCTION(INTERNET)",
+            "endTimeMilitary": "",
+            "meetingModeCode": "90",
+            "baClassHours": "B",
+            "pmCode": "",
+            "meetingDay": "",
+            "startTime": "",
+            "endTime": ""
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      },
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "N",
+        "examCode": "A",
+        "specialPermissionAddCode": null,
+        "crossListedSections": [],
+        "sectionNotes": "",
+        "specialPermissionDropCode": null,
+        "crossListedSectionType": "0",
+        "instructors": [],
+        "number": "91",
+        "finalExam": null,
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": null,
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [
+          {
+            "code": "56",
+            "description": "Online Course"
+          },
+          {
+            "code": "05",
+            "description": "Go to http://canvas.rutgers.edu"
+          }
+        ],
+        "instructorsText": "",
+        "minors": [],
+        "examCodeText": "By arrangement",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "O",
+            "description": "O"
+          }
+        ],
+        "index": "17060",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": null,
+        "commentsText": "Online Course, Go to http://canvas.rutgers.edu",
+        "subtitle": "",
+        "crossListedSectionsText": "",
+        "sectionCourseType": "O",
+        "meetingTimes": [
+          {
+            "campusLocation": "O",
+            "roomNumber": "",
+            "campusAbbrev": "ONL",
+            "campusName": "ONLINE",
+            "startTimeMilitary": "",
+            "buildingCode": "",
+            "meetingModeDesc": "ONLINE INSTRUCTION(INTERNET)",
+            "endTimeMilitary": "",
+            "meetingModeCode": "90",
+            "baClassHours": "B",
+            "pmCode": "",
+            "meetingDay": "",
+            "startTime": "",
+            "endTime": ""
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      },
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "N",
+        "examCode": "S",
+        "specialPermissionAddCode": null,
+        "crossListedSections": [],
+        "sectionNotes": "",
+        "specialPermissionDropCode": null,
+        "crossListedSectionType": "0",
+        "instructors": [
+          {
+            "name": "JOHNSON, TARA"
+          }
+        ],
+        "number": "01",
+        "finalExam": null,
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": null,
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [
+          {
+            "code": "05",
+            "description": "Go to http://canvas.rutgers.edu"
+          },
+          {
+            "code": "23",
+            "description": "Hybrid Section - Some Meetings Online"
+          }
+        ],
+        "instructorsText": "JOHNSON, TARA",
+        "minors": [],
+        "examCodeText": "Single day exam",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "1",
+            "description": "College Avenue"
+          },
+          {
+            "code": "O",
+            "description": "O"
+          }
+        ],
+        "index": "17053",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": null,
+        "commentsText": "Go to http://canvas.rutgers.edu, Hybrid Section - Some Meetings Online",
+        "subtitle": "",
+        "crossListedSectionsText": "",
+        "sectionCourseType": "H",
+        "meetingTimes": [
+          {
+            "campusLocation": "1",
+            "roomNumber": "102",
+            "campusAbbrev": "CAC",
+            "campusName": "COLLEGE AVENUE",
+            "startTimeMilitary": "1550",
+            "buildingCode": "SC",
+            "meetingModeDesc": "LEC",
+            "endTimeMilitary": "1710",
+            "meetingModeCode": "02",
+            "baClassHours": "",
+            "pmCode": "P",
+            "meetingDay": "W",
+            "startTime": "0350",
+            "endTime": "0510"
+          },
+          {
+            "campusLocation": "O",
+            "roomNumber": "",
+            "campusAbbrev": "ONL",
+            "campusName": "ONLINE",
+            "startTimeMilitary": "",
+            "buildingCode": "",
+            "meetingModeDesc": "ONLINE INSTRUCTION(INTERNET)",
+            "endTimeMilitary": "",
+            "meetingModeCode": "90",
+            "baClassHours": "B",
+            "pmCode": "",
+            "meetingDay": "",
+            "startTime": "",
+            "endTime": ""
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      }
+    ],
+    "supplementCode": "  ",
+    "courseFee": "0",
+    "unitNotes": "",
+    "courseNotes": ""
+  },
+  {
+    "campusLocations": [
+      {
+        "code": "1",
+        "description": "College Avenue"
+      },
+      {
+        "code": "3",
+        "description": "Livingston"
+      },
+      {
+        "code": "O",
+        "description": "O"
+      }
+    ],
+    "subject": "575",
+    "openSections": 13,
+    "synopsisUrl": "",
+    "title": "HISTORY LABOR & WORK",
+    "preReqNotes": "(01:355:101 COLLEGE WRITING )<em> OR </em>(01:355:103 EXPOSITION &ARGUMENT )<em> OR </em>(01:355:104 COLLEGE WRITING EXTENDED )<em> OR </em>(21:355:102 ENGLISH COMPOSITION )<em> OR </em>(50:989:102 ENGLISH COMPOSITION II )",
+    "courseString": "37:575:202",
+    "school": {
+      "code": "37",
+      "description": "School of Management and Labor Relations  (Undergraduate)"
+    },
+    "credits": 3,
+    "subjectDescription": "Labor Studies",
+    "coreCodes": [
+      {
+        "id": "2027137575202  20",
+        "year": "2027",
+        "term": "1",
+        "coreCode": "HST",
+        "coreCodeDescription": "Historical Analysis",
+        "supplement": "  ",
+        "description": "Historical Analysis",
+        "lastUpdated": 1468423759000,
+        "course": "202",
+        "subject": "575",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "code": "HST",
+        "unit": "37",
+        "effective": "20271",
+        "coreCodeReferenceId": "20"
+      },
+      {
+        "id": "2027137575202  25",
+        "year": "2027",
+        "term": "1",
+        "coreCode": "SCL",
+        "coreCodeDescription": "Social Analysis",
+        "supplement": "  ",
+        "description": "Social Analysis",
+        "lastUpdated": 1468423803000,
+        "course": "202",
+        "subject": "575",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "code": "SCL",
+        "unit": "37",
+        "effective": "20271",
+        "coreCodeReferenceId": "25"
+      },
+      {
+        "id": "2027137575202  121",
+        "year": "2027",
+        "term": "1",
+        "coreCode": "SOEHS",
+        "coreCodeDescription": "SOE: Approved Humanities/Social Science",
+        "supplement": "  ",
+        "description": "SOE: Approved Humanities/Social Science",
+        "lastUpdated": 1728323919000,
+        "course": "202",
+        "subject": "575",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "code": "SOEHS",
+        "unit": "37",
+        "effective": "20271",
+        "coreCodeReferenceId": "121"
+      },
+      {
+        "id": "2027137575202  27",
+        "year": "2027",
+        "term": "1",
+        "coreCode": "WCd",
+        "coreCodeDescription": "Writing and Communication in a Discipline",
+        "supplement": "  ",
+        "description": "Writing and Communication in a Discipline",
+        "lastUpdated": 1468423822000,
+        "course": "202",
+        "subject": "575",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "code": "WCd",
+        "unit": "37",
+        "effective": "20271",
+        "coreCodeReferenceId": "27"
+      },
+      {
+        "id": "2027137575202  28",
+        "year": "2027",
+        "term": "1",
+        "coreCode": "WCr",
+        "coreCodeDescription": "Writing and Communication, Revision",
+        "supplement": "  ",
+        "description": "Writing and Communication, Revision",
+        "lastUpdated": 1468423831000,
+        "course": "202",
+        "subject": "575",
+        "offeringUnitCode": "01",
+        "offeringUnitCampus": "NB",
+        "code": "WCr",
+        "unit": "37",
+        "effective": "20271",
+        "coreCodeReferenceId": "28"
+      }
+    ],
+    "expandedTitle": "HISTORY OF LABOR AND WORK IN THE U.S. 1880 TO 1945",
+    "courseFeeDescr": "",
+    "mainCampus": "NB",
+    "subjectNotes": "",
+    "courseNumber": "202",
+    "creditsObject": {
+      "code": "3_0",
+      "description": "3.0 credits"
+    },
+    "level": "U",
+    "campusCode": "NB",
+    "subjectGroupNotes": "",
+    "offeringUnitCode": "37",
+    "offeringUnitTitle": null,
+    "courseDescription": "",
+    "sections": [
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "N",
+        "examCode": "A",
+        "specialPermissionAddCode": null,
+        "crossListedSections": [],
+        "sectionNotes": "",
+        "specialPermissionDropCode": null,
+        "crossListedSectionType": "0",
+        "instructors": [
+          {
+            "name": "LEAVY, THOMAS"
+          }
+        ],
+        "number": "90",
+        "finalExam": null,
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": null,
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [
+          {
+            "code": "56",
+            "description": "Online Course"
+          },
+          {
+            "code": "05",
+            "description": "Go to http://canvas.rutgers.edu"
+          }
+        ],
+        "instructorsText": "LEAVY, THOMAS",
+        "minors": [],
+        "examCodeText": "By arrangement",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "O",
+            "description": "O"
+          }
+        ],
+        "index": "25103",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": null,
+        "commentsText": "Online Course, Go to http://canvas.rutgers.edu",
+        "subtitle": "",
+        "crossListedSectionsText": "",
+        "sectionCourseType": "O",
+        "meetingTimes": [
+          {
+            "campusLocation": "O",
+            "roomNumber": "",
+            "campusAbbrev": "ONL",
+            "campusName": "ONLINE",
+            "startTimeMilitary": "",
+            "buildingCode": "",
+            "meetingModeDesc": "ONLINE INSTRUCTION(INTERNET)",
+            "endTimeMilitary": "",
+            "meetingModeCode": "90",
+            "baClassHours": "B",
+            "pmCode": "",
+            "meetingDay": "",
+            "startTime": "",
+            "endTime": ""
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      },
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "N",
+        "examCode": "A",
+        "specialPermissionAddCode": null,
+        "crossListedSections": [],
+        "sectionNotes": "",
+        "specialPermissionDropCode": null,
+        "crossListedSectionType": "0",
+        "instructors": [
+          {
+            "name": "RICHTER, DANIEL"
+          }
+        ],
+        "number": "91",
+        "finalExam": null,
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": null,
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [
+          {
+            "code": "56",
+            "description": "Online Course"
+          },
+          {
+            "code": "05",
+            "description": "Go to http://canvas.rutgers.edu"
+          }
+        ],
+        "instructorsText": "RICHTER, DANIEL",
+        "minors": [],
+        "examCodeText": "By arrangement",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "O",
+            "description": "O"
+          }
+        ],
+        "index": "25104",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": null,
+        "commentsText": "Online Course, Go to http://canvas.rutgers.edu",
+        "subtitle": "",
+        "crossListedSectionsText": "",
+        "sectionCourseType": "O",
+        "meetingTimes": [
+          {
+            "campusLocation": "O",
+            "roomNumber": "",
+            "campusAbbrev": "ONL",
+            "campusName": "ONLINE",
+            "startTimeMilitary": "",
+            "buildingCode": "",
+            "meetingModeDesc": "ONLINE INSTRUCTION(INTERNET)",
+            "endTimeMilitary": "",
+            "meetingModeCode": "90",
+            "baClassHours": "B",
+            "pmCode": "",
+            "meetingDay": "",
+            "startTime": "",
+            "endTime": ""
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      },
+      {
+        "sectionEligibility": "",
+        "sessionDatePrintIndicator": "N",
+        "examCode": "C",
+        "specialPermissionAddCode": null,
+        "crossListedSections": [],
+        "sectionNotes": "",
+        "specialPermissionDropCode": null,
+        "crossListedSectionType": "0",
+        "instructors": [
+          {
+            "name": "BRUCHER"
+          }
+        ],
+        "number": "01",
+        "finalExam": null,
+        "majors": [],
+        "openToText": "",
+        "openStatusText": "OPEN",
+        "sessionDates": null,
+        "specialPermissionDropCodeDescription": null,
+        "subtopic": "",
+        "openStatus": true,
+        "comments": [
+          {
+            "code": "05",
+            "description": "Go to http://canvas.rutgers.edu"
+          }
+        ],
+        "instructorsText": "BRUCHER",
+        "minors": [],
+        "examCodeText": "During class hour",
+        "campusCode": "NB",
+        "sectionCampusLocations": [
+          {
+            "code": "1",
+            "description": "College Avenue"
+          }
+        ],
+        "index": "25096",
+        "unitMajors": [],
+        "printed": "Y",
+        "specialPermissionAddCodeDescription": null,
+        "commentsText": "Go to http://canvas.rutgers.edu",
+        "subtitle": "",
+        "crossListedSectionsText": "",
+        "sectionCourseType": "T",
+        "meetingTimes": [
+          {
+            "campusLocation": "1",
+            "roomNumber": "B3",
+            "campusAbbrev": "CAC",
+            "campusName": "COLLEGE AVENUE",
+            "startTimeMilitary": "1020",
+            "buildingCode": "FH",
+            "meetingModeDesc": "LEC",
+            "endTimeMilitary": "1320",
+            "meetingModeCode": "02",
+            "baClassHours": "",
+            "pmCode": "A",
+            "meetingDay": "T",
+            "startTime": "1020",
+            "endTime": "0120"
+          }
+        ],
+        "legendKey": null,
+        "honorPrograms": []
+      }
+    ],
+    "supplementCode": "  ",
+    "courseFee": "0",
+    "unitNotes": "",
+    "courseNotes": ""
+  }
+]

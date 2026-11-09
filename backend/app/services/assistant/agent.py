@@ -35,7 +35,7 @@ from pydantic import ValidationError
 
 from app.domain.plan_edits import PlanChange
 from app.llm.base import LLMProvider, Message, ProviderError, ProviderNotConfiguredError, Role
-from app.services.assistant import guided
+from app.services.assistant import guided, search
 from app.services.assistant.cards import change_title, option_card, proposal_card, section_card
 from app.services.assistant.contracts import (
     Activity,
@@ -136,6 +136,7 @@ class Assistant:
     # ------------------------------------------------------------------
     async def turn(self, text: str, *, history: list[dict] | None = None,
                    flow: dict | None = None, answers: dict | None = None,
+                   context_term: str | None = None, builder_selection: list[str] | None = None,
                    on_activity: Callable[[Activity], None] | None = None) -> TurnResult:
         text = (text or "").strip()
         r = route(text) if text else Route("guided_swap" if flow else "question")
@@ -151,6 +152,11 @@ class Assistant:
         try:
             if r.intent == "out_of_scope":
                 reply = self._refusal(r)
+            elif answers and answers.get("search_relax") and flow and flow.get("kind") == "course_search":
+                reply = search.run(ctx, previous=flow, relax=answers["search_relax"])
+            elif answers and answers.get("suggest_replacement"):
+                term = str(answers["suggest_replacement"])
+                reply = search.run(ctx, f"Find courses that fill a requirement in {term_label(term) or term}")
             elif answers and answers.get("sections"):
                 reply = self._sections(ctx, str(answers["sections"]))
             elif answers and answers.get("webreg"):
@@ -164,14 +170,30 @@ class Assistant:
                 reply, new_flow = await guided.continue_flow(ctx, flow, text, answers,
                                                              expand=expand)
                 reply.flow = new_flow
+            elif r.intent in ("question", "guided_swap") and search.is_requirement_search(text) and not r.courses and not re.search(r"don't want|do not want|instead of|replace", text, re.I):
+                reply = search.run(ctx, text, context_term=context_term, builder_selection=builder_selection)
             elif r.intent == "guided_swap":
                 reply, new_flow = await guided.start(ctx, text, r.known, expand=expand)
                 reply.flow = new_flow
             else:
-                reply, escalated, failures = await self._model_turn(ctx, text, history or [],
+                model_text = text + (f" (For term {context_term})" if context_term else "")
+                if builder_selection is not None:
+                    model_text += (" [Semester builder UNSAVED draft selection: " + ", ".join(builder_selection)
+                                   + ". Suggest additions only; do not replace or apply. The student confirms a separate preview.]")
+                reply, escalated, failures = await self._model_turn(ctx, model_text, history or [],
                                                                     r, usage)
         except ToolBudgetExceeded:
             reply = self._template(ctx, r)
+        last_search = ctx.last("search_courses")
+        if last_search and not last_search.data.get("results") and not reply.cards and not reply.proposals and not reply.sections:
+            empty = search.empty_reply(last_search)
+            if reply.flow and reply.flow.get("kind") == "guided_swap":
+                reply.text = empty.text
+            else:
+                reply = empty
+        reply.searches = [{"args": o.args, "interpretation": o.data.get("interpretation"),
+                           "courses": [i["course"] for i in o.data.get("results", [])]}
+                          for o in ctx.outcomes if o.name == "search_courses" and o.ok]
         reply.activity = ctx.activity_summary()
         if reply.intent == "question" and r.intent != "question":
             reply.intent = r.intent

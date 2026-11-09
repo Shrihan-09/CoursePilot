@@ -231,7 +231,7 @@ def answers_from_chip(chip: dict | None) -> tuple[str, dict | None]:
         return "", None
     value = str(chip.get("value") or "")
     question = chip.get("question")
-    for prefix in ("sections", "webreg", "more_like"):
+    for prefix in ("sections", "webreg", "more_like", "suggest_replacement"):
         if value.startswith(prefix + ":"):
             return "", {prefix: value[len(prefix) + 1:]}
     if question:
@@ -260,11 +260,8 @@ async def handle_message(session: Session, student: Student, settings, *, text: 
     hist = [{"role": m.role, "content": m.content} for m in past][-HISTORY_FOR_MODEL:]
     assistant = Assistant(tools or DbAssistantTools(session, student), default=default,
                           escalation=escalation, config=AgentConfig.from_settings(settings))
-    context = f" (For term {context_term})" if context_term else ""
-    if builder_selection is not None:
-        context += (" [Semester builder UNSAVED draft selection: " + ", ".join(builder_selection)
-                    + ". Suggest additions only; do not replace or apply. The student adds to the draft and confirms a separate preview.]")
-    result = await assistant.turn(text + context, history=hist, flow=flow, answers=answers,
+    result = await assistant.turn(text, history=hist, flow=flow, answers=answers,
+                                  context_term=context_term, builder_selection=builder_selection,
                                   on_activity=on_activity)
     reply = result.reply
     _tokenize(session, student, reply, conv.id)

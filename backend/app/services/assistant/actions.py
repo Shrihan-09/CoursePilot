@@ -37,10 +37,12 @@ def _applied(preview: dict, applied: dict) -> AssistantReply:
     term = change.get("to_term") or change.get("term_code")
     course = change.get("replacement") or change.get("course")
     chips = []
+    if term and change.get("kind") == "remove":
+        chips.append(Chip(label="Suggest a replacement", value=f"suggest_replacement:{term}"))
     if course and term and change.get("kind") in ("swap", "add", "move"):
         chips.append(Chip(label="Pick a section that fits my week",
                           value=f"sections:{course}|{term}"))
-    if term:
+    if term and change.get("kind") != "remove":
         chips.append(Chip(label="Copy index numbers for WebReg", value=f"webreg:{term}"))
     when = term_label(term) if term else None
     follow = (f" Want me to pick a section of {course} that fits your week in {when}?"

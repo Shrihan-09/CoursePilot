@@ -7,6 +7,35 @@ from app.services.planning.course_search import Interpretation, _section_fits
 from app.services.scheduling.meetings import normalize
 
 
+def test_requirement_search_checks_late_sorting_courses_before_applying_delivery(monkeypatch):
+    from decimal import Decimal
+    from types import SimpleNamespace as NS
+    from app.services.planning import course_search as search
+    from app.domain.planning import OfferingEvidenceKind
+    target = '37:575:202'
+    keys = [f'01:999:{n:03}' for n in range(100, 400)] + [target]
+    checked = []
+    ev = NS(kind=OfferingEvidenceKind.CONFIRMED_IN_TERM)
+    engine = NS(pools={'CORE_HST': keys}, pool_categories={}, offerings=NS(evidence=lambda *args: ev),
+                course_info={target: NS(title='Test late-sorting course', credits=Decimal(3))}, attributes=None,
+                _usable=lambda codes: 1)
+    ctx = NS(engine=engine, open=['CORE_HST'], where={}, session=None, liked=[],
+             names={'CORE_HST': 'Historical Analysis'}, fills=lambda key: ['CORE_HST'],
+             c=NS(honors=False, filler_preference=NS(value='flexible')))
+    def check(term, candidates, **kwargs):
+        checked.extend(candidates)
+        return {k: NS(course=k, ok=k == target, reason='prerequisites_not_met', requirements=['CORE_HST'],
+                      offering=ev, workload=NS(delivery=['async'], weight=Decimal(3), contact_hours=Decimal(0))) for k in candidates}
+    ctx.check = check
+    monkeypatch.setattr(search, '_sections', lambda *args: {target: [('99999', 'open', [])]})
+    monkeypatch.setattr(search, '_blocked', lambda *args: [])
+    monkeypatch.setattr(search, '_section_fits', lambda *args: True)
+    monkeypatch.setattr(search, 'Similarity', lambda *args: NS(best=lambda *args: (0, None)))
+    out = search._search(ctx, search.Interpretation(term_code='20271', async_only=True), 10)
+    assert len(checked) == 301
+    assert [r.course for r in out.results] == [target]
+
+
 def meeting(day="M", start="1000", end="1120", campus="CAC", mode="LEC"):
     return normalize(day=day, start=start, end=end, campus=campus,
                      mode_code=None, mode_desc=mode)

@@ -100,7 +100,7 @@ def apply_chip(answers: dict, question: str | None, value: str) -> dict:
 
 def _open_requirements(progress: dict, exclude: set[str]) -> list[dict]:
     return [r for r in progress.get("requirements") or []
-            if r.get("status") == "open" and r.get("code") not in exclude][:3]
+            if r.get("status") in {"open", "planned", "needs_review"} and r.get("code") not in exclude]
 
 
 async def start(ctx: TurnContext, text: str, known: Known, *, expand: Expand
@@ -153,7 +153,7 @@ async def after_target(ctx: TurnContext, target: dict, answers: dict, *, expand:
         chips = [Chip(label=f"Same requirement ({s['name']})", value="same", question="instead")
                  for s in flow["same"][:1]]
         chips += [Chip(label=r["name"], value=f"req:{r['code']}", question="instead")
-                  for r in open_reqs]
+                  for r in open_reqs[:3]]
         chips.append(Chip(label="Whatever counts the most", value="most", question="instead"))
         questions.append(Question(id="instead", prompt="What should it count for instead?",
                                   chips=chips))
@@ -232,6 +232,11 @@ def _requirements(flow: dict, answers: dict) -> tuple[list[list[str]] | None, st
         return [[code]], None, f"that fill {names.get(code, code)}"
     if instead == "most":
         return None, None, "that fill more than one requirement"
+    if instead == "any":
+        return None, None, "that fill any remaining requirement"
+    if instead == "different":
+        codes = [r["code"] for r in flow.get("open", [])]
+        return [codes] if codes else None, None, "that fill a different remaining requirement"
     if instead != "same":
         return None, instead, f"about {instead}"
     return None, None, ""
@@ -288,7 +293,7 @@ async def show_options(ctx: TurnContext, flow: dict, *, expand: Expand,
                       for c in cards}}
     if not cards:
         relax = [Chip(label="Any format", value="none", question="format"),
-                 Chip(label="Whatever counts the most", value="most", question="instead")]
+                 Chip(label="Any remaining requirement", value="any", question="instead")]
         return (AssistantReply(
             text=(f"No valid course for {when} matches all of that"
                   f"{' (' + ', '.join(bits) + ')' if bits else ''}. Some catalog entries have "

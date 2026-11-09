@@ -202,6 +202,8 @@ export interface TermWorkload {
 }
 
 export interface PlanTerm {
+  warnings?: string[];
+  user_edited?: boolean;
   term_code: string;
   label: string;
   courses: PlannedCourse[];
@@ -371,6 +373,8 @@ export interface PlanChange {
 export interface CourseLine { course: string; title: string; credits: string | number; state: CourseState }
 
 export interface TermDiff {
+  warnings?: string[];
+  requirement_effects?: string[];
   term_code: string;
   label: string;
   before: CourseLine[];

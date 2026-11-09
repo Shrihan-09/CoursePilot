@@ -180,6 +180,8 @@ export function PlanDiffView({ diff: d }: { diff: PlanDiff }) {
               </li>
             ))}
           </ul>
+          {(t.warnings ?? []).map((w) => <p key={w} className="text-warning">{w}</p>)}
+          {(t.requirement_effects ?? []).map((e) => <p key={e} className="text-fg-secondary">{e}</p>)}
         </section>
       ))}
       {d.forced_moves.length > 0 && (

@@ -18,6 +18,7 @@ the card and spent by the student's tap. A model that names an apply tool gets
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
@@ -76,6 +77,7 @@ class OptionsArgs(_Args):
 
 
 class SearchFiltersArgs(_Args):
+    credits: Decimal | None = Field(default=None, gt=0, le=30)
     online: bool | None = None
     async_only: bool | None = None
     in_person: bool | None = None
@@ -98,7 +100,7 @@ class SearchArgs(_Args):
     #: words it was never given cannot match.
     keywords: list[str] = Field(default_factory=list, max_length=12)
     filters: SearchFiltersArgs | None = None
-    exclude: list[str] = Field(default_factory=list, max_length=20)
+    exclude: list[str] = Field(default_factory=list, max_length=48)
     limit: int = Field(default=10, ge=1, le=10)
 
 
@@ -152,7 +154,10 @@ MODEL_TOOLS: dict[str, ToolSpec] = {s.name: s for s in (
              "and different requirement groups; locks and move terms.", OptionsArgs,
              "Found options"),
     ToolSpec("search_courses", "Valid courses by requirement codes (from tools, never "
-             "guessed), topic keywords and filters. REQUIRED for any 'a different X / "
+             "guessed), topic keywords and filters. Requirements within ONE inner list are OR; "
+             "separate inner lists are AND. For any remaining requirement, use one list of alternatives. "
+             "async_only means asynchronous; online includes async. No school-code restriction. "
+             "open_only is optional, not a default. REQUIRED for any 'a different X / "
              "another Y / something about Z' request.", SearchArgs, "Searched courses"),
     ToolSpec("get_course_details", "Public catalog data for one course: title, credits, "
              "description, published prerequisite text, offering.", DetailsArgs,
