@@ -9,6 +9,8 @@ import { GenerationAnimation } from "@/components/brand/generation";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Alert, EmptyState, ErrorState, PageHeader, Skeleton } from "@/components/ui/feedback";
 import { Field, Select } from "@/components/ui/field";
+import { Sheet } from "@/components/ui/overlay";
+import { AssistantChat, AssistantLauncher } from "@/features/assistant/assistant-chat";
 import { AddCourseSheet, ChangePreviewDialog, CourseOptionsSheet, usePlanChanges, YourChoicesCard } from "@/features/plan/plan-changes";
 import { PlanView } from "@/features/plan/plan-result";
 import { ProfileSummary, ReadinessList } from "@/features/planning/profile-summary";
@@ -56,6 +58,7 @@ export default function PlanPage() {
   const changes = usePlanChanges();
   const [optionsFor, setOptionsFor] = useState<{ course: string; term: string } | null>(null);
   const [addFor, setAddFor] = useState<string | null>(null);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const saved = current.data?.plan ?? null;
   const states = useMemo(
     () => new Map((saved?.course_states ?? []).map((s) => [`${s.course}@${s.term_code}`, s])),
@@ -228,6 +231,10 @@ export default function PlanPage() {
       <CourseOptionsSheet target={optionsFor} onClose={() => setOptionsFor(null)} changes={changes} />
       <AddCourseSheet term={addFor} changes={changes} onClose={() => setAddFor(null)} />
       <ChangePreviewDialog changes={changes} />
+      <AssistantLauncher onOpen={() => setAssistantOpen(true)} />
+      <Sheet open={assistantOpen} onClose={() => setAssistantOpen(false)} title="Assistant">
+        {assistantOpen && <AssistantChat compact />}
+      </Sheet>
     </div>
   );
 }

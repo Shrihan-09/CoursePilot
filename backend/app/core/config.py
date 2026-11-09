@@ -133,6 +133,36 @@ class Settings(BaseSettings):
     # validation failures are never retried - they would fail identically.
     explanation_provider_retries: int = 1
 
+    # --- Assistant (Prompt 11 Part B) ---
+    # A third consumer, separate again: enabling explanations must not enable
+    # a chat assistant. Credentials are the provider's own (openai_api_key /
+    # anthropic_api_key above); nothing here is a request field.
+    #   openai    - the default; needs OPENAI_API_KEY. Without a key the
+    #               assistant reports itself unavailable (no error, no call).
+    #   anthropic - optional; needs ANTHROPIC_API_KEY. Never used unless chosen
+    #               here, so an empty ANTHROPIC_API_KEY is harmless.
+    #   fake      - deterministic offline policy (tests, CI eval, local UI work)
+    #   none      - the assistant is off
+    assistant_provider: str = "openai"
+    #: Two tiers. The default model answers; the escalation model takes a turn
+    #: that asks for 2+ plan changes, and the retry after a default-model turn
+    #: fails grounding or validation.
+    assistant_model: str = "gpt-5.6-luna"
+    assistant_escalation_model: str = "gpt-5.6-terra"
+    #: Off: the retry stays on the default model (the eval's default-only mode).
+    assistant_escalation_enabled: bool = True
+    assistant_daily_message_limit: int = 50
+    assistant_max_tool_calls: int = 8
+    #: Output budget of ONE model call, and the whole turn's token budget
+    #: (input + output across every call in the turn).
+    assistant_max_output_tokens: int = 2_000
+    assistant_turn_token_budget: int = 60_000
+    assistant_timeout_seconds: float = 45.0
+    assistant_provider_retries: int = 1
+    #: Price overrides for cost estimates, JSON: {"model": [input, cached_input,
+    #: output]} in USD per 1M tokens. Empty: the table in assistant/pricing.py.
+    assistant_prices: dict[str, list[float]] = Field(default_factory=dict)
+
     # --- API security (Phase 5.3) ---
     # Development authentication. OFF by default, refused in production even
     # if switched on, and never a production mechanism.
@@ -322,6 +352,12 @@ def audit_production_settings(settings: "Settings") -> list[str]:
         findings.append(
             "explanation_provider is 'openai' but no API key is configured"
         )
+    if settings.assistant_provider == "openai" and not settings.openai_api_key:
+        findings.append("assistant_provider is 'openai' but no API key is configured")
+    if settings.assistant_provider == "anthropic" and not settings.anthropic_api_key:
+        findings.append("assistant_provider is 'anthropic' but no API key is configured")
+    if settings.assistant_provider == "fake":
+        findings.append("assistant_provider is 'fake' (an offline test policy, not a model)")
 
     if settings.push_provider == "apns":
         missing = [n for n, v in (("apns_private_key/apns_key_path",

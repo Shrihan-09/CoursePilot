@@ -11,6 +11,7 @@ from fastapi import APIRouter
 from app.api.v1.routes import (
     account,
     admin,
+    assistant,
     degree_audit_imports,
     explanations,
     health,
@@ -49,6 +50,7 @@ api_router.include_router(watches.router)
 for _live_router in live.routers:
     api_router.include_router(_live_router)
 api_router.include_router(admin.router)
+api_router.include_router(assistant.router)
 
 # Future routers land here as they are implemented:
 #   courses.router      — course search / lookup

@@ -28,6 +28,9 @@ class Role(StrEnum):
     ROUTER = "router"
     PLANNER = "planner"
     SUMMARIZER = "summarizer"
+    #: Prompt 11 Part B: the chat assistant's two tiers.
+    ASSISTANT = "assistant"
+    ASSISTANT_ESCALATION = "assistant_escalation"
 
 
 @dataclass(frozen=True, slots=True)

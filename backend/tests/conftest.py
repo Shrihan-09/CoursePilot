@@ -16,6 +16,8 @@ from httpx import ASGITransport, AsyncClient
 # Set before importing app config so Settings picks these up.
 os.environ.setdefault("COURSEPILOT_ENV", "ci")
 os.environ.setdefault("LLM_PROVIDER", "echo")
+# Prompt 11 Part B: tests never call a real model, whatever .env says.
+os.environ["ASSISTANT_PROVIDER"] = os.environ.get("ASSISTANT_PROVIDER_FOR_TESTS", "fake")
 # Development authentication, for tests only. Explicitly opt-in and refused
 # outright when the environment is production - see app/api/security.py.
 os.environ.setdefault("DEV_AUTH_ENABLED", "true")
@@ -30,6 +32,13 @@ os.environ.setdefault("ACADEMIC_TODAY", "2025-12-01")
 from app.db.test_db_guard import install as _install_test_db_guard  # noqa: E402
 
 _install_test_db_guard()
+
+
+def pytest_configure(config):
+    """Refuse a --basetemp inside the repository or OneDrive (app.core.test_output_guard)."""
+    from app.core.test_output_guard import pytest_configure_hook
+
+    pytest_configure_hook(config)
 
 
 @pytest.fixture

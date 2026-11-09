@@ -206,4 +206,21 @@ export const api = {
   forgetSection: (course: string) =>
     request<void>(`/student/current-schedule/sections?course=${encodeURIComponent(course)}`,
                   { method: "DELETE" }),
+
+  /* Prompt 11 Part B: the assistant (messages stream via lib/assistant.ts) */
+  assistantStatus: () => request<import("@/types/assistant").AssistantStatus>("/student/assistant"),
+  /** A tap on "Choose this" / "Confirm": the card's one-time token. */
+  assistantAction: (token: string) =>
+    request<{ reply: import("@/types/assistant").AssistantReply }>("/student/assistant/actions",
+                                                                  json("POST", { token })),
+  deleteAssistantHistory: () =>
+    request<{ deleted_messages: number }>("/student/assistant/history", { method: "DELETE" }),
+  webregPanel: (term: string) =>
+    request<import("@/types/assistant").WebRegPanel>(`/student/plans/current/terms/${term}/webreg`),
+  choosePlannedSection: (term: string, course: string, index_number: string) =>
+    request<import("@/types/assistant").WebRegPanel>(`/student/plans/current/terms/${term}/sections`,
+                                                    json("PUT", { course, index_number })),
+  forgetPlannedSection: (term: string, course: string) =>
+    request<import("@/types/assistant").WebRegPanel>(
+      `/student/plans/current/terms/${term}/sections/${course.replace(/:/g, "-")}`, { method: "DELETE" }),
 };
