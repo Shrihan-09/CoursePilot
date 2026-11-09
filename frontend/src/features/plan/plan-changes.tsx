@@ -227,7 +227,7 @@ function OptionCard({ option: o, onChoose, busy, action = "Choose" }: {
       )}
       <p className={cn("text-xs font-medium", o.offering === "confirmed" ? "text-success" : "text-warning")}>
         {o.offering === "confirmed" ? "Confirmed for this semester" : "Historically offered this season"}
-        {open === "closed" ? " · every section full right now" : open === "open" ? " · seats open" : ""}
+        {open === "closed" ? " · listed closed" : open === "open" ? " · listed open" : open === "unknown" ? " · current seat status unknown" : ""}
       </p>
       <p className="tabular text-2xs text-fg-muted">
         {deliveryText(o.delivery)}

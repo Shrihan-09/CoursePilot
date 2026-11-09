@@ -328,12 +328,13 @@ def interpret(ctx: OptionsContext, text: str, *, term_code: str | None = None) -
 
 def _sections(session: Session, term: str, keys: list[str], attrs, honors):
     """course -> [(index, open, [meetings])] for a PUBLISHED term."""
-    from app.models import SectionAvailability
     from app.services.scheduling.meetings import normalize
     from app.domain.schedule import RestrictionOutcome
     from app.services.scheduling.candidates import load_term, honors_only
 
     data = load_term(session, term, keys, attrs)
+    availability = {c.index_number: c.availability for candidates in data.candidates.values()
+                    for c in candidates}
     eligible = {c.index_number for candidates in data.candidates.values() for c in candidates
                 if c.restriction.outcome in (RestrictionOutcome.UNRESTRICTED, RestrictionOutcome.SATISFIED)
                 and (honors or not honors_only(c.restriction))}
@@ -345,9 +346,6 @@ def _sections(session: Session, term: str, keys: list[str], attrs, honors):
         .join(CourseSection, CourseSection.offering_id == CourseOffering.id)
         .where(Course.course_string.in_(keys), CourseSection.term_code == term,
                Course.supplement_code == "")).all()
-    live = dict(session.execute(
-        select(SectionAvailability.index_number, SectionAvailability.status)
-        .where(SectionAvailability.term_code == term)).all()) if rows else {}
     meetings = defaultdict(list)
     for m in session.scalars(select(SectionMeeting).where(
             SectionMeeting.section_id.in_([r[1] for r in rows]))) if rows else []:
@@ -356,11 +354,13 @@ def _sections(session: Session, term: str, keys: list[str], attrs, honors):
             mode_code=m.meeting_mode_code, mode_desc=m.meeting_mode_desc,
             campus=m.campus_abbrev))
     out = defaultdict(list)
-    for key, sid, index, soc_open in rows:
+    for key, sid, index, _soc_open in rows:
         if index not in eligible:
             continue
-        status = live.get(index) or ("open" if soc_open else "closed")
-        out[key].append((index, status == "open", meetings.get(sid, [])))
+        ev = availability.get(index)
+        # Old SOC/openSections snapshots cannot promise a currently open seat.
+        status = ev.state.value if ev is not None and ev.freshness.value == "current" else "unknown"
+        out[key].append((index, status, meetings.get(sid, [])))
     return out
 
 
@@ -519,7 +519,8 @@ def _search(ctx: OptionsContext, it: Interpretation, limit: int) -> SearchResult
             if not fitting:
                 continue
             usable = fitting
-            status = "open" if any(s[1] for s in usable) else "closed"
+            status = ("open" if any(s[1] == "open" for s in usable) else
+                      "closed" if all(s[1] == "closed" for s in usable) else "unknown")
             if it.open_only and status != "open":
                 continue
         elif it.open_only or it.avoid_days or blocked or it.campus or it.earliest or it.latest:
