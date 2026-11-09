@@ -30,6 +30,13 @@ from sqlalchemy.orm import Session, sessionmaker
 # Every connection must be to a *_test database (task 1 incident guard).
 _install_test_db_guard()
 
+
+def pytest_configure(config):
+    """Refuse a --basetemp inside the repository or OneDrive (app.core.test_output_guard)."""
+    from app.core.test_output_guard import pytest_configure_hook
+
+    pytest_configure_hook(config)
+
 FIXTURE_DIR = pathlib.Path(__file__).parent / "fixtures"
 SAMPLE = FIXTURE_DIR / "soc_courses_sample.json"
 SECTION_SAMPLE = FIXTURE_DIR / "soc_sections_sample.json"

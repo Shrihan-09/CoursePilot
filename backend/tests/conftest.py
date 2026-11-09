@@ -32,6 +32,13 @@ from app.db.test_db_guard import install as _install_test_db_guard  # noqa: E402
 _install_test_db_guard()
 
 
+def pytest_configure(config):
+    """Refuse a --basetemp inside the repository or OneDrive (app.core.test_output_guard)."""
+    from app.core.test_output_guard import pytest_configure_hook
+
+    pytest_configure_hook(config)
+
+
 @pytest.fixture
 def settings():
     from app.core.config import get_settings

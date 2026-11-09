@@ -63,3 +63,20 @@ data/private/
 
 # Local working output (test runs, previews, probes). Never committed; PR bodies live in docs/pr/.
 scratchpad/
+
+# ---------- Test and scratch output ----------
+# Never committed. New test output belongs in a fresh folder under the system
+# temp directory (pytest's default tmp_path root), never in the repository or
+# OneDrive: app/core/test_output_guard.py refuses an in-repo --basetemp.
+.tmp_*/
+**/.tmp_*/
+ingestion/.tmp_*
+backend/.tmp_*
+frontend/.tmp_*
+test-output/
+**/test-output/
+test-results/
+**/test-results/
+playwright-report/
+**/playwright-report/
+.pytest-tmp/
