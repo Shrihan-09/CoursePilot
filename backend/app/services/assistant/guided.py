@@ -162,9 +162,6 @@ async def after_target(ctx: TurnContext, target: dict, answers: dict, *, expand:
                                   chips=FORMAT_CHIPS))
     if not answers.get("else_answered"):
         questions.append(Question(id="else", prompt="Anything else?", chips=ELSE_CHIPS))
-    if questions and len(questions) == 1 and questions[0].id == "else" and (
-            answers.get("instead") and answers.get("format")):
-        questions = []            # both real questions answered: go straight to options
     if questions:
         when = term_label(term) or term
         return (AssistantReply(
@@ -308,15 +305,42 @@ async def show_options(ctx: TurnContext, flow: dict, *, expand: Expand,
 
 async def more_like(ctx: TurnContext, flow: dict, course: str, *, expand: Expand
               ) -> tuple[AssistantReply, dict]:
+    """More courses that fill what this card fills, not shown yet. The card's
+    title words order the results (they never filter them: BM25 on a short
+    title would leave almost nothing), and format filters are dropped so the
+    student sees what else exists."""
     info = (flow.get("cards") or {}).get(course) or {}
-    words = [w for w in re.findall(r"[A-Za-z]{4,}", info.get("title") or "")
-             if w.lower() not in ("introduction", "intro", "topics", "studies", "special")][:3]
-    answers = dict(flow.get("answers") or {})
-    if info.get("codes"):
-        answers["instead"] = f"req:{info['codes'][0]}"
-    flow = {**flow, "answers": answers}
-    return await show_options(ctx, flow, expand=expand, exclude=list(flow.get("shown") or []),
-                        like=" ".join(words).lower() or None)
+    words = {w.lower() for w in re.findall(r"[A-Za-z]{4,}", info.get("title") or "")} - {
+        "introduction", "intro", "topics", "studies", "special"}
+    shown = list(flow.get("shown") or [])
+    codes = info.get("codes") or []
+    args: dict = {"term_code": flow["term_code"], "exclude": [flow["course"], *shown],
+                  "limit": 10}
+    if codes:
+        args["requirements"] = [[codes[0]]]
+    found = ctx.call("search_courses", args)
+    items = list(found.data.get("results") or []) if found.ok else []
+
+    def overlap(i: dict) -> int:
+        hay = f"{i.get('title', '')} {i.get('description') or ''}".lower()
+        return -sum(1 for w in words if w in hay)
+
+    items.sort(key=overlap)
+    for i in items:
+        ctx.items.setdefault(i["course"], i)
+    term, target = flow["term_code"], flow["course"]
+    cards = [option_card(i, term_code=term, replaces=target) for i in items[:MAX_CARDS]]
+    flow = {**flow, "stage": "shown", "shown": [*shown, *(c.course for c in cards)],
+            "cards": {**(flow.get("cards") or {}),
+                      **{c.course: {"codes": c.requirement_codes, "title": c.title}
+                         for c in cards}}}
+    when = term_label(term) or term
+    if not cards:
+        return (AssistantReply(text=f"That's every valid option like {course} for {when}.",
+                               intent="guided_swap", generated_by="template"), flow)
+    return (AssistantReply(
+        text=f"Here are {len(cards)} more options like {course} for {when}, in any format.",
+        intent="guided_swap", generated_by="template", cards=cards), flow)
 
 
 __all__ = ["ELSE_CHIPS", "FORMAT_CHIPS", "after_target", "apply_chip", "continue_flow",

@@ -105,6 +105,11 @@ def _fit(data, limit: int) -> str:
     return text[:limit]
 
 
+def _item_term(item: dict) -> str | None:
+    """The term an option/search item was checked for."""
+    return item.get("term_code") or item.get("offering_term") or item.get("planned_term")
+
+
 def _parse(text: str) -> dict | None:
     candidate = text.strip()
     if candidate.startswith("```"):
@@ -174,7 +179,8 @@ class Assistant:
                 and not reply.sections and r.intent != "out_of_scope":
             reply.suggestions = reply.suggestions or []
         return TurnResult(reply=reply, usage=usage, tool_calls=ctx.calls, escalated=escalated,
-                          grounding_failures=failures, route=r)
+                          grounding_failures=failures, route=r,
+                          facts=ctx.facts)
 
     @staticmethod
     def _continues(r: Route, text: str, answers: dict | None) -> bool:
@@ -360,7 +366,7 @@ class Assistant:
                                 proposal_courses=proposal_courses)
         term = ctx.facts.planned.get(replaces) if replaces else None
         known = extract_known(user_text)
-        cards = [option_card(ctx.items[k], term_code=term or ctx.items[k].get("planned_term"),
+        cards = [option_card(ctx.items[k], term_code=term or _item_term(ctx.items[k]),
                              replaces=replaces, wanted_format=known.format,
                              avoid_days=known.avoid_days)
                  for k in show if k in ctx.items]
@@ -402,7 +408,7 @@ class Assistant:
             return AssistantReply(text=f"That change can't be made: {errors}",
                                   intent=r.intent, generated_by="template")
         if ctx.items:
-            cards = [option_card(i, term_code=i.get("planned_term"), replaces=None)
+            cards = [option_card(i, term_code=_item_term(i), replaces=None)
                      for i in list(ctx.items.values())[:8]]
             for c in cards:
                 c.action = None

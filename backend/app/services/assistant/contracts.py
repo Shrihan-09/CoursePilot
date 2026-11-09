@@ -184,6 +184,9 @@ def facts_from(tool: str, data: Any) -> Facts:
         elif isinstance(node, list):
             for item in node:
                 walk(item, parent_key)
+        elif isinstance(node, str):
+            for k in COURSE_KEY.findall(node):
+                f.courses.setdefault(k, CourseFact(course=k))
 
     walk(data)
     if tool == "get_plan" and isinstance(data, dict):
@@ -337,6 +340,8 @@ class TurnResult:
     escalated: bool = False
     grounding_failures: list[list[str]] = field(default_factory=list)
     route: Any = None
+    #: What this turn's tools established (the eval re-checks grounding with it).
+    facts: Any = None
 
 
 __all__ = ["COURSE_KEY", "FOOTER", "Activity", "AssistantReply", "Chip", "CourseFact", "Facts",

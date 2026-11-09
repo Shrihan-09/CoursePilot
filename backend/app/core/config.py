@@ -137,11 +137,13 @@ class Settings(BaseSettings):
     # A third consumer, separate again: enabling explanations must not enable
     # a chat assistant. Credentials are the provider's own (openai_api_key /
     # anthropic_api_key above); nothing here is a request field.
-    #   none      - the assistant is off (the default: CI and a fresh clone)
-    #   fake      - deterministic offline policy (tests, eval, local UI work)
-    #   openai    - OPENAI_API_KEY
-    #   anthropic - ANTHROPIC_API_KEY
-    assistant_provider: str = "none"
+    #   openai    - the default; needs OPENAI_API_KEY. Without a key the
+    #               assistant reports itself unavailable (no error, no call).
+    #   anthropic - optional; needs ANTHROPIC_API_KEY. Never used unless chosen
+    #               here, so an empty ANTHROPIC_API_KEY is harmless.
+    #   fake      - deterministic offline policy (tests, CI eval, local UI work)
+    #   none      - the assistant is off
+    assistant_provider: str = "openai"
     #: Two tiers. The default model answers; the escalation model takes a turn
     #: that asks for 2+ plan changes, and the retry after a default-model turn
     #: fails grounding or validation.

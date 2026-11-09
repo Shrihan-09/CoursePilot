@@ -16,6 +16,8 @@ from httpx import ASGITransport, AsyncClient
 # Set before importing app config so Settings picks these up.
 os.environ.setdefault("COURSEPILOT_ENV", "ci")
 os.environ.setdefault("LLM_PROVIDER", "echo")
+# Prompt 11 Part B: tests never call a real model, whatever .env says.
+os.environ["ASSISTANT_PROVIDER"] = os.environ.get("ASSISTANT_PROVIDER_FOR_TESTS", "fake")
 # Development authentication, for tests only. Explicitly opt-in and refused
 # outright when the environment is production - see app/api/security.py.
 os.environ.setdefault("DEV_AUTH_ENABLED", "true")

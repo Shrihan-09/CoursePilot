@@ -316,6 +316,26 @@ def policy(messages: list[Message]) -> dict:
         return _reply(f"Here are {len(hits)} online options for {term_label(term)}.",
                       show_options=[h["course"] for h in hits[:8]])
 
+    # "Is my writing requirement done?" - status labels verbatim.
+    if re.search(r"\b(done|complete|completed|finished|counted|satisfied)\b", low) and \
+            re.search(r"\brequirement|core|writing|history|arts|science\b", low):
+        progress = _ok(results, "get_progress")
+        if not progress:
+            return _calls(("get_progress", {"include_gpa": False}))
+        p = progress[-1]
+        words = {w for w in re.findall(r"[a-z]{4,}", low)} - {"requirement", "done", "complete",
+                                                              "completed", "finished"}
+        reqs = [r for r in p.get("requirements") or []
+                if words & set(re.findall(r"[a-z]{4,}", r["name"].lower()))]
+        if not reqs:
+            return _reply("I couldn't find that requirement in your progress.")
+        lines = []
+        for r in reqs[:3]:
+            label = r.get("label_text") or r["status"].replace("_", " ")
+            note = f" ({r['note']})" if r.get("note") else ""
+            lines.append(f"{r['name']} ({r['code']}): {label}{note}")
+        return _reply(f"Per your progress ({p.get('source_label')}): " + "; ".join(lines) + ".")
+
     # "What do I still need for Core?"
     if re.search(r"\bcore|still need|left|remaining|requirements?\b", low):
         progress = _ok(results, "get_progress")

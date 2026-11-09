@@ -130,7 +130,7 @@ def extract_known(text: str) -> Known:
         k.instead = m.group(1).strip()
     if m := re.search(r"\b(?:something|anything|a course|a class|courses?)\s+(?:about|on|in|"
                       r"related to|involving|with)\s+([a-z0-9&\- ]{2,40})", t):
-        topic = re.sub(r"\b(that|which|and|but|or|online|async|hybrid|in person|please|"
+        topic = re.sub(r"\b(that|which|and|but|or|instead|online|async|hybrid|in person|please|"
                        r"this|next|spring|fall|summer|winter)\b.*$", "", m.group(1)).strip()
         if topic and topic not in ("it", "that", "this"):
             k.topic = topic
@@ -139,7 +139,7 @@ def extract_known(text: str) -> Known:
     if re.search(r"\blighter\b|\bless work\b|\blower workload\b|\bnot too heavy\b|\blight\b", t):
         k.lighter = True
     if re.search(r"^\s*(no|nope|nothing( else)?|that'?s it|just show (me )?(the )?options)\s*"
-                 r"[.!]?\s*$", t):
+                 r"[.!]?\s*$", t) or re.search(r"\bnothing else\b|\bthat'?s (it|all)\b", t):
         k.nothing_else = True
     return k
 

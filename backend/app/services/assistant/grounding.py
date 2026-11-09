@@ -182,10 +182,16 @@ def check_reply(text: str, facts: Facts, *, user_text: str, gpa_requested: bool,
         if re.search(pattern, lowered) and not established.get(label, False):
             problems.append(f"makes an academic claim no tool established ({label})")
 
-    # 8. Never.
+    # 8. Never. A sentence that DECLINES to rate ("I can't say whether a course
+    # is easy") is not a rating.
     for pattern, label in _NEVER:
-        if pattern.search(text):
-            problems.append(label)
+        for sentence in _sentences(text):
+            if pattern.search(sentence) and not (
+                    label == "rates a course easy or hard"
+                    and re.search(r"\b(can'?t|cannot|don'?t|won'?t|not|never|no way)\b",
+                                  sentence, re.I)):
+                problems.append(label)
+                break
 
     # 9. GPA only when asked.
     if not gpa_requested and (re.search(r"\bgpa\b|grade point", lowered)
