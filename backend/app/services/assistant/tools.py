@@ -250,6 +250,54 @@ def _dispatch(tools: AssistantTools, name: str, a: Any, *, gpa_allowed: bool) ->
     raise LookupError(name)  # pragma: no cover - MODEL_TOOLS guards the name
 
 
+REPLY_TOOL = "reply"
+
+
+class ReplyArgs(_Args):
+    """The turn's answer. Calling it ends the turn; it cannot apply anything."""
+
+    text: str = Field(min_length=1, max_length=2_000)
+    show_options: list[str] = Field(default_factory=list, max_length=10)
+    replaces: str | None = Field(default=None, pattern=COURSE)
+    propose: list[PlanChange] = Field(default_factory=list, max_length=3)
+    propose_preference: PreferenceArgs | None = None
+
+
+def _inline(schema: dict) -> dict:
+    """The JSON schema with every $ref inlined (some function-calling APIs do
+    not resolve $defs)."""
+    defs = schema.get("$defs", {})
+
+    def walk(node):
+        if isinstance(node, dict):
+            if "$ref" in node:
+                return walk(defs[node["$ref"].split("/")[-1]])
+            return {k: walk(v) for k, v in node.items() if k not in ("$defs", "title")}
+        if isinstance(node, list):
+            return [walk(x) for x in node]
+        return node
+
+    return walk(schema)
+
+
+def native_tool_defs() -> list:
+    """MODEL_TOOLS plus `reply`, as provider-neutral ToolDefs (native calling)."""
+    from app.llm.base import ToolDef
+
+    defs = [ToolDef(name=s.name, description=s.description,
+                    parameters=_inline(s.args.model_json_schema()))
+            for s in MODEL_TOOLS.values()]
+    defs.append(ToolDef(
+        name=REPLY_TOOL,
+        description=("Answer the student and end the turn. text: 1-3 short sentences grounded in "
+                     "this turn's tool results. show_options: course keys returned by "
+                     "search_courses / list_course_options. replaces: the planned course they "
+                     "would replace. propose: previewed plan changes for the student to confirm. "
+                     "propose_preference: a previewed preference change."),
+        parameters=_inline(ReplyArgs.model_json_schema())))
+    return defs
+
+
 def tool_catalog() -> list[dict]:
     """The tool list as the model sees it: name, description, argument schema."""
     out = []

@@ -47,9 +47,16 @@ from app.services.assistant.contracts import (
     term_label,
 )
 from app.services.assistant.grounding import check_reply
-from app.services.assistant.prompts import EXPAND_SYSTEM, REJECTED, STUDENT, TOOL_RESULTS, system_prompt
+from app.services.assistant.prompts import (
+    EXPAND_SYSTEM,
+    REJECTED,
+    STUDENT,
+    TOOL_RESULTS,
+    native_system_prompt,
+    system_prompt,
+)
 from app.services.assistant.router import REFUSALS, Route, extract_known, route
-from app.services.assistant.tools import AssistantTools
+from app.services.assistant.tools import REPLY_TOOL, AssistantTools, native_tool_defs
 from app.services.assistant.turn import ToolBudgetExceeded, TurnContext
 
 SUGGESTIONS = [Chip(label="Make next semester lighter", value="Make next semester lighter"),
@@ -254,7 +261,7 @@ class Assistant:
         failures: list[list[str]] = []
         for attempt in (1, 2):
             role = Role.ASSISTANT_ESCALATION if escalated else Role.ASSISTANT
-            payload, error = await self._loop(provider, role, messages, ctx, usage)
+            payload, error, reply_id = await self._loop(provider, role, messages, ctx, usage)
             if payload is None:
                 problems = [error or "no reply"]
             else:
@@ -264,15 +271,83 @@ class Assistant:
             failures.append(problems)
             if attempt == 2 or error in ("provider_error", "token_budget"):
                 break
-            messages.append(Message("user", REJECTED + "\n" + json.dumps(
+            rejection = REJECTED + "\n" + json.dumps(
                 {"problems": problems[:6], "instruction": "Reply again using only this "
-                 "turn's tool results. Call tools if you need more facts."})))
+                 "turn's tool results. Call tools if you need more facts."})
+            # Native tool calling: the rejection is the OUTPUT of the reply call
+            # (every function call must be answered); otherwise a user message.
+            messages.append(Message("tool", rejection, tool_call_id=reply_id) if reply_id
+                            else Message("user", rejection))
             if can_escalate and not escalated:
                 provider, escalated = self.escalation, True
         return self._template(ctx, r), escalated, failures
 
     async def _loop(self, provider: LLMProvider, role: Role, messages: list[Message],
-                    ctx: TurnContext, usage: TurnUsage) -> tuple[dict | None, str | None]:
+                    ctx: TurnContext, usage: TurnUsage
+                    ) -> tuple[dict | None, str | None, str | None]:
+        """(the reply's fields, an error, the reply call's id)."""
+        if getattr(provider, "supports_tools", False):
+            return await self._native_loop(provider, role, messages, ctx, usage)
+        payload, error = await self._json_loop(provider, role, messages, ctx, usage)
+        return payload, error, None
+
+    async def _native_loop(self, provider: LLMProvider, role: Role, messages: list[Message],
+                           ctx: TurnContext, usage: TurnUsage
+                           ) -> tuple[dict | None, str | None, str | None]:
+        """Native function calling (OpenAI Responses API). The model calls the
+        tools as functions and ends the turn by calling `reply`."""
+        cfg = self.config
+        system, tools = native_system_prompt(), native_tool_defs()
+        items_model = getattr(provider, "_model", None)
+        for _ in range(cfg.max_steps):
+            if usage.total >= cfg.turn_token_budget:
+                return None, "token_budget", None
+            try:
+                completion = await provider.complete(
+                    role=role, messages=messages, system=system,
+                    max_tokens=cfg.max_output_tokens, tools=tools, tool_choice="required")
+            except (ProviderError, ProviderNotConfiguredError):
+                return None, "provider_error", None
+            usage.add(completion.model, completion.usage.input_tokens,
+                      completion.usage.output_tokens, completion.usage.cached_input_tokens)
+            messages.append(Message("assistant", completion.text[:4_000],
+                                    tool_calls=completion.tool_calls,
+                                    provider_items=completion.provider_items,
+                                    items_model=items_model or completion.model))
+            calls = list(completion.tool_calls)
+            reply = next((c for c in calls if c.name == REPLY_TOOL), None)
+            if reply is not None:
+                for c in calls:
+                    if c is not reply:
+                        messages.append(Message("tool", json.dumps(
+                            {"name": c.name, "ok": False,
+                             "error": "ignored: reply was called in the same step"}),
+                            tool_call_id=c.id))
+                if reply.arguments is None:
+                    return None, "reply arguments were not a JSON object", reply.id
+                return reply.arguments, None, reply.id
+            if not calls:
+                return None, "the model answered in text without calling reply", None
+            for i, c in enumerate(calls):
+                if i >= 4:
+                    out = {"name": c.name, "ok": False, "error": "at most 4 tool calls per step"}
+                elif ctx.remaining <= 0:
+                    out = {"name": c.name, "ok": False, "error": "tool_budget_reached: reply now"}
+                elif c.arguments is None:
+                    out = {"name": c.name, "ok": False,
+                           "error": "invalid_arguments: not a JSON object"}
+                    ctx.calls.append({"name": c.name, "args": {}, "ok": False,
+                                      "error": out["error"]})
+                else:
+                    o = ctx.call(c.name, c.arguments)
+                    out = {"name": o.name, "ok": o.ok, "error": o.error,
+                           "result": o.data if o.ok else None}
+                messages.append(Message("tool", _fit(out, cfg.result_chars), tool_call_id=c.id))
+        return None, "no reply within the step limit", None
+
+    async def _json_loop(self, provider: LLMProvider, role: Role, messages: list[Message],
+                         ctx: TurnContext, usage: TurnUsage) -> tuple[dict | None, str | None]:
+        """Providers without native tools: a JSON protocol in text."""
         cfg = self.config
         system = system_prompt()
         for _ in range(cfg.max_steps):

@@ -52,8 +52,8 @@ Status key: `todo` · `wip` · `done` · `blocked`. Updated as each sub-part lan
 | Grounding: every course, requirement, credit, offering or date claim from this turn's tool results; 2 regenerations, then template fallback | done |
 | Labels pass through unchanged (estimated / DN audit, confirmed / historically offered, needs review, Preview programs) | done |
 | Never "easy", no grade/GPA promises, never claims to register, footer disclaimer | done |
-| OpenAI provider alongside Anthropic behind the registry; models from config | done |
-| Two tiers: default `gpt-5.6-luna`, escalation model; escalate on 2+ changes or a failed grounding/validation turn | done |
+| OpenAI provider alongside Anthropic behind the registry; models from config; tool calling on the Responses API (native function tools, store=false) | done |
+| Two tiers: default `gpt-6-luna`, escalation `gpt-6-sol` (config); escalate on 2+ changes or a failed grounding/validation turn | done |
 | Vague topics expanded into keywords before `search_courses` (BM25/aliases, no embeddings) | done |
 | Caps: daily messages per user, tool calls per turn, token budget per reply; usage logged as counts only | done |
 | Privacy: only this student's tool output, no GPA unless asked, no conversation content in logs, deletable history | done |

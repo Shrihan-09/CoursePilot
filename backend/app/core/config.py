@@ -147,8 +147,12 @@ class Settings(BaseSettings):
     #: Two tiers. The default model answers; the escalation model takes a turn
     #: that asks for 2+ plan changes, and the retry after a default-model turn
     #: fails grounding or validation.
-    assistant_model: str = "gpt-5.6-luna"
-    assistant_escalation_model: str = "gpt-5.6-terra"
+    assistant_model: str = "gpt-6-luna"
+    assistant_escalation_model: str = "gpt-6-sol"
+    #: OpenAI Responses API reasoning effort for both tiers (none | minimal |
+    #: low | medium | high). Tool calling goes through the Responses API
+    #: because GPT-6 models call tools on Chat Completions only at "none".
+    assistant_reasoning_effort: str | None = "low"
     #: Off: the retry stays on the default model (the eval's default-only mode).
     assistant_escalation_enabled: bool = True
     assistant_daily_message_limit: int = 50

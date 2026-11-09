@@ -58,7 +58,8 @@ def build_assistant_provider(settings: Settings, role: Role = Role.ASSISTANT) ->
         case "openai":
             return OpenAIProvider(api_key=settings.openai_api_key, model=model,
                                   timeout_seconds=settings.assistant_timeout_seconds,
-                                  max_retries=settings.assistant_provider_retries)
+                                  max_retries=settings.assistant_provider_retries,
+                                  reasoning_effort=settings.assistant_reasoning_effort)
         case "anthropic":
             return AnthropicProvider(api_key=settings.anthropic_api_key, model=model,
                                      effort=settings.llm_effort,

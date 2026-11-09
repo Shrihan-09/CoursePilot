@@ -45,6 +45,8 @@ from typing import Any
 from app.llm.base import (
     Completion,
     Message,
+    ToolCall,
+    ToolDef,
     ProviderError,
     ProviderNotConfiguredError,
     Role,
@@ -62,6 +64,8 @@ class OpenAIProvider:
     """Adapts the official OpenAI SDK to the `LLMProvider` protocol."""
 
     name = "openai"
+    #: Native tool calling, through the Responses API (Prompt 11 Part B).
+    supports_tools = True
 
     def __init__(
         self,
@@ -70,6 +74,7 @@ class OpenAIProvider:
         model: str,
         timeout_seconds: float = 30.0,
         max_retries: int = 2,
+        reasoning_effort: str | None = None,
     ) -> None:
         if not api_key:
             raise ProviderNotConfiguredError(
@@ -89,6 +94,7 @@ class OpenAIProvider:
         self._api_key = api_key
         self._model = model
         self._timeout = timeout_seconds
+        self._reasoning_effort = reasoning_effort
         self._client = AsyncOpenAI(
             api_key=api_key, timeout=timeout_seconds, max_retries=max_retries
         )
@@ -101,7 +107,11 @@ class OpenAIProvider:
         system: str | None = None,
         schema: dict[str, Any] | None = None,
         max_tokens: int = 16_000,
+        tools: list[ToolDef] | None = None,
+        tool_choice: str | None = None,
     ) -> Completion:
+        if tools is not None:
+            return await self._responses(messages, system, tools, tool_choice, max_tokens)
         payload: list[dict[str, str]] = []
         if system:
             # The grounding instructions. Sent as a system message so the
@@ -121,6 +131,8 @@ class OpenAIProvider:
             "messages": payload,
             "max_completion_tokens": max_tokens,
         }
+        if self._reasoning_effort:
+            request["reasoning_effort"] = self._reasoning_effort
         if schema is not None:
             # Structured output. A schema proves SHAPE, never truthfulness -
             # the response is still validated against CoursePilot's own
@@ -155,6 +167,106 @@ class OpenAIProvider:
             stop_reason=self._extract_stop_reason(response),
         )
 
+    # -- tool calling: the Responses API -------------------------------
+    #
+    # Chat Completions stays the path for plain/structured completions (the
+    # explanation layer). Tool calling uses the Responses API: GPT-6 models
+    # call tools on Chat Completions only at reasoning effort "none".
+    #
+    # Stateless on purpose: `store=False`, so OpenAI keeps no copy of the
+    # student's tool results between calls. Reasoning items come back
+    # encrypted (`include=reasoning.encrypted_content`) and are replayed to
+    # the SAME model on the next call; another model (escalation) gets the
+    # function calls and outputs but not someone else's reasoning.
+
+    def _input_items(self, messages: list[Message]) -> list[dict[str, Any]]:
+        items: list[dict[str, Any]] = []
+        for m in messages:
+            if m.role == "user":
+                items.append({"role": "user", "content": m.content})
+            elif m.role == "assistant":
+                if m.provider_items:
+                    for it in m.provider_items:
+                        if it.get("type") == "reasoning" and m.items_model != self._model:
+                            continue
+                        items.append(dict(it))
+                    continue
+                if m.content:
+                    items.append({"role": "assistant", "content": m.content})
+                for c in m.tool_calls:
+                    items.append({"type": "function_call", "call_id": c.id, "name": c.name,
+                                  "arguments": c.raw_arguments or json.dumps(c.arguments or {})})
+            elif m.role == "tool" and m.tool_call_id:
+                items.append({"type": "function_call_output", "call_id": m.tool_call_id,
+                              "output": m.content})
+        return items
+
+    async def _responses(self, messages: list[Message], system: str | None,
+                         tools: list[ToolDef], tool_choice: str | None,
+                         max_tokens: int) -> Completion:
+        items = self._input_items(messages)
+        if not any(i.get("role") == "user" for i in items):
+            raise ProviderError("no user message supplied")
+        request: dict[str, Any] = {
+            "model": self._model,
+            "input": items,
+            "tools": [{"type": "function", "name": t.name, "description": t.description,
+                       "parameters": t.parameters, "strict": False} for t in tools],
+            "max_output_tokens": max_tokens,
+            "store": False,
+            "include": ["reasoning.encrypted_content"],
+        }
+        if system:
+            request["instructions"] = system
+        if tool_choice:
+            request["tool_choice"] = tool_choice
+        if self._reasoning_effort:
+            request["reasoning"] = {"effort": self._reasoning_effort}
+        try:
+            response = await self._client.responses.create(**request)
+        except Exception as exc:
+            raise self._provider_error(exc) from None
+
+        texts: list[str] = []
+        calls: list[ToolCall] = []
+        replay: list[dict[str, Any]] = []
+        for item in getattr(response, "output", None) or []:
+            kind = getattr(item, "type", None)
+            if kind == "reasoning":
+                entry = {"type": "reasoning", "id": getattr(item, "id", None),
+                         "summary": [_plain(x) for x in getattr(item, "summary", None) or []]}
+                if getattr(item, "encrypted_content", None):
+                    entry["encrypted_content"] = item.encrypted_content
+                replay.append({k: v for k, v in entry.items() if v is not None})
+            elif kind == "function_call":
+                raw = getattr(item, "arguments", "") or ""
+                calls.append(ToolCall(id=item.call_id, name=item.name, arguments=_json_object(raw),
+                                      raw_arguments=raw))
+                replay.append({"type": "function_call", "call_id": item.call_id,
+                               "name": item.name, "arguments": raw})
+            elif kind == "message":
+                text = "".join(getattr(p, "text", "") or "" for p in getattr(item, "content", None)
+                               or [] if getattr(p, "type", "") == "output_text")
+                texts.append(text)
+                if text:
+                    replay.append({"role": "assistant", "content": text})
+
+        usage = getattr(response, "usage", None)
+        details = getattr(usage, "input_tokens_details", None)
+        incomplete = getattr(response, "incomplete_details", None)
+        return Completion(
+            text="".join(texts),
+            model=getattr(response, "model", self._model) or self._model,
+            provider=self.name,
+            usage=Usage(input_tokens=getattr(usage, "input_tokens", 0) or 0,
+                        output_tokens=getattr(usage, "output_tokens", 0) or 0,
+                        cached_input_tokens=getattr(details, "cached_tokens", 0) or 0),
+            stop_reason=(getattr(incomplete, "reason", None) if incomplete
+                         else getattr(response, "status", None)),
+            tool_calls=tuple(calls),
+            provider_items=tuple(replay),
+        )
+
     # -- helpers -------------------------------------------------------
 
     @staticmethod
@@ -186,6 +298,21 @@ class OpenAIProvider:
             "openai_call_failed", extra={"error_type": type(exc).__name__}
         )
         return ProviderError(f"provider call failed ({type(exc).__name__})")
+
+
+def _plain(part: Any) -> dict[str, Any]:
+    """A reasoning summary part as plain JSON."""
+    if isinstance(part, dict):
+        return part
+    return {"type": getattr(part, "type", "summary_text"), "text": getattr(part, "text", "")}
+
+
+def _json_object(raw: str) -> dict[str, Any] | None:
+    try:
+        value = json.loads(raw) if raw else {}
+    except json.JSONDecodeError:
+        return None
+    return value if isinstance(value, dict) else None
 
 
 def _parse_json(text: str) -> dict[str, Any] | None:

@@ -197,22 +197,26 @@ async def test_gpa_is_not_sent_unless_asked() -> None:
                                  gpa_allowed=False).data
     assert run_tool(tools, "get_progress", {"include_gpa": True},
                     gpa_allowed=True).data["gpa"] == "3.41"
-    sent: list[str] = []
+    sent: list = []
 
     class Spy(FakeAssistantProvider):
         async def complete(self, **kw):
-            sent.extend(m.content for m in kw["messages"])
+            sent.extend(kw["messages"])
             return await super().complete(**kw)
+
+    def tool_results() -> list[str]:
+        return [m.content for m in sent
+                if m.role == "tool" or m.content.startswith(TOOL_RESULTS)]
 
     script = [json.dumps({"tool_calls": [{"name": "get_progress",
                                           "args": {"include_gpa": True}}]})]
     assistant = Assistant(tools, default=Spy("spy", script=script))
     await assistant.turn("What do I still need for Core?")
-    results = [m for m in sent if m.startswith(TOOL_RESULTS)]
+    results = tool_results()
     assert results and not any("3.41" in m or '"gpa"' in m for m in results)
     sent.clear()
     await Assistant(tools, default=Spy("spy")).turn("What's my GPA?")
-    assert any("3.41" in m for m in sent if m.startswith(TOOL_RESULTS))
+    assert any("3.41" in m for m in tool_results())
 
 
 # --------------------------------------------------------------------------
@@ -298,9 +302,17 @@ def test_a_preview_rejects_invented_courses() -> None:
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("escalation", [True, False])
-async def test_the_golden_eval_passes(escalation) -> None:
-    results = await run_all(fake_factory, escalation_mode=escalation)
+def _json_protocol_factory(case: dict):
+    return (FakeAssistantProvider("fake-assistant", script=case.get("script"), native=False),
+            FakeAssistantProvider("fake-assistant_escalation", native=False))
+
+
+@pytest.mark.parametrize(("escalation", "factory"), [
+    (True, fake_factory), (False, fake_factory),          # native tools (the OpenAI path)
+    (True, _json_protocol_factory),                       # providers without native tools
+])
+async def test_the_golden_eval_passes(escalation, factory) -> None:
+    results = await run_all(factory, escalation_mode=escalation)
     s = summarize(results)
     assert s["conversations"] >= 30
     assert s["pass_rate"] >= 0.9, s["failed"]
@@ -325,12 +337,13 @@ def test_openai_is_the_default_and_anthropic_is_optional(monkeypatch) -> None:
     monkeypatch.delenv("ASSISTANT_PROVIDER", raising=False)
     s = Settings(_env_file=None, openai_api_key="sk-test-not-real", anthropic_api_key=None)
     assert s.assistant_provider == "openai"
-    assert (s.assistant_model, s.assistant_escalation_model) == ("gpt-5.6-luna",
-                                                                 "gpt-5.6-terra")
+    assert (s.assistant_model, s.assistant_escalation_model) == ("gpt-6-luna", "gpt-6-sol")
+    assert s.assistant_reasoning_effort == "low"
     default = build_assistant_provider(s, Role.ASSISTANT)
     escalation = build_assistant_provider(s, Role.ASSISTANT_ESCALATION)
-    assert isinstance(default, OpenAIProvider) and default._model == "gpt-5.6-luna"
-    assert escalation._model == "gpt-5.6-terra"
+    assert isinstance(default, OpenAIProvider) and default._model == "gpt-6-luna"
+    assert escalation._model == "gpt-6-sol" and default.supports_tools
+    assert default._reasoning_effort == "low"
     assert service.availability(s) == (True, None)
     # No key: unavailable, with no exception and no Anthropic involvement.
     none = Settings(_env_file=None, openai_api_key=None, anthropic_api_key=None)

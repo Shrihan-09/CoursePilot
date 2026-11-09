@@ -22,10 +22,18 @@ change applies only when the student taps Confirm on a proposal card, or
 
    ```
    ASSISTANT_PROVIDER=openai            # openai | anthropic | fake | none
-   ASSISTANT_MODEL=gpt-5.6-luna         # default tier
-   ASSISTANT_ESCALATION_MODEL=gpt-5.6-terra
+   ASSISTANT_MODEL=gpt-6-luna           # default tier
+   ASSISTANT_ESCALATION_MODEL=gpt-6-sol
    ASSISTANT_ESCALATION_ENABLED=true
+   ASSISTANT_REASONING_EFFORT=low       # none | minimal | low | medium | high
    ```
+
+   Tool calling uses OpenAI's **Responses API** with native function tools
+   (`store=false`; encrypted reasoning items are replayed only to the model
+   that produced them). GPT-6 models call tools on Chat Completions only at
+   reasoning effort `none`, so Chat Completions remains only for the
+   explanation layer. Providers without native tools (Anthropic, echo) use a
+   JSON protocol with the same tools, gate and caps.
 
    With no key the assistant reports "isn't set up on this server yet" and
    makes no call; nothing errors. `fake` is a deterministic offline policy for

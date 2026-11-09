@@ -20,7 +20,7 @@ import json
 import re
 from typing import Any
 
-from app.llm.base import Completion, Message, Role, Usage
+from app.llm.base import Completion, Message, Role, ToolCall, Usage
 from app.services.assistant.contracts import COURSE_KEY, term_label
 from app.services.assistant.matching import plan_courses, resolve
 from app.services.assistant.prompts import EXPAND_SYSTEM, REJECTED, STUDENT, TOOL_RESULTS
@@ -53,15 +53,24 @@ def _keywords(topic: str) -> list[str]:
 
 
 class FakeAssistantProvider:
+    """`native=True` (the default) mirrors the OpenAI Responses path: tools
+    arrive as function definitions and the policy's choices come back as
+    function calls, the answer as a `reply` call. `native=False` speaks the
+    JSON-in-text protocol used for providers without native tools."""
+
     name = "fake"
 
-    def __init__(self, model: str = "fake-assistant", script: list[str] | None = None) -> None:
+    def __init__(self, model: str = "fake-assistant", script: list[str] | None = None, *,
+                 native: bool = True) -> None:
         self._model = model
         self.script = list(script or [])
         self.calls = 0
+        self.supports_tools = native
+        self._ids = 0
 
     async def complete(self, *, role: Role, messages: list[Message], system: str | None = None,
-                       schema: dict | None = None, max_tokens: int = 16_000) -> Completion:
+                       schema: dict | None = None, max_tokens: int = 16_000,
+                       tools: list | None = None, tool_choice: str | None = None) -> Completion:
         self.calls += 1
         if system == EXPAND_SYSTEM:
             text = json.dumps({"keywords": _keywords(messages[-1].content)})
@@ -70,9 +79,35 @@ class FakeAssistantProvider:
         else:
             text = json.dumps(policy(messages), default=str)
         prompt = (system or "") + "".join(m.content for m in messages)
+        if tools is not None:
+            prompt += json.dumps([t.parameters for t in tools])
+            return self._native(text, prompt)
         return Completion(text=text, model=self._model, provider=self.name,
                           usage=Usage(input_tokens=_tokens(prompt), output_tokens=_tokens(text)),
                           structured=None, stop_reason="end_turn")
+
+    def _native(self, text: str, prompt: str) -> Completion:
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            payload = None
+        calls: list[ToolCall] = []
+        if isinstance(payload, dict) and isinstance(payload.get("reply"), dict):
+            calls.append(self._call("reply", payload["reply"]))
+        elif isinstance(payload, dict) and isinstance(payload.get("tool_calls"), list):
+            calls += [self._call(str(c.get("name")), c.get("args") or {})
+                      for c in payload["tool_calls"] if isinstance(c, dict)]
+        # Anything else is plain text with no call - a protocol violation the
+        # agent must reject.
+        return Completion(text="" if calls else text, model=self._model, provider=self.name,
+                          usage=Usage(input_tokens=_tokens(prompt), output_tokens=_tokens(text)),
+                          stop_reason="completed", tool_calls=tuple(calls))
+
+    def _call(self, name: str, args: dict) -> ToolCall:
+        self._ids += 1
+        raw = json.dumps(args, default=str)
+        return ToolCall(id=f"call_{self._ids}", name=name, arguments=json.loads(raw),
+                        raw_arguments=raw)
 
 
 # --------------------------------------------------------------------------
@@ -89,6 +124,10 @@ def _state(messages: list[Message]) -> tuple[str, dict[str, list[dict]]]:
     for m in messages[start + 1:]:
         if m.role == "user" and m.content.startswith(TOOL_RESULTS):
             for r in json.loads(m.content[len(TOOL_RESULTS) + 1:]):
+                results.setdefault(r["name"], []).append(r)
+        elif m.role == "tool" and not m.content.startswith(REJECTED):
+            r = json.loads(m.content)
+            if isinstance(r, dict) and r.get("name"):
                 results.setdefault(r["name"], []).append(r)
     return text, results
 

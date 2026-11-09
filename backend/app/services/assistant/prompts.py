@@ -58,7 +58,20 @@ lowercase single words likely to appear in course titles or descriptions. No cou
 
 
 def system_prompt() -> str:
+    """For providers WITHOUT native tool calling: a JSON protocol in text."""
     return SYSTEM + "\nTOOLS: " + json.dumps(tool_catalog(), separators=(",", ":"))
+
+
+def native_system_prompt() -> str:
+    """For native tool calling (OpenAI Responses API): the same rules, but the
+    tools travel as function definitions and the answer is the `reply` call."""
+    head, rules = SYSTEM.split("\nRules:\n", 1)
+    first = head.split("\n\n", 1)[0]
+    return (first + "\n\nUse the function tools to get facts, then finish EVERY turn by "
+            "calling `reply` (never answer in plain text). At most 4 tool calls per step.\n"
+            "Rules:\n" + rules.replace('in "propose"', "in reply.propose")
+            .replace('"text"', "reply.text").replace("show_options lists", "reply.show_options "
+                                                                            "lists"))
 
 
 __all__ = ["EXPAND_SYSTEM", "REJECTED", "STUDENT", "SYSTEM", "TOOL_RESULTS", "system_prompt"]

@@ -34,9 +34,40 @@ class Role(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
+class ToolDef:
+    """A function the model may call (Prompt 11 Part B). `parameters` is a
+    JSON schema; nothing vendor-specific."""
+
+    name: str
+    description: str
+    parameters: dict[str, Any]
+
+
+@dataclass(frozen=True, slots=True)
+class ToolCall:
+    """One function call the model asked for. `arguments` is None when the
+    model's argument string was not a JSON object (the caller treats that as
+    a validation failure)."""
+
+    id: str
+    name: str
+    arguments: dict[str, Any] | None
+    raw_arguments: str = ""
+
+
+@dataclass(frozen=True, slots=True)
 class Message:
-    role: str  # "user" | "assistant" | "system"
+    role: str  # "user" | "assistant" | "system" | "tool"
     content: str
+    #: assistant turns: the calls the model made.
+    tool_calls: tuple[ToolCall, ...] = ()
+    #: tool turns: which call this is the output of.
+    tool_call_id: str | None = None
+    #: Opaque items the SAME provider replays on the next call (e.g. OpenAI
+    #: Responses reasoning items with encrypted content), and the model that
+    #: produced them - another model must not be sent them.
+    provider_items: tuple[dict[str, Any], ...] = ()
+    items_model: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,6 +86,10 @@ class Completion:
     # Populated when the request supplied a `schema`.
     structured: dict[str, Any] | None = None
     stop_reason: str | None = None
+    #: Function calls, when the request supplied `tools`.
+    tool_calls: tuple[ToolCall, ...] = ()
+    #: See `Message.provider_items`.
+    provider_items: tuple[dict[str, Any], ...] = ()
 
 
 @runtime_checkable
@@ -74,7 +109,9 @@ class LLMProvider(Protocol):
         schema: dict[str, Any] | None = None,
         max_tokens: int = 16_000,
     ) -> Completion:
-        """Run one completion. Implementations must not raise vendor-specific
+        """Run one completion. A provider that also supports native tool
+        calling sets `supports_tools = True` and accepts `tools` and
+        `tool_choice` keyword arguments; callers check the flag first. Implementations must not raise vendor-specific
         exception types across this boundary."""
         ...
 

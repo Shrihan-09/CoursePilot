@@ -10,6 +10,8 @@ estimate is only as current as this table - the bill is the source of truth.
 from __future__ import annotations
 
 PRICES: dict[str, tuple[float, float, float]] = {
+    "gpt-6-luna": (0.10, 0.01, 0.50),
+    "gpt-6-sol": (2.00, 0.20, 10.00),
     "gpt-5.6-luna": (0.20, 0.02, 1.20),
     "gpt-5.6-terra": (2.00, 0.20, 12.00),
     "gpt-5.6-sol": (4.00, 0.40, 20.00),
