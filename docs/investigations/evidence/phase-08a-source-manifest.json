@@ -1,0 +1,3010 @@
+{
+  "research_date": "2026-11-09",
+  "catalog_year": "2026-2027",
+  "method": "Public HTTP only; paths discovered from Rutgers navigation; sequential polite fetching; full HTML outside repo; no registry or student mutations",
+  "pages": [
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Availability of Majors",
+      "slug": "availability-of-majors",
+      "url": "/schools/sas/program-listing/availability-of-majors",
+      "page_id": "k523MS33P6JpExwem9IM",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/availability-of-majors",
+      "status": 200,
+      "sha256": "b06ecf9e3e0813ee163c44e510ac5eb328b486149ad622fd27a664e2e26d9692",
+      "fetched_at": "2026-11-09T19:16:50.618261+00:00",
+      "headings": [
+        "AVAILABILITY OF MAJORS"
+      ],
+      "table_count": 0,
+      "prose_chars": 721
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Anthropology 070",
+      "slug": "anthropology-070",
+      "url": "/schools/sas/program-listing/anthropology-070",
+      "page_id": "hSXgReHl7x11Uf19RA5Z",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/anthropology-070",
+      "status": 200,
+      "sha256": "83f004e0a7e80834145746cfcaeda5129c843edcd707de1d2ac797dc380beb51",
+      "fetched_at": "2026-11-09T19:16:52.568314+00:00",
+      "headings": [
+        "ANTHROPOLOGY 070",
+        "Learning Goals",
+        "Major Requirements",
+        "Minor Requirements",
+        "Certificate in Evolutionary Medicine",
+        "Departmental Honors Program",
+        "Courses"
+      ],
+      "table_count": 0,
+      "prose_chars": 77052
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Archaeology 075",
+      "slug": "archaeology-075",
+      "url": "/schools/sas/program-listing/archaeology-075",
+      "page_id": "v1xmxUzzZbLvN9YtWVPK",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/archaeology-075",
+      "status": 200,
+      "sha256": "a13ebf8fa28b9567c33067e18d9d438af036643c69a1bdbdff00a03b91fb3368",
+      "fetched_at": "2026-11-09T19:16:54.305836+00:00",
+      "headings": [
+        "ARCHAEOLOGY 075",
+        "Learning Goals",
+        "Minor Program"
+      ],
+      "table_count": 0,
+      "prose_chars": 5353
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Architectural Studies 076",
+      "slug": "architectural-studies-076",
+      "url": "/schools/sas/program-listing/architectural-studies-076",
+      "page_id": "miDUdgt4M7NDJK7vIcq7",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/architectural-studies-076",
+      "status": 200,
+      "sha256": "eac2bc14097fd89a296fe18b276db0d72540d4bfb0e4933e32b8e0cd3cd00134",
+      "fetched_at": "2026-11-09T19:16:56.058897+00:00",
+      "headings": [
+        "ARCHITECTURAL STUDIES 076",
+        "Learning Outcomes and Career Relevance",
+        "Minor and Certificate Requirements",
+        "Elective Courses"
+      ],
+      "table_count": 0,
+      "prose_chars": 13795
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Astrobiology 101",
+      "slug": "astrobiology-101",
+      "url": "/schools/sas/program-listing/astrobiology-101",
+      "page_id": "MbQJFTbpm8ildrUKGNaE",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/astrobiology-101",
+      "status": 200,
+      "sha256": "428f064eeb766273113ebf695f5c2ec72bd5e60bc6c862fc044256d5f3880104",
+      "fetched_at": "2026-11-09T19:16:57.851530+00:00",
+      "headings": [
+        "ASTROBIOLOGY 101",
+        "Learning Goals",
+        "Minor Requirements"
+      ],
+      "table_count": 0,
+      "prose_chars": 4057
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Astrophysics 105",
+      "slug": "astrophysics-105",
+      "url": "/schools/sas/program-listing/astrophysics-105",
+      "page_id": "GOX4GbvDr5gJ4PZ74uE6",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/astrophysics-105",
+      "status": 200,
+      "sha256": "92a61cf2ecef1bba74995d4f43e90ccd0bcec9aa0b0b37bfc82f2b7c4f3770e9",
+      "fetched_at": "2026-11-09T19:16:59.792590+00:00",
+      "headings": [
+        "ASTROPHYSICS 105",
+        "Learning Goals",
+        "Major Requirements",
+        "Astronomy Minor Requirements",
+        "Departmental Honors Program",
+        "Courses"
+      ],
+      "table_count": 0,
+      "prose_chars": 7581
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Biological Sciences 119",
+      "slug": "biological-sciences-119",
+      "url": "/schools/sas/program-listing/biological-sciences-119",
+      "page_id": "abluiYZ6SA3rioUu0YGe",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/biological-sciences-119",
+      "status": 200,
+      "sha256": "02017a665fb7cac5487ebcf6958fd969590cc4c3bc6cf051dd6f6e38a6a529e4",
+      "fetched_at": "2026-11-09T19:17:01.591674+00:00",
+      "headings": [
+        "BIOLOGICAL SCIENCES 119",
+        "Learning Goals",
+        "Entry Requirements for the Major",
+        "Major Requirements",
+        "Minor Requirements",
+        "Independent Study and Research in Biology",
+        "Departmental Honors Program",
+        "Joint B.A./M.D. Program (Rutgers Undergraduate-Robert Wood Johnson Medical School)",
+        "Joint B.A./M.D. Program (Rutgers Undergraduate-New Jersey Medical School)",
+        "Joint B.A./D.M.D. Program (Rutgers School of Arts and Sciences-Rutgers School of Dental Medicine)",
+        "Joint B.A./M.S. Physician Assistant Program (Rutgers School of Arts and Sciences-School of Health Professions)",
+        "Courses"
+      ],
+      "table_count": 0,
+      "prose_chars": 52004
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Cell Biology and Neuroscience 146",
+      "slug": "cell-biology-neuroscience-146",
+      "url": "/schools/sas/program-listing/cell-biology-neuroscience-146",
+      "page_id": "DN50BXDJ4XmaftRRBW5l",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/cell-biology-neuroscience-146",
+      "status": 200,
+      "sha256": "9adb6dfe7acb1ce20b7b0eace385f1ad18111fc34eab124f81e87ccedacb2ab6",
+      "fetched_at": "2026-11-09T19:17:03.465344+00:00",
+      "headings": [
+        "CELL BIOLOGY AND NEUROSCIENCE 146",
+        "Learning Goals",
+        "Entry Requirements of the Major",
+        "Major Requirements",
+        "Options",
+        "Departmental Honors Program",
+        "Courses"
+      ],
+      "table_count": 0,
+      "prose_chars": 17115
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Chemistry 160",
+      "slug": "chemistry-160",
+      "url": "/schools/sas/program-listing/chemistry-160",
+      "page_id": "N4VQSC3FyJzvSWXPXhsm",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/chemistry-160",
+      "status": 200,
+      "sha256": "e40dab3123a4a623efa6160b2b78680a04d177f003a2aa4a6acfa43b396073af",
+      "fetched_at": "2026-11-09T19:17:05.210755+00:00",
+      "headings": [
+        "CHEMISTRY 160",
+        "Learning Goals",
+        "Entry Requirements for the Major and Minor in Chemistry",
+        "Major Requirements",
+        "Minor Requirements",
+        "Certificate in Chemistry Education",
+        "Departmental Honors Program",
+        "Courses"
+      ],
+      "table_count": 0,
+      "prose_chars": 47428
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Cognitive Science 185",
+      "slug": "cognitive-science-185",
+      "url": "/schools/sas/program-listing/cognitive-science-185",
+      "page_id": "SoW79dnazrwUFcGzgRHS",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/cognitive-science-185",
+      "status": 200,
+      "sha256": "bce5baa41b0b6e30275e634f10ccb01a2cd268c462cf41d9733b47b50be7ce72",
+      "fetched_at": "2026-11-09T19:17:07.140906+00:00",
+      "headings": [
+        "COGNITIVE SCIENCE 185",
+        "Learning Goals",
+        "Major Program",
+        "Minor Program",
+        "Courses"
+      ],
+      "table_count": 0,
+      "prose_chars": 26992
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Computer Science 198",
+      "slug": "computer-science-198",
+      "url": "/schools/sas/program-listing/computer-science-198",
+      "page_id": "VSbgggHtgjolUCQloHSE",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/computer-science-198",
+      "status": 200,
+      "sha256": "388d5eda46dd413f97c8fb61c42c4cc7f64f550474b3047d01c31cc6a7dce7fd",
+      "fetched_at": "2026-11-09T19:17:09.023830+00:00",
+      "headings": [
+        "COMPUTER SCIENCE 198",
+        "Learning Goals",
+        "Entry Requirements for the Major",
+        "Major Requirements",
+        "Minor Requirements",
+        "Departmental Honors Program",
+        "Courses"
+      ],
+      "table_count": 0,
+      "prose_chars": 25597
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Data Science 219",
+      "slug": "data-science-219",
+      "url": "/schools/sas/program-listing/data-science-219",
+      "page_id": "J98YyWWDzCCKop1LzCGx",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/data-science-219",
+      "status": 200,
+      "sha256": "30921db703b9e2fa669f872c8b926f54a454133e96fdbdd3db40e1ab9712b494",
+      "fetched_at": "2026-11-09T19:17:10.834148+00:00",
+      "headings": [
+        "DATA SCIENCE 219",
+        "Learning Goals",
+        "Major Requirements",
+        "Minor Requirements",
+        "Undergraduate Certificate in Data Science",
+        "Courses"
+      ],
+      "table_count": 0,
+      "prose_chars": 15201
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Economics 220",
+      "slug": "economics-220",
+      "url": "/schools/sas/program-listing/economics-220",
+      "page_id": "KJhYP0xnNSfUIuQVE1Hd",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/economics-220",
+      "status": 200,
+      "sha256": "6a95402584a4e02368db62d8691ca1c5c7fe9178549a401a26b6d2c0db94c95c",
+      "fetched_at": "2026-11-09T19:17:12.648480+00:00",
+      "headings": [
+        "ECONOMICS 220",
+        "Learning Goals for Economics Majors",
+        "Major Requirements",
+        "Minor in Economics Requirements",
+        "Minor Quantitative Economics Requirements",
+        "Minor in Philosophy, Politics, and Economics",
+        "Honors Research in Economics",
+        "Certificate Programs",
+        "Courses"
+      ],
+      "table_count": 0,
+      "prose_chars": 61306
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Environmental Studies 381",
+      "slug": "environmental-studies-381",
+      "url": "/schools/sas/program-listing/environmental-studies-381",
+      "page_id": "YJip5oL4fbGoFfqnZ37q",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/environmental-studies-381",
+      "status": 200,
+      "sha256": "30e1443bcf662017132e770198fb24d6a531db22ba4a88b5722a8cf53e520e35",
+      "fetched_at": "2026-11-09T19:17:14.604903+00:00",
+      "headings": [
+        "ENVIRONMENTAL STUDIES 381",
+        "Learning Goals",
+        "Major Requirements",
+        "Minor Requirements",
+        "Courses"
+      ],
+      "table_count": 0,
+      "prose_chars": 14178
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Exercise Science 377",
+      "slug": "exercise-science-377",
+      "url": "/schools/sas/program-listing/exercise-science-377",
+      "page_id": "e2AHx3Qj1T1oyeWfWEO4",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/exercise-science-377",
+      "status": 200,
+      "sha256": "e8d13d77b08d46935f9af41445f41c8d29bf1e143482005ec87811751442fdf5",
+      "fetched_at": "2026-11-09T19:17:16.406888+00:00",
+      "headings": [
+        "EXERCISE SCIENCE 377",
+        "Learning Goals",
+        "Major Requirements",
+        "Internship Program",
+        "Departmental Honors",
+        "Courses"
+      ],
+      "table_count": 0,
+      "prose_chars": 26373
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Genetics 447",
+      "slug": "genetics-447",
+      "url": "/schools/sas/program-listing/genetics-447",
+      "page_id": "VaURUTWI25aLUfqNT982",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/genetics-447",
+      "status": 200,
+      "sha256": "828987c3f8f369a437ae010057f9f02b92e7e8f285e22a23cef4523fe0f775f7",
+      "fetched_at": "2026-11-09T19:17:18.309632+00:00",
+      "headings": [
+        "GENETICS 447",
+        "Learning Goals",
+        "Entry Requirements of the Major",
+        "Major Requirements",
+        "Elective Courses",
+        "Departmental Honors",
+        "Undergraduate Certificate Programs",
+        "Courses"
+      ],
+      "table_count": 6,
+      "prose_chars": 39680
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Genetics and Genomics 449 ",
+      "slug": "genetics-genomics",
+      "url": "/schools/sas/program-listing/genetics-genomics",
+      "page_id": "OfWjiVpQl1hB00Ua4ytX",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/genetics-genomics",
+      "status": 200,
+      "sha256": "59add7abd0ca77793560ddbdcc4a4534e934831e9ecbb2bde61dd71468e3dd37",
+      "fetched_at": "2026-11-09T19:17:20.185887+00:00",
+      "headings": [
+        "GENETICS AND GENOMICS 449",
+        "Learning Goals",
+        "Entry Requirements of the Major",
+        "Major Requirements",
+        "Elective Courses",
+        "Honors in Genetics and Genomics",
+        "Undergraduate Certificate Programs",
+        "Courses"
+      ],
+      "table_count": 6,
+      "prose_chars": 39325
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Geography 450",
+      "slug": "geography-450",
+      "url": "/schools/sas/program-listing/geography-450",
+      "page_id": "gGCuBEpkmiVW4Hce7Nwn",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/geography-450",
+      "status": 200,
+      "sha256": "6b9f803034f7c4cc4b3c132aa263662d6fba59698a02d13d5e908853078e920c",
+      "fetched_at": "2026-11-09T19:17:21.994883+00:00",
+      "headings": [
+        "GEOGRAPHY 450",
+        "Learning Goals",
+        "Major Requirements",
+        "Minor Requirements",
+        "Departmental Honors Program",
+        "John E. Brush Excellence in Cartography Award",
+        "Geospatial Information Science Certificate",
+        "Certificate in International Geographic Perspectives",
+        "Courses"
+      ],
+      "table_count": 0,
+      "prose_chars": 21553
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Earth and Planetary Sciences 460",
+      "slug": "earth-planetary-sciences-460",
+      "url": "/schools/sas/program-listing/earth-planetary-sciences-460",
+      "page_id": "P8mHJE9sz9iXy6ngKcNZ",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/earth-planetary-sciences-460",
+      "status": 200,
+      "sha256": "d3ccb88b41f1aa96e06daa9f68fc3f844becdf9f419ea56156f28500b570e0e6",
+      "fetched_at": "2026-11-09T19:17:23.784599+00:00",
+      "headings": [
+        "EARTH AND PLANETARY SCIENCES 460",
+        "Learning Goals",
+        "Major Requirements",
+        "Minor Requirements",
+        "Departmental Honors Program",
+        "Courses"
+      ],
+      "table_count": 0,
+      "prose_chars": 28891
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Health and Society 502",
+      "slug": "health-society-502",
+      "url": "/schools/sas/program-listing/health-society-502",
+      "page_id": "lt3q2qWCGL3fhDHV8YJG",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/health-society-502",
+      "status": 200,
+      "sha256": "67d45a9548a9cc19b80058414714d78c991eb73c440a9b2b3786cccdb4dfeee3",
+      "fetched_at": "2026-11-09T19:17:25.565869+00:00",
+      "headings": [
+        "HEALTH AND SOCIETY 502",
+        "Learning Goals",
+        "Minor Program"
+      ],
+      "table_count": 0,
+      "prose_chars": 5352
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing",
+        "Life Sciences"
+      ],
+      "label": "Life Sciences",
+      "slug": "life-sciences",
+      "url": "/schools/sas/program-listing/life-sciences/life-sciences",
+      "page_id": "BNylNRWsjrDpb72rB5bT",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/life-sciences/life-sciences",
+      "status": 200,
+      "sha256": "988ccd237d8f11c82502f6446494b80f1171df422c904747e600639ffc704d76",
+      "fetched_at": "2026-11-09T19:17:27.368924+00:00",
+      "headings": [
+        "LIFE SCIENCES"
+      ],
+      "table_count": 0,
+      "prose_chars": 5130
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing",
+        "Life Sciences"
+      ],
+      "label": "Life Sciences Core Curriculum",
+      "slug": "life-sciences-core-curriculum",
+      "url": "/schools/sas/program-listing/life-sciences/life-sciences-core-curriculum",
+      "page_id": "MC9qin4cc4cZ6WhQ1syE",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/life-sciences/life-sciences-core-curriculum",
+      "status": 200,
+      "sha256": "f00f09cd1d24054a9e68302becf95e834be7f1ee0945d87ff4e5e55f3a7641b0",
+      "fetched_at": "2026-11-09T19:17:29.165939+00:00",
+      "headings": [
+        "LIFE SCIENCES CORE CURRICULUM"
+      ],
+      "table_count": 0,
+      "prose_chars": 1499
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Linguistics 615",
+      "slug": "linguistics-615",
+      "url": "/schools/sas/program-listing/linguistics-615",
+      "page_id": "vuRfCurPX9Xk4rJ8tGfA",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/linguistics-615",
+      "status": 200,
+      "sha256": "498c2f7aab130c7ab27939928a7b94b5f3dd25e7989b81a5d1e71f7419d46b5e",
+      "fetched_at": "2026-11-09T19:17:31.052058+00:00",
+      "headings": [
+        "LINGUISTICS 615",
+        "Learning Goals",
+        "Major Requirements",
+        "Minor Requirements",
+        "Bachelor of Arts in Speech and Hearing Sciences in Linguistics",
+        "Post-Bacc Certificate in Speech and Hearing Sciences",
+        "Departmental Honors Program",
+        "Student Awards",
+        "Courses"
+      ],
+      "table_count": 0,
+      "prose_chars": 20549
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Mathematics 640",
+      "slug": "mathematics-640",
+      "url": "/schools/sas/program-listing/mathematics-640",
+      "page_id": "hz9pQbGn7LRosDRdDoDR",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/mathematics-640",
+      "status": 200,
+      "sha256": "bbafccf623e45e9bd985410a0fad4353aff7fbeda9c8015c6807c8d161d978e9",
+      "fetched_at": "2026-11-09T19:17:32.885754+00:00",
+      "headings": [
+        "MATHEMATICS 640",
+        "Learning Goals",
+        "Major Requirements",
+        "Minor Requirements",
+        "Departmental Honors Programs",
+        "Preparation for Secondary School Teaching",
+        "Five-Year Bachelor of Arts/Master's Programs",
+        "Certificate in Mathematical Finance",
+        "Before Taking Mathematics Courses",
+        "Courses"
+      ],
+      "table_count": 0,
+      "prose_chars": 53934
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Molecular Biology and Biochemistry 694",
+      "slug": "molecular-biology-biochemistry-694",
+      "url": "/schools/sas/program-listing/molecular-biology-biochemistry-694",
+      "page_id": "vfzsgvI01M6XF4s7A5bi",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/molecular-biology-biochemistry-694",
+      "status": 200,
+      "sha256": "5f8bc018ecdc4613e077d9e37e2dbe863b96d2fd841ef59247486688ee90276c",
+      "fetched_at": "2026-11-09T19:17:34.693257+00:00",
+      "headings": [
+        "MOLECULAR BIOLOGY AND BIOCHEMISTRY 694",
+        "Learning Goals",
+        "Entry Requirements of the Major",
+        "Major Requirements",
+        "Course Requirement Options",
+        "Research Options",
+        "Departmental Honors Program",
+        "Courses"
+      ],
+      "table_count": 0,
+      "prose_chars": 26337
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Nursing",
+      "slug": "nursing",
+      "url": "/schools/sas/program-listing/nursing",
+      "page_id": "nMIxv0XdYnk9MzB1RwNT",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/nursing",
+      "status": 200,
+      "sha256": "fa75ab3bc3efa381cb525fcd7fd104eadd1a156e612078e2da1d86d4da6642f0",
+      "fetched_at": "2026-11-09T19:17:36.544146+00:00",
+      "headings": [
+        "NURSING",
+        "Traditional Baccalaureate Program",
+        "Blackwood Campus Prerequisite Courses and Program Schedule",
+        "Blackwood 2+2 Baccalaureate Program"
+      ],
+      "table_count": 0,
+      "prose_chars": 6547
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Pharmacy",
+      "slug": "pharmacy",
+      "url": "/schools/sas/program-listing/pharmacy",
+      "page_id": "G5GqtkUbHaRz8u2pxzio",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/pharmacy",
+      "status": 200,
+      "sha256": "df245bee087bb5d132db2ce39da984f78d9313582e9444531674af772a6ebd4f",
+      "fetched_at": "2026-11-09T19:17:38.381012+00:00",
+      "headings": [
+        "PHARMACY"
+      ],
+      "table_count": 0,
+      "prose_chars": 574
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Physics 750",
+      "slug": "physics-750",
+      "url": "/schools/sas/program-listing/physics-750",
+      "page_id": "ym4CP3c7PK4eKIjVSa4J",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/physics-750",
+      "status": 200,
+      "sha256": "3d681f5b5d04e426fba3dfcd55e9748562c1091223236400b7d2bd6ce4857748",
+      "fetched_at": "2026-11-09T19:17:40.268490+00:00",
+      "headings": [
+        "PHYSICS 750 (INCLUDES ASTRONOMY)",
+        "Learning Goals (unless otherwise specified, \"Physics\" always means \"Physics and Astronomy\")",
+        "Major Requirements",
+        "Minor Requirements",
+        "Departmental Honors Program",
+        "Courses without Prerequisites",
+        "Introductory Courses for Non-Physics and Astronomy Majors",
+        "Introductory Courses for Prospective Physics and Astrophysics Majors and School of Engineering",
+        "Courses"
+      ],
+      "table_count": 0,
+      "prose_chars": 39219
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Psychology 830",
+      "slug": "psychology-830",
+      "url": "/schools/sas/program-listing/psychology-830",
+      "page_id": "f1mcjttpZ6Uie8vJzkZY",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/psychology-830",
+      "status": 200,
+      "sha256": "2e30cf38a89e29127119d62277399008c819c78079efc89949fb8f3cc586d7ff",
+      "fetched_at": "2026-11-09T19:17:42.124942+00:00",
+      "headings": [
+        "PSYCHOLOGY 830",
+        "Learning Goals",
+        "Major Requirements",
+        "Minor Requirements",
+        "Departmental Honors Major Requirements",
+        "Psi Chi International Honor Society",
+        "Transfer Students",
+        "Courses"
+      ],
+      "table_count": 0,
+      "prose_chars": 43715
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "Program Listing"
+      ],
+      "label": "Statistics 960",
+      "slug": "statistics-960",
+      "url": "/schools/sas/program-listing/statistics-960",
+      "page_id": "xWtAPvU4XHlZN7R87OOr",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/statistics-960",
+      "status": 200,
+      "sha256": "82615c93877e1fea77f8e7a33d562e0610520840858d4f85481c5eb7e53d876c",
+      "fetched_at": "2026-11-09T19:17:43.933922+00:00",
+      "headings": [
+        "STATISTICS 960",
+        "Learning Goals",
+        "Major Requirements",
+        "Minor Requirements",
+        "Courses"
+      ],
+      "table_count": 0,
+      "prose_chars": 16148
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "About the School of Arts and Sciences",
+        "Degree Requirements"
+      ],
+      "label": "Degree Requirements",
+      "slug": "degree-requirements",
+      "url": "/schools/sas/about/degree-requirements/degree-requirements",
+      "page_id": "oYdmQdeWZyYyvaxEx4h5",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/about/degree-requirements/degree-requirements",
+      "status": 200,
+      "sha256": "9336a018a1ff1f97c0d8b920a8aac033e4af620c2b63c1a5cd8f95b90c816baf",
+      "fetched_at": "2026-11-09T19:17:45.719275+00:00",
+      "headings": [
+        "DEGREE REQUIREMENTS"
+      ],
+      "table_count": 0,
+      "prose_chars": 43
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "About the School of Arts and Sciences",
+        "Degree Requirements"
+      ],
+      "label": "Requirements",
+      "slug": "reqs",
+      "url": "/schools/sas/about/degree-requirements/reqs",
+      "page_id": "xv72Yj9vsrh3FCdUV1kI",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/about/degree-requirements/reqs",
+      "status": 200,
+      "sha256": "e96717fcb24cca3a5b30a2babbceebcb97cde3cc3e2d34056ea4adf4aed0d275",
+      "fetched_at": "2026-11-09T19:17:47.721447+00:00",
+      "headings": [
+        "Credits and Residency",
+        "Core Curriculum",
+        "Completion of a Major and a Minor",
+        "Declaration and Change of Major and Minor",
+        "Second Baccalaureate Degree"
+      ],
+      "table_count": 0,
+      "prose_chars": 12100
+    },
+    {
+      "school_slug": "sas",
+      "trail": [
+        "About the School of Arts and Sciences",
+        "Degree Requirements"
+      ],
+      "label": "Graduation",
+      "slug": "graduation",
+      "url": "/schools/sas/about/degree-requirements/graduation",
+      "page_id": "Y5QEXhv2FyAVDPnoAuvw",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/about/degree-requirements/graduation",
+      "status": 200,
+      "sha256": "294d485f94674b949c453b5099bf70f2879fa87ee1efda468d5baf4affcdb503",
+      "fetched_at": "2026-11-09T19:17:49.704426+00:00",
+      "headings": [
+        "GRADUATION"
+      ],
+      "table_count": 0,
+      "prose_chars": 4752
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Degree Requirements"
+      ],
+      "label": "Degree Requirements",
+      "slug": "degree-requirements",
+      "url": "/schools/sebs/degree-requirements/degree-requirements",
+      "page_id": "PXskpFgYdGk1PIT20RMe",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/degree-requirements/degree-requirements",
+      "status": 200,
+      "sha256": "a9dbbff6508f3673f557b6936310bb6235ea8a2b42425befec7e6dbb400633f5",
+      "fetched_at": "2026-11-09T19:17:51.613158+00:00",
+      "headings": [
+        "DEGREE REQUIREMENTS"
+      ],
+      "table_count": 0,
+      "prose_chars": 690
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Degree Requirements"
+      ],
+      "label": "Credits and Residency",
+      "slug": "credits-residency",
+      "url": "/schools/sebs/degree-requirements/credits-residency",
+      "page_id": "nHUFyWuki77PuVlCdA3d",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/degree-requirements/credits-residency",
+      "status": 200,
+      "sha256": "ca25fef679a2563611607e0447fd94291608ce0e16128ea93fed2c8984d2cf88",
+      "fetched_at": "2026-11-09T19:17:53.456216+00:00",
+      "headings": [
+        "CREDITS AND RESIDENCY"
+      ],
+      "table_count": 0,
+      "prose_chars": 902
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Degree Requirements"
+      ],
+      "label": "Double Majors",
+      "slug": "double-majors",
+      "url": "/schools/sebs/degree-requirements/double-majors",
+      "page_id": "CAKLShkGQvi7dLQv8NCO",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/degree-requirements/double-majors",
+      "status": 200,
+      "sha256": "d7421ad49b2cf466f32637b3f62f9960416df17b0dab7a2e80a65405dd98e15d",
+      "fetched_at": "2026-11-09T19:17:55.288869+00:00",
+      "headings": [
+        "DOUBLE MAJORS"
+      ],
+      "table_count": 0,
+      "prose_chars": 732
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Degree Requirements"
+      ],
+      "label": "Second Bachelor's Degree",
+      "slug": "second-ba",
+      "url": "/schools/sebs/degree-requirements/second-ba",
+      "page_id": "aMPgZR3vxahjadvA1dkv",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/degree-requirements/second-ba",
+      "status": 200,
+      "sha256": "d6152dce25cca0c3b0ef1744e52ef89b6dca02be3c695c04f50f3972c786ffc4",
+      "fetched_at": "2026-11-09T19:17:57.136079+00:00",
+      "headings": [
+        "SECOND BACHELOR'S DEGREE"
+      ],
+      "table_count": 0,
+      "prose_chars": 740
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Degree Requirements"
+      ],
+      "label": "Mission, Goals, and Core Curriculum of the Undergraduate Program",
+      "slug": "mission-goals-core-curriculum-undergrad",
+      "url": "/schools/sebs/degree-requirements/mission-goals-core-curriculum-undergrad",
+      "page_id": "sMBd0GdcjuYtMmCCkztK",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/degree-requirements/mission-goals-core-curriculum-undergrad",
+      "status": 200,
+      "sha256": "fd01650d48a5b3623b5ebbebfa06bd517d03987777519980008e85d7af798a35",
+      "fetched_at": "2026-11-09T19:17:59.002884+00:00",
+      "headings": [
+        "MISSION, GOALS, AND CORE CURRICULUM REQUIREMENTS OF THE UNDERGRADUATE PROGRAM",
+        "CORE CURRICULUM REQUIREMENTS",
+        "Contemporary Challenges",
+        "Experiential Learning (previously called Experience-Based Education, EBE)",
+        "Areas of Inquiry",
+        "Cognitive Skills and Processes",
+        "AREA REQUIREMENTS FOR STUDENTS MATRICULATING PRIOR TO FALL 2015"
+      ],
+      "table_count": 0,
+      "prose_chars": 16374
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Degree Requirements"
+      ],
+      "label": "Graduation",
+      "slug": "graduation",
+      "url": "/schools/sebs/degree-requirements/graduation",
+      "page_id": "VdfBdugWAIRCYoGXwnjG",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/degree-requirements/graduation",
+      "status": 200,
+      "sha256": "19de098d6429c3b04839e9d901c1ed2958ae141dbea132eba72bc4fcd7fcfeaa",
+      "fetched_at": "2026-11-09T19:18:00.825701+00:00",
+      "headings": [
+        "GRADUATION"
+      ],
+      "table_count": 0,
+      "prose_chars": 2804
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Programs of Study",
+      "slug": "programs-of-study",
+      "url": "/schools/sebs/programs/programs-of-study",
+      "page_id": "vHis6tw1eGchNA9Ndc12",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/programs-of-study",
+      "status": 200,
+      "sha256": "afd661f4ce210bb6d8f90c616543f0cdb81c87439a6bc608d70cf8d2cb68f388",
+      "fetched_at": "2026-11-09T19:18:02.772280+00:00",
+      "headings": [
+        "PROGRAMS OF STUDY"
+      ],
+      "table_count": 0,
+      "prose_chars": 821
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Summary",
+      "slug": "summary",
+      "url": "/schools/sebs/programs/summary",
+      "page_id": "EtTPZhDaHnBAHE3s1o3J",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/summary",
+      "status": 200,
+      "sha256": "e900298a47ba6231f35062a2401981a0c1976c3c27898c9c246d160597dfd41d",
+      "fetched_at": "2026-11-09T19:18:04.630095+00:00",
+      "headings": [
+        "SUMMARY",
+        "Premedical, Predental, and Prelaw Programs"
+      ],
+      "table_count": 0,
+      "prose_chars": 1703
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Agricultural Business and Food Systems 019",
+      "slug": "agriculture-business-and-food-systems",
+      "url": "/schools/sebs/programs/agriculture-business-and-food-systems",
+      "page_id": "F6QgzzX7Vshe6HTJcuHw",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/agriculture-business-and-food-systems",
+      "status": 200,
+      "sha256": "2a9370851fdcc38216840727c617bd911ac3ca0f44072bc6a54cb62d0813447e",
+      "fetched_at": "2026-11-09T19:18:06.441070+00:00",
+      "headings": [
+        "AGRICULTURAL BUSINESS AND FOOD SYSTEMS 019"
+      ],
+      "table_count": 0,
+      "prose_chars": 1189
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Agriculture and Food Systems 020",
+      "slug": "agriculture-food-systems",
+      "url": "/schools/sebs/programs/agriculture-food-systems",
+      "page_id": "X5qZZOl3oBLahGul9tir",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/agriculture-food-systems",
+      "status": 200,
+      "sha256": "93b07054632ff309d1d9c174a4c922673d64c703a42377a9e5b62e8715e0dfd7",
+      "fetched_at": "2026-11-09T19:18:08.327982+00:00",
+      "headings": [
+        "AGRICULTURE AND FOOD SYSTEMS 020",
+        "Graduation Requirements for the Major",
+        "Agriculture and Food Systems Teacher Education Track"
+      ],
+      "table_count": 0,
+      "prose_chars": 14446
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Animal Science 067",
+      "slug": "animal-science",
+      "url": "/schools/sebs/programs/animal-science",
+      "page_id": "C5J8Tj8k5vCdnFjHRfNR",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/animal-science",
+      "status": 200,
+      "sha256": "6f03ef9b47bcac1ae734917cc04e0d06eb4d9cf7e471964eb500e9ccfc5f45b0",
+      "fetched_at": "2026-11-09T19:18:10.258266+00:00",
+      "headings": [
+        "ANIMAL SCIENCE 067",
+        "Learning Goals",
+        "Graduation Requirements for the Major",
+        "Major Requirements for All Students Regardless of Matriculation Date"
+      ],
+      "table_count": 0,
+      "prose_chars": 16531
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Biochemistry 115",
+      "slug": "biochemistry",
+      "url": "/schools/sebs/programs/biochemistry",
+      "page_id": "jTMXMAwajDYXOoXNAprj",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/biochemistry",
+      "status": 200,
+      "sha256": "750f23f63894469eb6c4e37382b3c51f2b22d88dc57d2bfb9673ce716e5dc7a1",
+      "fetched_at": "2026-11-09T19:18:12.081390+00:00",
+      "headings": [
+        "BIOCHEMISTRY 115",
+        "Learning Goals",
+        "Graduation Requirements for the Major"
+      ],
+      "table_count": 0,
+      "prose_chars": 14263
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Biological Sciences 119",
+      "slug": "biological-sciences",
+      "url": "/schools/sebs/programs/biological-sciences",
+      "page_id": "icqWsp1TxStzFhe7RKaI",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/biological-sciences",
+      "status": 200,
+      "sha256": "dd59adf57940cfe436b868b6643e76ea4921e478661add939befec8181c19266",
+      "fetched_at": "2026-11-09T19:18:13.843735+00:00",
+      "headings": [
+        "BIOLOGICAL SCIENCES 119",
+        "Learning Goals",
+        "Entry Requirements for the Major",
+        "Graduation Requirements for the Major"
+      ],
+      "table_count": 0,
+      "prose_chars": 4885
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Biotechnology 126",
+      "slug": "biotechnology",
+      "url": "/schools/sebs/programs/biotechnology",
+      "page_id": "V2vc7lusb9UEemF5EFqw",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/biotechnology",
+      "status": 200,
+      "sha256": "1b473ecf4f9402105fdb4c2243610e4e52e94b97ebad32864dd98f65e07e2084",
+      "fetched_at": "2026-11-09T19:18:15.654360+00:00",
+      "headings": [
+        "BIOTECHNOLOGY 126",
+        "Learning Goals",
+        "Entry Requirements for the Major",
+        "Graduation Requirements for the Major",
+        "SEBS UNDERGRADUATE CORE CURRICULUM (39 credits)",
+        "Major Requirements for All Students Regardless of Matriculation Date"
+      ],
+      "table_count": 0,
+      "prose_chars": 12315
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Ecology, Evolution, and Natural Resources 216",
+      "slug": "ecology-evolution-natural-resources",
+      "url": "/schools/sebs/programs/ecology-evolution-natural-resources",
+      "page_id": "AMylaTm1hpTHbGGpmV6l",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/ecology-evolution-natural-resources",
+      "status": 200,
+      "sha256": "af622c61b8ea4d2739971269f2841c76b68c343c68c19e13cd9497dace5e140f",
+      "fetched_at": "2026-11-09T19:18:17.457530+00:00",
+      "headings": [
+        "ECOLOGY, EVOLUTION, AND NATURAL RESOURCES 216",
+        "Learning Goals",
+        "Graduation Requirements for the Major"
+      ],
+      "table_count": 0,
+      "prose_chars": 12295
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Entomology 370",
+      "slug": "entomology",
+      "url": "/schools/sebs/programs/entomology",
+      "page_id": "TEoYzyfxHqpMIWhReslW",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/entomology",
+      "status": 200,
+      "sha256": "44dd87da63001fde3f674bbb43b3c9b5fd2503bef96214bdf1ba07701748f69a",
+      "fetched_at": "2026-11-09T19:18:19.256532+00:00",
+      "headings": [
+        "ENTOMOLOGY 370",
+        "Learning Goals",
+        "Graduation Requirements for the Major",
+        "SEBS UNDERGRADUATE CORE CURRICULUM (39 credits)"
+      ],
+      "table_count": 0,
+      "prose_chars": 8603
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Environmental and Business Economics 373",
+      "slug": "environmental-business-economics",
+      "url": "/schools/sebs/programs/environmental-business-economics",
+      "page_id": "Npvjk1GpkSb9D61bwOuF",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/environmental-business-economics",
+      "status": 200,
+      "sha256": "cc5cc0d1941a8f6f82c7d7f2e85a38449f37947a38658138f7e7d5db2928530b",
+      "fetched_at": "2026-11-09T19:18:21.010172+00:00",
+      "headings": [
+        "ENVIRONMENTAL AND BUSINESS ECONOMICS 373",
+        "Learning Goals",
+        "Entry Requirements for the Major",
+        "Graduation Requirements for the Major",
+        "SEBS UNDERGRADUATE CORE CURRICULUM (39 credits)",
+        "Major Requirements for All Students Regardless of Matriculation Date"
+      ],
+      "table_count": 0,
+      "prose_chars": 13316
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Environmental Engineering 366",
+      "slug": "environmental-engineering",
+      "url": "/schools/sebs/programs/environmental-engineering",
+      "page_id": "vYR3Fl5dh6JWq8ZjmW9C",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/environmental-engineering",
+      "status": 200,
+      "sha256": "2b1d4ebe87df9b17d0dab53989a590875a6949d57a83f412606201411d981bd8",
+      "fetched_at": "2026-11-09T19:18:22.813779+00:00",
+      "headings": [
+        "ENVIRONMENTAL ENGINEERING",
+        "Field of Study",
+        "Four-Year Undergraduate Curriculum",
+        "Environmental Engineering Faculty"
+      ],
+      "table_count": 0,
+      "prose_chars": 8434
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Environmental Planning 573",
+      "slug": "environmental-planning",
+      "url": "/schools/sebs/programs/environmental-planning",
+      "page_id": "QKZUdLjxbRBildNsVRsA",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/environmental-planning",
+      "status": 200,
+      "sha256": "869cf4e301899d3c68172edb818856bd20e446633050c72e5086340e5261c6ab",
+      "fetched_at": "2026-11-09T19:18:24.603159+00:00",
+      "headings": [
+        "ENVIRONMENTAL PLANNING 573",
+        "Learning Goals",
+        "Graduation Requirements for the Major",
+        "SEBS UNDERGRADUATE CORE CURRICULUM (39 credits)",
+        "Graduation Requirements: Major in Environmental Planning (573)"
+      ],
+      "table_count": 0,
+      "prose_chars": 9904
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Environmental Policy, Institutions, and Behavior 374",
+      "slug": "environmental-policy-institutions-behavior",
+      "url": "/schools/sebs/programs/environmental-policy-institutions-behavior",
+      "page_id": "n16fSFPq90ZK15c2cjZI",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/environmental-policy-institutions-behavior",
+      "status": 200,
+      "sha256": "7988f8c8408b9dce0aa9b5da8cdf0f8496ae679daa25191cd4c518c8f66041b3",
+      "fetched_at": "2026-11-09T19:18:26.428167+00:00",
+      "headings": [
+        "ENVIRONMENTAL POLICY, INSTITUTIONS, AND BEHAVIOR 374",
+        "Learning Goals",
+        "Graduation Requirements for the Major",
+        "SEBS UNDERGRADUATE CORE CURRICULUM (39 credits)",
+        "Major Requirements for All Students Regardless of Matriculation Date"
+      ],
+      "table_count": 0,
+      "prose_chars": 10560
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Environmental Sciences 375",
+      "slug": "environmental-sciences",
+      "url": "/schools/sebs/programs/environmental-sciences",
+      "page_id": "cFtNCXpXSVTgscJUqdqK",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/environmental-sciences",
+      "status": 200,
+      "sha256": "26d46cd8e90c259c7fe09eb36b8d20530859bce91b18c31816a3edcf7123e8cc",
+      "fetched_at": "2026-11-09T19:18:28.189180+00:00",
+      "headings": [
+        "ENVIRONMENTAL SCIENCES 375",
+        "Learning Goals",
+        "Graduation Requirements for the Major",
+        "SEBS UNDERGRADUATE CORE CURRICULUM (39 credits)",
+        "Graduation Requirements for the Major"
+      ],
+      "table_count": 0,
+      "prose_chars": 9266
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Exercise Science 377",
+      "slug": "exercise-science",
+      "url": "/schools/sebs/programs/exercise-science",
+      "page_id": "diEM6b8KYmUTHKm9aBPz",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/exercise-science",
+      "status": 200,
+      "sha256": "0528e5d34323ef46bda0a9b90c68629f13d355f6a921bb803542abdb16c224eb",
+      "fetched_at": "2026-11-09T19:18:30.038537+00:00",
+      "headings": [
+        "EXERCISE SCIENCE 377"
+      ],
+      "table_count": 0,
+      "prose_chars": 1147
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Food Science 400",
+      "slug": "food-science",
+      "url": "/schools/sebs/programs/food-science",
+      "page_id": "enseYeTqnzQbS28ovJ1Q",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/food-science",
+      "status": 200,
+      "sha256": "0c517af66b83a521138b0225e52ed3eac096db49347e2bd9359d42b764381b63",
+      "fetched_at": "2026-11-09T19:18:31.885583+00:00",
+      "headings": [
+        "FOOD SCIENCE 400",
+        "Learning Goals",
+        "Graduation Requirements for the Major",
+        "SEBS UNDERGRADUATE CORE CURRICULUM (39 credits)"
+      ],
+      "table_count": 0,
+      "prose_chars": 9649
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Landscape Architecture 550",
+      "slug": "landscape-architecture",
+      "url": "/schools/sebs/programs/landscape-architecture",
+      "page_id": "r2uD9Ke6iTV89TUueBz7",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/landscape-architecture",
+      "status": 200,
+      "sha256": "dde28070111a9bee09e8daaf53b838fb58923075a89885ade1e9aabec5ee3d76",
+      "fetched_at": "2026-11-09T19:18:33.736709+00:00",
+      "headings": [
+        "LANDSCAPE ARCHITECTURE 550",
+        "Learning Goals",
+        "Graduation Requirements for the Major",
+        "SEBS UNDERGRADUATE CORE CURRICULUM (39 credits)",
+        "Graduation Requirements: Major in Landscape Architecture (550)"
+      ],
+      "table_count": 0,
+      "prose_chars": 6487
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Marine Sciences 628",
+      "slug": "marine-sciences",
+      "url": "/schools/sebs/programs/marine-sciences",
+      "page_id": "ZBGQkVmfXWqZMoEdw6Br",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/marine-sciences",
+      "status": 200,
+      "sha256": "71f0339e0b4b1c19036b15423d1037e6f5f3ba55db5617f5209c44a1e08db5e5",
+      "fetched_at": "2026-11-09T19:18:35.560549+00:00",
+      "headings": [
+        "MARINE SCIENCES 628",
+        "Learning Goals",
+        "Graduation Requirements for the Major",
+        "SEBS UNDERGRADUATE CORE CURRICULUM (39 credits)",
+        "Major Requirements For All Students Regardless of Matriculation Date"
+      ],
+      "table_count": 0,
+      "prose_chars": 14883
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Meteorology 670",
+      "slug": "meteorology",
+      "url": "/schools/sebs/programs/meteorology",
+      "page_id": "dOHiN8PNmGkZqRbA6Ck9",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/meteorology",
+      "status": 200,
+      "sha256": "72728bd22a2d122bad2348769ccfab0c04943ef5519bfd79acfd42dad1d2d357",
+      "fetched_at": "2026-11-09T19:18:37.382060+00:00",
+      "headings": [
+        "METEOROLOGY 670",
+        "Learning Goals",
+        "Entry Requirements for the Major",
+        "Graduation Requirements for the Major",
+        "Graduation Requirements for the Meteorology Major (75 or 76 credits)"
+      ],
+      "table_count": 0,
+      "prose_chars": 7864
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Microbiology 680",
+      "slug": "microbiology",
+      "url": "/schools/sebs/programs/microbiology",
+      "page_id": "hYFFyWrndHhfBPTjFhSH",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/microbiology",
+      "status": 200,
+      "sha256": "64aa95f34178826c47267e2e040cd17e78e5323134006e6384fd65122a1bb93a",
+      "fetched_at": "2026-11-09T19:18:39.221791+00:00",
+      "headings": [
+        "MICROBIOLOGY 680",
+        "Learning Goals",
+        "Entry Requirements for the Major",
+        "Residency Requirements for the Major",
+        "Graduation Requirements for the Major",
+        "GRADUATION REQUIREMENTS - SEBS UNDERGRADUATE CORE CURRICULUM (39 credits)",
+        "GRADUATION REQUIREMENTS FOR THE MAJOR"
+      ],
+      "table_count": 0,
+      "prose_chars": 9294
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Nutritional Sciences 709",
+      "slug": "nutritional-sciences",
+      "url": "/schools/sebs/programs/nutritional-sciences",
+      "page_id": "CM9vTHlmhlRqOji3Lx7Z",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/nutritional-sciences",
+      "status": 200,
+      "sha256": "3b16e4e55c019d0629838f15ae516436d8e64dd638ac320e9258c359aec8a109",
+      "fetched_at": "2026-11-09T19:18:41.067130+00:00",
+      "headings": [
+        "NUTRITIONAL SCIENCES 709",
+        "Learning Goals",
+        "Entry Requirements for the Major",
+        "Graduation Requirements for the Major",
+        "SEBS UNDERGRADUATE CORE CURRICULUM (39 credits)",
+        "Graduation Requirements for the Major (61 - 77)"
+      ],
+      "table_count": 0,
+      "prose_chars": 11248
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Plant Science 776",
+      "slug": "plant-science",
+      "url": "/schools/sebs/programs/plant-science",
+      "page_id": "wzvVNwKWQq5H2cCk5v8z",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/plant-science",
+      "status": 200,
+      "sha256": "939c9008a3bcbd844acb2fcd833220ffe162394f5f009e5bea39005140106c89",
+      "fetched_at": "2026-11-09T19:18:42.831803+00:00",
+      "headings": [
+        "PLANT SCIENCE 776",
+        "Learning Goals",
+        "Graduation Requirements for the Major",
+        "SEBS UNDERGRADUATE CORE CURRICULUM (39 credits)",
+        "Graduation Requirements for the Major: Proficiency in Plant Science"
+      ],
+      "table_count": 0,
+      "prose_chars": 11876
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Public Health 832",
+      "slug": "public-health",
+      "url": "/schools/sebs/programs/public-health",
+      "page_id": "QUrHOWw86eHuJANhxh8M",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/public-health",
+      "status": 200,
+      "sha256": "c338ad4eb0a78a78b93c4dba603e35e8d7cd2a6a51378026e85405d44ddfb317",
+      "fetched_at": "2026-11-09T19:18:44.601874+00:00",
+      "headings": [
+        "PUBLIC HEALTH 832",
+        "Entry Requirements for the Major",
+        "Graduation Requirements for the Major"
+      ],
+      "table_count": 0,
+      "prose_chars": 3885
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Student to Professional Internship Network (SPIN)",
+      "slug": "spin",
+      "url": "/schools/sebs/programs/spin",
+      "page_id": "MiZYJ0pjypU7CS5yJsVX",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/spin",
+      "status": 200,
+      "sha256": "988410877e5beafb71b5d2b8b933c3e70d6bf0c188b8eb18f919c6acbe9edfcd",
+      "fetched_at": "2026-11-09T19:18:46.368264+00:00",
+      "headings": [
+        "STUDENT TO PROFESSIONAL INTERNSHIP NETWORK"
+      ],
+      "table_count": 0,
+      "prose_chars": 3196
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Military Education",
+      "slug": "military-education",
+      "url": "/schools/sebs/programs/military-education",
+      "page_id": "oMV3XLrfGaOFibR5cP24",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/military-education",
+      "status": 200,
+      "sha256": "217041dc5cd78f4315045afbde3e771270601b37cd22c1cfae5b7a3dda661f1d",
+      "fetched_at": "2026-11-09T19:18:48.144406+00:00",
+      "headings": [
+        "MILITARY EDUCATION"
+      ],
+      "table_count": 0,
+      "prose_chars": 184
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Honors Programs",
+      "slug": "honors-programs",
+      "url": "/schools/sebs/programs/honors-programs",
+      "page_id": "GE8361kqAdD65NPI6P1K",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/honors-programs",
+      "status": 200,
+      "sha256": "81af2f4aa515d10dd5d78f5f3814dee98d7bfbf9cd4eb6798466a60082888b42",
+      "fetched_at": "2026-11-09T19:18:49.994305+00:00",
+      "headings": [
+        "HONORS PROGRAMS",
+        "General Honors Program of the School of Environmental and Biological Sciences",
+        "Clearing Corporation Charitable Foundation Agribusiness Scholars Program",
+        "George H. Cook Scholars Program",
+        "Independent Study, Special Problems, and Departmental Honors"
+      ],
+      "table_count": 0,
+      "prose_chars": 8771
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Study Abroad Programs",
+      "slug": "study-abroad",
+      "url": "/schools/sebs/programs/study-abroad",
+      "page_id": "PT6fLZYuQmtUsLcBecLg",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/study-abroad",
+      "status": 200,
+      "sha256": "9477a02897c814aeefddc1ff57d19fb0ceb867955bd373789b1c85c1eaf7dc24",
+      "fetched_at": "2026-11-09T19:18:51.831676+00:00",
+      "headings": [
+        "STUDY ABROAD PROGRAMS"
+      ],
+      "table_count": 0,
+      "prose_chars": 718
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Educational Opportunity Fund (EOF)",
+      "slug": "eof",
+      "url": "/schools/sebs/programs/eof",
+      "page_id": "IUbAApjQkmlDwRCdrWUs",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/eof",
+      "status": 200,
+      "sha256": "b6221f7816e8ebb3d32b9b48e32f97553d80d0fa6b35cdf68dbc0ffc595ae1bc",
+      "fetched_at": "2026-11-09T19:18:53.601189+00:00",
+      "headings": [
+        "EDUCATIONAL OPPORTUNITY FUND (EOF)"
+      ],
+      "table_count": 0,
+      "prose_chars": 2592
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Preprofessional Programs ",
+      "slug": "preprofessional-programs",
+      "url": "/schools/sebs/programs/preprofessional-programs",
+      "page_id": "AJel68AmlVdB7PWmhx5K",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/preprofessional-programs",
+      "status": 200,
+      "sha256": "54c26889a7c748dcb3aed3dd1793a364b9be917abb94a36135fdd8d30027984a",
+      "fetched_at": "2026-11-09T19:18:55.409423+00:00",
+      "headings": [
+        "Health Professions",
+        "Veterinary Medicine",
+        "Law"
+      ],
+      "table_count": 0,
+      "prose_chars": 4849
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study",
+        "Combined Degree Programs"
+      ],
+      "label": "Combined Degree Programs",
+      "slug": "programs",
+      "url": "/schools/sebs/programs/combined-degree/programs",
+      "page_id": "nCpq7giqmeE8B25Wvc8q",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/combined-degree/programs",
+      "status": 200,
+      "sha256": "2747fd6e3588d6068cafd4978ef66b61273a8928a18960444efcc1da48b040a0",
+      "fetched_at": "2026-11-09T19:18:57.260028+00:00",
+      "headings": [
+        "COMBINED DEGREE PROGRAMS"
+      ],
+      "table_count": 0,
+      "prose_chars": 513
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study",
+        "Combined Degree Programs"
+      ],
+      "label": "Joint Bachelor/Medical Degree Programs",
+      "slug": "joint-ba-md",
+      "url": "/schools/sebs/programs/combined-degree/joint-ba-md",
+      "page_id": "NWRs1hUucjL4rRhMjJ0k",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/combined-degree/joint-ba-md",
+      "status": 200,
+      "sha256": "e2230865f877e5777465a08dd89b03f7174960ee01149a08758e15e2f40c0eeb",
+      "fetched_at": "2026-11-09T19:18:59.242776+00:00",
+      "headings": [
+        "Joint Bachelor/Medical Degree Programs"
+      ],
+      "table_count": 0,
+      "prose_chars": 2335
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study",
+        "Combined Degree Programs"
+      ],
+      "label": "Five-Year B.A. or B.S./M.B.A. Program",
+      "slug": "five-year-ba-bs-mba",
+      "url": "/schools/sebs/programs/combined-degree/five-year-ba-bs-mba",
+      "page_id": "jtWBGTZrIME3XjteOuSN",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/combined-degree/five-year-ba-bs-mba",
+      "status": 200,
+      "sha256": "1e8e5c3c50fb3ccf6e3e85b888c4c610732eccecd32be7536729c12370d56916",
+      "fetched_at": "2026-11-09T19:19:01.044659+00:00",
+      "headings": [
+        "Five-Year B.A. or B.S./M.B.A. Program"
+      ],
+      "table_count": 0,
+      "prose_chars": 671
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study",
+        "Combined Degree Programs"
+      ],
+      "label": "Five-Year B.A. or B.S./M.P.P. Program",
+      "slug": "five-year-ba-bs-mpp",
+      "url": "/schools/sebs/programs/combined-degree/five-year-ba-bs-mpp",
+      "page_id": "vLZ07CrJmbIvzcK4AwuD",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/combined-degree/five-year-ba-bs-mpp",
+      "status": 200,
+      "sha256": "4f94e5c3c46c6433a5d63e91b8aa9c1d905656bf7f7dcba121893487a35214f2",
+      "fetched_at": "2026-11-09T19:19:02.876016+00:00",
+      "headings": [
+        "Five-Year B.A. or B.S./M.P.P. Program"
+      ],
+      "table_count": 0,
+      "prose_chars": 507
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study",
+        "Combined Degree Programs"
+      ],
+      "label": "Articulated 3-1-1 Program B.S./M.P.H. or B.A./M.P.H.",
+      "slug": "articulated-311-bs-mph-ba-mph",
+      "url": "/schools/sebs/programs/combined-degree/articulated-311-bs-mph-ba-mph",
+      "page_id": "hkMK4350itxCxzBtAxnI",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/combined-degree/articulated-311-bs-mph-ba-mph",
+      "status": 200,
+      "sha256": "6c26bd643163e934a8a9ef0f4654af5ba7db49a4793e983185a96412b6c9aee8",
+      "fetched_at": "2026-11-09T19:19:04.624079+00:00",
+      "headings": [
+        "Articulated 3-1-1 Program B.S./M.P.H. or B.A./M.P.H."
+      ],
+      "table_count": 0,
+      "prose_chars": 741
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study",
+        "Combined Degree Programs"
+      ],
+      "label": "5-Year B.S./Ed.M. Teacher Education Programs",
+      "slug": "5-year-bs-edm-teacher-education",
+      "url": "/schools/sebs/programs/combined-degree/5-year-bs-edm-teacher-education",
+      "page_id": "nuHc1INjQFzosbphTURG",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/combined-degree/5-year-bs-edm-teacher-education",
+      "status": 200,
+      "sha256": "2360989a81b13aab3c35fdee7cbcad35d14b77220c757892479f7e5eb5a645c1",
+      "fetched_at": "2026-11-09T19:19:06.392679+00:00",
+      "headings": [
+        "Agricultural Science Education (K-12)",
+        "Biological Sciences Education (K-12)",
+        "Physical Science and Physics Education (K-12)"
+      ],
+      "table_count": 0,
+      "prose_chars": 6444
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study",
+        "Combined Degree Programs"
+      ],
+      "label": "4+1 B.S./M.B.S. (Master of Business and Science) Programs",
+      "slug": "4-1-bs-mbs",
+      "url": "/schools/sebs/programs/combined-degree/4-1-bs-mbs",
+      "page_id": "kcuXaFw6PplRz9fc4oWJ",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/combined-degree/4-1-bs-mbs",
+      "status": 200,
+      "sha256": "61412530b840c9987adabab0a1227a9f0bbc069c6286d6f825eaa88d04bba83b",
+      "fetched_at": "2026-11-09T19:19:08.248734+00:00",
+      "headings": [
+        "4+1 B.S./M.B.S. (Master of Business and Science) Programs",
+        "Geospatial Information Systems & Technology",
+        "Food Science",
+        "Geospatial Information Systems & Technology",
+        "Global Agriculture",
+        "Global Food Technology and Innovation",
+        "Horticulture and Turfgrass Science",
+        "Sustainability"
+      ],
+      "table_count": 0,
+      "prose_chars": 13164
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [
+        "Programs of Study",
+        "Combined Degree Programs"
+      ],
+      "label": "Accelerated Programs",
+      "slug": "accelerated-programs",
+      "url": "/schools/sebs/programs/combined-degree/accelerated-programs",
+      "page_id": "Mci1iSPnkEKE32MzWoJ8",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/combined-degree/accelerated-programs",
+      "status": 200,
+      "sha256": "08d145a31b900ebd72667aec1c6972f20fc853dc72d120df28ebeaf5b189a9ac",
+      "fetched_at": "2026-11-09T19:19:10.081031+00:00",
+      "headings": [
+        "Bioenvironmental Engineering",
+        "Environmental Science",
+        "Food and Business Economics",
+        "Landscape Architecture",
+        "Meteorology"
+      ],
+      "table_count": 0,
+      "prose_chars": 16101
+    },
+    {
+      "school_slug": "sebs",
+      "trail": [],
+      "label": "Academic Policies and Procedures",
+      "slug": "academic-policies-and-procedures",
+      "url": "/schools/sebs/academic-policies-and-procedures",
+      "page_id": "Ku2leBGEZbjssQDCbmWo",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/academic-policies-and-procedures",
+      "status": 200,
+      "sha256": "2e8d6bb7059b54aa8b43d812673f8a048eb4e4fcf9fbb691f872341fa7aedded",
+      "fetched_at": "2026-11-09T19:19:11.883445+00:00",
+      "headings": [
+        "ACADEMIC POLICIES AND PROCEDURES"
+      ],
+      "table_count": 0,
+      "prose_chars": 314
+    },
+    {
+      "school_slug": "pharmacy",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Programs of Study ",
+      "slug": "programs-of-study",
+      "url": "/schools/pharmacy/programs/programs-of-study",
+      "page_id": "J2NPomtocJGHfxwxEME0",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/pharmacy/programs/programs-of-study",
+      "status": 200,
+      "sha256": "c7aa7b844ed5a0bb37d7fb4122029715e9cb5d8aba6545c7a58c11a0ef53a48a",
+      "fetched_at": "2026-11-09T19:19:13.722961+00:00",
+      "headings": [
+        "PROGRAMS OF STUDY"
+      ],
+      "table_count": 0,
+      "prose_chars": 149
+    },
+    {
+      "school_slug": "pharmacy",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Six-Year Pharmacy Curriculum",
+      "slug": "six-year-pharm-curriculum",
+      "url": "/schools/pharmacy/programs/six-year-pharm-curriculum",
+      "page_id": "JMeJG2a2NMVzrl0SvFPD",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/pharmacy/programs/six-year-pharm-curriculum",
+      "status": 200,
+      "sha256": "e7b8579b9522fefa05d90ce148ceab2c6c1d98ef14b1c218c9933fa2f0ba2a03",
+      "fetched_at": "2026-11-09T19:19:15.681419+00:00",
+      "headings": [
+        "SIX-YEAR PHARMACY CURRICULUM"
+      ],
+      "table_count": 0,
+      "prose_chars": 4828
+    },
+    {
+      "school_slug": "pharmacy",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Prepharmacy Curriculum",
+      "slug": "prepharm-curriculum",
+      "url": "/schools/pharmacy/programs/prepharm-curriculum",
+      "page_id": "clMviJDWA3xqB4ezrcyU",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/pharmacy/programs/prepharm-curriculum",
+      "status": 200,
+      "sha256": "a98cd2980df326db4cc9c6ce9407245a7c484306da067bf5b735bbdf860494c7",
+      "fetched_at": "2026-11-09T19:19:17.458925+00:00",
+      "headings": [
+        "PREPHARMACY CURRICULUM"
+      ],
+      "table_count": 0,
+      "prose_chars": 1882
+    },
+    {
+      "school_slug": "pharmacy",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Dual-Degree Options",
+      "slug": "dual-degree-options",
+      "url": "/schools/pharmacy/programs/dual-degree-options",
+      "page_id": "KwzLIcnIPIbbeJLGIWJf",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/pharmacy/programs/dual-degree-options",
+      "status": 200,
+      "sha256": "22a45f2006d8d00949104715340d18b27ca58ff8314e72c05cf79edf9bab95cf",
+      "fetched_at": "2026-11-09T19:19:19.411740+00:00",
+      "headings": [
+        "DUAL-DEGREE OPTIONS"
+      ],
+      "table_count": 0,
+      "prose_chars": 5259
+    },
+    {
+      "school_slug": "pharmacy",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Honors and Awards",
+      "slug": "honors-awards",
+      "url": "/schools/pharmacy/programs/honors-awards",
+      "page_id": "aaP9XoNzLEYqZ2vwsxFw",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/pharmacy/programs/honors-awards",
+      "status": 200,
+      "sha256": "7497a503c85f7112e915b1ba7fbeceee0b01cc107d85ec21b6f34996da4a493f",
+      "fetched_at": "2026-11-09T19:19:21.176594+00:00",
+      "headings": [
+        "Honors Program",
+        "Rho Chi Society",
+        "Sigma Xi",
+        "Other Honors and Awards"
+      ],
+      "table_count": 0,
+      "prose_chars": 2332
+    },
+    {
+      "school_slug": "pharmacy",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Scholarships",
+      "slug": "scholarships",
+      "url": "/schools/pharmacy/programs/scholarships",
+      "page_id": "PHcMdqLRxvgAfy7j3Y9D",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/pharmacy/programs/scholarships",
+      "status": 200,
+      "sha256": "2c9ee8750b88f6db22d2e60bb90d83c5ce2a7975f949805a47a687c9622122a1",
+      "fetched_at": "2026-11-09T19:19:23.038678+00:00",
+      "headings": [
+        "SCHOLARSHIPS"
+      ],
+      "table_count": 0,
+      "prose_chars": 8530
+    },
+    {
+      "school_slug": "pharmacy",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Educational Opportunity Fund",
+      "slug": "eof",
+      "url": "/schools/pharmacy/programs/eof",
+      "page_id": "HLNwxdWytM4sxkO3ApWC",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/pharmacy/programs/eof",
+      "status": 200,
+      "sha256": "3e813376e9afb2f008d0899d8d663923b21305aacaaa4c242d220b9724c3f7c1",
+      "fetched_at": "2026-11-09T19:19:24.995298+00:00",
+      "headings": [
+        "EDUCATIONAL OPPORTUNITY FUND"
+      ],
+      "table_count": 0,
+      "prose_chars": 787
+    },
+    {
+      "school_slug": "rbsnb",
+      "trail": [
+        "General Information"
+      ],
+      "label": "Admissions",
+      "slug": "admissions",
+      "url": "/schools/rbsnb/gen-info/admissions",
+      "page_id": "pw8vx6iTKPq6nErPeHLD",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/gen-info/admissions",
+      "status": 200,
+      "sha256": "90842a3f580028f3e459a22b064a53040cfe34e4810ad241293f95ece05eccbc",
+      "fetched_at": "2026-11-09T19:19:26.787255+00:00",
+      "headings": [
+        "First Year",
+        "External Transfer",
+        "School-to-School Transfer",
+        "Reenrollment"
+      ],
+      "table_count": 0,
+      "prose_chars": 2021
+    },
+    {
+      "school_slug": "rbsnb",
+      "trail": [
+        "Degree Requirements"
+      ],
+      "label": "Degree Requirements",
+      "slug": "degree-requirements",
+      "url": "/schools/rbsnb/degree-requirements/degree-requirements",
+      "page_id": "TS9Tl0WVWVQHgbV3QZCH",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/degree-requirements",
+      "status": 200,
+      "sha256": "5e4e52921a13bd5e6566f2951e63b21bd25c5b8b3f7fc6b417d8a3c6dd7f0aba",
+      "fetched_at": "2026-11-09T19:19:28.586798+00:00",
+      "headings": [
+        "DEGREE REQUIREMENTS"
+      ],
+      "table_count": 0,
+      "prose_chars": 108
+    },
+    {
+      "school_slug": "rbsnb",
+      "trail": [
+        "Degree Requirements"
+      ],
+      "label": "Credits and Residency",
+      "slug": "credits-residency",
+      "url": "/schools/rbsnb/degree-requirements/credits-residency",
+      "page_id": "HJ8Lb4w9gvSzOaFX5po0",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/credits-residency",
+      "status": 200,
+      "sha256": "cd4f808f857338d02ffd6e2cf9001fc957f2e82c389dabda854e4f73c97b9b67",
+      "fetched_at": "2026-11-09T19:19:30.382958+00:00",
+      "headings": [
+        "CREDITS AND RESIDENCY"
+      ],
+      "table_count": 0,
+      "prose_chars": 696
+    },
+    {
+      "school_slug": "rbsnb",
+      "trail": [
+        "Degree Requirements"
+      ],
+      "label": "Graduation",
+      "slug": "graduation",
+      "url": "/schools/rbsnb/degree-requirements/graduation",
+      "page_id": "xDdT1GEzwZSKJxTKi3uX",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/graduation",
+      "status": 200,
+      "sha256": "61d64e35eb780d2f548ac679448ad276c00c4d8067d2f3cb174d191ff6017755",
+      "fetched_at": "2026-11-09T19:19:32.124557+00:00",
+      "headings": [
+        "GRADUATION"
+      ],
+      "table_count": 0,
+      "prose_chars": 915
+    },
+    {
+      "school_slug": "rbsnb",
+      "trail": [
+        "Degree Requirements",
+        "Programs of Study: Majors and Minors"
+      ],
+      "label": "Programs of Study: Majors and Minors",
+      "slug": "programs",
+      "url": "/schools/rbsnb/degree-requirements/programs-majors-minors/programs",
+      "page_id": "k7UMe5VjZryidQzLHNrr",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/programs-majors-minors/programs",
+      "status": 200,
+      "sha256": "4098330c2c819db8bf62cf24f5a978b71a5f7733d7559a5570b19f63dfb632ab",
+      "fetched_at": "2026-11-09T19:19:34.019117+00:00",
+      "headings": [
+        "PROGRAMS OF STUDY: MAJORS AND MINORS"
+      ],
+      "table_count": 0,
+      "prose_chars": 2909
+    },
+    {
+      "school_slug": "rbsnb",
+      "trail": [
+        "Degree Requirements",
+        "Programs of Study: Majors and Minors"
+      ],
+      "label": "010 Accounting",
+      "slug": "accounting",
+      "url": "/schools/rbsnb/degree-requirements/programs-majors-minors/accounting",
+      "page_id": "rScjGBtLoJ7knpYZsvw6",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/programs-majors-minors/accounting",
+      "status": 200,
+      "sha256": "36fd0d34a9f6fd9734340af351dd8ba8172c1141b0fd2a67290af22deb5d7a43",
+      "fetched_at": "2026-11-09T19:19:35.808809+00:00",
+      "headings": [
+        "010 Accounting Major"
+      ],
+      "table_count": 1,
+      "prose_chars": 2342
+    },
+    {
+      "school_slug": "rbsnb",
+      "trail": [
+        "Degree Requirements",
+        "Programs of Study: Majors and Minors"
+      ],
+      "label": "136 Business Analytics and Information Technology (BAIT)",
+      "slug": "bait",
+      "url": "/schools/rbsnb/degree-requirements/programs-majors-minors/bait",
+      "page_id": "GUN7vrGJ6ly6RI4tPSlc",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/programs-majors-minors/bait",
+      "status": 200,
+      "sha256": "4ee6870a5a49646e06e8c8a8507199419260f2f3a8bff63bc70f5d00bb232821",
+      "fetched_at": "2026-11-09T19:19:37.584831+00:00",
+      "headings": [
+        "136 Business Analytics and Information Technology (BAIT) Major"
+      ],
+      "table_count": 1,
+      "prose_chars": 2340
+    },
+    {
+      "school_slug": "rbsnb",
+      "trail": [
+        "Degree Requirements",
+        "Programs of Study: Majors and Minors"
+      ],
+      "label": "390 Finance",
+      "slug": "finance",
+      "url": "/schools/rbsnb/degree-requirements/programs-majors-minors/finance",
+      "page_id": "dCtRzCclas6ol8v8yfJ8",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/programs-majors-minors/finance",
+      "status": 200,
+      "sha256": "ba1dbd1c7bf6c74df420beffcde868a6b2bbb76b2ea20b290d8d7791669267eb",
+      "fetched_at": "2026-11-09T19:19:39.444401+00:00",
+      "headings": [
+        "390 Finance Major"
+      ],
+      "table_count": 1,
+      "prose_chars": 2119
+    },
+    {
+      "school_slug": "rbsnb",
+      "trail": [
+        "Degree Requirements",
+        "Programs of Study: Majors and Minors"
+      ],
+      "label": "605 Leadership and Management",
+      "slug": "leadership-management",
+      "url": "/schools/rbsnb/degree-requirements/programs-majors-minors/leadership-management",
+      "page_id": "PyJ05F5L0Mu8SHJePFK7",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/programs-majors-minors/leadership-management",
+      "status": 200,
+      "sha256": "5d107f6882e27c93b11d29a1b35c2564a67587bac3a87b90ff56146fcff14dc9",
+      "fetched_at": "2026-11-09T19:19:41.192617+00:00",
+      "headings": [
+        "605 Leadership and Management Major"
+      ],
+      "table_count": 1,
+      "prose_chars": 2345
+    },
+    {
+      "school_slug": "rbsnb",
+      "trail": [
+        "Degree Requirements",
+        "Programs of Study: Majors and Minors"
+      ],
+      "label": "630 Marketing",
+      "slug": "marketing",
+      "url": "/schools/rbsnb/degree-requirements/programs-majors-minors/marketing",
+      "page_id": "yUesyO7mo5kil8oXC5yM",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/programs-majors-minors/marketing",
+      "status": 200,
+      "sha256": "906c1bb5fd0a2c818437c63462187aec66ac8926c5cf2bf5871a47f5bcb5ab70",
+      "fetched_at": "2026-11-09T19:19:43.006903+00:00",
+      "headings": [
+        "630 Marketing Major"
+      ],
+      "table_count": 1,
+      "prose_chars": 2188
+    },
+    {
+      "school_slug": "rbsnb",
+      "trail": [
+        "Degree Requirements",
+        "Programs of Study: Majors and Minors"
+      ],
+      "label": "799 Supply Chain Management",
+      "slug": "supply-chain-management",
+      "url": "/schools/rbsnb/degree-requirements/programs-majors-minors/supply-chain-management",
+      "page_id": "K9R3UfSvRy0jUSX9hiiA",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/programs-majors-minors/supply-chain-management",
+      "status": 200,
+      "sha256": "be87eb7fdb0a75e8a7d27792a337d0b17b57f34ab5f080f85b19ed3a66f7a406",
+      "fetched_at": "2026-11-09T19:19:44.877158+00:00",
+      "headings": [
+        "799 Supply Chain Management Major"
+      ],
+      "table_count": 1,
+      "prose_chars": 3429
+    },
+    {
+      "school_slug": "rbsnb",
+      "trail": [
+        "Degree Requirements",
+        "Programs of Study: Majors and Minors"
+      ],
+      "label": "135 Business Administration Minor",
+      "slug": "business-admin-minor",
+      "url": "/schools/rbsnb/degree-requirements/programs-majors-minors/business-admin-minor",
+      "page_id": "LT1gcfaGOmkuuJl2ujl0",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/programs-majors-minors/business-admin-minor",
+      "status": 200,
+      "sha256": "3aafff4e3261790938a3a8c3be2bd13e4ed89859519d0df87b404402ec871798",
+      "fetched_at": "2026-11-09T19:19:46.663968+00:00",
+      "headings": [
+        "135 Business Administration Minor"
+      ],
+      "table_count": 0,
+      "prose_chars": 2645
+    },
+    {
+      "school_slug": "rbsnb",
+      "trail": [
+        "Degree Requirements",
+        "Programs of Study: Majors and Minors"
+      ],
+      "label": "382 Entrepreneurship Minor",
+      "slug": "entrepreneurship-minor",
+      "url": "/schools/rbsnb/degree-requirements/programs-majors-minors/entrepreneurship-minor",
+      "page_id": "iPD5xb48CbUN9O7WTAAm",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/programs-majors-minors/entrepreneurship-minor",
+      "status": 200,
+      "sha256": "0229eba85f4785748d1d28cf0dfd5bb5ba624af991ce5a51b4376e17b1f92424",
+      "fetched_at": "2026-11-09T19:19:48.423693+00:00",
+      "headings": [
+        "382 Entrepreneurship Minor"
+      ],
+      "table_count": 0,
+      "prose_chars": 1287
+    },
+    {
+      "school_slug": "rbsnb",
+      "trail": [
+        "Degree Requirements",
+        "RBS Concentrations"
+      ],
+      "label": "RBS Concentrations",
+      "slug": "concentrations",
+      "url": "/schools/rbsnb/degree-requirements/concentrations/concentrations",
+      "page_id": "TJgPOVMGGJCOk8Q1axb4",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/concentrations/concentrations",
+      "status": 200,
+      "sha256": "1da81057ea41de8ae247601cfbd1e96a69ac2341beea0b7c01f5795c8a6142b2",
+      "fetched_at": "2026-11-09T19:19:50.180443+00:00",
+      "headings": [
+        "RBS CONCENTRATIONS"
+      ],
+      "table_count": 0,
+      "prose_chars": 1493
+    },
+    {
+      "school_slug": "rbsnb",
+      "trail": [
+        "Degree Requirements",
+        "RBS Concentrations"
+      ],
+      "label": "136 Business Analytics Concentration",
+      "slug": "business-analytics",
+      "url": "/schools/rbsnb/degree-requirements/concentrations/business-analytics",
+      "page_id": "daicXQRSFabhe2F8q2vb",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/concentrations/business-analytics",
+      "status": 200,
+      "sha256": "cab57acabe19ae57269220a0f0fac21d586bc5da05952699e20bd563acaeacb7",
+      "fetched_at": "2026-11-09T19:19:52.025853+00:00",
+      "headings": [
+        "136 Business Analytics Concentration"
+      ],
+      "table_count": 0,
+      "prose_chars": 1966
+    },
+    {
+      "school_slug": "rbsnb",
+      "trail": [
+        "Degree Requirements",
+        "RBS Concentrations"
+      ],
+      "label": "382 Entrepreneurship Concentration",
+      "slug": "entrepreneurship",
+      "url": "/schools/rbsnb/degree-requirements/concentrations/entrepreneurship",
+      "page_id": "FM6APeqhb6MO7fVapha9",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/concentrations/entrepreneurship",
+      "status": 200,
+      "sha256": "0bcbe870895da52f0a866acefa00cb806239a0aa3f23d2a0a277f4e253d199f4",
+      "fetched_at": "2026-11-09T19:19:53.811399+00:00",
+      "headings": [
+        "382 Entrepreneurship Concentration"
+      ],
+      "table_count": 0,
+      "prose_chars": 1652
+    },
+    {
+      "school_slug": "rbsnb",
+      "trail": [
+        "Degree Requirements",
+        "RBS Concentrations"
+      ],
+      "label": "390 Finance Concentration",
+      "slug": "finance",
+      "url": "/schools/rbsnb/degree-requirements/concentrations/finance",
+      "page_id": "QEZaMDA9cstS4zLY6y7W",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/concentrations/finance",
+      "status": 200,
+      "sha256": "649433d3b4d21c9854a2f55b980dfdd90d9af366526660e42e176aad5d7bb8e7",
+      "fetched_at": "2026-11-09T19:19:55.594943+00:00",
+      "headings": [
+        "390 Finance Concentration"
+      ],
+      "table_count": 0,
+      "prose_chars": 869
+    },
+    {
+      "school_slug": "rbsnb",
+      "trail": [
+        "Degree Requirements",
+        "RBS Concentrations"
+      ],
+      "label": "390F Fixed Income and Credit Analysis Concentration",
+      "slug": "fixed-income-credit-analysis",
+      "url": "/schools/rbsnb/degree-requirements/concentrations/fixed-income-credit-analysis",
+      "page_id": "BIVdoONLYLwcYSF571b0",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/concentrations/fixed-income-credit-analysis",
+      "status": 200,
+      "sha256": "8b4c0614009fd930968f131822910e671e4b42465f48122691ce01d12b552cb7",
+      "fetched_at": "2026-11-09T19:19:57.366523+00:00",
+      "headings": [
+        "390F Fixed Income and Credit Analysis Concentration"
+      ],
+      "table_count": 0,
+      "prose_chars": 1254
+    },
+    {
+      "school_slug": "rbsnb",
+      "trail": [
+        "Degree Requirements",
+        "RBS Concentrations"
+      ],
+      "label": "620 Global Business Concentration",
+      "slug": "global-business",
+      "url": "/schools/rbsnb/degree-requirements/concentrations/global-business",
+      "page_id": "tZghCvs9mjVhRGvNWqgC",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/concentrations/global-business",
+      "status": 200,
+      "sha256": "99f6c6ce21afdcb71330313d892649c2bc17a4815c2e83008ba30c0be54e39e1",
+      "fetched_at": "2026-11-09T19:19:59.256642+00:00",
+      "headings": [
+        "620 Global Business Concentration"
+      ],
+      "table_count": 0,
+      "prose_chars": 1826
+    },
+    {
+      "school_slug": "rbsnb",
+      "trail": [
+        "Degree Requirements",
+        "RBS Concentrations"
+      ],
+      "label": "623 Management Information Systems Concentration",
+      "slug": "management-info-systems",
+      "url": "/schools/rbsnb/degree-requirements/concentrations/management-info-systems",
+      "page_id": "O9kzfvGq9zwL2j08r5Qn",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/concentrations/management-info-systems",
+      "status": 200,
+      "sha256": "8b32e4917cffa324dfdb609a3a2d2588324199d20a42795d12c09281de3d3c1a",
+      "fetched_at": "2026-11-09T19:20:01.158164+00:00",
+      "headings": [
+        "623 Management Information Systems Concentration"
+      ],
+      "table_count": 0,
+      "prose_chars": 1752
+    },
+    {
+      "school_slug": "rbsnb",
+      "trail": [
+        "Degree Requirements",
+        "RBS Concentrations"
+      ],
+      "label": "625 Leadership Skills Concentration",
+      "slug": "leadership-skills",
+      "url": "/schools/rbsnb/degree-requirements/concentrations/leadership-skills",
+      "page_id": "AYjmTkNWAwJHjm6E6RQz",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/concentrations/leadership-skills",
+      "status": 200,
+      "sha256": "024f3e7d0f65122bc414b8a92589da38e5e72e1906f5769f4b20eb5f0f676f06",
+      "fetched_at": "2026-11-09T19:20:02.995553+00:00",
+      "headings": [
+        "625 Leadership Skills Concentration"
+      ],
+      "table_count": 0,
+      "prose_chars": 1970
+    },
+    {
+      "school_slug": "rbsnb",
+      "trail": [
+        "Degree Requirements",
+        "RBS Concentrations"
+      ],
+      "label": "631 Sales Concentration",
+      "slug": "sales-concentration",
+      "url": "/schools/rbsnb/degree-requirements/concentrations/sales-concentration",
+      "page_id": "OEXDWyOECsrJ4PrnGiwD",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/concentrations/sales-concentration",
+      "status": 200,
+      "sha256": "0217ee367d998f288291145739f6af0b933db6248edab7284a998aab7c140687",
+      "fetched_at": "2026-11-09T19:20:04.786973+00:00",
+      "headings": [
+        "631 Sales Concentration"
+      ],
+      "table_count": 0,
+      "prose_chars": 1458
+    },
+    {
+      "school_slug": "rbsnb",
+      "trail": [
+        "Degree Requirements",
+        "RBS Concentrations"
+      ],
+      "label": "634 Professional Selling",
+      "slug": "professional-selling",
+      "url": "/schools/rbsnb/degree-requirements/concentrations/professional-selling",
+      "page_id": "xCxv7911FeYjTcoZJR3X",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/concentrations/professional-selling",
+      "status": 200,
+      "sha256": "cef48b6f2a74c3953b40d73dc43022f2525d221eff0e3002c7ef1b101b59b69f",
+      "fetched_at": "2026-11-09T19:20:06.618460+00:00",
+      "headings": [
+        "634 Professional Selling"
+      ],
+      "table_count": 0,
+      "prose_chars": 1482
+    },
+    {
+      "school_slug": "rbsnb",
+      "trail": [
+        "Degree Requirements",
+        "RBS Concentrations"
+      ],
+      "label": "851 Real Estate Concentration",
+      "slug": "real-estate",
+      "url": "/schools/rbsnb/degree-requirements/concentrations/real-estate",
+      "page_id": "UJZs3d8utgfwF9wxIaoR",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/concentrations/real-estate",
+      "status": 200,
+      "sha256": "ae916fcdb71c95dc83f810b08c639dd968dabe174a4963b19285750866635508",
+      "fetched_at": "2026-11-09T19:20:08.511959+00:00",
+      "headings": [
+        "851 Real Estate Concentration"
+      ],
+      "table_count": 0,
+      "prose_chars": 1996
+    },
+    {
+      "school_slug": "rbsnb",
+      "trail": [],
+      "label": "Academic Policies and Procedures",
+      "slug": "academic-policies-and-procedures",
+      "url": "/schools/rbsnb/academic-policies-and-procedures",
+      "page_id": "z5Q7YMwqlYVVKU1ZYmfB",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/academic-policies-and-procedures",
+      "status": 200,
+      "sha256": "f172e1c8c21435b8ae3c9ad1041307aa0d9de994a37e7495b2f82d00ac95f296",
+      "fetched_at": "2026-11-09T19:20:10.373019+00:00",
+      "headings": [
+        "ACADEMIC POLICIES AND PROCEDURES"
+      ],
+      "table_count": 0,
+      "prose_chars": 499
+    },
+    {
+      "school_slug": "sci",
+      "trail": [
+        "General Information"
+      ],
+      "label": "Admission",
+      "slug": "admission",
+      "url": "/schools/sci/gen-info/admission",
+      "page_id": "dyW9514vfmwyEc5BKFDS",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sci/gen-info/admission",
+      "status": 200,
+      "sha256": "c29691d1bbce03a714694d68866c3c5b3c9e3d3741713cbdee21bf5ee0e30717",
+      "fetched_at": "2026-11-09T19:20:12.313766+00:00",
+      "headings": [
+        "Admission"
+      ],
+      "table_count": 0,
+      "prose_chars": 3827
+    },
+    {
+      "school_slug": "sci",
+      "trail": [],
+      "label": "Undergraduate Programs of Study ",
+      "slug": "undergraduate-programs-of-study",
+      "url": "/schools/sci/undergraduate-programs-of-study",
+      "page_id": "TfihgtKdyKSxGjKDocjk",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sci/undergraduate-programs-of-study",
+      "status": 200,
+      "sha256": "65e6c20f10918acce3167bdfe62b5d23592b634bf0cea5daaa63ed4e2c6e27d6",
+      "fetched_at": "2026-11-09T19:20:14.057216+00:00",
+      "headings": [
+        "Communication",
+        "Information Technology and Informatics",
+        "Journalism and Media Studies",
+        "Digital Communication, Information, and Media",
+        "Gender and Media",
+        "Other Programs of Study and Opportunities"
+      ],
+      "table_count": 0,
+      "prose_chars": 35022
+    },
+    {
+      "school_slug": "sci",
+      "trail": [],
+      "label": "Curriculum Overview",
+      "slug": "curriculum-overview",
+      "url": "/schools/sci/curriculum-overview",
+      "page_id": "s079DYCep3xyl8gxa4gH",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sci/curriculum-overview",
+      "status": 200,
+      "sha256": "a8edb5372d4a0d20e8081124487c96ac4ad92bad8eb8ef79946c7a1045a43866",
+      "fetched_at": "2026-11-09T19:20:15.885417+00:00",
+      "headings": [
+        "Core Courses (12 credits)",
+        "End of Program Requirements",
+        "Experiential Learning (6 credits)",
+        "Electives (24 credits)",
+        "M.C.M. Specializations"
+      ],
+      "table_count": 0,
+      "prose_chars": 4384
+    },
+    {
+      "school_slug": "sci",
+      "trail": [
+        "Undergraduate Courses"
+      ],
+      "label": "Information Technology and Informatics 547",
+      "slug": "information-technology-informatics",
+      "url": "/schools/sci/undergraduate-courses/information-technology-informatics",
+      "page_id": "ZcCRLoU2tiNmEkfiE8g0",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sci/undergraduate-courses/information-technology-informatics",
+      "status": 200,
+      "sha256": "166baec3325876c1d9f526803d4ee01c105bec09a9b778b28d633de9a494f877",
+      "fetched_at": "2026-11-09T19:20:17.943410+00:00",
+      "headings": [
+        "Information Technology and Informatics 547 Courses"
+      ],
+      "table_count": 0,
+      "prose_chars": 18191
+    },
+    {
+      "school_slug": "sci",
+      "trail": [],
+      "label": "Graduation",
+      "slug": "graduation",
+      "url": "/schools/sci/graduation",
+      "page_id": "hQOVQ1FGAKDeKjVnP6em",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sci/graduation",
+      "status": 200,
+      "sha256": "7db9b454de4b70434a319aea1ca6129e4fbfedbad31d2c34562097f5268ecfe5",
+      "fetched_at": "2026-11-09T19:20:19.889987+00:00",
+      "headings": [
+        "GRADUATION",
+        "Diploma Application"
+      ],
+      "table_count": 1,
+      "prose_chars": 1353
+    },
+    {
+      "school_slug": "eng",
+      "trail": [],
+      "label": "Degree Requirements",
+      "slug": "degree-requirements",
+      "url": "/schools/eng/degree-requirements",
+      "page_id": "dcZK73c3Vb5m8jKF2oWP",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/degree-requirements",
+      "status": 200,
+      "sha256": "eae523cfeef931de2116cdc75a60df46e9213875cc2f171c4782ba9c8a2b3c10",
+      "fetched_at": "2026-11-09T19:20:21.710015+00:00",
+      "headings": [
+        "DEGREE REQUIREMENTS"
+      ],
+      "table_count": 0,
+      "prose_chars": 1710
+    },
+    {
+      "school_slug": "eng",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Programs of Study",
+      "slug": "programs",
+      "url": "/schools/eng/programs-study/programs",
+      "page_id": "NjZ4O52ubzYB6tAkyKFw",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/programs",
+      "status": 200,
+      "sha256": "b6d48e7c64d1173e6f29057e5b542298786dad405e8ecf08059522bd0d30d1d4",
+      "fetched_at": "2026-11-09T19:20:23.485136+00:00",
+      "headings": [
+        "PROGRAMS OF STUDY"
+      ],
+      "table_count": 1,
+      "prose_chars": 1566
+    },
+    {
+      "school_slug": "eng",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "First-Year Program",
+      "slug": "first-year",
+      "url": "/schools/eng/programs-study/first-year",
+      "page_id": "TyPX1l42h95PrkBdwmJU",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/first-year",
+      "status": 200,
+      "sha256": "358748c15304dfefb87cad36482d8c5e9359683f945d59b7e5b376264d9982e0",
+      "fetched_at": "2026-11-09T19:20:25.257348+00:00",
+      "headings": [
+        "FIRST-YEAR PROGRAM",
+        "FIRST-YEAR PROGRAM (Starting from Class of 2030)"
+      ],
+      "table_count": 0,
+      "prose_chars": 2554
+    },
+    {
+      "school_slug": "eng",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Aerospace Engineering",
+      "slug": "aerospace",
+      "url": "/schools/eng/programs-study/aerospace",
+      "page_id": "munxISNBbmtsnUr9XKTN",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/aerospace",
+      "status": 200,
+      "sha256": "773231d6db71384a9ecb76d7f1b24b435633fbf8dfc9684b54d8260e48201f1f",
+      "fetched_at": "2026-11-09T19:20:27.050812+00:00",
+      "headings": [
+        "Field of Study",
+        "Four-Year Undergraduate Curriculum"
+      ],
+      "table_count": 0,
+      "prose_chars": 7215
+    },
+    {
+      "school_slug": "eng",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Applied Sciences in Engineering",
+      "slug": "applied-sciences",
+      "url": "/schools/eng/programs-study/applied-sciences",
+      "page_id": "ccKjnI4098dZwY3R4jG2",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/applied-sciences",
+      "status": 200,
+      "sha256": "42c3647efc17791b596bf1422cd48f93f84ffb7b88ee718e5078974f000e3fb8",
+      "fetched_at": "2026-11-09T19:20:28.977886+00:00",
+      "headings": [
+        "Field of Study",
+        "Four-Year Undergraduate Curriculum",
+        "Packaging Engineering Concentration"
+      ],
+      "table_count": 0,
+      "prose_chars": 5574
+    },
+    {
+      "school_slug": "eng",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Biomedical Engineering",
+      "slug": "biomedical",
+      "url": "/schools/eng/programs-study/biomedical",
+      "page_id": "bqrmKSXWF0pJo8C0E1Cb",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/biomedical",
+      "status": 200,
+      "sha256": "f52562459ad23193278e9126143f2206cda0a6521a1d5c983e7caaa35fcfcc68",
+      "fetched_at": "2026-11-09T19:20:30.945766+00:00",
+      "headings": [
+        "Field of Study",
+        "Four-Year Undergraduate Curriculum"
+      ],
+      "table_count": 0,
+      "prose_chars": 6175
+    },
+    {
+      "school_slug": "eng",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Chemical Engineering",
+      "slug": "chemical",
+      "url": "/schools/eng/programs-study/chemical",
+      "page_id": "Sazc4A4GYICJWlAYkYws",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/chemical",
+      "status": 200,
+      "sha256": "5d8a2c21bc0f5d22e22ed5f0be1cd68bc3d59b0a1d492ad62623c46f9576233a",
+      "fetched_at": "2026-11-09T19:20:32.780946+00:00",
+      "headings": [
+        "Field of Study",
+        "Four-Year Undergraduate Curriculum"
+      ],
+      "table_count": 0,
+      "prose_chars": 6971
+    },
+    {
+      "school_slug": "eng",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Civil Engineering",
+      "slug": "civil",
+      "url": "/schools/eng/programs-study/civil",
+      "page_id": "CniR4u8tHCYwywQFj0dG",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/civil",
+      "status": 200,
+      "sha256": "dc0a352a895d660ceef7a8574ad90d5c4127fdc27c1717b0942d566c463b1492",
+      "fetched_at": "2026-11-09T19:20:34.609958+00:00",
+      "headings": [
+        "Field of Study",
+        "Four-Year Undergraduate Curriculum"
+      ],
+      "table_count": 0,
+      "prose_chars": 5451
+    },
+    {
+      "school_slug": "eng",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Electrical and Computer Engineering",
+      "slug": "electrical-computer",
+      "url": "/schools/eng/programs-study/electrical-computer",
+      "page_id": "ON1YUA4qbNT61RILhLnw",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/electrical-computer",
+      "status": 200,
+      "sha256": "9e781fe3b6d0ddc95c35b380255fa06abf876f4c2088458cab62062cf4190137",
+      "fetched_at": "2026-11-09T19:20:36.370322+00:00",
+      "headings": [
+        "Field of Study",
+        "Four-Year Undergraduate Curriculum"
+      ],
+      "table_count": 0,
+      "prose_chars": 6080
+    },
+    {
+      "school_slug": "eng",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Environmental Engineering",
+      "slug": "environmental",
+      "url": "/schools/eng/programs-study/environmental",
+      "page_id": "vYR3Fl5dh6JWq8ZjmW9C",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/environmental",
+      "status": 200,
+      "sha256": "4635d0dddede262462723ffc6d0cb99ce347c3830a30f5e21b365d2923183d9d",
+      "fetched_at": "2026-11-09T19:20:38.118429+00:00",
+      "headings": [
+        "ENVIRONMENTAL ENGINEERING",
+        "Field of Study",
+        "Four-Year Undergraduate Curriculum",
+        "Environmental Engineering Faculty"
+      ],
+      "table_count": 0,
+      "prose_chars": 8434
+    },
+    {
+      "school_slug": "eng",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Industrial Engineering",
+      "slug": "industrial",
+      "url": "/schools/eng/programs-study/industrial",
+      "page_id": "gpWLLL37Lv6ss6ttN4z9",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/industrial",
+      "status": 200,
+      "sha256": "869cba5b8d08619589bd01958a09d4a32c7cd2c53a212106c37e9d1bdcbfb398",
+      "fetched_at": "2026-11-09T19:20:39.942049+00:00",
+      "headings": [
+        "Field of Study",
+        "Four-Year Undergraduate Curriculum"
+      ],
+      "table_count": 0,
+      "prose_chars": 4478
+    },
+    {
+      "school_slug": "eng",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Materials Science and Engineering",
+      "slug": "materials-science",
+      "url": "/schools/eng/programs-study/materials-science",
+      "page_id": "gEtz9Q5Z3tksGQ0OwLFC",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/materials-science",
+      "status": 200,
+      "sha256": "9cc0e0b7dbb1fb20cc49f324810409ee71110158a77f813762d9b64adceac414",
+      "fetched_at": "2026-11-09T19:20:41.924940+00:00",
+      "headings": [
+        "MATERIALS SCIENCE AND ENGINEERING 635",
+        "Field of Study",
+        "Four-Year Undergraduate Curriculum",
+        "Materials Science and Engineering"
+      ],
+      "table_count": 0,
+      "prose_chars": 23230
+    },
+    {
+      "school_slug": "eng",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Mechanical Engineering",
+      "slug": "mechanical",
+      "url": "/schools/eng/programs-study/mechanical",
+      "page_id": "FXMGpUzNN7OR6VNCQbMX",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/mechanical",
+      "status": 200,
+      "sha256": "a52747fb5b516ed780a7df01ba6385c4944ace27cfc542e5948ef0b05448e708",
+      "fetched_at": "2026-11-09T19:20:43.727753+00:00",
+      "headings": [
+        "Field of Study",
+        "Four-Year Undergraduate Curriculum"
+      ],
+      "table_count": 0,
+      "prose_chars": 6315
+    },
+    {
+      "school_slug": "eng",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Other Programs of Study",
+      "slug": "other-programs",
+      "url": "/schools/eng/programs-study/other-programs",
+      "page_id": "iYokj3WQun6yPIl6j6nK",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/other-programs",
+      "status": 200,
+      "sha256": "7d8fddd39252eee7db3aa4e68a1c87bb30d7f9a0b3b61996c34e67d4ed94221b",
+      "fetched_at": "2026-11-09T19:20:45.586288+00:00",
+      "headings": [
+        "Honors College at Engineering",
+        "Five-Year B.S./B.A. Dual-Degree Program with SAS",
+        "Accelerated Bachelor of Science/Master's Programs",
+        "Minors and Second Majors",
+        "Study Abroad",
+        "Transfer Programs",
+        "Graduate Programs"
+      ],
+      "table_count": 0,
+      "prose_chars": 6597
+    },
+    {
+      "school_slug": "eng",
+      "trail": [],
+      "label": "Academic Policies and Procedures",
+      "slug": "academic-policies-and-procedures",
+      "url": "/schools/eng/academic-policies-and-procedures",
+      "page_id": "bMF7mYUXbxfzSzuhkOqz",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/academic-policies-and-procedures",
+      "status": 200,
+      "sha256": "927d077a332a54b978b8e5ef551576b46238fb1630bf2657d177d0a0429079c0",
+      "fetched_at": "2026-11-09T19:20:47.380137+00:00",
+      "headings": [
+        "ACADEMIC POLICIES AND PROCEDURES"
+      ],
+      "table_count": 0,
+      "prose_chars": 305
+    },
+    {
+      "school_slug": "ejbsppp",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Programs of Study",
+      "slug": "programs",
+      "url": "/schools/ejbsppp/programs-study/programs",
+      "page_id": "nYM3xZucoXPnDVIaJAEV",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/ejbsppp/programs-study/programs",
+      "status": 200,
+      "sha256": "00c5af781868dac708308558e519244b64c863be9b5aa5c51266da2734fc82a7",
+      "fetched_at": "2026-11-09T19:20:49.162168+00:00",
+      "headings": [
+        "PROGRAMS OF STUDY"
+      ],
+      "table_count": 0,
+      "prose_chars": 2021
+    },
+    {
+      "school_slug": "ejbsppp",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "City and Regional Planning (170, 170D) Major and Minor",
+      "slug": "city-and-regional-planning",
+      "url": "/schools/ejbsppp/programs-study/city-and-regional-planning",
+      "page_id": "xSEZjUfnsN7p6jabS2Na",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/ejbsppp/programs-study/city-and-regional-planning",
+      "status": 200,
+      "sha256": "4bd53aedd6d971a7c863758d4a938f31be3dc958fd63743e3585dd14235b4a37",
+      "fetched_at": "2026-11-09T19:20:50.930260+00:00",
+      "headings": [
+        "City and Regional Planning (170) Major",
+        "Rutgers School of Arts and Sciences and School of Environmental and Biological Sciences Students",
+        "Transfer Students",
+        "City and Regional Planning Major Requirements (170, 170D)",
+        "City and Regional Planning Minor (18 credits)",
+        "Joint BA/MCRP or BA/MPP Programs",
+        "City and Regional Planning Certificate"
+      ],
+      "table_count": 0,
+      "prose_chars": 9939
+    },
+    {
+      "school_slug": "ejbsppp",
+      "trail": [
+        "Programs of Study"
+      ],
+      "label": "Public Health Major (832, 832D) and Minor",
+      "slug": "public-health-major-minor",
+      "url": "/schools/ejbsppp/programs-study/public-health-major-minor",
+      "page_id": "DQcSAJnrfKdtnTTDGH56",
+      "link_type": "internal",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/ejbsppp/programs-study/public-health-major-minor",
+      "status": 200,
+      "sha256": "dfb1c8e3dd42e488e0b0ed52bb7a4c6792b677df06270c9ca780a231ecd8fda7",
+      "fetched_at": "2026-11-09T19:20:52.859987+00:00",
+      "headings": [
+        "PUBLIC HEALTH MAJOR (832, 832D) AND MINOR",
+        "Rutgers School of Arts and Sciences or School of Environmental and Biological Sciences Students",
+        "Transfer Students",
+        "Public Health Major Requirements (832, 832D)",
+        "Public Health Minor (24 credits)",
+        "Public Health Certificate Programs"
+      ],
+      "table_count": 0,
+      "prose_chars": 9757
+    },
+    {
+      "label": "Health Administration 501/501D",
+      "school_slug": "ejbsppp",
+      "url": "/schools/ejbsppp/programs-study/health-admin-major-minor",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/ejbsppp/programs-study/health-admin-major-minor",
+      "status": 200,
+      "sha256": "ce1906b5e345166bb21be038b4566221265133ebf5cc385dc42c02f95e511a70",
+      "fetched_at": "2026-11-09T19:28:08.935772+00:00",
+      "headings": [],
+      "table_count": 0,
+      "prose_chars": 8906
+    },
+    {
+      "label": "Urban Planning and Design 971/971D",
+      "school_slug": "ejbsppp",
+      "url": "/schools/ejbsppp/programs-study/urban-planning-design-major-minor",
+      "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/ejbsppp/programs-study/urban-planning-design-major-minor",
+      "status": 200,
+      "sha256": "571de29eb38c6f25c56a91991f1f37414532b2fa564e442b633bf09c02c7530f",
+      "fetched_at": "2026-11-09T19:28:10.850396+00:00",
+      "headings": [],
+      "table_count": 0,
+      "prose_chars": 8984
+    }
+  ]
+}
