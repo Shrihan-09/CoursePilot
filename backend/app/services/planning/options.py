@@ -353,6 +353,9 @@ def course_options(ctx: OptionsContext, course: str, term_code: str, *,
                 if not v.ok:
                     out.not_available.append({"course": v.course, "reason": v.reason})
                 continue
+            if (any(ctx.engine._is_major_node(c) for c in own) or pc.role == "multi_requirement") \
+                    and not (set(own) & set(ctx.open)) <= set(v.requirements):
+                continue
             credits = ctx.engine.course_info[v.course].credits
             if not _caps_ok(ctx, term_code, pc, credits):
                 out.not_available.append({"course": v.course, "reason": "over_credit_cap"})
@@ -361,7 +364,7 @@ def course_options(ctx: OptionsContext, course: str, term_code: str, *,
             missing = [ctx.names.get(c, c) for c in own
                        if c in ctx.open and c not in v.requirements]
             impact = ("Same requirement and credits"
-                      + (f": graduation stays {label(grad)}" if grad else "")
+                      + (f": graduation target {label(grad)}" if grad else "")
                       + " - the preview confirms the whole plan." if delta == 0 else
                       f"{'+' if delta > 0 else ''}{delta} credits in {label(term_code)} - the "
                       "preview shows any other change.")

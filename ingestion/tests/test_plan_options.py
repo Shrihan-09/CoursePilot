@@ -126,8 +126,11 @@ def test_options_contain_only_valid_courses_and_an_anchor_has_no_swap(planned):
     assert anchor.locked and anchor.locked_reason == "anchor" and anchor.groups == []
     for pc in ctx.plan.terms[0].courses:
         result = course_options(ctx, pc.course, SPRING27)
+        required = {r.requirement_code for r in pc.requirements} & set(ctx.open)
         for group in result.groups:
             for o in group.options:
+                if any(ctx.engine._is_major_node(c) for c in required) or pc.role == "multi_requirement":
+                    assert required <= set(o.requirement_codes)
                 # never already taken, never earlier/this term in the plan
                 assert ctx.where.get(o.course, "99999") > SPRING27
                 assert o.course not in {k for k, *_ in HISTORY}
