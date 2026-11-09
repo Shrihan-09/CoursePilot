@@ -29,3 +29,13 @@ Planning engine version is bumped to 7.8.1, so existing saved plans show the usu
 The current scheduler supports eight courses per calendar request. Section combinations are previews; saved WebReg indexes continue to use the existing handoff flow. Keep on the choices card is local acceptance for that visit. Full-term gate evaluation is exhaustive and may be slower on large terms; no full-production-term performance benchmark is claimed. SQLite fixture coverage does not replace PostgreSQL-specific verification.
 
 No gh, merge, force-push, dev DB migration, private data, or Docker volume/database deletion. Review and merge manually after inspecting the screenshots/descriptions linked in the checklist.
+
+## Degree-page recovery follow-up
+
+The local Degree failure was reproduced as a raw HTTP 500. Next dev output showed `EBUSY: resource busy or locked` opening `.next/server/app/(app)/home/page.js`, plus an earlier transient missing assistant-panel source during branch changes. The backend's unrelated async HTTP-client cleanup also logged `RuntimeError: Event loop is closed`; this was not established as the Degree failure's cause.
+
+Restarted backend and Next dev. The signed-in `/degree` page and its audit/profile/import-progress requests subsequently returned 200, and the user confirmed the page works. Dev Alembic current and heads both report `p11b02`; no backup or upgrade was necessary. Read-only before/after hashes matched for all checked student, student-course, plan and planning-profile rows. No record contents were included in the report.
+
+Added signed-in, application and root-layout error boundaries with a provider-independent friendly fallback, Try again and Back to Home. Exceptions/stacks are not rendered into the fallback. Try again reloads the current route. These boundaries handle application rendering failures; they cannot replace the framework response when a locked/missing build artifact prevents Next itself from loading.
+
+Follow-up validation: TypeScript passed and **180 frontend tests passed**, including fallback accessibility, root document structure and exception-detail redaction. Logs remain outside OneDrive. The restarted development app remains running as requested.
