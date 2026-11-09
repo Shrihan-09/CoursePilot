@@ -1,5 +1,7 @@
 "use client";
 
+import { useAssistantPanel } from "@/features/assistant/assistant-panel";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Lock, LockOpen, MessageSquare, Search, Sparkles, Undo2 } from "lucide-react";
 import Link from "next/link";
@@ -274,6 +276,7 @@ export function CourseOptionsSheet({ target, onClose, changes }: {
   onClose: () => void;
   changes: PlanChanges;
 }) {
+  const assistant = useAssistantPanel();
   const q = useQuery({
     queryKey: ["course-options", target?.course, target?.term],
     queryFn: () => api.courseOptions(target!.course, target!.term),
@@ -287,6 +290,11 @@ export function CourseOptionsSheet({ target, onClose, changes }: {
   const run = (change: PlanChange) => { changes.request(change); onClose(); };
   return (
     <Sheet open onClose={onClose} title={`Options for ${target.course}`}>
+      <Button size="sm" variant="secondary" onClick={() => {
+        onClose();
+        assistant?.open({ term: target.term, course: target.course,
+                          draft: `Help me pick something instead of ${target.course}` });
+      }}>Ask CoursePilot about alternatives</Button>
       {q.isPending ? <Skeleton className="h-64" /> : q.isError ? (
         <Alert tone="danger" title="Options couldn't be loaded">{q.error instanceof ApiError ? q.error.message : "Try again."}</Alert>
       ) : o && (

@@ -88,7 +88,14 @@ export interface HistoryMessage {
   created_at: string | null;
 }
 
+export interface Conversation {
+  id: string; title: string; archived: boolean; created_at: string; updated_at: string;
+}
+
 export interface AssistantStatus {
+  user_key?: string;
+  conversation_id?: string;
+  conversations?: Conversation[];
   enabled: boolean;
   reason: string | null;
   daily_limit: number;
@@ -104,6 +111,8 @@ export type StreamEvent =
   | { type: "error"; status: number; detail: string };
 
 export interface MessageBody {
+  conversation_id?: string;
+  context_term?: string;
   text?: string;
   chip?: Chip;
   answers?: Record<string, string>;

@@ -28,6 +28,85 @@ from .test_multi_program import _client, _session, requires_db, world  # noqa: F
 BASE = "/api/v1/student/assistant"
 
 
+@pytest.mark.parametrize(("message", "title"), [
+    ("  Help me pick something instead of Art History please ", "Help me pick something instead of"),
+    ("Hello\n  there", "Hello there"), ("   ", "New chat"), ("x" * 200, "x" * 160),
+])
+def test_conversation_titles_are_deterministic(message, title):
+    from app.services.assistant.service import conversation_title
+    assert conversation_title(message) == title
+
+
+@requires_db
+async def test_conversation_crud_is_scoped_and_history_is_separate(world):
+    from app.models.assistant import AssistantConversation
+    from app.services.assistant import service
+    app = _app()
+    async with _client(app, world["account_a"]) as ac:
+        first = (await ac.post(f"{BASE}/conversations")).json()
+        second = (await ac.post(f"{BASE}/conversations")).json()
+        await _ask(ac, conversation_id=first["id"], text="Write my essay about a topic please")
+        await _ask(ac, conversation_id=second["id"], text="Register me in WebReg")
+        mine = (await ac.get(BASE, params={"conversation_id": first["id"]})).json()
+        assert mine["history"][0]["content"] == "Write my essay about a topic please"
+        assert len(mine["history"]) == 2
+        assert next(c for c in mine["conversations"] if c["id"] == first["id"])["title"] == "Write my essay about a topic"
+        renamed = await ac.patch(f"{BASE}/conversations/{first['id']}", json={"title": "My spring choices", "archived": True})
+        assert renamed.status_code == 200 and renamed.json()["archived"] is True
+        assert (await ac.patch(f"{BASE}/conversations/{first['id']}", json={"title": "  "})).status_code == 422
+    with _session() as session:
+        import uuid
+        service._mint(session, session.get(Student, world["a"]), {"kind": "confirm_change"},
+                      uuid.UUID(first["id"]))
+        session.commit()
+    async with _client(app, world["account_b"]) as other:
+        assert (await other.get(BASE, params={"conversation_id": first["id"]})).status_code == 404
+        assert (await other.patch(f"{BASE}/conversations/{first['id']}", json={"title": "Stolen"})).status_code == 404
+        assert (await other.delete(f"{BASE}/conversations/{first['id']}")).status_code == 404
+        assert (await other.post(f"{BASE}/messages", json={"conversation_id": first["id"], "text": "Hello"})).status_code == 404
+        assert (await other.get(f"{BASE}/conversations")).json()["conversations"] == []
+    async with _client(app, world["account_a"]) as ac:
+        assert (await ac.delete(f"{BASE}/conversations/{first['id']}")).status_code == 200
+        assert (await ac.get(BASE, params={"conversation_id": first["id"]})).status_code == 404
+        remaining = (await ac.get(BASE, params={"conversation_id": second["id"]})).json()
+        assert len(remaining["history"]) == 2
+        assert remaining["history"][0]["content"] == "Register me in WebReg"
+    with _session() as session:
+        assert session.get(AssistantConversation, first["id"]) is None
+        assert session.scalar(select(func.count()).select_from(AssistantMessage).where(
+            AssistantMessage.conversation_id == first["id"])) == 0
+        assert session.scalar(select(func.count()).select_from(AssistantAction).where(
+            AssistantAction.conversation_id == first["id"])) == 0
+
+
+@requires_db
+def test_conversation_migration_preserves_legacy_messages_and_downgrades(world):
+    import importlib
+    import uuid
+    from alembic.migration import MigrationContext
+    from alembic.operations import Operations
+    from sqlalchemy import text
+    migration = importlib.import_module("app.db.migrations.versions.20261109_p11b02_assistant_conversations")
+    with _session() as session:
+        with Operations.context(MigrationContext.configure(session.connection())):
+            migration.downgrade()
+            ids = [uuid.uuid4(), uuid.uuid4()]
+            for i, cid in enumerate(ids):
+                session.execute(text("INSERT INTO assistant_conversation (id,student_id) VALUES (:id,:student)"),
+                                {"id": cid, "student": world["a"]})
+                session.execute(text("INSERT INTO assistant_message (id,conversation_id,student_id,role,content,payload) "
+                                     "VALUES (:id,:cid,:student,'user',:content,'{}')"),
+                                {"id": uuid.uuid4(), "cid": cid, "student": world["a"],
+                                 "content": "Help me pick an online course" if i == 0 else "Another message"})
+            before = session.scalar(text("SELECT count(*) FROM assistant_message WHERE student_id=:id"), {"id": world["a"]})
+            migration.upgrade()
+            assert session.scalar(text("SELECT count(*) FROM assistant_message WHERE student_id=:id"), {"id": world["a"]}) == before
+            assert session.scalar(text("SELECT count(DISTINCT conversation_id) FROM assistant_message WHERE student_id=:id"), {"id": world["a"]}) == 1
+            migration.downgrade()
+            assert session.scalar(text("SELECT count(*) FROM assistant_message WHERE student_id=:id"), {"id": world["a"]}) == before
+            session.rollback()  # Entire exercise is isolated to the *_test DB and rolled back.
+
+
 def _app():
     from app.main import create_app
 

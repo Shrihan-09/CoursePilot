@@ -134,7 +134,7 @@ describe("cards", () => {
     expect(many).toContain("What should it count for instead?");
     expect(many).toContain("Show options");
     expect(many).toContain("Or just type what you want.");
-    const one = text(withClient(<Questions questions={[qs[1]]} ctx={ctx} />));
+    const one = text(withClient(<Questions questions={[qs[1]!]} ctx={ctx} />));
     expect(one).not.toContain("Show options");
   });
 

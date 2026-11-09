@@ -25,6 +25,8 @@ import hashlib
 import logging
 import secrets
 import time
+import uuid
+import re
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import delete, func, select
@@ -108,32 +110,67 @@ def remaining_today(session: Session, student: Student, settings) -> int:
     return max(0, settings.assistant_daily_message_limit - (row.messages if row else 0))
 
 
-def _conversation(session: Session, student: Student) -> AssistantConversation:
-    conv = session.scalar(select(AssistantConversation)
-                          .where(AssistantConversation.student_id == student.id)
-                          .order_by(AssistantConversation.created_at.desc()).limit(1))
-    if conv is None:
-        conv = AssistantConversation(student_id=student.id)
-        session.add(conv)
-        session.flush()
+class ConversationNotFound(LookupError):
+    pass
+
+
+def conversation_title(text: str) -> str:
+    return " ".join(re.findall(r"\S+", text.strip())[:6])[:160].rstrip() or "New chat"
+
+
+def conversation_view(conv: AssistantConversation) -> dict:
+    return {"id": str(conv.id), "title": conv.title, "archived": conv.archived,
+            "created_at": conv.created_at.isoformat(), "updated_at": conv.updated_at.isoformat()}
+
+
+def create_conversation(session: Session, student: Student) -> AssistantConversation:
+    conv = AssistantConversation(student_id=student.id, title="New chat", archived=False)
+    session.add(conv)
+    session.flush()
     return conv
 
 
-def _messages(session: Session, student: Student, limit: int) -> list[AssistantMessage]:
+def _conversation(session: Session, student: Student,
+                  conversation_id: uuid.UUID | None = None) -> AssistantConversation:
+    stmt = select(AssistantConversation).where(AssistantConversation.student_id == student.id)
+    if conversation_id is not None:
+        conv = session.scalar(stmt.where(AssistantConversation.id == conversation_id))
+        if conv is None:
+            raise ConversationNotFound()
+        return conv
+    conv = session.scalar(stmt.where(AssistantConversation.archived.is_(False))
+                          .order_by(AssistantConversation.updated_at.desc()).limit(1))
+    return conv if conv is not None else create_conversation(session, student)
+
+
+def conversations(session: Session, student: Student) -> list[dict]:
+    return [conversation_view(c) for c in session.scalars(select(AssistantConversation)
+            .where(AssistantConversation.student_id == student.id)
+            .order_by(AssistantConversation.updated_at.desc(), AssistantConversation.id.desc()))]
+
+
+def delete_conversation(session: Session, student: Student, conversation_id: uuid.UUID) -> None:
+    conv = _conversation(session, student, conversation_id)
+    session.delete(conv)
+    session.flush()
+
+
+def _messages(session: Session, student: Student, limit: int,
+              conversation_id: uuid.UUID | None = None) -> list[AssistantMessage]:
+    conv = _conversation(session, student, conversation_id)
     rows = session.scalars(select(AssistantMessage)
-                           .where(AssistantMessage.student_id == student.id)
+                           .where(AssistantMessage.student_id == student.id,
+                                  AssistantMessage.conversation_id == conv.id)
                            .order_by(AssistantMessage.created_at.desc(),
                                      AssistantMessage.id.desc()).limit(limit)).all()
     return list(reversed(rows))
 
 
-def history(session: Session, student: Student) -> list[dict]:
-    out = []
-    for m in _messages(session, student, HISTORY_SHOWN):
-        out.append({"id": str(m.id), "role": m.role, "content": m.content,
-                    "reply": (m.payload or {}).get("reply"),
-                    "created_at": m.created_at.isoformat() if m.created_at else None})
-    return out
+def history(session: Session, student: Student, conversation_id: uuid.UUID | None = None) -> list[dict]:
+    return [{"id": str(m.id), "role": m.role, "content": m.content,
+             "reply": (m.payload or {}).get("reply"),
+             "created_at": m.created_at.isoformat() if m.created_at else None}
+            for m in _messages(session, student, HISTORY_SHOWN, conversation_id)]
 
 
 def delete_history(session: Session, student: Student) -> int:
@@ -147,19 +184,19 @@ def delete_history(session: Session, student: Student) -> int:
     return n
 
 
-def _mint(session: Session, student: Student, action: dict) -> str:
+def _mint(session: Session, student: Student, action: dict, conversation_id=None) -> str:
     token = secrets.token_urlsafe(32)
-    session.add(AssistantAction(student_id=student.id,
+    session.add(AssistantAction(student_id=student.id, conversation_id=conversation_id,
                                 token_sha256=hashlib.sha256(token.encode()).hexdigest(),
                                 kind=str(action.get("kind")), payload=action,
                                 expires_at=_today() + TOKEN_TTL))
     return token
 
 
-def _tokenize(session: Session, student: Student, reply: AssistantReply) -> None:
+def _tokenize(session: Session, student: Student, reply: AssistantReply, conversation_id=None) -> None:
     for card in [*reply.cards, *reply.proposals]:
         if card.action:
-            card.action_token = _mint(session, student, card.action)
+            card.action_token = _mint(session, student, card.action, conversation_id)
 
 
 def _stored(reply: AssistantReply) -> dict:
@@ -172,9 +209,13 @@ def _stored(reply: AssistantReply) -> dict:
 
 
 def _persist(session: Session, student: Student, user_text: str | None,
-             reply: AssistantReply) -> None:
-    conv = _conversation(session, student)
+             reply: AssistantReply, conversation_id=None) -> None:
+    conv = _conversation(session, student, conversation_id)
     now = _today()
+    conv.updated_at = now
+    if user_text and conv.title == "New chat" and not session.scalar(select(AssistantMessage.id).where(
+            AssistantMessage.conversation_id == conv.id, AssistantMessage.role == "user").limit(1)):
+        conv.title = conversation_title(user_text)
     if user_text:
         session.add(AssistantMessage(conversation_id=conv.id, student_id=student.id,
                                      role="user", content=user_text[:2_000], payload={},
@@ -200,7 +241,7 @@ def answers_from_chip(chip: dict | None) -> tuple[str, dict | None]:
 
 async def handle_message(session: Session, student: Student, settings, *, text: str,
                          chip: dict | None = None, answers: dict | None = None,
-                         on_activity=None, tools=None) -> dict:
+                         on_activity=None, tools=None, conversation_id=None, context_term=None) -> dict:
     from app.services.assistant.db_tools import DbAssistantTools
 
     started = time.perf_counter()
@@ -208,22 +249,23 @@ async def handle_message(session: Session, student: Student, settings, *, text: 
         raise DailyLimitReached(
             f"You've used today's {settings.assistant_daily_message_limit} assistant messages. "
             "They reset at midnight UTC.")
+    conv = _conversation(session, student, conversation_id)
     default, escalation = providers(settings)
     chip_text, chip_answers = answers_from_chip(chip)
     text = (text or chip_text or "").strip()[:settings.explanation_max_query_chars * 3]
     answers = {**(chip_answers or {}), **(answers or {})} or None
-    past = _messages(session, student, HISTORY_FOR_MODEL + 2)
+    past = _messages(session, student, HISTORY_FOR_MODEL + 2, conv.id)
     flow = next(((m.payload or {}).get("flow") for m in reversed(past)
                  if m.role == "assistant"), None)
     hist = [{"role": m.role, "content": m.content} for m in past][-HISTORY_FOR_MODEL:]
     assistant = Assistant(tools or DbAssistantTools(session, student), default=default,
                           escalation=escalation, config=AgentConfig.from_settings(settings))
-    result = await assistant.turn(text, history=hist, flow=flow, answers=answers,
+    result = await assistant.turn(text + (f" (For term {context_term})" if context_term else ""), history=hist, flow=flow, answers=answers,
                                   on_activity=on_activity)
     reply = result.reply
-    _tokenize(session, student, reply)
+    _tokenize(session, student, reply, conv.id)
     shown = text or (chip or {}).get("label") or ""
-    _persist(session, student, shown, reply)
+    _persist(session, student, shown, reply, conv.id)
     usage = _usage(session, student, create=True)
     usage.messages += 1
     usage.model_calls += result.usage.calls
@@ -240,7 +282,7 @@ async def handle_message(session: Session, student: Student, settings, *, text: 
         "gate_rejections": len(result.grounding_failures),
         "latency_ms": round((time.perf_counter() - started) * 1000, 1)})
     return {"reply": reply.model_dump(mode="json"),
-            "remaining_today": remaining_today(session, student, settings)}
+            "remaining_today": remaining_today(session, student, settings), "conversation_id": str(conv.id)}
 
 
 def execute_action(session: Session, student: Student, token: str, *, tools=None) -> dict:
@@ -262,8 +304,8 @@ def execute_action(session: Session, student: Student, token: str, *, tools=None
     row.used_at = now
     session.commit()
     reply = actions.execute(tools or DbAssistantTools(session, student), row.payload)
-    _tokenize(session, student, reply)
-    _persist(session, student, None, reply)
+    _tokenize(session, student, reply, row.conversation_id)
+    _persist(session, student, None, reply, row.conversation_id)
     session.commit()
     logger.info("assistant_action", extra={"kind": row.kind,
                                            "generated_by": reply.generated_by,

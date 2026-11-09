@@ -1,8 +1,10 @@
 import path from "node:path";
+import os from "node:os";
 
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  cacheDir: path.join(os.tmpdir(), "coursepilot-vitest-cache"),
   test: {
     environment: "node",
     // .tsx: Phase 7.2 presenters are rendered to static markup (react-dom/
