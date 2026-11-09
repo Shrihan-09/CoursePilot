@@ -53,3 +53,29 @@ def test_named_goal_needs_that_goal_in_the_offering_listing():
     assert not _goal_filters_match(ctx, verdict, request)
     request.requirements = [["CORE_AH#AHp"]]
     assert _goal_filters_match(ctx, verdict, request)
+
+
+def test_a_known_requirement_with_no_loaded_pool_never_becomes_generic_search():
+    from types import SimpleNamespace as NS
+    from app.services.planning.course_search import interpret
+
+    engine = NS(pool_categories={}, requirements={}, pools={}, by_id_code={})
+    ctx = NS(engine=engine, open=[], inactive=set(), names={}, plan=NS(terms=[NS(term_code="20271")]))
+    result = interpret(ctx, "a writing course that also fills diversity")
+    assert result.requirements == [[], []]
+    assert set(result.requirement_names) == {"writing", "diversity"}
+    assert result.topic is None
+
+
+def test_aho_is_a_goal_even_when_the_loaded_pool_contains_only_another_ah_goal():
+    from types import SimpleNamespace as NS
+    from app.services.planning.course_search import interpret
+
+    engine = NS(pool_categories={("CORE_AH", "01:999:101"): {"AHp"}},
+                requirements={"CORE_AH": NS(name="Arts and the Humanities")},
+                pools={"CORE_AH": {"01:999:101"}}, by_id_code={})
+    ctx = NS(engine=engine, open=["CORE_AH"], inactive=set(), names={"CORE_AH": "Arts"},
+             plan=NS(terms=[NS(term_code="20271")]))
+    result = interpret(ctx, "a different AHo course in Spring 2027, online")
+    assert result.requirements == [["CORE_AH#AHo"]]
+    assert result.topic is None and result.online

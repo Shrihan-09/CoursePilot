@@ -55,6 +55,10 @@ SEASONS = {"spring": "1", "fall": "9", "summer": "7", "winter": "0"}
 #: (@core, @major, @degree). Each entry is a phrase students use; ambiguous
 #: phrases map to SEVERAL distinct meanings and are asked back, never guessed.
 ALIASES: dict[str, list[list[str]]] = {
+    "aho": [["CORE_AH#AHo"]],
+    "ahp": [["CORE_AH#AHp"]],
+    "ahq": [["CORE_AH#AHq"]],
+    "ahr": [["CORE_AH#AHr"]],
     "arts and humanities": [["CORE_AH"]],
     "arts & humanities": [["CORE_AH"]],
     "humanities": [["CORE_AH"]],
@@ -174,6 +178,9 @@ class RequirementResolver:
         ctx, e = self.ctx, self.ctx.engine
         universe = ctx.open if not include_closed else sorted(
             c for c in e.pools if e.pools[c] and c not in ctx.inactive)
+        if "#" in selector:
+            code, _, goal = selector.partition("#")
+            return [f"{code}#{goal}"] if code in universe else []
         if selector == "@core":
             return [c for c in universe if e._is_core(c)]
         if selector == "@major":
@@ -309,6 +316,10 @@ def interpret(ctx: OptionsContext, text: str, *, term_code: str | None = None) -
                 out.notes.append(f"'{phrase}': already met or in progress on your record - "
                                  "these would not count toward it.")
             else:
+                # Keep a recognized but empty requirement restrictive. Dropping
+                # it would turn "writing and diversity" into unrelated options.
+                out.requirements.append([])
+                out.requirement_names.append(phrase)
                 out.notes.append(f"'{phrase}': nothing of yours is still open there.")
         elif len(resolved) > 1:
             out.did_you_mean.append({
