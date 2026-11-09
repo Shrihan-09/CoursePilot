@@ -1,0 +1,368 @@
+{
+  "research_date": "2026-11-09",
+  "encoding_status": "research only; no new encoding or publication",
+  "contexts": [
+    {
+      "program": "sas-198-bs",
+      "curriculum_class_years": null,
+      "department_urls": [
+        "https://www.cs.rutgers.edu/academics/undergraduate/cs-degrees/b-s-degree"
+      ],
+      "catalog_urls": [
+        "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/computer-science-198"
+      ],
+      "dependency_urls": [
+        "https://www.cs.rutgers.edu/academics/undergraduate/electives"
+      ]
+    },
+    {
+      "program": "rbsnb-136-bs",
+      "curriculum_class_years": null,
+      "department_urls": [
+        "https://www.business.rutgers.edu/undergraduate-new-brunswick/business-analytics-information-technology",
+        "https://myrbs.business.rutgers.edu/undergraduate-new-brunswick/business-analytics-and-information-technology-major"
+      ],
+      "catalog_urls": [
+        "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/programs-majors-minors/bait"
+      ],
+      "dependency_urls": []
+    },
+    {
+      "program": "eng-540-bs",
+      "curriculum_class_years": [
+        2026,
+        2027,
+        2028,
+        2029
+      ],
+      "department_urls": [
+        "https://ise.rutgers.edu/bsie-curriculum-2026-29"
+      ],
+      "catalog_urls": [
+        "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/industrial",
+        "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/first-year"
+      ],
+      "dependency_urls": []
+    },
+    {
+      "program": "eng-540-bs",
+      "curriculum_class_years": [
+        2030
+      ],
+      "department_urls": [
+        "https://www.ise.rutgers.edu/bsie-curriculum-class-2030"
+      ],
+      "catalog_urls": [
+        "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/industrial",
+        "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/first-year"
+      ],
+      "dependency_urls": []
+    },
+    {
+      "program": "sebs-680-bs",
+      "curriculum_class_years": null,
+      "department_urls": [
+        "https://dbm.rutgers.edu/undergraduate/microbiology/requirements"
+      ],
+      "catalog_urls": [
+        "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/microbiology"
+      ],
+      "dependency_urls": [
+        "https://dbm.rutgers.edu/sites/default/files/2025-01/microbiology-curriculum-spring-2020-ac.pdf"
+      ]
+    },
+    {
+      "program": "shared-119-ba",
+      "home_schools": [
+        "SAS",
+        "SEBS"
+      ],
+      "curriculum_class_years": null,
+      "department_urls": [
+        "https://biology.rutgers.edu/academics/undergraduate/major-in-biological-sciences"
+      ],
+      "catalog_urls": [
+        "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/biological-sciences-119",
+        "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/biological-sciences"
+      ],
+      "dependency_urls": [
+        "https://biology.rutgers.edu/images/2026%20uploads/REVISED%20ELECTIVE%20SHEET%20MARCH%202026.pdf"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "source_id": "dc360f490d57026c48754dec41729c86b3a49378d39b4a71d3468075602515de",
+      "requested_url": "https://www.cs.rutgers.edu/academics/undergraduate/cs-degrees/b-s-degree",
+      "final_url": "https://www.cs.rutgers.edu/academics/undergraduate/cs-degrees/b-s-degree",
+      "retrieved_at_utc": "2026-11-09T19:51:02.092573+00:00",
+      "http_status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "sha256": "dc360f490d57026c48754dec41729c86b3a49378d39b4a71d3468075602515de",
+      "byte_count": 60797,
+      "archive_path": "data/raw/catalog/phase-08a-dual-source/dc360f490d57026c48754dec41729c86b3a49378d39b4a71d3468075602515de.html",
+      "hash_basis": "exact saved response entity bytes after HTTP decompression",
+      "role": "department_requirements"
+    },
+    {
+      "source_id": "86e3b0067c7c5095e27c926411140feb0545e08da2507f5842947f6f35ec49e6",
+      "requested_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/computer-science-198",
+      "final_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/computer-science-198",
+      "retrieved_at_utc": "2026-11-09T19:51:04.711798+00:00",
+      "http_status": 200,
+      "content_type": "text/html;charset=utf-8",
+      "sha256": "86e3b0067c7c5095e27c926411140feb0545e08da2507f5842947f6f35ec49e6",
+      "byte_count": 373401,
+      "archive_path": "data/raw/catalog/phase-08a-dual-source/86e3b0067c7c5095e27c926411140feb0545e08da2507f5842947f6f35ec49e6.html",
+      "hash_basis": "exact saved response entity bytes after HTTP decompression",
+      "role": "catalog"
+    },
+    {
+      "source_id": "7b5b963251fe592c56e2dc53f200be11a4cd5c263c1c8192d44662cc619cc147",
+      "requested_url": "https://www.cs.rutgers.edu/academics/undergraduate/electives",
+      "final_url": "https://www.cs.rutgers.edu/academics/undergraduate/electives",
+      "retrieved_at_utc": "2026-11-09T19:51:07.098586+00:00",
+      "http_status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "sha256": "7b5b963251fe592c56e2dc53f200be11a4cd5c263c1c8192d44662cc619cc147",
+      "byte_count": 66679,
+      "archive_path": "data/raw/catalog/phase-08a-dual-source/7b5b963251fe592c56e2dc53f200be11a4cd5c263c1c8192d44662cc619cc147.html",
+      "hash_basis": "exact saved response entity bytes after HTTP decompression",
+      "role": "department_dependency"
+    },
+    {
+      "source_id": "00d208800da0c17ddccede929afb1ee40cfe8081315a6b5c41c3b92829ac5108",
+      "requested_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/programs-majors-minors/bait",
+      "final_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/programs-majors-minors/bait",
+      "retrieved_at_utc": "2026-11-09T19:51:54.700554+00:00",
+      "http_status": 200,
+      "content_type": "text/html;charset=utf-8",
+      "sha256": "00d208800da0c17ddccede929afb1ee40cfe8081315a6b5c41c3b92829ac5108",
+      "byte_count": 341253,
+      "archive_path": "data/raw/catalog/phase-08a-dual-source/00d208800da0c17ddccede929afb1ee40cfe8081315a6b5c41c3b92829ac5108.html",
+      "hash_basis": "exact saved response entity bytes after HTTP decompression",
+      "role": "catalog"
+    },
+    {
+      "source_id": "8a88756eddc13b0b7249ceee28a0c18846627b0d582c05aa248583bcdb83e993",
+      "requested_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/industrial",
+      "final_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/industrial",
+      "retrieved_at_utc": "2026-11-09T19:51:59.088235+00:00",
+      "http_status": 200,
+      "content_type": "text/html;charset=utf-8",
+      "sha256": "8a88756eddc13b0b7249ceee28a0c18846627b0d582c05aa248583bcdb83e993",
+      "byte_count": 336611,
+      "archive_path": "data/raw/catalog/phase-08a-dual-source/8a88756eddc13b0b7249ceee28a0c18846627b0d582c05aa248583bcdb83e993.html",
+      "hash_basis": "exact saved response entity bytes after HTTP decompression",
+      "role": "catalog"
+    },
+    {
+      "source_id": "68192508f4cf39b739baf6de5dc25126b9ac934e5f118cb37b95fae82555d27d",
+      "requested_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/first-year",
+      "final_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/first-year",
+      "retrieved_at_utc": "2026-11-09T19:52:01.341171+00:00",
+      "http_status": 200,
+      "content_type": "text/html;charset=utf-8",
+      "sha256": "68192508f4cf39b739baf6de5dc25126b9ac934e5f118cb37b95fae82555d27d",
+      "byte_count": 335137,
+      "archive_path": "data/raw/catalog/phase-08a-dual-source/68192508f4cf39b739baf6de5dc25126b9ac934e5f118cb37b95fae82555d27d.html",
+      "hash_basis": "exact saved response entity bytes after HTTP decompression",
+      "role": "catalog"
+    },
+    {
+      "source_id": "31084d4228d28416a5e020fd4719b2f4cc4e3b11545d07f6a17e45609a4cc56b",
+      "requested_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/microbiology",
+      "final_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/microbiology",
+      "retrieved_at_utc": "2026-11-09T19:52:08.243662+00:00",
+      "http_status": 200,
+      "content_type": "text/html;charset=utf-8",
+      "sha256": "31084d4228d28416a5e020fd4719b2f4cc4e3b11545d07f6a17e45609a4cc56b",
+      "byte_count": 346400,
+      "archive_path": "data/raw/catalog/phase-08a-dual-source/31084d4228d28416a5e020fd4719b2f4cc4e3b11545d07f6a17e45609a4cc56b.html",
+      "hash_basis": "exact saved response entity bytes after HTTP decompression",
+      "role": "catalog"
+    },
+    {
+      "source_id": "df5d5f3b5e8a95701c3f8f47e89ca0e7457c74ed05a220515061ceab034fbf95",
+      "requested_url": "https://biology.rutgers.edu/academics/undergraduate/major-in-biological-sciences",
+      "final_url": "https://biology.rutgers.edu/academics/undergraduate/major-in-biological-sciences",
+      "retrieved_at_utc": "2026-11-09T19:52:12.910847+00:00",
+      "http_status": 200,
+      "content_type": "text/html; charset=utf-8",
+      "sha256": "df5d5f3b5e8a95701c3f8f47e89ca0e7457c74ed05a220515061ceab034fbf95",
+      "byte_count": 65828,
+      "archive_path": "data/raw/catalog/phase-08a-dual-source/df5d5f3b5e8a95701c3f8f47e89ca0e7457c74ed05a220515061ceab034fbf95.html",
+      "hash_basis": "exact saved response entity bytes after HTTP decompression",
+      "role": "department_requirements"
+    },
+    {
+      "source_id": "1d78ae824dcfc4968c972c6a6cc91ad4e6510d036bdd6e518473cc7018e4ee38",
+      "requested_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/biological-sciences-119",
+      "final_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/biological-sciences-119",
+      "retrieved_at_utc": "2026-11-09T19:52:15.452972+00:00",
+      "http_status": 200,
+      "content_type": "text/html;charset=utf-8",
+      "sha256": "1d78ae824dcfc4968c972c6a6cc91ad4e6510d036bdd6e518473cc7018e4ee38",
+      "byte_count": 399270,
+      "archive_path": "data/raw/catalog/phase-08a-dual-source/1d78ae824dcfc4968c972c6a6cc91ad4e6510d036bdd6e518473cc7018e4ee38.html",
+      "hash_basis": "exact saved response entity bytes after HTTP decompression",
+      "role": "catalog"
+    },
+    {
+      "source_id": "59ca5e5fff2c150aa3162370b499097d118d8258b0c6ea4b07f583e4a9aca79f",
+      "requested_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/biological-sciences",
+      "final_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/biological-sciences",
+      "retrieved_at_utc": "2026-11-09T19:52:17.713764+00:00",
+      "http_status": 200,
+      "content_type": "text/html;charset=utf-8",
+      "sha256": "59ca5e5fff2c150aa3162370b499097d118d8258b0c6ea4b07f583e4a9aca79f",
+      "byte_count": 343586,
+      "archive_path": "data/raw/catalog/phase-08a-dual-source/59ca5e5fff2c150aa3162370b499097d118d8258b0c6ea4b07f583e4a9aca79f.html",
+      "hash_basis": "exact saved response entity bytes after HTTP decompression",
+      "role": "catalog"
+    },
+    {
+      "source_id": "6458d29d44c5041cc6bd82770c9c9f4f6fa3fb85dfa347a6121ebf2cf1c61211",
+      "requested_url": "https://biology.rutgers.edu/images/2026%20uploads/REVISED%20ELECTIVE%20SHEET%20MARCH%202026.pdf",
+      "final_url": "https://biology.rutgers.edu/images/2026%20uploads/REVISED%20ELECTIVE%20SHEET%20MARCH%202026.pdf",
+      "retrieved_at_utc": "2026-11-09T19:52:20.125512+00:00",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "sha256": "6458d29d44c5041cc6bd82770c9c9f4f6fa3fb85dfa347a6121ebf2cf1c61211",
+      "byte_count": 369163,
+      "archive_path": "data/raw/catalog/phase-08a-dual-source/6458d29d44c5041cc6bd82770c9c9f4f6fa3fb85dfa347a6121ebf2cf1c61211.pdf",
+      "hash_basis": "exact saved response entity bytes after HTTP decompression",
+      "role": "department_dependency"
+    },
+    {
+      "source_id": "4b0d6a8bcfc37e8023a62a900dc69f6c2c1d29016472836c16f3844dff31fba1",
+      "requested_url": "https://www.business.rutgers.edu/undergraduate-new-brunswick/business-analytics-information-technology",
+      "final_url": null,
+      "retrieved_at_utc": "2026-11-09T19:54:38.589430+00:00",
+      "sha256": "4b0d6a8bcfc37e8023a62a900dc69f6c2c1d29016472836c16f3844dff31fba1",
+      "byte_count": 19156,
+      "archive_path": "data/raw/catalog/phase-08a-dual-source/4b0d6a8bcfc37e8023a62a900dc69f6c2c1d29016472836c16f3844dff31fba1.txt",
+      "content_type": "text/plain; charset=utf-8",
+      "representation": "public web-reader extracted text; not raw HTML/PDF",
+      "http_status": null,
+      "direct_http_status": 403,
+      "hash_basis": "exact saved UTF-8 extraction bytes",
+      "coverage": "web-reader capture; preserve extraction metadata and line/page labels; raw representation unavailable",
+      "role": "department_requirements",
+      "retrieval_time_scope": "acquisition of reader representation; origin fetch time not verified"
+    },
+    {
+      "source_id": "aacb94016fca448536d1a9a6499922d0c31592aa022fde82daecd2ff160f4dee",
+      "requested_url": "https://ise.rutgers.edu/bsie-curriculum-2026-29",
+      "final_url": null,
+      "retrieved_at_utc": "2026-11-09T19:54:38.592423+00:00",
+      "sha256": "aacb94016fca448536d1a9a6499922d0c31592aa022fde82daecd2ff160f4dee",
+      "byte_count": 9103,
+      "archive_path": "data/raw/catalog/phase-08a-dual-source/aacb94016fca448536d1a9a6499922d0c31592aa022fde82daecd2ff160f4dee.txt",
+      "content_type": "text/plain; charset=utf-8",
+      "representation": "public web-reader extracted text; not raw HTML/PDF",
+      "http_status": null,
+      "direct_http_status": 403,
+      "hash_basis": "exact saved UTF-8 extraction bytes",
+      "coverage": "web-reader capture; preserve extraction metadata and line/page labels; raw representation unavailable",
+      "role": "department_requirements",
+      "retrieval_time_scope": "acquisition of reader representation; origin fetch time not verified"
+    },
+    {
+      "source_id": "4478ad3feacd97d87b60141afaa1854938692986b9e76e6fe56f7310e0744e9d",
+      "requested_url": "https://www.ise.rutgers.edu/bsie-curriculum-class-2030",
+      "final_url": null,
+      "retrieved_at_utc": "2026-11-09T19:54:38.596523+00:00",
+      "sha256": "4478ad3feacd97d87b60141afaa1854938692986b9e76e6fe56f7310e0744e9d",
+      "byte_count": 9212,
+      "archive_path": "data/raw/catalog/phase-08a-dual-source/4478ad3feacd97d87b60141afaa1854938692986b9e76e6fe56f7310e0744e9d.txt",
+      "content_type": "text/plain; charset=utf-8",
+      "representation": "public web-reader extracted text; not raw HTML/PDF",
+      "http_status": null,
+      "direct_http_status": 403,
+      "hash_basis": "exact saved UTF-8 extraction bytes",
+      "coverage": "web-reader capture; preserve extraction metadata and line/page labels; raw representation unavailable",
+      "role": "department_requirements",
+      "retrieval_time_scope": "acquisition of reader representation; origin fetch time not verified"
+    },
+    {
+      "source_id": "b46e8a49fb3ec1207aacaf9913d712391db49c18c86e8934cceafa5a2492d34a",
+      "requested_url": "https://dbm.rutgers.edu/undergraduate/microbiology/requirements",
+      "final_url": null,
+      "retrieved_at_utc": "2026-11-09T19:54:38.600500+00:00",
+      "sha256": "b46e8a49fb3ec1207aacaf9913d712391db49c18c86e8934cceafa5a2492d34a",
+      "byte_count": 9217,
+      "archive_path": "data/raw/catalog/phase-08a-dual-source/b46e8a49fb3ec1207aacaf9913d712391db49c18c86e8934cceafa5a2492d34a.txt",
+      "content_type": "text/plain; charset=utf-8",
+      "representation": "public web-reader extracted text; not raw HTML/PDF",
+      "http_status": null,
+      "direct_http_status": 403,
+      "hash_basis": "exact saved UTF-8 extraction bytes",
+      "coverage": "web-reader capture; preserve extraction metadata and line/page labels; raw representation unavailable",
+      "role": "department_requirements",
+      "retrieval_time_scope": "acquisition of reader representation; origin fetch time not verified"
+    },
+    {
+      "source_id": "13240ec394575554cf14878297e65b0919f3c9accc33ad0e6c087110126f57ba",
+      "requested_url": "https://myrbs.business.rutgers.edu/undergraduate-new-brunswick/business-analytics-and-information-technology-major",
+      "final_url": null,
+      "retrieved_at_utc": "2026-11-09T19:54:38.603287+00:00",
+      "sha256": "13240ec394575554cf14878297e65b0919f3c9accc33ad0e6c087110126f57ba",
+      "byte_count": 15157,
+      "archive_path": "data/raw/catalog/phase-08a-dual-source/13240ec394575554cf14878297e65b0919f3c9accc33ad0e6c087110126f57ba.txt",
+      "content_type": "text/plain; charset=utf-8",
+      "representation": "public web-reader extracted text; not raw HTML/PDF",
+      "http_status": null,
+      "direct_http_status": 403,
+      "hash_basis": "exact saved UTF-8 extraction bytes",
+      "coverage": "web-reader capture; preserve extraction metadata and line/page labels; raw representation unavailable",
+      "role": "department_requirements",
+      "retrieval_time_scope": "acquisition of reader representation; origin fetch time not verified"
+    },
+    {
+      "source_id": "6296db61e3eaa341a543702a8767701b4c91565c280d2e5a5d8e50df660fa5d4",
+      "requested_url": "https://dbm.rutgers.edu/sites/default/files/2025-01/microbiology-curriculum-spring-2020-ac.pdf",
+      "final_url": null,
+      "retrieved_at_utc": "2026-11-09T19:54:38.606336+00:00",
+      "sha256": "6296db61e3eaa341a543702a8767701b4c91565c280d2e5a5d8e50df660fa5d4",
+      "byte_count": 4352,
+      "archive_path": "data/raw/catalog/phase-08a-dual-source/6296db61e3eaa341a543702a8767701b4c91565c280d2e5a5d8e50df660fa5d4.txt",
+      "content_type": "text/plain; charset=utf-8",
+      "representation": "public web-reader extracted text; not raw HTML/PDF",
+      "http_status": null,
+      "direct_http_status": 403,
+      "hash_basis": "exact saved UTF-8 extraction bytes",
+      "coverage": "web-reader capture; preserve extraction metadata and line/page labels; raw representation unavailable",
+      "role": "department_dependency",
+      "retrieval_time_scope": "acquisition of reader representation; origin fetch time not verified"
+    }
+  ],
+  "fetch_failures": [
+    {
+      "requested_url": "https://www.business.rutgers.edu/undergraduate-new-brunswick/business-analytics-information-technology",
+      "status": 403,
+      "retrieved_at_utc": "2026-11-09T19:51:52.195295+00:00"
+    },
+    {
+      "requested_url": "https://ise.rutgers.edu/bsie-curriculum-2026-29",
+      "status": 403,
+      "retrieved_at_utc": "2026-11-09T19:51:56.864341+00:00"
+    },
+    {
+      "requested_url": "https://www.ise.rutgers.edu/bsie-curriculum-class-2030",
+      "status": 403,
+      "retrieved_at_utc": "2026-11-09T19:52:03.480942+00:00"
+    },
+    {
+      "requested_url": "https://dbm.rutgers.edu/undergraduate/microbiology/requirements",
+      "status": 403,
+      "retrieved_at_utc": "2026-11-09T19:52:05.608151+00:00"
+    },
+    {
+      "requested_url": "https://dbm.rutgers.edu/sites/default/files/2025-01/microbiology-curriculum-spring-2020-ac.pdf",
+      "status": 403,
+      "retrieved_at_utc": "2026-11-09T19:52:10.347849+00:00"
+    }
+  ],
+  "acquisition_note": "Direct HTTP 403 responses are recorded. Where raw acquisition failed, publicly accessible web-reader extracts were archived, explicitly labeled; text digests are not represented as raw HTML/PDF digests."
+}
