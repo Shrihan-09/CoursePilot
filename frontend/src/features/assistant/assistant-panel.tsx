@@ -13,7 +13,7 @@ import { api } from "@/lib/api";
 import { termLabel } from "@/lib/academic/vocabulary";
 import type { Conversation } from "@/types/assistant";
 
-export type AssistantContext = { term?: string; course?: string; draft?: string };
+export type AssistantContext = { term?: string; course?: string; draft?: string; builderTerm?: string; selection?: string[]; onAddCourse?: (course: string) => void };
 type PanelState = {
   headerButton: React.ReactNode;
   open: (context?: AssistantContext) => void;
@@ -68,7 +68,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
     setOpen(true);
     setHasOpened(true);
     setSeen(true);
-    setContext(ctx ?? (pathname === "/plan" && planTerm ? { term: planTerm } : null));
+    setContext((previous) => ctx ?? (previous?.builderTerm ? previous : pathname === "/plan" && planTerm ? { term: planTerm } : null));
     try {
       if (storageKey) {
         localStorage.setItem(`${storageKey}:seen`, "1");
@@ -185,11 +185,11 @@ export function AssistantWorkspace({ compact = false }: { compact?: boolean }) {
       </li>)}
     </ul>}
     {panel?.context && <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2 text-xs" data-testid="assistant-context">
-      <span className="min-w-0 flex-1 truncate">{panel.context.course ?? "Your plan"}{panel.context.term ? ` · ${termLabel(panel.context.term)}` : ""}</span>
+      <span className="min-w-0 flex-1 truncate">{panel.context.builderTerm ? `Builder draft (${panel.context.selection?.length ?? 0} courses)` : panel.context.course ?? "Your plan"}{panel.context.term ? ` · ${termLabel(panel.context.term)}` : ""}</span>
       <button aria-label="Remove assistant context" onClick={() => panel.setContext(null)}><X className="size-3" /></button>
     </div>}
     <AssistantChat key={conversation ?? "default"} compact={compact} conversationId={conversation}
-                   contextTerm={panel?.context?.term} draft={panel?.context?.draft} onBusy={panel?.setBusy}
+                   contextTerm={panel?.context?.term} builderSelection={panel?.context?.selection} onBuilderAdd={panel?.context?.onAddCourse} draft={panel?.context?.draft} onBusy={panel?.setBusy}
                    onDraftUsed={() => { if (panel?.context?.draft) panel.setContext({ ...panel.context, draft: undefined }); }} />
     <Dialog open={!!editing} onClose={() => setEditing(null)} title="Rename chat" footer={<Button disabled={mutating || !title.trim()}
       onClick={() => void mutate(async () => { await api.editAssistantConversation(editing!.id, { title: title.trim() }); setEditing(null); })}>Save</Button>}>

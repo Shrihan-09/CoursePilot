@@ -162,7 +162,8 @@ describe("the Options sheet", () => {
     expect(t).toContain("A different requirement instead: Social Analysis");
     expect(t).toContain("Confirmed for this semester");
     expect(t).toContain("Historically offered this season");
-    expect(t).toContain("has an asynchronous online section · workload 4 · 3 contact hrs/week");
+    expect(t).toContain("has an asynchronous online section");
+    expect(t).toContain("Workload 4 / 3 contact hrs/week");
     expect(t).toContain("Similar to 01:198:111, where you did well");
     expect(t).toContain("you'd still need Arts and the Humanities later");
     expect(t).toContain("Lock to Spring 2027");
@@ -208,12 +209,12 @@ describe("Your choices for the next semester", () => {
     const t = text(withClient(<YourChoicesCard changes={changes()} />, (c) => c.setQueryData(["plan-choices"], choices)));
     expect(t).toContain("Your choices for Spring 2027");
     expect(t).toContain("Already set: CALCULUS II (required retake)");
-    expect(t).toContain("Which do you want to knock out first?");
-    expect(t).toContain("Let CoursePilot choose");
-    expect(t).toContain("Physics 203, 204, 205, 206 (recommended) · about 2 semesters");
-    expect(t).toContain("Chemistry 159, 160, 171 · about 3 semesters");
-    expect(t).toContain("Skip for now");
-    expect(t).toContain("Want a specific course? Ask the assistant");
-    expect(t).toContain("Add a specific course");
+    expect(t).toContain("Arts and the Humanities / pick 1");
+    expect(t).toContain("CoursePilot picked INTRO TO MUSIC");
+    expect(t).toContain("Keep");
+    expect(t).toContain("Change");
+    expect(t).not.toContain("Let CoursePilot choose");
+    expect(t).not.toContain("Skip for now");
+
   });
 });

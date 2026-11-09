@@ -12,6 +12,7 @@ import { Field, Select } from "@/components/ui/field";
 import { AssistantLauncher } from "@/features/assistant/assistant-chat";
 import { useAssistantPanel } from "@/features/assistant/assistant-panel";
 import { AddCourseSheet, ChangePreviewDialog, CourseOptionsSheet, usePlanChanges, YourChoicesCard } from "@/features/plan/plan-changes";
+import { SemesterBuilder } from "@/features/plan/semester-builder";
 import { PlanView } from "@/features/plan/plan-result";
 import { ProfileSummary, ReadinessList } from "@/features/planning/profile-summary";
 import { ApiError, api } from "@/lib/api";
@@ -204,8 +205,8 @@ export default function PlanPage() {
         </section>
       ) : (
         <>
-          {plan.freshness.state === "current" && <YourChoicesCard changes={changes} revision={plan.revision} />}
           <PlanView
+            choices={plan.freshness.state === "current" ? <YourChoicesCard changes={changes} revision={plan.revision} onBuild={setAddFor} /> : undefined}
             plan={plan}
             actions={plan.freshness.state === "current" ? {
               changes, states, lockedTerms: plan.edits?.locked_terms ?? [],
@@ -232,7 +233,7 @@ export default function PlanPage() {
         </>
       )}
       <CourseOptionsSheet target={optionsFor} onClose={() => setOptionsFor(null)} changes={changes} />
-      <AddCourseSheet term={addFor} changes={changes} onClose={() => setAddFor(null)} />
+      {plan && <SemesterBuilder term={addFor} plan={plan} changes={changes} onClose={() => setAddFor(null)} />}
       <ChangePreviewDialog changes={changes} />
       <AssistantLauncher onOpen={() => assistant?.open({ term: assistantTerm })} />
     </div>

@@ -1197,7 +1197,8 @@ class PlanningEngine:
         empty_streak = 0
         stalled = False
         for term in terms:
-            if not self._active(current.requirements):
+            if not self._active(current.requirements) and not any(
+                    p.term_code >= term and p.course not in planned for p in c.pins):
                 break
             term_plan = PlanTerm(term_code=term, label=label(term))
             current = self._fill_term(student, version, term, term_plan, current, planned, info,
@@ -1208,7 +1209,8 @@ class PlanningEngine:
             else:
                 # One empty term per season in a row: nothing will change.
                 empty_streak += 1
-                if empty_streak >= len({t[4] for t in terms}):
+                if empty_streak >= len({t[4] for t in terms}) and not any(
+                        p.term_code > term and p.course not in planned for p in c.pins):
                     stalled = True
                     break
 
@@ -2570,7 +2572,7 @@ class PlanningEngine:
 
         def course_credits(tp: PlanTerm) -> Decimal:
             # Repeating a passed course earns no further degree credit.
-            return sum((pc.credits for pc in tp.courses if pc.course not in self.passed),
+            return sum((pc.credits for pc in tp.courses if pc.course not in self.passed and pc.course not in self.excluded),
                        Decimal(0))
 
         by_term = {tp.term_code: tp for tp in plan_terms}

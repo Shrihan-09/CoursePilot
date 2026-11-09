@@ -241,7 +241,7 @@ def answers_from_chip(chip: dict | None) -> tuple[str, dict | None]:
 
 async def handle_message(session: Session, student: Student, settings, *, text: str,
                          chip: dict | None = None, answers: dict | None = None,
-                         on_activity=None, tools=None, conversation_id=None, context_term=None) -> dict:
+                         on_activity=None, tools=None, conversation_id=None, context_term=None, builder_selection=None) -> dict:
     from app.services.assistant.db_tools import DbAssistantTools
 
     started = time.perf_counter()
@@ -260,7 +260,11 @@ async def handle_message(session: Session, student: Student, settings, *, text: 
     hist = [{"role": m.role, "content": m.content} for m in past][-HISTORY_FOR_MODEL:]
     assistant = Assistant(tools or DbAssistantTools(session, student), default=default,
                           escalation=escalation, config=AgentConfig.from_settings(settings))
-    result = await assistant.turn(text + (f" (For term {context_term})" if context_term else ""), history=hist, flow=flow, answers=answers,
+    context = f" (For term {context_term})" if context_term else ""
+    if builder_selection is not None:
+        context += (" [Semester builder UNSAVED draft selection: " + ", ".join(builder_selection)
+                    + ". Suggest additions only; do not replace or apply. The student adds to the draft and confirms a separate preview.]")
+    result = await assistant.turn(text + context, history=hist, flow=flow, answers=answers,
                                   on_activity=on_activity)
     reply = result.reply
     _tokenize(session, student, reply, conv.id)

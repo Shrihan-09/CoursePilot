@@ -28,6 +28,7 @@ import json
 import logging
 import threading
 import uuid
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path
 from fastapi.concurrency import run_in_threadpool
@@ -57,6 +58,7 @@ class MessageIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     conversation_id: uuid.UUID | None = None
     context_term: str | None = Field(default=None, pattern=TERM)
+    builder_selection: list[Annotated[str, Field(pattern=r"^\d{2}:\d{3}:\d{3}$")]] | None = Field(default=None, max_length=24)
     text: str = Field(default="", max_length=600)
     chip: ChipIn | None = None
     #: Several clarify answers at once: question id -> chip value.
@@ -151,7 +153,7 @@ async def message(body: MessageIn, principal: Principal = Depends(enforce_reques
                     return
                 out = asyncio.run(service.handle_message(
                     session, student, settings, text=body.text,
-                    conversation_id=body.conversation_id, context_term=body.context_term,
+                    conversation_id=body.conversation_id, context_term=body.context_term, builder_selection=body.builder_selection,
                     chip=body.chip.model_dump() if body.chip else None, answers=body.answers,
                     on_activity=lambda a: emit({"type": "activity", "label": a.label})))
                 emit({"type": "reply", **out})

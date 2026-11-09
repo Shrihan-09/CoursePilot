@@ -102,10 +102,12 @@ function PlannedSchedule() {
   const current = useQuery({ queryKey: ["plan"], queryFn: api.currentPlan, staleTime: 0 });
   const plan = current.data?.plan ?? null;
 
-  const [source, setSource] = useState<"plan" | "custom">("plan");
+  const draftCourses = (params.get("courses") ?? "").split(",").filter(Boolean);
+  const validDraft = draftCourses.length > 0 && draftCourses.length <= 8 && draftCourses.every((c) => COURSE.test(c));
+  const [source, setSource] = useState<"plan" | "custom">(validDraft ? "custom" : "plan");
   const [planTerm, setPlanTerm] = useState(params.get("term") ?? "");
-  const [customTerm, setCustomTerm] = useState("");
-  const [customCourses, setCustomCourses] = useState<string[]>([]);
+  const [customTerm, setCustomTerm] = useState(validDraft ? params.get("term") ?? "" : "");
+  const [customCourses, setCustomCourses] = useState<string[]>(validDraft ? [...new Set(draftCourses)] : []);
   const [draft, setDraft] = useState("");
   const [prefs, setPrefs] = useState<SchedulePreferences>(DEFAULT_PREFS);
   const [rank, setRank] = useState(1);

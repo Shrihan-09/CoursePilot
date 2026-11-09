@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronRight, Feather, Lock, LockOpen, RefreshCw, SlidersHorizontal } from "lucide-react";
+import { CalendarDays, ChevronRight, Feather, Lock, LockOpen, MapPin, Monitor, RefreshCw, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 
 import { StateBadge, STATUS_ICON } from "@/components/academic/status";
@@ -213,162 +213,54 @@ function DeclarationPanel({ declaration: d }: { declaration: NonNullable<SavedPl
   );
 }
 
-/** One planned course as a board card: code + credits chip, title, # requirement tags. */
-function CourseCard({ course: c, index, actions }: { course: PlannedCourse; index: number; actions?: BoardActions }) {
-  const tone = courseTone(c.course);
-  const toward = [...new Set(c.requirements.map((r) => r.requirement_name))];
+/** Title-first cards retain all authoritative evidence behind Details. */
+export function courseCategory(c: PlannedCourse): string {
+  if (c.requirements.some((r) => r.requirement_system === "major")) return "Major";
+  if (c.requirements.some((r) => ["core", "school_core", "school"].includes(r.requirement_system))) return "School Core / gen-ed";
+  return c.requirements.length ? "Electives" : "Free elective";
+}
+function CourseCard({ course: c, actions }: { course: PlannedCourse; actions?: BoardActions }) {
   const state = actions?.states.get(`${c.course}@${c.term_code}`);
-  return (
-    <li
-      className={cn("cp-lift animate-cp-rise space-y-2 rounded-lg border border-border bg-surface-elevated p-3", tone)}
-      style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <span className="code text-sm font-semibold text-fg">{c.course}</span>
-        <span className="tabular shrink-0 rounded-md bg-surface-hover px-1.5 py-0.5 text-2xs font-medium text-fg-secondary">
-          {c.credits} cr
-        </span>
-      </div>
-      {state && <StateLine state={state.state} reason={state.locked_reason} />}
-      <p className="text-sm leading-snug text-fg [overflow-wrap:anywhere]">
-        {c.title}
-        {topicsText(c) && <span className="text-fg-secondary"> — {topicsText(c)}</span>}
-      </p>
-      {offeringLabel(c.offering) && (
-        <p className={cn("text-xs font-medium",
-          c.offering.kind === "confirmed_in_term" ? "text-success" : "text-warning")}>
-          {offeringLabel(c.offering)}
-        </p>
-      )}
-      {c.role && (
-        <p className="text-xs text-fg-secondary">
-          <span className="mr-1.5 inline-block rounded-full border border-border-strong bg-surface-hover px-2 py-0.5 text-2xs font-semibold uppercase tracking-wide text-fg">
-            {ROLE_LABEL[c.role] ?? c.role}
-          </span>
-          {c.role_reason ? <span>{c.role_reason}</span> : null}
-        </p>
-      )}
-      {c.workload && (
-        <p className="tabular text-2xs text-fg-muted" title={workloadBreakdown(c.workload)}>
-          Workload {Number(c.workload.weight)} ({workloadBreakdown(c.workload)})
-          {c.workload.contact_hours ? ` · ${Number(c.workload.contact_hours)} contact hrs/week` : ""}
-          {` · ${deliveryText(c.workload.delivery)}`}
-        </p>
-      )}
-      {toward.length > 0 && (
-        <p className="flex flex-wrap justify-end gap-x-2 gap-y-0.5 text-xs text-fg-secondary">
-          <span className="sr-only">Toward: </span>
-          {toward.map((name) => (
-            <span key={name} className="[overflow-wrap:anywhere]">
-              <span aria-hidden className="font-semibold text-[rgb(var(--tone))]"># </span>
-              {name}
-            </span>
-          ))}
-        </p>
-      )}
-      {(c.notes ?? []).map((note) => (
-        <p key={note} className={cn("text-xs", note.startsWith("NEEDS REVIEW") ? "font-medium text-warning" : "text-fg-secondary")}>
-          {note}
-        </p>
-      ))}
-      <div className="flex items-center justify-between gap-2">
-        <WhyHere course={c} />
-        {actions && (
-          <Button size="sm" variant="ghost" className="shrink-0" onClick={() => actions.onOptions(c.course, c.term_code)}
-            aria-label={`Options for ${c.course}`}>
-            <SlidersHorizontal aria-hidden className="size-4" /> Options
-          </Button>
-        )}
-      </div>
-    </li>
-  );
+  return <li className={cn("min-w-0 space-y-2 rounded-lg border border-border bg-surface-elevated p-3", courseTone(c.course))} data-testid="plan-course">
+    <h4 className="text-base font-semibold leading-snug [overflow-wrap:anywhere]">{c.title}</h4>
+    <div className="flex flex-wrap items-center gap-2 text-xs text-fg-secondary"><span className="code">{c.course}</span><span>{Number(c.credits)} credits</span>{state && <StateLine state={state.state} reason={state.locked_reason} />}{!state && c.role === "anchor" && <span><Lock aria-hidden className="inline size-3" /> Anchor</span>}</div>
+    <div className="flex flex-wrap items-center justify-between gap-2"><span className="min-w-0 rounded bg-surface-hover px-2 py-1 text-xs [overflow-wrap:anywhere]">{c.requirements[0]?.requirement_name ?? "Requirement coverage not mapped"}</span><span className="text-xs text-fg-muted">{c.workload?.delivery.some((d) => d === "async" || d === "online") ? <Monitor aria-hidden className="mr-1 inline size-3" /> : <MapPin aria-hidden className="mr-1 inline size-3" />}{c.workload ? deliveryText(c.workload.delivery) : "Delivery unknown"}</span></div>
+    <div className="flex flex-wrap items-start justify-between gap-2"><details className="min-w-0 flex-1 text-xs text-fg-secondary"><summary className="cursor-pointer py-2">Details</summary>
+      {topicsText(c) && <p>{topicsText(c)}</p>}
+      {c.role_reason && <p>{c.role_reason}</p>}
+      {c.workload && <p>Workload {Number(c.workload.weight)} ({workloadBreakdown(c.workload)})</p>}
+      {offeringLabel(c.offering) && <p>{offeringLabel(c.offering)}</p>}
+      {c.requirements.slice(1).map((r) => <p key={r.requirement_code}>Also fills {r.requirement_name}</p>)}
+      {(c.notes ?? []).map((n) => <p key={n}>{n}</p>)}<WhyHere course={c} />
+    </details>{actions && <Button size="sm" variant="ghost" onClick={() => actions.onOptions(c.course, c.term_code)} aria-label={`Options for ${c.title}`}><SlidersHorizontal aria-hidden className="size-4" />Options</Button>}</div>
+  </li>;
 }
 
-export function SemesterCard({
-  term,
-  scheduleHref,
-  note,
-  maxCredits,
-  actions,
-}: {
-  term: PlanTerm;
-  scheduleHref: string | null;
-  note?: string;
-  /** The student's hard maximum: the column's load bar is measured against it. */
-  maxCredits?: number;
-  actions?: BoardActions;
+export function SemesterCard({ term, scheduleHref, note, maxCredits, actions, open = true, choices }: {
+  term: PlanTerm; scheduleHref: string | null; note?: string; maxCredits?: number; actions?: BoardActions; open?: boolean; choices?: React.ReactNode;
 }) {
   const locked = actions?.lockedTerms.includes(term.term_code) ?? false;
   const electives = Number(term.free_elective_credits ?? 0);
   const credits = Number(term.credits) + electives;
-  return (
-    <section
-      aria-labelledby={`term-${term.term_code}`}
-      className="flex w-full shrink-0 snap-start flex-col gap-3 rounded-xl bg-surface p-3 md:w-[19rem]"
-    >
-      <header className="space-y-2 px-1 pt-1">
-        <div>
-          <h3 id={`term-${term.term_code}`} className="text-lg font-bold tracking-tight text-fg">{term.label}</h3>
-          <p className="tabular text-xs text-fg-muted">
-            {term.courses.length} courses · {Number(term.credits)} credits
-            {electives > 0 && <> + {electiveSlotText(electives)}</>}
-            {term.cumulative_credits != null && <> · running total {Number(term.cumulative_credits)}</>}
-          </p>
-          {term.workload && (
-            <p className="tabular text-xs text-fg-secondary">
-              {WORKLOAD_LEVEL_LABEL[term.workload.level] ?? term.workload.level}: workload {Number(term.workload.total)} of{" "}
-              {Number(term.workload.budget)} · {Number(term.workload.contact_hours)} contact hrs/week ·{" "}
-              {Number(term.workload.credit_floor)}-{Number(term.workload.credit_max)} credits
-            </p>
-          )}
-          {term.workload?.fit && <p className="text-xs text-fg-secondary">{term.workload.fit}</p>}
-          {term.workload?.notes.map((n) => (
-            <p key={n} className="text-xs text-warning">{n}</p>
-          ))}
-          {term.workload?.shortfalls?.map((n) => (
-            <p key={n} className="text-xs text-warning">{n}</p>
-          ))}
-        </div>
-        {maxCredits ? (
-          <Progress value={Math.min(credits, maxCredits)} max={maxCredits}
-            label={`${term.label}: ${credits} of at most ${maxCredits} credits`} className="h-1" />
-        ) : null}
-        {actions && term.courses.length > 0 && (
-          <div className="flex flex-wrap gap-1">
-            <Button size="sm" variant="ghost" loading={actions.changes.previewing}
-              onClick={() => actions.changes.request({ kind: locked ? "unlock_term" : "lock_term", term_code: term.term_code })}>
-              {locked ? <LockOpen aria-hidden className="size-4" /> : <Lock aria-hidden className="size-4" />}
-              {locked ? "Unlock semester" : "Lock semester"}
-            </Button>
-            <Button size="sm" variant="ghost" loading={actions.changes.previewing}
-              onClick={() => actions.changes.request({ kind: "lighten_term", term_code: term.term_code })}>
-              <Feather aria-hidden className="size-4" /> Lighten
-            </Button>
-            {actions.onAddCourse && <Button size="sm" variant="ghost" onClick={() => actions.onAddCourse?.(term.term_code)}>
-              Add a course
-            </Button>}
-          </div>
-        )}
-      </header>
-      {scheduleHref && (
-        <Link href={scheduleHref}
-          className="group flex min-h-10 items-center gap-2 rounded-lg border border-border bg-surface-elevated px-3 text-sm text-fg-secondary transition-colors hover:border-border-strong hover:text-fg">
-          <CalendarDays aria-hidden className="size-4 text-fg-muted transition-colors group-hover:text-primary" />
-          <span className="flex-1">Build schedule for {term.label}</span>
-          <span className="tabular rounded-md bg-surface-hover px-1.5 py-0.5 text-2xs font-medium">{term.credits} cr</span>
-        </Link>
-      )}
-      {note && <p className="px-1 text-xs text-fg-secondary">{note}</p>}
-      <ul className="space-y-2">
-        {term.courses.map((c, i) => <CourseCard key={c.course} course={c} index={i} actions={actions} />)}
-        {electives > 0 && (
-          <li className="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-fg-secondary">
-            Free elective: {electiveSlotText(electives)} - any degree-credit course you choose ({creditsText(electives)} toward the degree total).
-          </li>
-        )}
-      </ul>
-    </section>
-  );
+  const groups = ["Major", "School Core / gen-ed", "Electives", "Free elective"];
+  return <details open={open} className="min-w-0 rounded-xl border border-border bg-surface p-3" data-testid="semester-section">
+    <summary className="cursor-pointer space-y-2 rounded p-1 marker:text-fg-muted">
+      <span className="text-lg font-bold" id={`term-${term.term_code}`}>{term.label}</span>
+      <span className="ml-2 text-xs text-fg-secondary">{credits} credits / {term.workload?.major_related ?? term.courses.filter((c) => courseCategory(c) === "Major").length} major courses</span>
+      {electives > 0 && <span className="block text-xs text-fg-muted">Includes {Number(term.credits)} course credits + {electiveSlotText(electives)}</span>}
+      {term.workload ? <Progress value={Number(term.workload.total)} max={Number(term.workload.budget) || 1} label={`Workload ${Number(term.workload.total)} of ${Number(term.workload.budget)}`} className="h-1.5" /> : maxCredits ? <Progress value={credits} max={maxCredits} label={`${credits} of ${maxCredits} credits`} className="h-1.5" /> : null}
+      {term.workload?.fit && <span className="block text-xs text-fg-secondary">{term.workload.fit}</span>}
+    </summary>
+    <div className="mt-3 space-y-4">
+      {choices}
+      <div className="flex flex-wrap gap-1">{actions?.onAddCourse && <Button size="sm" variant="primary" onClick={() => actions.onAddCourse?.(term.term_code)}>Build / change this semester</Button>}
+        {scheduleHref && <Link href={scheduleHref} className={buttonVariants({ variant: "ghost", size: "sm" })}><CalendarDays aria-hidden className="size-4" />Compare schedules</Link>}
+        {actions && <><Button size="sm" variant="ghost" onClick={() => actions.changes.request({ kind: locked ? "unlock_term" : "lock_term", term_code: term.term_code })}>{locked ? <LockOpen aria-hidden className="size-3" /> : <Lock aria-hidden className="size-3" />}{locked ? "Unlock semester" : "Lock semester"}</Button><Button size="sm" variant="ghost" onClick={() => actions.changes.request({ kind: "lighten_term", term_code: term.term_code })}><Feather aria-hidden className="size-3" />Lighten</Button></>}
+      </div>
+      {(note || term.workload) && <details className="text-xs text-fg-secondary"><summary className="cursor-pointer py-1">Semester details</summary>{note && <p>{note}</p>}{term.workload && <><p>Workload {Number(term.workload.total)} of {Number(term.workload.budget)} / {Number(term.workload.credit_floor)}-{Number(term.workload.credit_max)} credits / {Number(term.workload.contact_hours)} contact hrs/week</p>{[...term.workload.notes, ...(term.workload.shortfalls ?? [])].map((n) => <p key={n}>{n}</p>)}</>}</details>}
+      {groups.map((g) => { const courses = term.courses.filter((c) => courseCategory(c) === g); return courses.length || (g === "Free elective" && electives > 0) ? <section key={g} aria-label={g}><h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-fg-muted">{g}</h3><ul className="grid min-w-0 gap-2 md:grid-cols-2 xl:grid-cols-3">{courses.map((c) => <CourseCard key={c.course} course={c} actions={actions} />)}{g === "Free elective" && electives > 0 && <li className="rounded border border-dashed border-border p-3 text-sm text-fg-secondary">Free elective: {electiveSlotText(electives)} - choose a degree-credit course ({creditsText(electives)} toward the degree total).</li>}</ul></section> : null; })}
+    </div>
+  </details>;
 }
 
 function BlockedList({ courses }: { courses: BlockedCourse[] }) {
@@ -445,7 +337,9 @@ export function PlanView({
   onApplyLight,
   applyingLight = false,
   actions,
+  choices,
 }: {
+  choices?: React.ReactNode;
   plan: SavedPlan;
   onRegenerate: () => void;
   regenerating: boolean;
@@ -554,10 +448,10 @@ export function PlanView({
       {r.terms.length > 0 && (
         // The board: semesters side by side, scrolling sideways inside itself
         // (never the page); stacked on phones.
-        <div className="-mx-1 flex snap-x flex-col gap-4 px-1 pb-2 md:flex-row md:items-start md:overflow-x-auto">
-          {r.terms.map((t) => (
+        <div className="grid min-w-0 gap-4">
+          {r.terms.map((t, index) => (
             <SemesterCard key={t.term_code} term={t} scheduleHref={`/schedule?term=${t.term_code}`}
-              actions={actions}
+              actions={actions} open={index === 0} choices={index === 0 ? choices : undefined}
               maxCredits={Number(plan.constraints.max_credits_per_term) || undefined}
               note={(r.observations ?? []).find((o) => o.code === "light_term" && o.term_code === t.term_code)?.message} />
           ))}

@@ -353,7 +353,7 @@ export interface Reselection { course: string; term_code: string; source: string
 
 export type ChangeKind =
   | "swap" | "move" | "remove" | "add" | "lock" | "unlock" | "lock_term" | "unlock_term"
-  | "lighten_term" | "choose_alternative";
+  | "lighten_term" | "choose_alternative" | "set_term";
 
 export interface PlanChange {
   kind: ChangeKind;
@@ -363,6 +363,9 @@ export interface PlanChange {
   to_term?: string | null;
   requirement_code?: string | null;
   alternatives?: string[];
+  courses?: string[];
+  expected_revision?: number;
+  pin_explanations?: Record<string, string>;
 }
 
 export interface CourseLine { course: string; title: string; credits: string | number; state: CourseState }

@@ -34,7 +34,7 @@ from app.domain.course_ranking import CourseRankingEvidence
 from app.domain.scenario import ScenarioAssumption, ScenarioTarget
 
 #: Bumped whenever the same inputs could produce a different plan.
-PLANNING_ENGINE_VERSION = "7.8.0"   # spread to the graduation target; the degree credit total
+PLANNING_ENGINE_VERSION = "7.8.1"   # preserve elective pins; exclude non-credit pins from degree total
 
 
 class EligibilityState(StrEnum):

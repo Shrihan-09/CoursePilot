@@ -49,8 +49,8 @@ function fromHistory(history: HistoryMessage[]): Turn[] {
 
 /* ------------------------------------------------------------- the panel */
 
-export function AssistantChat({ compact = false, conversationId, contextTerm, draft, onBusy, onDraftUsed }: {
-  compact?: boolean; conversationId?: string; contextTerm?: string; draft?: string; onBusy?: (busy: boolean) => void; onDraftUsed?: () => void;
+export function AssistantChat({ compact = false, conversationId, contextTerm, builderSelection, onBuilderAdd, draft, onBusy, onDraftUsed }: {
+  compact?: boolean; conversationId?: string; contextTerm?: string; builderSelection?: string[]; onBuilderAdd?: (course: string) => void; draft?: string; onBusy?: (busy: boolean) => void; onDraftUsed?: () => void;
 }) {
   const status = useQuery({ queryKey: conversationId ? ["assistant", conversationId] : ["assistant"], queryFn: () => api.assistantStatus(conversationId), staleTime: 30_000 });
   const qc = useQueryClient();
@@ -101,7 +101,7 @@ export function AssistantChat({ compact = false, conversationId, contextTerm, dr
     setPending(true);
     setActivity([]);
     try {
-      await streamMessage({ ...body, conversation_id: conversationId, context_term: contextTerm }, (ev) => {
+      await streamMessage({ ...body, conversation_id: conversationId, context_term: contextTerm, builder_selection: builderSelection }, (ev) => {
         if (ev.type === "activity") setActivity((xs) => (xs.includes(ev.label) ? xs : [...xs, ev.label]));
         else if (ev.type === "reply") {
           push({ id: nextId(), role: "assistant", reply: ev.reply, live: true });
@@ -115,7 +115,7 @@ export function AssistantChat({ compact = false, conversationId, contextTerm, dr
       setActivity([]);
       void qc.invalidateQueries({ queryKey: ["assistant"] });
     }
-  }, [pending, push, toast, qc, conversationId, contextTerm, onDraftUsed]);
+  }, [pending, push, toast, qc, conversationId, contextTerm, builderSelection, onDraftUsed]);
 
   const tap = useMutation({
     mutationFn: (token: string) => api.assistantAction(token),
@@ -135,7 +135,7 @@ export function AssistantChat({ compact = false, conversationId, contextTerm, dr
   }
   if (turns === null) return null;
   const s = status.data;
-  const ctx: Ctx = { send, onChip, tap: (t) => tap.mutate(t), tapping: tap.isPending, pending };
+  const ctx: Ctx = { send, onChip, tap: (t) => tap.mutate(t), tapping: tap.isPending, pending, onBuilderAdd };
 
   return (
     <div className={cn("flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden break-words", compact ? "" : "min-h-0")}>
@@ -165,6 +165,7 @@ export function AssistantChat({ compact = false, conversationId, contextTerm, dr
 }
 
 interface Ctx {
+  onBuilderAdd?: (course: string) => void;
   send: (body: MessageBody, shown: string) => void;
   onChip: (chip: Chip) => void;
   tap: (token: string) => void;
@@ -225,7 +226,7 @@ function AssistantMessage({ reply, live, ctx }: { reply: AssistantReply; live: b
         <>
           {reply.questions.length > 0 && <Questions questions={reply.questions} ctx={ctx} />}
           {reply.cards.length > 0 && <OptionCarousel cards={reply.cards} ctx={ctx} />}
-          {reply.proposals.map((p, i) => <Proposal key={`${p.preview_id}-${i}`} p={p} ctx={ctx} />)}
+          {ctx.onBuilderAdd ? reply.proposals.length > 0 && <p className="text-xs text-fg-secondary">Use course suggestions to add to your builder draft, then Preview and Confirm there.</p> : reply.proposals.map((p, i) => <Proposal key={`${p.preview_id}-${i}`} p={p} ctx={ctx} />)}
           {reply.sections.length > 0 && <Sections sections={reply.sections} />}
           {reply.webreg_term && <WebRegPanelView term={reply.webreg_term} />}
           {reply.suggestions.length > 0 && <ChipRow chips={reply.suggestions} onChip={ctx.onChip} disabled={ctx.pending} />}
@@ -319,7 +320,7 @@ export function Questions({ questions, ctx }: { questions: Question[]; ctx: Pick
 
 /* ---------------------------------------------------------- the carousel */
 
-export function OptionCarousel({ cards, ctx }: { cards: OptionCard[]; ctx: Pick<Ctx, "tap" | "tapping" | "onChip" | "pending"> }) {
+export function OptionCarousel({ cards, ctx }: { cards: OptionCard[]; ctx: Pick<Ctx, "tap" | "tapping" | "onChip" | "pending" | "onBuilderAdd"> }) {
   return (
     <div className="-mx-3 overflow-x-auto px-3 pb-2" role="region" aria-label="Course options">
       <ul className="flex snap-x snap-mandatory gap-3">
@@ -329,7 +330,7 @@ export function OptionCarousel({ cards, ctx }: { cards: OptionCard[]; ctx: Pick<
   );
 }
 
-function OptionCardView({ card: c, ctx }: { card: OptionCard; ctx: Pick<Ctx, "tap" | "tapping" | "onChip" | "pending"> }) {
+function OptionCardView({ card: c, ctx }: { card: OptionCard; ctx: Pick<Ctx, "tap" | "tapping" | "onChip" | "pending" | "onBuilderAdd"> }) {
   const hours = c.contact_hours != null ? `${Number(c.contact_hours)} h/week` : null;
   const weight = c.workload_weight != null ? `workload weight ${Number(c.workload_weight)}` : null;
   return (
@@ -353,7 +354,7 @@ function OptionCardView({ card: c, ctx }: { card: OptionCard; ctx: Pick<Ctx, "ta
         {c.open_status && <Badge tone={c.open_status === "closed" ? "warning" : "neutral"}>{OPEN_STATUS[c.open_status] ?? c.open_status}</Badge>}
       </div>
       <div className="mt-auto flex gap-2 pt-1">
-        {c.action_token && (
+        {ctx.onBuilderAdd ? <Button size="sm" variant="primary" disabled={ctx.pending} onClick={() => ctx.onBuilderAdd?.(c.course)}>Add to semester</Button> : c.action_token && (
           <Button size="sm" variant="primary" loading={ctx.tapping} onClick={() => ctx.tap(c.action_token!)}>
             Choose this
           </Button>

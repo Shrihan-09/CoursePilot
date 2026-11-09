@@ -184,6 +184,8 @@ export const api = {
     filters?: { online?: boolean; async_only?: boolean; in_person?: boolean; campus?: string; earliest?: string; latest?: string;
       avoid_days?: string[]; level?: number; credits?: number; open_only?: boolean; fills_two?: boolean } }) =>
     request<import("@/types/plan").CourseSearchResult>("/student/plans/current/search", json("POST", body)),
+  semesterCourses: (body: import("@/types/semester-builder").BrowserRequest) =>
+    request<import("@/types/semester-builder").BrowserResult>("/student/plans/current/builder", json("POST", body)),
   setDoingWell: (course: string, term: string, doing_well: boolean) =>
     request<void>(`/student/courses/${course.replace(/:/g, "-")}/${term}/doing-well`, json("PUT", { doing_well })),
   personalization: () => request<{ use_grades_for_suggestions: boolean }>("/student/plans/personalization"),

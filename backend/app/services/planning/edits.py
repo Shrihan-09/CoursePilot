@@ -217,6 +217,37 @@ def build_edit(plan: PlanResult, constraints: PlanningConstraints, edits: PlanEd
         errors.append(f"course_not_in_term: {course} is not planned in {label(term)}.")
         return Edit(e, {}, errors, "", set())
 
+    if k == "set_term":
+        if term not in {t.term_code for t in plan.terms}:
+            return Edit(e, {}, ["term_not_in_plan: Build an existing semester."], "", set())
+        selected = set(change.courses)
+        current = {c for c, t in where.items() if t == term}
+        holds = dict(where)
+        for removed in sorted(current - selected):
+            part = build_edit(plan, constraints, e, PlanChange(kind="remove", course=removed, term_code=term))
+            errors += part.errors
+            e = part.edits
+            holds = {c: t for c, t in holds.items() if c in part.holds}
+            touched |= part.touched
+        for added in sorted(selected - current):
+            cmd = (PlanChange(kind="move", course=added, term_code=where[added], to_term=term)
+                   if added in where else PlanChange(kind="add", course=added, term_code=term))
+            part = build_edit(plan, constraints, e, cmd)
+            errors += part.errors
+            e = part.edits
+            holds = {c: t for c, t in holds.items() if c in part.holds}
+            touched |= part.touched
+        # Keeping a planner pick is now an explicit user selection. Preserve locks/anchors.
+        for kept in sorted(current & selected):
+            if states[(kept, term)].state is CourseState.PLANNER_SELECTED:
+                e.selections = _without(e.selections, kept) + [CoursePin(course=kept, term_code=term, source="selection")]
+        if len({p.course for p in [*constraints.pins, *e.selections, *e.locks]}) > 48:
+            errors.append("too_many_selections: This plan supports up to 48 pinned or selected courses.")
+        try:
+            PlanEdits.model_validate(e.model_dump())
+        except ValueError:
+            errors.append("too_many_changes: Your selections or removals exceed this plan's supported limits.")
+        return Edit(e, holds, errors, f"Build {label(term)}", touched | selected)
     if k == "swap":
         if state.locked_reason == "anchor":
             errors.append(f"anchor_cannot_be_swapped: {course} is a required anchor "
@@ -340,7 +371,7 @@ def _horizon(plan: PlanResult) -> set[str]:
     terms = {t.term_code for t in plan.terms}
     if plan.graduation_target is not None:
         from app.services.planning.terms import planning_terms
-        terms |= {t for t in planning_terms(plan.metadata.start_term, 16)
+        terms |= {t for t in planning_terms(plan.metadata.start_term, 16, include_summer=False, include_winter=False)
                   if t <= plan.graduation_target.term_code}
     return terms
 
@@ -521,6 +552,8 @@ def preview_change(session: Session, student: Student, change: PlanChange, *,
 
     now = now or datetime.now(UTC)
     row = _row(session, student)
+    if change.kind == "set_term" and change.expected_revision != row.revision:
+        raise PlanOutOfDate("Your plan changed while the builder was open. Reopen it before saving.")
     if stale_reasons(session, student, row):
         raise PlanOutOfDate("Your plan is out of date. Rebuild it, then change it.")
     plan = _decode(row.result_blob)
@@ -532,6 +565,22 @@ def preview_change(session: Session, student: Student, change: PlanChange, *,
     if edit.errors:
         return PlanPreview(preview_id="", base_revision=row.revision, change=change, valid=False,
                            errors=edit.errors, expires_at=expires)
+    if change.kind == "set_term":
+        from app.services.planning.options import OptionsContext
+        current = {pc.course for t in plan.terms if t.term_code == change.term_code for pc in t.courses}
+        added = set(change.courses) - current
+        check_constraints = before_c.model_copy(update={"avoid": [a for a in before_c.avoid if a.course not in added]})
+        ctx = OptionsContext(session, student, plan, check_constraints)
+        ctx.where = {k: t for k, t in ctx.where.items() if t != change.term_code or k in change.courses}
+        verdicts = ctx.check(change.term_code, {k: [] for k in added}, replacing=None)
+        overridable = {"excluded_by_program", "prerequisites_need_confirmation", "special_permission_required"}
+        failures = [f"{v.reason}: {k} cannot be added without a valid gate or explicit supported pin explanation."
+                    for k, v in verdicts.items() if not v.ok and not (
+                        v.reason in overridable and change.pin_explanations.get(k, "").strip())
+                    and not (v.reason == "needs_a_corequisite_in_the_same_term" and len(added) > 1)]
+        if failures:
+            return PlanPreview(preview_id="", base_revision=row.revision, change=change, valid=False,
+                               errors=failures, expires_at=expires)
     after_c = plan_constraints(base, edit.edits)
     result = generate_plan(session, student, start_term=row.start_term, constraints=after_c,
                            holds=edit.holds, prior_choices=plan.metadata.alternative_choices)
@@ -570,6 +619,14 @@ def _refusals(result: PlanResult, change: PlanChange, *, before: PlanResult) -> 
     the course the student asked for is not where they asked."""
     where = _where(result)
     out = []
+    if change.kind == "set_term":
+        for course in change.courses:
+            if where.get(course) != change.term_code:
+                why = next((i.message for i in result.issues if i.code == "PIN_NOT_POSSIBLE" and i.course == course), course)
+                out.append(f"not_possible: {why} could not be kept in {label(change.term_code)}.")
+        removed = {c.course for t in before.terms if t.term_code == change.term_code for c in t.courses} - set(change.courses)
+        if any(where.get(c) == change.term_code for c in removed):
+            out.append("not_possible: A course you removed stayed in the semester.")
     target = {"swap": (change.replacement, change.term_code),
               "add": (change.course, change.term_code),
               "move": (change.course, change.to_term)}.get(change.kind)

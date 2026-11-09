@@ -37,6 +37,8 @@ export function Dialog({
   description,
   children,
   footer,
+  className,
+  bodyClassName,
 }: {
   open: boolean;
   onClose: () => void;
@@ -44,6 +46,8 @@ export function Dialog({
   description?: string;
   children?: React.ReactNode;
   footer?: React.ReactNode;
+  className?: string;
+  bodyClassName?: string;
 }) {
   const ref = useNativeDialog(open, onClose);
   const id = useId();
@@ -52,9 +56,9 @@ export function Dialog({
       ref={ref}
       aria-labelledby={`${id}-title`}
       aria-describedby={description ? `${id}-desc` : undefined}
-      className="w-[min(32rem,calc(100vw-2rem))] rounded-lg border border-border bg-surface-elevated p-0 text-fg shadow-elevated backdrop:bg-overlay/50"
+      className={cn("max-h-[90dvh] w-[min(32rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-border bg-surface-elevated p-0 text-fg shadow-elevated backdrop:bg-overlay/50", className)}
     >
-      <div className="space-y-4 p-5">
+      <div className={cn("space-y-4 p-5", bodyClassName)}>
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
             <h2 id={`${id}-title`} className="text-base font-semibold">
@@ -73,7 +77,7 @@ export function Dialog({
         {children}
       </div>
       {footer && (
-        <div className="flex flex-col-reverse gap-2 border-t border-border bg-surface px-5 py-3 sm:flex-row sm:justify-end">
+        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-border bg-surface px-5 py-3 sm:flex-row sm:justify-end">
           {footer}
         </div>
       )}
