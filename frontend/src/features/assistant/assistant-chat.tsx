@@ -1,12 +1,12 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, Copy, ExternalLink, MessageSquareText, Send, Sparkles, Trash2 } from "lucide-react";
+import { ChevronDown, Copy, ExternalLink, MessageSquareText, Send, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Alert, Badge, Skeleton } from "@/components/ui/feedback";
-import { Dialog, useToast } from "@/components/ui/overlay";
+import { useToast } from "@/components/ui/overlay";
 import { PlanDiffView } from "@/features/plan/plan-changes";
 import { chipBody, deliveryWords, OPEN_STATUS, streamMessage } from "@/lib/assistant";
 import { ApiError, api } from "@/lib/api";
@@ -49,22 +49,28 @@ function fromHistory(history: HistoryMessage[]): Turn[] {
 
 /* ------------------------------------------------------------- the panel */
 
-export function AssistantChat({ compact = false }: { compact?: boolean }) {
-  const status = useQuery({ queryKey: ["assistant"], queryFn: api.assistantStatus, staleTime: 30_000 });
+export function AssistantChat({ compact = false, conversationId, contextTerm, draft, onBusy, onDraftUsed }: {
+  compact?: boolean; conversationId?: string; contextTerm?: string; draft?: string; onBusy?: (busy: boolean) => void; onDraftUsed?: () => void;
+}) {
+  const status = useQuery({ queryKey: conversationId ? ["assistant", conversationId] : ["assistant"], queryFn: () => api.assistantStatus(conversationId), staleTime: 30_000 });
   const qc = useQueryClient();
   const toast = useToast();
   // null until this panel adds a turn: until then the server's history is shown.
-  const [local, setTurns] = useState<Turn[] | null>(null);
+  const [local, setTurns] = useState<Turn[] | null>(() => qc.getQueryData<Turn[]>(["assistant-turns", conversationId]) ?? null);
   const [activity, setActivity] = useState<string[]>([]);
   const [pending, setPending] = useState(false);
   const [remaining, setRemaining] = useState<number | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+
   const bottom = useRef<HTMLDivElement>(null);
   const history = status.data?.history;
   const turns = local ?? (history ? fromHistory(history) : null);
 
   useEffect(() => {
-    bottom.current?.scrollIntoView?.({ block: "end", behavior: "smooth" });
+    if (local) qc.setQueryData(["assistant-turns", conversationId], local);
+  }, [local, qc, conversationId]);
+
+  useEffect(() => {
+    bottom.current?.scrollIntoView?.({ block: "end", behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
   }, [local, activity]);
 
   const push = useCallback((t: Turn) => setTurns((xs) => [...(xs ?? fromHistory(history ?? [])), t]),
@@ -91,10 +97,11 @@ export function AssistantChat({ compact = false }: { compact?: boolean }) {
   const send = useCallback(async (body: MessageBody, shown: string) => {
     if (pending) return;
     if (shown) push({ id: nextId(), role: "user", text: shown });
+    if (body.text) onDraftUsed?.();
     setPending(true);
     setActivity([]);
     try {
-      await streamMessage(body, (ev) => {
+      await streamMessage({ ...body, conversation_id: conversationId, context_term: contextTerm }, (ev) => {
         if (ev.type === "activity") setActivity((xs) => (xs.includes(ev.label) ? xs : [...xs, ev.label]));
         else if (ev.type === "reply") {
           push({ id: nextId(), role: "assistant", reply: ev.reply, live: true });
@@ -106,45 +113,35 @@ export function AssistantChat({ compact = false }: { compact?: boolean }) {
     } finally {
       setPending(false);
       setActivity([]);
+      void qc.invalidateQueries({ queryKey: ["assistant"] });
     }
-  }, [pending, push, toast]);
+  }, [pending, push, toast, qc, conversationId, contextTerm, onDraftUsed]);
 
   const tap = useMutation({
     mutationFn: (token: string) => api.assistantAction(token),
-    onSuccess: ({ reply }) => applied(reply),
+    onSuccess: ({ reply }) => { applied(reply); void qc.invalidateQueries({ queryKey: ["assistant"] }); },
     onError: (e) => toast(e instanceof ApiError ? e.message : "That didn't work. Try again.", "danger"),
   });
 
-  const wipe = useMutation({
-    mutationFn: () => api.deleteAssistantHistory(),
-    onSuccess: () => {
-      setTurns([]);
-      setConfirmDelete(false);
-      toast("Chat history deleted.", "success");
-      void qc.invalidateQueries({ queryKey: ["assistant"] });
-    },
-  });
+  useEffect(() => { onBusy?.(pending || tap.isPending); }, [pending, onBusy, tap.isPending]);
 
   const onChip = (chip: Chip) => send(chipBody(chip), chip.question ? chip.label : chip.label || chip.value);
 
-  if (status.isLoading || turns === null) {
+  if (status.isLoading) {
     return <div className="space-y-3 p-4"><Skeleton className="h-16" /><Skeleton className="h-24" /></div>;
   }
   if (status.error || !status.data) {
     return <Alert tone="danger" title="The assistant didn't load">Try again in a moment.</Alert>;
   }
+  if (turns === null) return null;
   const s = status.data;
   const ctx: Ctx = { send, onChip, tap: (t) => tap.mutate(t), tapping: tap.isPending, pending };
 
   return (
-    <div className={cn("flex min-h-0 flex-col", compact ? "h-[70dvh]" : "h-[calc(100dvh-12rem)]")}>
+    <div className={cn("flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden break-words", compact ? "" : "min-h-0")}>
       <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2 text-xs text-fg-secondary">
         <span>{remaining ?? s.remaining_today} of {s.daily_limit} messages left today</span>
-        {turns.length > 0 && (
-          <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(true)}>
-            <Trash2 aria-hidden className="size-4" /> Delete chat
-          </Button>
-        )}
+
       </div>
 
       <div role="log" aria-live="polite" aria-label="Conversation"
@@ -158,16 +155,11 @@ export function AssistantChat({ compact = false }: { compact?: boolean }) {
         <div ref={bottom} />
       </div>
 
-      <Composer disabled={!s.enabled || pending || (remaining ?? s.remaining_today) <= 0}
+      <Composer draft={draft} disabled={!s.enabled || pending || (remaining ?? s.remaining_today) <= 0}
                 onSend={(text) => send({ text }, text)} />
       <p className="px-3 pb-2 text-[11px] leading-snug text-fg-muted">{s.footer}</p>
 
-      <Dialog open={confirmDelete} onClose={() => setConfirmDelete(false)} title="Delete your chat history?"
-              description="Every message in this conversation is deleted. Your plan is not changed."
-              footer={<>
-                <Button variant="ghost" onClick={() => setConfirmDelete(false)}>Keep it</Button>
-                <Button variant="primary" loading={wipe.isPending} onClick={() => wipe.mutate()}>Delete</Button>
-              </>} />
+
     </div>
   );
 }
@@ -286,7 +278,7 @@ export function ChipRow({ chips, onChip, disabled }: { chips: Chip[]; onChip: (c
 export function Questions({ questions, ctx }: { questions: Question[]; ctx: Pick<Ctx, "send" | "onChip" | "pending"> }) {
   const [picked, setPicked] = useState<Record<string, Chip>>({});
   if (questions.length === 1) {
-    const q = questions[0];
+    const q = questions[0]!;
     return (
       <fieldset className="space-y-2">
         <legend className="text-sm font-medium text-fg">{q.prompt}</legend>
@@ -500,8 +492,9 @@ export function WebRegPanelView({ term }: { term: string }) {
 
 /* ------------------------------------------------------------- composer */
 
-function Composer({ disabled, onSend }: { disabled: boolean; onSend: (text: string) => void }) {
-  const [text, setText] = useState("");
+function Composer({ disabled, onSend, draft }: { disabled: boolean; onSend: (text: string) => void; draft?: string }) {
+  const [text, setText] = useState(draft ?? "");
+  useEffect(() => { if (draft) setText(draft); }, [draft]);
   const submit = () => {
     const t = text.trim();
     if (!t || disabled) return;
@@ -516,7 +509,7 @@ function Composer({ disabled, onSend }: { disabled: boolean; onSend: (text: stri
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
                 placeholder="Ask about your plan, a course, or a semester"
-                className="min-h-10 flex-1 resize-none rounded border border-border bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-muted" />
+                className="min-h-10 min-w-0 flex-1 resize-none rounded border border-border bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-muted" />
       <Button type="submit" variant="primary" disabled={disabled || !text.trim()} aria-label="Send">
         <Send aria-hidden className="size-4" />
       </Button>

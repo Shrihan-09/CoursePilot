@@ -1,7 +1,9 @@
 """The assistant and the WebReg hand-off for MY account (Prompt 11 Part B).
 
 ```
-GET    /student/assistant                         status, today's allowance, my history
+GET    /student/assistant?conversation_id=...     status, allowance, selected history
+GET/POST /student/assistant/conversations         list / new chat
+PATCH/DELETE /student/assistant/conversations/{id} rename/archive / delete
 POST   /student/assistant/messages                one turn; NDJSON stream of events
 POST   /student/assistant/actions   {token}       a tap: Choose this / Confirm
 DELETE /student/assistant/history                 delete my whole chat history
@@ -25,6 +27,7 @@ import asyncio
 import json
 import logging
 import threading
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Path
 from fastapi.concurrency import run_in_threadpool
@@ -52,6 +55,8 @@ class ChipIn(BaseModel):
 
 class MessageIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    conversation_id: uuid.UUID | None = None
+    context_term: str | None = Field(default=None, pattern=TERM)
     text: str = Field(default="", max_length=600)
     chip: ChipIn | None = None
     #: Several clarify answers at once: question id -> chip value.
@@ -77,7 +82,7 @@ def _owned(session, principal: Principal):
 
 
 @router.get("/student/assistant", summary="Assistant status, today's allowance and my history")
-async def status(principal: Principal = Depends(enforce_request_rate_limit)) -> dict:
+async def status(conversation_id: uuid.UUID | None = None, principal: Principal = Depends(enforce_request_rate_limit)) -> dict:
     from app.services.assistant import service
     from app.services.assistant.contracts import FOOTER
 
@@ -85,13 +90,25 @@ async def status(principal: Principal = Depends(enforce_request_rate_limit)) -> 
 
     def work():
         with get_sync_sessionmaker()() as session:
-            student = _owned(session, principal)
+            student = _resolve(session, principal.account_id)
+            if student is None:
+                return {"user_key": str(principal.account_id), "conversation_id": None, "conversations": [],
+                        "enabled": False, "reason": "Finish linking your student record to use the assistant.",
+                        "daily_limit": settings.assistant_daily_message_limit,
+                        "remaining_today": settings.assistant_daily_message_limit,
+                        "suggestions": [], "history": [], "footer": FOOTER}
             enabled, reason = service.availability(settings)
-            return {"enabled": enabled, "reason": reason,
+            try:
+                conv = service._conversation(session, student, conversation_id)
+            except service.ConversationNotFound:
+                raise HTTPException(status_code=404, detail="Conversation not found") from None
+            session.commit()
+            return {"user_key": str(principal.account_id), "conversation_id": str(conv.id), "conversations": service.conversations(session, student),
+                    "enabled": enabled, "reason": reason,
                     "daily_limit": settings.assistant_daily_message_limit,
                     "remaining_today": service.remaining_today(session, student, settings),
                     "suggestions": [c.model_dump() for c in service.SUGGESTIONS],
-                    "history": service.history(session, student), "footer": FOOTER}
+                    "history": service.history(session, student, conv.id), "footer": FOOTER}
     return await run_in_threadpool(work)
 
 
@@ -109,6 +126,15 @@ async def message(body: MessageIn, principal: Principal = Depends(enforce_reques
     if settings.rate_limit_enabled:
         get_model_limiter(settings).check(f"model:{principal.account_id}")
 
+    # Resolve ownership before opening the stream: another user's id is a 404.
+    def validate_conversation():
+        with get_sync_sessionmaker()() as session:
+            student = _owned(session, principal)
+            try:
+                service._conversation(session, student, body.conversation_id)
+            except service.ConversationNotFound:
+                raise HTTPException(status_code=404, detail="Conversation not found") from None
+    await run_in_threadpool(validate_conversation)
     loop = asyncio.get_running_loop()
     queue: asyncio.Queue = asyncio.Queue()
 
@@ -125,6 +151,7 @@ async def message(body: MessageIn, principal: Principal = Depends(enforce_reques
                     return
                 out = asyncio.run(service.handle_message(
                     session, student, settings, text=body.text,
+                    conversation_id=body.conversation_id, context_term=body.context_term,
                     chip=body.chip.model_dump() if body.chip else None, answers=body.answers,
                     on_activity=lambda a: emit({"type": "activity", "label": a.label})))
                 emit({"type": "reply", **out})
@@ -186,6 +213,70 @@ async def delete_history(principal: Principal = Depends(enforce_request_rate_lim
             n = service.delete_history(session, student)
             session.commit()
             return {"deleted_messages": n}
+    return await run_in_threadpool(work)
+
+
+class ConversationIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    title: str | None = Field(default=None, min_length=1, max_length=160)
+    archived: bool | None = None
+
+
+@router.get("/student/assistant/conversations")
+async def list_conversations(principal: Principal = Depends(enforce_request_rate_limit)):
+    from app.services.assistant import service
+    def work():
+        with get_sync_sessionmaker()() as session:
+            return {"conversations": service.conversations(session, _owned(session, principal))}
+    return await run_in_threadpool(work)
+
+
+@router.post("/student/assistant/conversations", status_code=201)
+async def new_conversation(principal: Principal = Depends(enforce_request_rate_limit)):
+    from app.services.assistant import service
+    def work():
+        with get_sync_sessionmaker()() as session:
+            conv = service.create_conversation(session, _owned(session, principal))
+            session.commit()
+            return service.conversation_view(conv)
+    return await run_in_threadpool(work)
+
+
+@router.patch("/student/assistant/conversations/{conversation_id}")
+async def edit_conversation(conversation_id: uuid.UUID, body: ConversationIn,
+                            principal: Principal = Depends(enforce_request_rate_limit)):
+    from app.services.assistant import service
+    def work():
+        with get_sync_sessionmaker()() as session:
+            try:
+                conv = service._conversation(session, _owned(session, principal), conversation_id)
+            except service.ConversationNotFound:
+                raise HTTPException(status_code=404, detail="Conversation not found") from None
+            if body.title is not None:
+                title = body.title.strip()
+                if not title:
+                    raise HTTPException(status_code=422, detail="Enter a title")
+                conv.title = title
+            if body.archived is not None:
+                conv.archived = body.archived
+            conv.updated_at = service._today()
+            session.commit()
+            return service.conversation_view(conv)
+    return await run_in_threadpool(work)
+
+
+@router.delete("/student/assistant/conversations/{conversation_id}")
+async def remove_conversation(conversation_id: uuid.UUID,
+                              principal: Principal = Depends(enforce_request_rate_limit)):
+    from app.services.assistant import service
+    def work():
+        with get_sync_sessionmaker()() as session:
+            try:
+                service.delete_conversation(session, _owned(session, principal), conversation_id)
+            except service.ConversationNotFound:
+                raise HTTPException(status_code=404, detail="Conversation not found") from None
+            session.commit()
+            return {"deleted": True}
     return await run_in_threadpool(work)
 
 

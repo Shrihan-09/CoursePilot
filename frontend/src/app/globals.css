@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Assistant discovery uses the wizard's blue glow tokens in either theme. */
+.assistant-glow {
+  color: rgb(var(--glow-accent));
+  border-color: rgb(var(--glow-accent) / .35);
+  background: rgb(var(--background));
+  box-shadow: 0 0 0 1px rgb(var(--glow-accent) / .12), 0 0 18px -4px rgb(var(--glow-accent) / .35);
+}
+@keyframes assistant-breathe {
+  50% { box-shadow: 0 0 0 1px rgb(var(--glow-accent) / .2), 0 0 24px -3px rgb(var(--glow-accent) / .5); }
+}
+@keyframes assistant-enter { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@media (prefers-reduced-motion: no-preference) {
+  .assistant-glow[data-pulse="true"] { animation: assistant-breathe 3s ease-in-out infinite; }
+  .assistant-drawer[open] { animation: assistant-enter 180ms ease-out; }
+}
+.assistant-drawer:not([open]) { display: none; }
+
 /*
  * CoursePilot design tokens (Phase 7.1) - see docs/DESIGN_SYSTEM.md.
  *

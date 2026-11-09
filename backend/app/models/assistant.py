@@ -1,7 +1,7 @@
 """The assistant's storage (Prompt 11 Part B).
 
-    assistant_conversation   one per student (a new one after deletion)
-    assistant_message        the student's own chat history; deletable as a whole
+    assistant_conversation   many per student, with editable titles and archive state
+    assistant_message        messages linked to the student's own conversation
     assistant_usage          per student per (UTC) day: message count and token
                              COUNTS - the daily cap and cost; never content
     assistant_action         one-time tokens behind "Choose this" / "Confirm":
@@ -20,6 +20,7 @@ from datetime import date, datetime
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     Date,
     DateTime,
     ForeignKey,
@@ -44,6 +45,8 @@ class AssistantConversation(Base, TimestampMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     student_id: Mapped[uuid.UUID] = _student_fk()
+    title: Mapped[str] = mapped_column(String(160), default="New chat")
+    archived: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class AssistantMessage(Base, TimestampMixin):
@@ -81,6 +84,8 @@ class AssistantAction(Base, TimestampMixin):
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     student_id: Mapped[uuid.UUID] = _student_fk()
+    conversation_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("assistant_conversation.id", ondelete="CASCADE"), nullable=True)
     token_sha256: Mapped[str] = mapped_column(String(64), unique=True)
     kind: Mapped[str] = mapped_column(String(32))
     payload: Mapped[dict] = mapped_column(JSON)

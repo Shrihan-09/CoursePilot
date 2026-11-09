@@ -119,7 +119,7 @@ export function Sheet({
 }
 
 /** Lightweight tooltip: shown on hover AND keyboard focus, wired with aria-describedby. */
-export function Tooltip({ content, children }: { content: string; children: React.ReactElement }) {
+export function Tooltip({ content, children, below = false }: { content: string; children: React.ReactElement; below?: boolean }) {
   const id = useId();
   return (
     <span className="group relative inline-flex">
@@ -129,7 +129,7 @@ export function Tooltip({ content, children }: { content: string; children: Reac
       <span
         id={id}
         role="tooltip"
-        className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 hidden w-max max-w-64 -translate-x-1/2 rounded px-2 py-1 text-xs group-focus-within:block group-hover:block"
+        className={cn("pointer-events-none absolute z-50 hidden w-max max-w-64 rounded px-2 py-1 text-xs group-focus-within:block group-hover:block", below ? "right-0 top-full mt-2" : "bottom-full left-1/2 mb-2 -translate-x-1/2")}
         style={{ backgroundColor: "rgb(var(--text-primary))", color: "rgb(var(--background))" }}
       >
         {content}
@@ -150,7 +150,7 @@ interface ToastItem {
 
 const ToastContext = createContext<((message: string, tone?: ToastTone, action?: ToastItem["action"]) => void) | null>(null);
 
-export function ToastProvider({ children }: { children: React.ReactNode }) {
+export function ToastProvider({ children, contained = false }: { children: React.ReactNode; contained?: boolean }) {
   const [items, setItems] = useState<ToastItem[]>([]);
   const push = useCallback((message: string, tone: ToastTone = "neutral", action?: ToastItem["action"]) => {
     const id = Date.now() + Math.random();
@@ -163,7 +163,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       <div
         aria-live="polite"
-        className="pointer-events-none fixed inset-x-0 bottom-20 z-50 flex flex-col items-center gap-2 px-4 sm:bottom-6"
+        className={cn("pointer-events-none inset-x-0 z-50 flex flex-col items-center gap-2 px-4", contained ? "absolute bottom-4" : "fixed bottom-20 sm:bottom-6")}
       >
         {items.map((t) => (
           <div

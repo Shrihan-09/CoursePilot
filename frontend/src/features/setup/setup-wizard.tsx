@@ -1,5 +1,7 @@
 "use client";
 
+import { AssistantHeaderButton, AssistantProvider } from "@/features/assistant/assistant-panel";
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ArrowRight, Clock3, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -299,17 +301,20 @@ function buildStages(state: "generating" | "complete"): GenerationStage[] {
 function Frame({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
+      <AssistantProvider>
       <div className="min-h-dvh bg-canvas">
         <header className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur">
-          <div className="mx-auto flex h-14 max-w-2xl items-center justify-between gap-4 px-4 sm:px-6">
+          <div className="mx-auto flex h-14 max-w-2xl items-center justify-between gap-4 pl-4 pr-16 sm:pl-6 sm:pr-16">
             <Wordmark size={26} />
             <form action="/auth/logout" method="post">
               <Button type="submit" variant="ghost" size="sm">Sign out</Button>
             </form>
           </div>
+          <AssistantHeaderButton />
         </header>
         <main className={cn("mx-auto max-w-2xl space-y-5 px-4 pb-24 pt-6 sm:px-6 sm:pt-10")}>{children}</main>
       </div>
+      </AssistantProvider>
     </ToastProvider>
   );
 }

@@ -208,7 +208,15 @@ export const api = {
                   { method: "DELETE" }),
 
   /* Prompt 11 Part B: the assistant (messages stream via lib/assistant.ts) */
-  assistantStatus: () => request<import("@/types/assistant").AssistantStatus>("/student/assistant"),
+  assistantStatus: (conversationId?: string) => request<import("@/types/assistant").AssistantStatus>(
+    `/student/assistant${conversationId ? `?conversation_id=${conversationId}` : ""}`),
+  newAssistantConversation: () => request<import("@/types/assistant").Conversation>(
+    "/student/assistant/conversations", { method: "POST" }),
+  editAssistantConversation: (id: string, body: { title?: string; archived?: boolean }) =>
+    request<import("@/types/assistant").Conversation>(`/student/assistant/conversations/${id}`,
+      json("PATCH", body)),
+  deleteAssistantConversation: (id: string) => request<{ deleted: boolean }>(
+    `/student/assistant/conversations/${id}`, { method: "DELETE" }),
   /** A tap on "Choose this" / "Confirm": the card's one-time token. */
   assistantAction: (token: string) =>
     request<{ reply: import("@/types/assistant").AssistantReply }>("/student/assistant/actions",
