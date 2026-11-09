@@ -1,5 +1,11 @@
 # CoursePilot - standing instructions
 
+## Archive and cleanup safety
+- Never delete anything under `data/raw/` or `C:\coursepilot-private\`. This includes deletion through a parent folder, test teardown, cleanup scripts, `git clean`, or pruning.
+- Temp cleanup may touch only the exact folders created by the current task. Verify their resolved absolute paths before cleanup; never traverse junctions or symlinks into protected paths. If a folder's ownership or target is unclear, stop and report it.
+- Create new test and scratch output in a unique system-temp folder outside OneDrive. Never point pytest `--basetemp` or another cleanup-capable tool at an existing data or archive folder.
+- Gitignored archives are not backed up by Git. Preserve their local and OneDrive copies; never treat ignored files as disposable.
+
 ## Git workflow
 - After every commit, push the current branch to origin immediately (set upstream on first push).
 - Never leave commits unpushed at the end of a task.
