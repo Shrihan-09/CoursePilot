@@ -273,6 +273,7 @@ export function CourseOptionsSheet({ target, onClose, changes }: {
     staleTime: 0,
   });
   const [moveTo, setMoveTo] = useState("");
+  useEffect(() => setMoveTo(""), [target?.course, target?.term]);
   if (!target) return null;
   const o: CourseOptions | undefined = q.data;
   const run = (change: PlanChange) => { changes.request(change); onClose(); };
@@ -303,7 +304,7 @@ export function CourseOptionsSheet({ target, onClose, changes }: {
           {!o.locked && o.groups.length === 0 && (
             <p className="text-sm text-fg-secondary">No other course passes every check for {termLabel(o.term_code)}.</p>
           )}
-          {!o.locked && <CourseSearchBox term={o.term_code} changes={{ ...changes, request: run }} replacing={o.course} />}
+          {!o.locked && <CourseSearchBox term={o.term_code} changes={{ ...changes, request: run }} replacing={o.course} inputId="course-options-search" />}
           <div className="space-y-2 border-t border-border pt-4">
             {o.move_terms.length > 0 && (
               <div className="flex items-end gap-2">
@@ -449,11 +450,13 @@ export function AddCourseSheet({ term, changes, onClose }: { term: string | null
   if (!term) return null;
   return <Sheet open title={`Add a course to ${termLabel(term)}`} onClose={onClose}>
     <p className="mb-3 text-sm text-fg-secondary">Search for a course that counts. Review the plan impact before confirming.</p>
-    <CourseSearchBox term={term} changes={{ ...changes, request: (change) => { changes.request(change); onClose(); } }} />
+    <CourseSearchBox term={term} inputId="add-course-search" changes={{ ...changes, request: (change) => { changes.request(change); onClose(); } }} />
   </Sheet>;
 }
 
-export function CourseSearchBox({ term, changes, replacing }: { term: string; changes: PlanChanges; replacing?: string }) {
+export function CourseSearchBox({ term, changes, replacing, inputId = "course-search" }: {
+  term: string; changes: PlanChanges; replacing?: string; inputId?: string;
+}) {
   const [text, setText] = useState("");
   const search = useMutation({
     mutationFn: (body: { text: string; requirements?: string[][] }) => api.searchCourses({
@@ -465,8 +468,8 @@ export function CourseSearchBox({ term, changes, replacing }: { term: string; ch
   return (
     <div className="space-y-3" data-testid="course-search">
       <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); if (text.trim()) search.mutate({ text }); }}>
-        <label htmlFor="course-search" className="sr-only">Add a specific course</label>
-        <SearchInput id="course-search" value={text} onChange={(e) => setText(e.target.value)}
+        <label htmlFor={inputId} className="sr-only">Add a specific course</label>
+        <SearchInput id={inputId} value={text} onChange={(e) => setText(e.target.value)}
           placeholder='e.g. "an online history course" or "Fridays off: what Core fits?"' />
         <Button type="submit" loading={search.isPending}><Search aria-hidden className="size-4" /> Search</Button>
       </form>
