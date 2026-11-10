@@ -25,6 +25,26 @@ export async function POST(request: NextRequest) {
     back.searchParams.set("error", "dev-subject");
     return NextResponse.redirect(back, 303);
   }
+  // Check the API's configured verifier before issuing a browser session.
+  // A frontend-only dev switch cannot enable development auth on an OIDC API.
+  let error: string | null = null;
+  try {
+    const check = await fetch(`${config.apiBase}/me`, {
+      headers: { authorization: `Bearer dev:${subject}`, accept: "application/json" },
+      cache: "no-store", redirect: "manual", signal: AbortSignal.timeout(10_000),
+    });
+    if (!check.ok) error = check.status === 401 || check.status === 403 ? "session" : "service";
+  } catch {
+    error = "service";
+  }
+  if (error) {
+    const back = new URL("/signin", request.url);
+    back.searchParams.set("error", error);
+    back.searchParams.set("returnTo", returnTo);
+    const response = NextResponse.redirect(back, 303);
+    response.cookies.delete(SESSION_COOKIE);
+    return response;
+  }
   const exp = Math.floor(Date.now() / 1000) + DEV_SESSION_SECONDS;
   const response = NextResponse.redirect(new URL(returnTo, request.url), 303);
   response.cookies.set(SESSION_COOKIE,

@@ -7,12 +7,13 @@
  * neither read nor forge it. Nothing academic is ever stored in it.
  *
  * The session ends when the ID token expires (Google: one hour). The proxy then
- * answers 401 and the app re-runs sign-in; with an existing provider session
- * that is a redirect, not a password prompt. No refresh token is requested
- * (no offline access): identity only.
+ * answers 401 and the app clears the cookie and shows sign-in once. The
+ * student chooses when to start another provider login. No refresh token is
+ * requested (no offline access): identity only.
  */
 
 import { EncryptJWT, jwtDecrypt } from "jose";
+import type { AuthConfig } from "./config";
 
 export const SESSION_COOKIE = "cp_session";
 export const TXN_COOKIE = "cp_auth_txn";
@@ -67,6 +68,13 @@ export async function readSession(
     return null;
   }
   return s.exp > now ? s : null;
+}
+
+/** A cookie from another auth mode is not a session for this configuration. */
+export async function configuredSession(token: string | undefined, config: AuthConfig): Promise<Session | null> {
+  if (config.mode === "disabled") return null;
+  const session = await readSession(token, config.sessionSecret);
+  return session?.mode === config.mode ? session : null;
 }
 
 export function cookieOptions(secure: boolean, maxAge: number) {

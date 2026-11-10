@@ -1,10 +1,14 @@
 import { KeyRound, ShieldCheck, Upload } from "lucide-react";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 import { Mark } from "@/components/brand/mark";
 import { Button } from "@/components/ui/button";
 import { Alert, Badge } from "@/components/ui/feedback";
 import { authConfig, safeReturnTo } from "@/lib/auth/config";
+import { currentSession, serverGet } from "@/lib/server-api";
+import { homeFor } from "@/lib/setup";
+import type { Me } from "@/types/onboarding";
 
 export const metadata: Metadata = { title: "Sign in" };
 export const dynamic = "force-dynamic";
@@ -16,6 +20,8 @@ const ERRORS: Record<string, string> = {
   failed: "Sign-in couldn't be completed. Please try again.",
   cancelled: "Sign-in was cancelled.",
   "dev-subject": "Use 1–64 letters, numbers, dots, dashes or @.",
+  session: "Your session wasn't accepted by CoursePilot. Please sign in again. If this continues, check that the app and API use the same sign-in method.",
+  service: "CoursePilot couldn't check your account right now. Please try again in a moment.",
 };
 
 export default async function SignInPage({
@@ -26,7 +32,12 @@ export default async function SignInPage({
   const params = await searchParams;
   const config = authConfig();
   const returnTo = safeReturnTo(params.returnTo);
-  const error = params.error ? ERRORS[params.error] ?? ERRORS.failed : null;
+  let error = params.error ? ERRORS[params.error] ?? ERRORS.failed : null;
+  if (!params.error && !params.signed_out && await currentSession()) {
+    const me = await serverGet<Me>("/me");
+    if (me.status === 200 && me.data) redirect(homeFor(me.data));
+    error = me.status === 401 ? ERRORS.session : ERRORS.service;
+  }
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-surface px-4 py-10">

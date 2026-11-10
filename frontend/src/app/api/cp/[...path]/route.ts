@@ -1,7 +1,7 @@
 import { type NextRequest } from "next/server";
 
 import { authConfig } from "@/lib/auth/config";
-import { SESSION_COOKIE, readSession } from "@/lib/auth/session";
+import { SESSION_COOKIE, configuredSession } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -28,8 +28,7 @@ function json(status: number, code: string, message: string) {
 async function proxy(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const config = authConfig();
   if (config.mode === "disabled") return json(503, "authentication_error", "Sign-in is unavailable.");
-  const session = await readSession(request.cookies.get(SESSION_COOKIE)?.value,
-                                    config.sessionSecret);
+  const session = await configuredSession(request.cookies.get(SESSION_COOKIE)?.value, config);
   if (!session) return json(401, "authentication_error", "Authentication required.");
 
   const { path } = await params;

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { authConfig } from "@/lib/auth/config";
-import { SESSION_COOKIE, readSession } from "@/lib/auth/session";
+import { SESSION_COOKIE, configuredSession } from "@/lib/auth/session";
 
 /**
  * Protected areas redirect to /signin (with a same-origin returnTo) when there
@@ -20,17 +20,17 @@ export function isProtected(pathname: string): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const config = authConfig();
-  const session = config.mode === "disabled" ? null
-    : await readSession(request.cookies.get(SESSION_COOKIE)?.value, config.sessionSecret);
+  const session = await configuredSession(request.cookies.get(SESSION_COOKIE)?.value, config);
 
   if (isProtected(pathname) && !session) {
     const url = new URL("/signin", request.url);
     url.searchParams.set("returnTo", `${pathname}${search}`);
-    return NextResponse.redirect(url);
+    const response = NextResponse.redirect(url);
+    if (request.cookies.has(SESSION_COOKIE)) response.cookies.delete(SESSION_COOKIE);
+    return response;
   }
-  if (pathname === "/signin" && session) {
-    return NextResponse.redirect(new URL("/home", request.url));
-  }
+  // A sealed cookie does not prove the API accepts its credential. /signin
+  // checks /me before forwarding a returning user; failures must stay there.
   return NextResponse.next();
 }
 

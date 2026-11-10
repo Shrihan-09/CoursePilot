@@ -3,7 +3,7 @@ import "server-only";
 import { cookies } from "next/headers";
 
 import { authConfig } from "@/lib/auth/config";
-import { SESSION_COOKIE, type Session, readSession } from "@/lib/auth/session";
+import { SESSION_COOKIE, type Session, configuredSession } from "@/lib/auth/session";
 
 /**
  * Server components' view of the session and the API (Phase 7.1). Same rule
@@ -13,7 +13,7 @@ export async function currentSession(): Promise<Session | null> {
   const config = authConfig();
   if (config.mode === "disabled") return null;
   const store = await cookies();
-  return readSession(store.get(SESSION_COOKIE)?.value, config.sessionSecret);
+  return configuredSession(store.get(SESSION_COOKIE)?.value, config);
 }
 
 export async function serverGet<T>(path: string): Promise<{ status: number; data: T | null }> {
@@ -24,6 +24,8 @@ export async function serverGet<T>(path: string): Promise<{ status: number; data
     const response = await fetch(`${config.apiBase}${path}`, {
       headers: { authorization: `Bearer ${session.credential}`, accept: "application/json" },
       cache: "no-store",
+      redirect: "manual",
+      signal: AbortSignal.timeout(10_000),
     });
     return { status: response.status,
              data: response.ok ? ((await response.json()) as T) : null };

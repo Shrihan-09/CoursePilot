@@ -44,6 +44,8 @@ export class ApiError extends Error {
   }
 }
 
+let sessionRecoveryStarted = false;
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api/cp${path}`, {
     ...init,
@@ -52,9 +54,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     cache: "no-store",
   });
   if (response.status === 401 && typeof window !== "undefined") {
-    // Session over (the ID token expired): sign in again and come back here.
-    const here = `${window.location.pathname}${window.location.search}`;
-    window.location.assign(`/auth/login?returnTo=${encodeURIComponent(here)}`);
+    // Clear the rejected cookie and stop on sign-in. Never automatically
+    // start another provider login, even when several requests fail at once.
+    if (!sessionRecoveryStarted && window.location.pathname !== "/signin") {
+      sessionRecoveryStarted = true;
+      const here = `${window.location.pathname}${window.location.search}`;
+      window.location.replace(`/auth/session-error?returnTo=${encodeURIComponent(here)}`);
+    }
   }
   if (!response.ok) {
     let body: ApiErrorBody | null = null;
