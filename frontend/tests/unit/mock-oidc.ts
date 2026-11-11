@@ -98,7 +98,7 @@ export class MockOidc {
         .setProtectedHeader({ alg: "RS256", kid: "k1" })
         .setIssuer(this.overrideIss ?? this.issuer)
         .setAudience(this.clientId)
-        .setSubject("subject-123")
+        .setSubject(String(issued.claims?.sub ?? "subject-123"))
         .setIssuedAt()
         .setExpirationTime("1h")
         .sign(this.privateKey);

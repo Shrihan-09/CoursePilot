@@ -14,6 +14,11 @@ export default async function OnboardingPage() {
   if (!(await currentSession())) redirect("/signin?returnTo=/onboarding");
   const me = await serverGet<Me>("/me");
   if (me.status === 401) redirect("/auth/login?returnTo=/onboarding");
+  // The API refused this verified account (not an accepted institution account):
+  // clear the session and explain, never an empty page.
+  if (me.status === 403) redirect("/auth/refused?reason=institution");
+  // The API is unreachable or failed: the friendly error page (with "Try again").
+  if (me.status >= 500) throw new Error("api_unavailable");
   if (homeFor(me.data) === "/home" && me.data) redirect("/home");
   return <SetupWizard />;
 }
