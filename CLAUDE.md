@@ -1,5 +1,11 @@
 # CoursePilot - standing instructions
 
+## Program requirement sources
+- Before encoding any program or curriculum version, find its official department/school requirements page in addition to its official catalog requirements. Archive both and any delegated requirement documents with URL, UTC retrieval time, exact saved-byte SHA-256, representation and archive path; label extraction-only captures explicitly.
+- Preserve and show source disagreements with both claims, provenance and applicability. Never silently select a source or correct an apparent typo. Record unresolved material conflicts for review before publication.
+- Model curriculum applicability explicitly, including Industrial Engineering's distinct classes 2026–2029 and class 2030 curricula. Keep governing curriculum class year separate from a mutable graduation target; do not extrapolate to unlisted classes.
+- Phase A program expansion is research/documentation only until Phase B is authorized. See docs/investigations/phase-08a-department-source-conflicts.md and its paired-source/conflict manifests.
+
 ## Git workflow
 - After every commit, push the current branch to origin immediately (set upstream on first push).
 - Never leave commits unpushed at the end of a task.

@@ -1,0 +1,278 @@
+{
+  "research_date": "2026-11-09",
+  "scope": "Phase A research only",
+  "policy": "No automatic source precedence, inferred typo corrections, or hidden conflict resolution.",
+  "conflicts": [
+    {
+      "id": "CS-INTRO-2027",
+      "program_contexts": [
+        "sas-198-bs"
+      ],
+      "status": "open_effective_term_transition",
+      "claims": [
+        {
+          "source_id": "dc360f490d57026c48754dec41729c86b3a49378d39b4a71d3468075602515de",
+          "url": "https://www.cs.rutgers.edu/academics/undergraduate/cs-degrees/b-s-degree",
+          "locator": "BS required courses; new introductory sequence notice",
+          "claim": "121/122; new sequence effective Spring 2027; preparatory 120 does not count toward CS major."
+        },
+        {
+          "source_id": "86e3b0067c7c5095e27c926411140feb0545e08da2507f5842947f6f35ec49e6",
+          "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/computer-science-198",
+          "locator": "BS required courses",
+          "claim": "111/112 in the 2026\u20132027 catalog."
+        }
+      ],
+      "required_followup": "Obtain transition/equivalence and student applicability evidence; do not globally replace existing curriculum.",
+      "resolution": null,
+      "chosen_source": null,
+      "visibility": "show claims and provenance in research; future affected explanations must retain warning until reviewed"
+    },
+    {
+      "id": "CS-BS-COPY",
+      "program_contexts": [
+        "sas-198-bs"
+      ],
+      "status": "open_scope_ambiguity",
+      "claims": [
+        {
+          "source_id": "dc360f490d57026c48754dec41729c86b3a49378d39b4a71d3468075602515de",
+          "url": "https://www.cs.rutgers.edu/academics/undergraduate/cs-degrees/b-s-degree",
+          "locator": "Residency requirement on BS page",
+          "claim": "Clause is labeled as BA degree requirements despite being on the BS page."
+        }
+      ],
+      "required_followup": "Confirm whether the BS shares this policy; preserve literal cross-degree wording.",
+      "resolution": null,
+      "chosen_source": null,
+      "visibility": "show claims and provenance in research; future affected explanations must retain warning until reviewed"
+    },
+    {
+      "id": "BAIT-CORE-COHORT",
+      "program_contexts": [
+        "rbsnb-136-bs"
+      ],
+      "status": "documented_cohort_variation_with_open_generic_scope",
+      "claims": [
+        {
+          "source_id": "4b0d6a8bcfc37e8023a62a900dc69f6c2c1d29016472836c16f3844dff31fba1",
+          "url": "https://www.business.rutgers.edu/undergraduate-new-brunswick/business-analytics-information-technology",
+          "locator": "Business core",
+          "claim": "39 credits; no explicit cohort qualifier in this summary."
+        },
+        {
+          "source_id": "13240ec394575554cf14878297e65b0919f3c9accc33ad0e6c087110126f57ba",
+          "url": "https://myrbs.business.rutgers.edu/undergraduate-new-brunswick/business-analytics-and-information-technology-major",
+          "locator": "Fall 2026 versus Fall 2025 or earlier core sections",
+          "claim": "36 credits for Fall 2026; 39 for Fall 2025 or earlier."
+        },
+        {
+          "source_id": "00d208800da0c17ddccede929afb1ee40cfe8081315a6b5c41c3b92829ac5108",
+          "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/programs-majors-minors/bait",
+          "locator": "Fall 2026 business core",
+          "claim": "36 credits."
+        }
+      ],
+      "required_followup": "Preserve distinct entering-cohort curricula and show unqualified generic-page discrepancy.",
+      "resolution": null,
+      "chosen_source": null,
+      "visibility": "show claims and provenance in research; future affected explanations must retain warning until reviewed"
+    },
+    {
+      "id": "BAIT-ETHICS",
+      "program_contexts": [
+        "rbsnb-136-bs"
+      ],
+      "status": "open_course_identity_conflict",
+      "claims": [
+        {
+          "source_id": "4b0d6a8bcfc37e8023a62a900dc69f6c2c1d29016472836c16f3844dff31fba1",
+          "url": "https://www.business.rutgers.edu/undergraduate-new-brunswick/business-analytics-information-technology",
+          "locator": "Business Ethics row",
+          "claim": "33:522:334."
+        },
+        {
+          "source_id": "13240ec394575554cf14878297e65b0919f3c9accc33ad0e6c087110126f57ba",
+          "url": "https://myrbs.business.rutgers.edu/undergraduate-new-brunswick/business-analytics-and-information-technology-major",
+          "locator": "Business Ethics core rows",
+          "claim": "33:522:334."
+        },
+        {
+          "source_id": "00d208800da0c17ddccede929afb1ee40cfe8081315a6b5c41c3b92829ac5108",
+          "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/programs-majors-minors/bait",
+          "locator": "Business Ethics core row",
+          "claim": "33:522:335."
+        }
+      ],
+      "required_followup": "Verify official course identity/equivalence; never silently substitute.",
+      "resolution": null,
+      "chosen_source": null,
+      "visibility": "show claims and provenance in research; future affected explanations must retain warning until reviewed"
+    },
+    {
+      "id": "IE-CLASS-VERSIONS",
+      "program_contexts": [
+        "eng-540-bs/classes-2026-2029",
+        "eng-540-bs/class-2030"
+      ],
+      "status": "documented_class_year_variation",
+      "claims": [
+        {
+          "source_id": "aacb94016fca448536d1a9a6499922d0c31592aa022fde82daecd2ff160f4dee",
+          "url": "https://ise.rutgers.edu/bsie-curriculum-2026-29",
+          "locator": "Curriculum title, first-year Chemistry II, totals",
+          "claim": "Classes 2026\u20132029: 129 total credits, 67 major credits; Chemistry II required."
+        },
+        {
+          "source_id": "4478ad3feacd97d87b60141afaa1854938692986b9e76e6fe56f7310e0744e9d",
+          "url": "https://www.ise.rutgers.edu/bsie-curriculum-class-2030",
+          "locator": "Curriculum title, first-year list, totals",
+          "claim": "Class 2030: 123 total credits, 69 major credits; Chemistry II absent."
+        }
+      ],
+      "required_followup": "Keep complete separate versions keyed by governing curriculum class year; do not extrapolate to 2031+.",
+      "resolution": null,
+      "chosen_source": null,
+      "visibility": "show claims and provenance in research; future affected explanations must retain warning until reviewed"
+    },
+    {
+      "id": "IE-CATALOG-SCOPE",
+      "program_contexts": [
+        "eng-540-bs/class-2030"
+      ],
+      "status": "open_catalog_scope_conflict",
+      "claims": [
+        {
+          "source_id": "8a88756eddc13b0b7249ceee28a0c18846627b0d582c05aa248583bcdb83e993",
+          "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/industrial",
+          "locator": "Industrial curriculum total",
+          "claim": "129 credits; does not establish applicability to the new 2030 curriculum."
+        },
+        {
+          "source_id": "4478ad3feacd97d87b60141afaa1854938692986b9e76e6fe56f7310e0744e9d",
+          "url": "https://www.ise.rutgers.edu/bsie-curriculum-class-2030",
+          "locator": "Class 2030 curriculum total",
+          "claim": "123 credits with changes beyond Chemistry II."
+        },
+        {
+          "source_id": "68192508f4cf39b739baf6de5dc25126b9ac934e5f118cb37b95fae82555d27d",
+          "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/first-year",
+          "locator": "Chemistry II exception",
+          "claim": "Class-of-2030 IE exception identified."
+        }
+      ],
+      "required_followup": "Establish applicability and reconcile catalog completeness; do not construct a hybrid from the two totals.",
+      "resolution": null,
+      "chosen_source": null,
+      "visibility": "show claims and provenance in research; future affected explanations must retain warning until reviewed"
+    },
+    {
+      "id": "MICRO-INTRO",
+      "program_contexts": [
+        "sebs-680-bs"
+      ],
+      "status": "open_total_and_course_identity_conflict",
+      "claims": [
+        {
+          "source_id": "b46e8a49fb3ec1207aacaf9913d712391db49c18c86e8934cceafa5a2492d34a",
+          "url": "https://dbm.rutgers.edu/undergraduate/microbiology/requirements",
+          "locator": "Introductory life/physical sciences; organic chemistry",
+          "claim": "46 introductory credits; organic chemistry 307/308 or 315/316."
+        },
+        {
+          "source_id": "31084d4228d28416a5e020fd4719b2f4cc4e3b11545d07f6a17e45609a4cc56b",
+          "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/microbiology",
+          "locator": "Introductory life/physical sciences; organic chemistry",
+          "claim": "44 introductory credits; organic chemistry printed 370\u2013308 or 315\u2013316."
+        }
+      ],
+      "required_followup": "Compare course-credit arithmetic and obtain intended course identities; preserve both literal claims.",
+      "resolution": null,
+      "chosen_source": null,
+      "visibility": "show claims and provenance in research; future affected explanations must retain warning until reviewed"
+    },
+    {
+      "id": "MICRO-WORKSHEET",
+      "program_contexts": [
+        "sebs-680-bs"
+      ],
+      "status": "open_dependency_applicability",
+      "claims": [
+        {
+          "source_id": "b46e8a49fb3ec1207aacaf9913d712391db49c18c86e8934cceafa5a2492d34a",
+          "url": "https://dbm.rutgers.edu/undergraduate/microbiology/requirements",
+          "locator": "Linked curriculum worksheet",
+          "claim": "Links a Spring 2020 worksheet."
+        },
+        {
+          "source_id": "6296db61e3eaa341a543702a8767701b4c91565c280d2e5a5d8e50df660fa5d4",
+          "url": "https://dbm.rutgers.edu/sites/default/files/2025-01/microbiology-curriculum-spring-2020-ac.pdf",
+          "locator": "Document filename and upload URL",
+          "claim": "Spring 2020 filename; URL upload path includes 2025."
+        }
+      ],
+      "required_followup": "Verify governing curriculum date; filename/upload date alone does not establish 2026 applicability.",
+      "resolution": null,
+      "chosen_source": null,
+      "visibility": "show claims and provenance in research; future affected explanations must retain warning until reviewed"
+    },
+    {
+      "id": "BIO-SCHOOL-TOTAL",
+      "program_contexts": [
+        "shared-119-ba/SAS",
+        "shared-119-ba/SEBS"
+      ],
+      "status": "open_cross_school_total_conflict",
+      "claims": [
+        {
+          "source_id": "1d78ae824dcfc4968c972c6a6cc91ad4e6510d036bdd6e518473cc7018e4ee38",
+          "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/biological-sciences-119",
+          "locator": "Core and elective credit headings",
+          "claim": "47 core plus 24 elective credits."
+        },
+        {
+          "source_id": "59ca5e5fff2c150aa3162370b499097d118d8258b0c6ea4b07f583e4a9aca79f",
+          "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/programs/biological-sciences",
+          "locator": "Core and elective credit headings",
+          "claim": "49 core plus 24 elective credits."
+        },
+        {
+          "source_id": "df5d5f3b5e8a95701c3f8f47e89ca0e7457c74ed05a220515061ceab034fbf95",
+          "url": "https://biology.rutgers.edu/academics/undergraduate/major-in-biological-sciences",
+          "locator": "Major requirement table",
+          "claim": "Additional official department evidence; not an automatic tie-breaker."
+        }
+      ],
+      "required_followup": "Reconcile shared-major membership and home-school composition without silently normalizing totals.",
+      "resolution": null,
+      "chosen_source": null,
+      "visibility": "show claims and provenance in research; future affected explanations must retain warning until reviewed"
+    },
+    {
+      "id": "BIO-MATH-ID",
+      "program_contexts": [
+        "shared-119-ba/SAS",
+        "shared-119-ba/SEBS"
+      ],
+      "status": "open_identifier_ambiguity",
+      "claims": [
+        {
+          "source_id": "df5d5f3b5e8a95701c3f8f47e89ca0e7457c74ed05a220515061ceab034fbf95",
+          "url": "https://biology.rutgers.edu/academics/undergraduate/major-in-biological-sciences",
+          "locator": "Second math requirement footnote",
+          "claim": "Prints 01:160:152 as a substitution."
+        },
+        {
+          "source_id": "1d78ae824dcfc4968c972c6a6cc91ad4e6510d036bdd6e518473cc7018e4ee38",
+          "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/biological-sciences-119",
+          "locator": "Mathematics alternatives",
+          "claim": "Contains malformed/concatenated course-number text."
+        }
+      ],
+      "required_followup": "Verify intended identifiers; do not silently correct to 01:640:152 or invent a course.",
+      "resolution": null,
+      "chosen_source": null,
+      "visibility": "show claims and provenance in research; future affected explanations must retain warning until reviewed"
+    }
+  ]
+}
