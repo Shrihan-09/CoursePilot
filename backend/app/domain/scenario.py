@@ -25,6 +25,7 @@ from decimal import Decimal
 from pydantic import BaseModel, Field
 
 from app.domain.audit import AuditStatus, DegreeAuditResult, RequirementStatus
+from app.domain.text import OptionalCourseTitle
 
 
 class ScenarioTarget(BaseModel):
@@ -76,7 +77,7 @@ class CourseComparison(BaseModel):
     """
 
     course_string: str
-    title: str | None = None
+    title: OptionalCourseTitle = None
     current_requirements: list[RequirementRef] = Field(default_factory=list)
     target_requirements: list[RequirementRef] = Field(default_factory=list)
     #: Earns no credit toward that program under one of its program rules.

@@ -167,7 +167,7 @@ def test_profile_answers_reach_the_planner_and_fixed_times_do_not() -> None:
     assert c.honors is True and c.commitments.job_hours_per_week == 12
     assert [o.model_dump() for o in c.term_overrides] == [
         {"term_code": "20279", "major_courses_min": 2, "major_courses_max": 2, "credit_min": None,
-         "credit_max": None, "commitments": None}]
+         "credit_max": None, "pinned_only": False, "commitments": None}]
     moved = profile.model_copy(update={"schedule": profile.schedule.model_copy(
         update={"blocked_times": []})})
     assert to_constraints(moved) == c

@@ -32,6 +32,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.domain.course_ranking import CourseRankingEvidence
 from app.domain.scenario import ScenarioAssumption, ScenarioTarget
+from app.domain.text import CourseTitle, OptionalCourseTitle
 
 #: Bumped whenever the same inputs could produce a different plan.
 PLANNING_ENGINE_VERSION = "7.8.1"   # preserve elective pins; exclude non-credit pins from degree total
@@ -225,6 +226,9 @@ class TermPlanningOverride(BaseModel):
     #: This term's credit range (None: the usual one).
     credit_min: int | None = Field(default=None, ge=1, le=24)
     credit_max: int | None = Field(default=None, ge=1, le=24)
+    #: The student dropped a course here: the term holds only their own
+    #: (pinned) courses; the planner adds none, not even on a rebuild.
+    pinned_only: bool = False
     #: This term's commitments (None: the student's usual ones).
     commitments: Commitments | None = None
 
@@ -488,7 +492,7 @@ class RecommendationTrace(BaseModel):
 
 class PlannedCourse(BaseModel):
     course: str
-    title: str
+    title: CourseTitle
     credits: Decimal
     term_code: str
     reasons: list[Reason]
@@ -689,7 +693,7 @@ class PlacementBasis(BaseModel):
     """Phase 7.3: the student's stated math placement this plan relied on."""
 
     course: str
-    title: str | None = None
+    title: OptionalCourseTitle = None
     source_url: str
 
 

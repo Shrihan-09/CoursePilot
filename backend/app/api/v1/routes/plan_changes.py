@@ -34,6 +34,7 @@ from app.api.v1.routes.plans import SavedPlanView, _saved_view
 from app.api.v1.routes.student import _resolve, _unlinked
 from app.db.session import get_sync_sessionmaker
 from app.domain.plan_edits import ApplyRequest, PlanChange, PlanPreview
+from app.domain.text import CourseTitle, OptionalCourseTitle
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,7 @@ TERM = r"^\d{4}[0179]$"
 
 class OptionView(BaseModel):
     course: str
-    title: str
+    title: CourseTitle
     credits: Decimal
     requirement_codes: list[str]
     requirements: list[str]
@@ -77,7 +78,7 @@ class OptionGroupView(BaseModel):
 class CourseOptionsView(BaseModel):
     course: str
     term_code: str
-    title: str
+    title: CourseTitle
     state: str
     role: str | None
     locked: bool
@@ -94,7 +95,7 @@ class ChoiceQuestionView(BaseModel):
     term_code: str
     prompt: str
     course: str | None = None
-    title: str | None = None
+    title: OptionalCourseTitle = None
     groups: list[OptionGroupView] = Field(default_factory=list)
     requirement_code: str | None = None
     alternatives: list[dict] = Field(default_factory=list)
@@ -139,7 +140,7 @@ class SearchRequest(BaseModel):
 
 class SearchHitView(BaseModel):
     course: str
-    title: str
+    title: CourseTitle
     credits: Decimal
     requirement_codes: list[str]
     requirements: list[str]

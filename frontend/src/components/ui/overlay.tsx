@@ -77,7 +77,7 @@ export function Dialog({
         {children}
       </div>
       {footer && (
-        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-border bg-surface px-5 py-3 sm:flex-row sm:justify-end">
+        <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-border bg-surface px-5 py-3 sm:flex-row sm:flex-wrap sm:justify-end">
           {footer}
         </div>
       )}

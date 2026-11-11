@@ -36,6 +36,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.domain.planning import CourseAvoid, CoursePin
+from app.domain.text import CourseTitle
 
 COURSE = r"^\d{2}:\d{3}:\d{3}$"
 TERM = r"^\d{4}[0179]$"
@@ -56,6 +57,9 @@ class TermCap(BaseModel):
     term_code: str = Field(pattern=TERM)
     credit_min: int = Field(ge=1, le=24)
     credit_max: int = Field(ge=1, le=24)
+    #: A drop: the term holds only the student's own courses - the planner
+    #: never adds one there (not even on a rebuild).
+    pinned_only: bool = False
 
 
 class PlanEdits(BaseModel):
@@ -134,7 +138,7 @@ class PlanChange(BaseModel):
 
 class CourseLine(BaseModel):
     course: str
-    title: str
+    title: CourseTitle
     credits: Decimal
     state: CourseState = CourseState.PLANNER_SELECTED
 
@@ -151,16 +155,32 @@ class TermDiff(BaseModel):
     workload_before: Decimal | None = None
     workload_after: Decimal | None = None
     budget: Decimal | None = None
+    #: The term's credit minimum BEFORE the change (None: no workload level).
+    credit_floor: Decimal | None = None
+    #: The change leaves the term under that minimum (a drop asks the student
+    #: to keep it there, per term: "Keep it at 15 credits for this term").
+    below_minimum: bool = False
+    #: Plain warnings for this term: below the minimum, workload over budget.
+    warnings: list[str] = Field(default_factory=list)
+    #: Other changes in this term that are not a course: free-elective credits.
+    notes: list[str] = Field(default_factory=list)
 
 
 class ForcedMove(BaseModel):
     """A course the student did NOT touch whose term changed - always listed."""
 
     course: str
-    title: str
+    title: CourseTitle
     from_term: str | None          # None: newly planned
     to_term: str | None            # None: no longer planned
     reason: str
+
+
+class UnmetRequirement(BaseModel):
+    """A requirement the plan completed before the change and no longer does."""
+
+    code: str
+    name: str
 
 
 class PlanDiff(BaseModel):
@@ -173,6 +193,12 @@ class PlanDiff(BaseModel):
     #: Requirements the plan no longer completes / now completes.
     requirements_lost: list[str] = Field(default_factory=list)
     requirements_gained: list[str] = Field(default_factory=list)
+    #: `requirements_lost` with codes, so "Suggest a replacement" can search
+    #: for courses that fill them.
+    unmet: list[UnmetRequirement] = Field(default_factory=list)
+    #: A drop: the course the student removed (the replacement search swaps it).
+    dropped_course: str | None = None
+    dropped_term: str | None = None
     #: New blocking/needs-confirmation issues the change introduces (messages).
     new_issues: list[str] = Field(default_factory=list)
     #: One line: "01:082:105 out of Spring 2027; ...; graduation unchanged".

@@ -64,6 +64,7 @@ from pydantic import BaseModel
 from app.api.security import Principal, enforce_request_rate_limit
 from app.db.session import get_sync_sessionmaker
 from app.domain.audit import DegreeAuditResult
+from app.domain.text import OptionalCourseTitle
 from app.models import UserAccount
 from app.services.student_context import (
     ProgramVersionMissing,
@@ -88,7 +89,7 @@ router = APIRouter(prefix="/student", tags=["student"])
 class CourseRecordResponse(BaseModel):
     course_string: str
     supplement_code: str
-    title: str | None
+    title: OptionalCourseTitle
     term_code: str
     grade: str | None
     credits_earned: Decimal | None

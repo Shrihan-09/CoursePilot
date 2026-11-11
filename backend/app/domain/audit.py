@@ -18,6 +18,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.domain.text import OptionalCourseTitle
+
 
 class RequirementStatus(StrEnum):
     """Note SATISFIED vs PROVISIONALLY_SATISFIED.
@@ -69,7 +71,7 @@ class CourseRef(BaseModel):
     course_id: str
     course_string: str
     supplement_code: str = ""
-    title: str | None = None
+    title: OptionalCourseTitle = None
     credits: Decimal | None = None
 
 

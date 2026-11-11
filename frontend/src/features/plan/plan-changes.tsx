@@ -3,7 +3,7 @@
 import { useAssistantPanel } from "@/features/assistant/assistant-panel";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowRight, Lock, LockOpen, MapPin, Monitor, Search, Sparkles, Undo2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, Lock, LockOpen, MapPin, Monitor, Search, Sparkles, Undo2 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -114,10 +114,21 @@ export type PlanChanges = ReturnType<typeof usePlanChanges>;
 
 /* ------------------------------------------------------------ the preview */
 
+/** The confirm button's words: a drop that leaves its term under the
+ * minimum is the student's per-term choice to keep it there. */
+export function confirmLabel(d: PlanDiff | null | undefined): string {
+  const t = d?.dropped_term ? d.terms.find((x) => x.term_code === d.dropped_term) : undefined;
+  return t?.below_minimum ? `Keep it at ${Number(t.credits_after)} credits for this term` : "Confirm";
+}
+
 export function ChangePreviewDialog({ changes }: { changes: PlanChanges }) {
   const p = changes.preview;
+  const [suggesting, setSuggesting] = useState(false);
+  useEffect(() => { setSuggesting(false); }, [p?.preview_id]);
   if (!p) return null;
   const d = p.diff;
+  const dropped = d?.dropped_course && d.dropped_term ? { course: d.dropped_course, term: d.dropped_term } : null;
+  const unmet = (d?.unmet ?? []).filter((u) => u.code !== "DEGREE_CREDITS").map((u) => u.code);
   return (
     <Dialog
       open
@@ -127,7 +138,10 @@ export function ChangePreviewDialog({ changes }: { changes: PlanChanges }) {
       footer={p.valid ? (
         <>
           <Button variant="ghost" onClick={changes.cancel}>Not now</Button>
-          <Button variant="primary" loading={changes.confirming} onClick={changes.confirm}>Confirm</Button>
+          {dropped && !suggesting && (
+            <Button variant="secondary" onClick={() => setSuggesting(true)}>Suggest a replacement</Button>
+          )}
+          <Button variant="primary" loading={changes.confirming} onClick={changes.confirm}>{confirmLabel(d)}</Button>
         </>
       ) : <Button onClick={changes.cancel}>Close</Button>}
     >
@@ -138,6 +152,16 @@ export function ChangePreviewDialog({ changes }: { changes: PlanChanges }) {
       )}
       {changes.error && <Alert tone="danger" title="Not saved">{changes.error}</Alert>}
       {d && <PlanDiffView diff={d} />}
+      {dropped && suggesting && (
+        <section className="mt-4 space-y-2 border-t border-border pt-4" aria-label="Suggested replacements">
+          <h3 className="text-sm font-semibold text-fg">Suggested replacements</h3>
+          <p className="text-xs text-fg-secondary">
+            Nothing is added unless you choose a course and confirm its preview.
+          </p>
+          <CourseSearchBox term={dropped.term} changes={changes} replacing={dropped.course}
+            requirements={unmet} inputId="replacement-search" />
+        </section>
+      )}
     </Dialog>
   );
 }
@@ -145,11 +169,13 @@ export function ChangePreviewDialog({ changes }: { changes: PlanChanges }) {
 /** A preview's effect: per-term before -> after, forced moves, graduation,
  * requirements. Shared by the Confirm dialog and the assistant's proposal cards. */
 export function PlanDiffView({ diff: d }: { diff: PlanDiff }) {
-  const changed = d.terms.filter((t) => t.added.length || t.removed.length);
+  const changed = d.terms.filter((t) => t.added.length || t.removed.length || t.warnings?.length || t.notes?.length);
+  const others = d.forced_moves.length > 0 || d.last_term_after !== d.last_term_before;
+  const unmet = d.unmet?.length ? d.unmet.map((u) => u.name) : d.requirements_lost;
   return (
     <div className="space-y-4 text-sm" data-testid="change-preview">
       <p className="font-medium text-fg">{d.summary}</p>
-      {d.big && (
+      {d.big && others && (
         <Alert tone="warning" title="This change affects more than one course">
           Review what else moves before you confirm.
         </Alert>
@@ -169,17 +195,23 @@ export function PlanDiffView({ diff: d }: { diff: PlanDiff }) {
               <li key={`-${c}`} className="text-fg-secondary">
                 <span aria-hidden className="mr-1 font-semibold text-danger">−</span>
                 <span className="sr-only">Removed: </span>
-                <span className="code">{c}</span> {t.before.find((x) => x.course === c)?.title}
+                <CourseName course={c} title={t.before.find((x) => x.course === c)?.title} />
               </li>
             ))}
             {t.added.map((c) => (
               <li key={`+${c}`} className="text-fg">
                 <span aria-hidden className="mr-1 font-semibold text-success">+</span>
                 <span className="sr-only">Added: </span>
-                <span className="code">{c}</span> {t.after.find((x) => x.course === c)?.title}
+                <CourseName course={c} title={t.after.find((x) => x.course === c)?.title} />
               </li>
             ))}
           </ul>
+          {(t.notes ?? []).map((n) => <p key={n} className="text-fg-secondary">{n}</p>)}
+          {(t.warnings ?? []).map((w) => (
+            <p key={w} role="note" className="flex items-start gap-1.5 font-medium text-warning">
+              <AlertTriangle aria-hidden className="mt-0.5 size-4 shrink-0" />{w}
+            </p>
+          ))}
         </section>
       ))}
       {d.forced_moves.length > 0 && (
@@ -188,7 +220,7 @@ export function PlanDiffView({ diff: d }: { diff: PlanDiff }) {
           <ul className="space-y-1">
             {d.forced_moves.map((m) => (
               <li key={m.course} className="text-fg-secondary">
-                <span className="code text-fg">{m.course}</span> {m.title}:{" "}
+                <CourseName course={m.course} title={m.title} />:{" "}
                 {m.from_term ? termLabel(m.from_term) : "not planned"} <ArrowRight aria-label="to" className="inline size-3" />{" "}
                 {m.to_term ? termLabel(m.to_term) : "out of the plan"} - {m.reason}
               </li>
@@ -201,8 +233,8 @@ export function PlanDiffView({ diff: d }: { diff: PlanDiff }) {
         {d.last_term_after !== d.last_term_before && <> → <strong className="text-fg">{d.last_term_after ? termLabel(d.last_term_after) : "-"}</strong></>}
         {d.graduation_after && <> · graduation target {termLabel(d.graduation_after)}</>}
       </p>
-      {d.requirements_lost.length > 0 && (
-        <p className="font-medium text-warning">No longer completed by this plan: {d.requirements_lost.join(", ")}</p>
+      {unmet.length > 0 && (
+        <p className="font-medium text-warning">Now unmet: {unmet.join(", ")}</p>
       )}
       {d.requirements_gained.length > 0 && (
         <p className="text-success">Now completed: {d.requirements_gained.join(", ")}</p>
@@ -210,6 +242,14 @@ export function PlanDiffView({ diff: d }: { diff: PlanDiff }) {
       {d.new_issues.map((i) => <p key={i} className="text-warning">{i}</p>)}
     </div>
   );
+}
+
+/** "Stories of the Sea in Film  01:111:222": the title
+ * first, the code small and muted after it. */
+export function CourseName({ course, title }: { course: string; title?: string | null }) {
+  return title
+    ? <><span className="text-fg">{title}</span> <span className="code text-xs text-fg-muted">{course}</span></>
+    : <span className="code">{course}</span>;
 }
 
 /* ------------------------------------------------------------ one option */
@@ -403,8 +443,10 @@ export function AddCourseSheet({ term, changes, onClose }: { term: string | null
   </Sheet>;
 }
 
-export function CourseSearchBox({ term, changes, replacing, inputId = "course-search" }: {
+export function CourseSearchBox({ term, changes, replacing, requirements, inputId = "course-search" }: {
   term: string; changes: PlanChanges; replacing?: string; inputId?: string;
+  /** Search at once for courses that fill any of these (Suggest a replacement). */
+  requirements?: string[];
 }) {
   const [text, setText] = useState("");
   const search = useMutation({
@@ -412,6 +454,11 @@ export function CourseSearchBox({ term, changes, replacing, inputId = "course-se
       ...body, term_code: /\b(spring|summer|fall|winter)\b/i.test(body.text) ? undefined : term, limit: 8,
     }),
   });
+  const wanted = (requirements ?? []).join(",");
+  useEffect(() => {
+    if (wanted) search.mutate({ text: "", requirements: [wanted.split(",")] });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wanted]);
   const r: CourseSearchResult | undefined = search.data;
   const shownTerm = r?.interpretation.term_code ?? term;
   return (

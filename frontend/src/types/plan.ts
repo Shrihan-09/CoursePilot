@@ -382,7 +382,17 @@ export interface TermDiff {
   workload_before: string | number | null;
   workload_after: string | number | null;
   budget: string | number | null;
+  /** The term's credit minimum before the change (null: no workload level). */
+  credit_floor?: string | number | null;
+  /** The change leaves the term under that minimum. */
+  below_minimum?: boolean;
+  /** Below the minimum, workload over budget. */
+  warnings?: string[];
+  /** Non-course changes in the term (free-elective credits). */
+  notes?: string[];
 }
+
+export interface UnmetRequirement { code: string; name: string }
 
 export interface ForcedMove { course: string; title: string; from_term: string | null; to_term: string | null; reason: string }
 
@@ -395,6 +405,11 @@ export interface PlanDiff {
   last_term_after: string | null;
   requirements_lost: string[];
   requirements_gained: string[];
+  /** requirements_lost with codes (what "Suggest a replacement" searches for). */
+  unmet?: UnmetRequirement[];
+  /** A drop: the course the student removed, and from which term. */
+  dropped_course?: string | null;
+  dropped_term?: string | null;
   new_issues: string[];
   summary: string;
   big: boolean;
