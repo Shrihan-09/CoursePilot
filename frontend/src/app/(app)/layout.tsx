@@ -14,6 +14,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!session) redirect("/signin");
   const me = await serverGet<Me>("/me");
   if (me.status === 401) redirect("/auth/login?returnTo=/home");
+  // The API refused this verified account (not an accepted institution account):
+  // clear the session and explain, never an empty page.
+  if (me.status === 403) redirect("/auth/refused?reason=institution");
+  // The API is unreachable or failed: the friendly error page (with "Try again").
+  if (me.status >= 500) throw new Error("api_unavailable");
   if (homeFor(me.data) === "/onboarding") redirect("/onboarding");
   return <AppShell identity={displayIdentity(session).email}>{children}</AppShell>;
 }

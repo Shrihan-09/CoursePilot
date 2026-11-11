@@ -15,8 +15,13 @@ const ERRORS: Record<string, string> = {
   expired: "That sign-in took too long or was already used. Please start again.",
   failed: "Sign-in couldn't be completed. Please try again.",
   cancelled: "Sign-in was cancelled.",
+  institution: "That account can't use CoursePilot. Sign in with your Rutgers Google account (your Rutgers email), not a personal one.",
+  account: "That account can't use CoursePilot right now. Try again, or sign in with a different account.",
   "dev-subject": "Use 1–64 letters, numbers, dots, dashes or @.",
 };
+
+/** Errors where starting sign-in again is the fix (not a form typo). */
+const RETRYABLE = new Set(["provider", "expired", "failed", "cancelled", "institution", "account"]);
 
 export default async function SignInPage({
   searchParams,
@@ -43,7 +48,15 @@ export default async function SignInPage({
 
         <div className="space-y-4 rounded-lg border border-border bg-surface-elevated p-5 shadow-elevated sm:p-6">
           {params.signed_out && <Alert tone="success">You're signed out of CoursePilot.</Alert>}
-          {error && <Alert tone="danger">{error}</Alert>}
+          {error && (
+            <Alert tone="danger">
+              <span className="block">{error}</span>
+              {config.mode === "oidc" && params.error && RETRYABLE.has(params.error) && (
+                <a href={`/auth/login?returnTo=${encodeURIComponent(returnTo)}`}
+                   className="mt-2 inline-block font-semibold underline underline-offset-2">Try again</a>
+              )}
+            </Alert>
+          )}
 
           {config.mode === "oidc" && (
             <form action="/auth/login" method="get">

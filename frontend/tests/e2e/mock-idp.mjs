@@ -20,6 +20,9 @@ const { privateKey, publicKey } = await generateKeyPair("RS256", { extractable: 
 const jwk = { ...(await exportJWK(publicKey)), kid: "e2e", use: "sig", alg: "RS256" };
 const codes = new Map();
 const requestedScopes = [];
+// Who "signs in at the provider" next (several accounts in one browser).
+// Set with GET /next-user?sub=...&email=... ; test-only.
+let nextUser = { sub: "e2e-subject-1", email: "e2e.student@example.edu" };
 
 const json = (res, status, body) => {
   res.writeHead(status, { "content-type": "application/json" });
@@ -38,6 +41,13 @@ createServer(async (req, res) => {
   }
   if (url.pathname === "/jwks") return json(res, 200, { keys: [jwk] });
   if (url.pathname === "/scopes") return json(res, 200, { requested: requestedScopes });
+  if (url.pathname === "/next-user") {
+    nextUser = { sub: url.searchParams.get("sub") ?? nextUser.sub,
+                 email: url.searchParams.get("email") ?? nextUser.email,
+                 // Google's hosted-domain claim; absent for personal accounts.
+                 hd: url.searchParams.get("hd") || null };
+    return json(res, 200, { ok: true });
+  }
   if (url.pathname === "/authorize") {
     const p = url.searchParams;
     requestedScopes.push(p.get("scope"));
@@ -46,7 +56,7 @@ createServer(async (req, res) => {
     }
     const code = randomUUID();
     codes.set(code, { challenge: p.get("code_challenge"), nonce: p.get("nonce"),
-                      redirect: p.get("redirect_uri") });
+                      redirect: p.get("redirect_uri"), user: nextUser });
     const back = new URL(p.get("redirect_uri"));
     back.searchParams.set("code", code);
     back.searchParams.set("state", p.get("state"));
@@ -67,10 +77,11 @@ createServer(async (req, res) => {
     if (form.get("client_id") !== CLIENT_ID || form.get("client_secret") !== CLIENT_SECRET) {
       return json(res, 401, { error: "invalid_client" });
     }
-    const idToken = await new SignJWT({ nonce: issued.nonce, email: "e2e.student@example.edu",
-                                        email_verified: true })
+    const idToken = await new SignJWT({ nonce: issued.nonce, email: issued.user.email,
+                                        email_verified: true,
+                                        ...(issued.user.hd ? { hd: issued.user.hd } : {}) })
       .setProtectedHeader({ alg: "RS256", kid: "e2e" }).setIssuer(issuer).setAudience(CLIENT_ID)
-      .setSubject("e2e-subject-1").setIssuedAt().setExpirationTime("1h").sign(privateKey);
+      .setSubject(issued.user.sub).setIssuedAt().setExpirationTime("1h").sign(privateKey);
     return json(res, 200, { access_token: "opaque", token_type: "Bearer", expires_in: 3600,
                             id_token: idToken });
   }
