@@ -152,10 +152,15 @@ class Settings(BaseSettings):
     #: Off: the retry stays on the default model (the eval's default-only mode).
     assistant_escalation_enabled: bool = True
     assistant_daily_message_limit: int = 50
+    #: Launch cost limits. The longest message a student may type (the panel
+    #: shows a counter; the API refuses longer with a friendly 400), and how
+    #: many messages one account may send per minute.
+    assistant_max_input_chars: int = 250
+    assistant_rate_limit_per_minute: int = 5
     assistant_max_tool_calls: int = 8
     #: Output budget of ONE model call, and the whole turn's token budget
     #: (input + output across every call in the turn).
-    assistant_max_output_tokens: int = 2_000
+    assistant_max_output_tokens: int = 400
     assistant_turn_token_budget: int = 60_000
     assistant_timeout_seconds: float = 45.0
     assistant_provider_retries: int = 1

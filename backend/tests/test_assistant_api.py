@@ -241,10 +241,14 @@ async def test_the_api_is_typed(world) -> None:  # noqa: F811
         empty = await ac.post(f"{BASE}/messages", json={"text": "  "})
         extra = await ac.post(f"{BASE}/messages", json={"text": "hi",
                                                         "student_id": str(world["b"])})
-        long = await ac.post(f"{BASE}/messages", json={"text": "x" * 601})
+        # Past the transport bound is still a schema error; the friendly
+        # launch limit (250) is test_the_input_limit_is_a_friendly_400.
+        huge = await ac.post(f"{BASE}/messages", json={"text": "x" * 4_001})
+        long_answer = await ac.post(f"{BASE}/messages", json={"answers": {"q": "x" * 121}})
         bad_token = await ac.post(f"{BASE}/actions", json={"token": "short"})
         unknown = await ac.post(f"{BASE}/actions", json={"token": "x" * 40})
-    assert empty.status_code == extra.status_code == long.status_code == 422
+    assert empty.status_code == extra.status_code == huge.status_code == 422
+    assert long_answer.status_code == 422
     assert bad_token.status_code == 422 and unknown.status_code == 409
 
 
@@ -262,3 +266,68 @@ async def test_ready_for_webreg_never_signs_in(world) -> None:  # noqa: F811
     assert body["steps"][0] == "Open WebReg" and body["webreg_url"].startswith("https://")
     assert "does not sign in to WebReg" in body["note"]
     assert missing.status_code == 404 and bad.status_code == 422
+
+
+# --------------------------------------------------------------------------
+# Launch cost limits: input length, per-minute rate, sign-in required
+# --------------------------------------------------------------------------
+
+
+@requires_db
+async def test_the_input_limit_is_a_friendly_400(world) -> None:  # noqa: F811
+    from app.core.config import get_settings
+
+    limit = get_settings().assistant_max_input_chars
+    assert limit == 250
+    async with _client(_app(), world["account_a"]) as ac:
+        status = (await ac.get(BASE)).json()
+        over = await ac.post(f"{BASE}/messages", json={"text": "x" * (limit + 1)})
+        # Surrounding whitespace is not counted; exactly the limit is accepted.
+        at_limit = await _ask(ac, text="  " + "a" * limit + "  ")
+        after = (await ac.get(BASE)).json()
+    assert status["max_input_chars"] == limit
+    assert over.status_code == 400
+    detail = over.json()["detail"]
+    assert f"{limit} characters" in detail and f"yours is {limit + 1}" in detail
+    assert at_limit[-1]["type"] == "reply"
+    # The refused message cost nothing: only the accepted turn was counted.
+    assert after["remaining_today"] == status["remaining_today"] - 1
+
+
+@requires_db
+async def test_the_per_minute_rate_limit_is_enforced_per_account(world) -> None:  # noqa: F811
+    from app.core.config import get_settings
+
+    per_minute = get_settings().assistant_rate_limit_per_minute
+    assert per_minute == 5
+    app = _app()
+    async with _client(app, world["account_a"]) as ac:
+        for _ in range(per_minute):
+            assert (await _ask(ac, text="Write my essay"))[-1]["type"] == "reply"
+        limited = await ac.post(f"{BASE}/messages", json={"text": "Write my essay"})
+    assert limited.status_code == 429
+    assert int(limited.headers["Retry-After"]) >= 1
+    assert "sending messages quickly" in limited.json()["detail"]
+    # Another account has its own budget.
+    async with _client(_app(), world["account_b"]) as other:
+        assert (await _ask(other, text="Write my essay"))[-1]["type"] == "reply"
+
+
+async def test_assistant_routes_refuse_anonymous_requests() -> None:
+    """No credential, no assistant: every route is a 401 before any work."""
+    from httpx import ASGITransport, AsyncClient
+
+    routes = [("GET", BASE), ("POST", f"{BASE}/messages"), ("POST", f"{BASE}/actions"),
+              ("DELETE", f"{BASE}/history"), ("GET", f"{BASE}/conversations"),
+              ("POST", f"{BASE}/conversations"),
+              ("PATCH", f"{BASE}/conversations/00000000-0000-0000-0000-000000000000"),
+              ("DELETE", f"{BASE}/conversations/00000000-0000-0000-0000-000000000000")]
+    async with AsyncClient(transport=ASGITransport(app=_app()), base_url="http://test") as ac:
+        for method, url in routes:
+            body = {"text": "hi"} if method in ("POST", "PATCH") else None
+            r = await ac.request(method, url, json=body)
+            assert r.status_code == 401, (method, url, r.status_code)
+    # And every assistant route in the app is covered by the list above.
+    paths = {p for p in _app().openapi()["paths"] if p.startswith(BASE)}
+    assert paths == {BASE, f"{BASE}/messages", f"{BASE}/actions", f"{BASE}/history",
+                     f"{BASE}/conversations", f"{BASE}/conversations/{{conversation_id}}"}
