@@ -123,7 +123,7 @@ from app.models import (
     StudentCourse,
 )
 from app.services.audit.cache import AUDIT_ENGINE_VERSION, academic_fingerprint, rules_fingerprint
-from app.services.audit.engine import DegreeAuditEngine, constraint_counts
+from app.services.audit.engine import DegreeAuditEngine, constraint_counts, group_cap_excess
 from app.services.course_eligibility import EligibilityCheck, check_proposal
 from app.services.placement import (
     MET_BY_PLACEMENT,
@@ -133,7 +133,7 @@ from app.services.placement import (
 )
 from app.services.placement import covered as placement_covered
 from app.services.planning.degree_total import REQUIREMENT_CODE as DEGREE_CREDITS_CODE
-from app.services.planning.degree_total import degree_total, spread_electives
+from app.services.planning.degree_total import degree_total_for, spread_electives
 from app.services.planning.dependencies import UNREADABLE, DependencyPlanner
 from app.services.planning.offerings import PLACEABLE, OfferingIndex
 from app.services.planning.questionnaire import (
@@ -320,9 +320,13 @@ def progress(result: DegreeAuditResult, requirements: dict | None = None, *,
         req = (requirements or {}).get(node.requirement_code)
         if req is not None and node.requirement_type == "choose_n" and node.needed_count:
             allocated = [{"subject_code": ref.course_string.split(":")[1],
-                          "course_number": ref.course_string.split(":")[2]}
+                          "course_number": ref.course_string.split(":")[2],
+                          "course_string": ref.course_string}
                          for ref in node.allocated_courses]
             counts = constraint_counts(req, allocated)
+            # Prompt 08 B1: courses beyond a group cap are not progress.
+            for cap, n in group_cap_excess(req, allocated):
+                units -= n - int(cap["max"])
             count = len(allocated)
             if counts["at_level"] is not None:
                 below = count - counts["at_level"]
@@ -680,6 +684,11 @@ class PlanningEngine:
                       RequirementCourseOption.requirement_id == Requirement.id)
                 .join(Course, Course.id == RequirementCourseOption.course_id)
                 .where(Requirement.id.in_([r.id for r in self.requirements.values()]))).all():
+            # Prompt 08 B1: "All courses must be at least 3 credits" - a course
+            # below a node's minimum is never a candidate for it.
+            floor = self.requirements[code].min_course_credits
+            if floor is not None and course.credits is not None and course.credits < floor:
+                continue
             self.pools[code].add(course.course_string)
             self.pool_categories[(code, course.course_string)].add(category or "")
             self.course_info[course.course_string] = course
@@ -693,6 +702,12 @@ class PlanningEngine:
                       or any(v.sharing_policy == shared
                              for v in school_requirement_sets(s, version)))
         self.by_id_code = {r.id: r.code for r in self.requirements.values()}
+        # Prompt 08 B1: which stage each node's courses come after, and the
+        # stages' plain labels. A plan never assumes a stage is passed.
+        from app.services.academic_context import node_stages, stage_labels
+        self.node_stage = node_stages(list(self.requirements.values()), version)
+        self.stage_label = stage_labels(s, version.catalog_year)
+        self.passed_stage: set[str] = set()
         self._restriction_cache: dict[tuple[str, str], RestrictionCheck] = {}
         self._core_cache: dict[tuple[str, str], object] = {}
         self._chain: dict[str, int] | None = None
@@ -704,10 +719,10 @@ class PlanningEngine:
         self.workload_index = WorkloadIndex(s, major_subject=self.major_subject,
                                             natural_science=set(self.pools.get("CORE_NS", ())))
         self.excluded: set[str] = set()
-        for rule in s.scalars(select(ProgramRule).where(
-                ProgramRule.program_version_id == version.id,
-                ProgramRule.rule_type == "course_exclusion")):
-            self.excluded |= set(rule.excluded_courses)
+        from app.services.academic_context import composed_rules
+        for rule in composed_rules(s, version):
+            if rule.rule_type == "course_exclusion":
+                self.excluded |= set(rule.excluded_courses)
         self.offerings = OfferingIndex(s, set(self.course_info))
         self._looked_up: set[str] = set(self.course_info)
         self._closed: set[str] = set()       # prerequisite closure already loaded
@@ -855,6 +870,8 @@ class PlanningEngine:
     def _history(self, student: Student) -> None:
         self.history = attempts_by_course(self.session, student)
         self.placement_covers = placement_covered(self.session, student.math_placement)
+        from app.services.academic_context import academic_evidence, passed_stages
+        self.passed_stage = passed_stages(academic_evidence(self.session, student))
         self.passed: set[str] = set()
         self.in_progress: dict[str, str] = {}
         for key, attempts in self.history.items():
@@ -1150,7 +1167,7 @@ class PlanningEngine:
         self._graduation = graduation
         school = self.session.get(School, version.program.school_id)
         #: Spread task: the school's cited degree credit total (None: not modelled).
-        self._degree_total = degree_total(school.code if school else None, version.catalog_year)
+        self._degree_total = degree_total_for(self.session, version)
         #: Unless pace = Early, a workload plan uses the terms up to its
         #: graduation target: each term's major-related courses stay in range.
         self._spread = (c.workload_level is not None and graduation is not None
@@ -2774,6 +2791,21 @@ class PlanningEngine:
             workload=facts.get("workload"), role=facts.get("role"),
             role_reason=facts.get("role_reason"), retake=self._retake_reason(key))
 
+    def _label_stage(self, pc: PlannedCourse) -> None:
+        """Prompt 08 B1: a course that counts toward a node taken after a stage
+        the student has not VERIFIABLY passed is labelled "after admission to
+        RBS" / "after major declaration" - the plan never assumes admission."""
+        stages = sorted({self.node_stage.get(r.requirement_code) for r in pc.requirements}
+                        - {None} - self.passed_stage)
+        if not stages:
+            return
+        pc.after_stage = stages[0]
+        pc.after_stage_label = self.stage_label.get(stages[0], f"after {stages[0]}")
+        note = (f"Planned {pc.after_stage_label}. This plan does not assume that step: "
+                "until it is confirmed, treat this course as conditional.")
+        if note not in pc.notes:
+            pc.notes.append(note)
+
     def _retake_reason(self, key: str) -> str | None:
         """Why a planned course is a RETAKE (None: it is not one) - a course on
         the record whose attempt does not count, or does not meet a grade a
@@ -3110,6 +3142,7 @@ class PlanningEngine:
                                     key=lambda a: a.requirement_code)]
                 if pc.requirements:
                     pc.reasons.insert(0, Reason.SATISFIES_REQUIREMENT)
+                self._label_stage(pc)
                 if pc.role == "multi_requirement" and \
                         len({r.requirement_code for r in pc.requirements}) < 2:
                     # Correctness fixes item 9: "Counts twice" only when the

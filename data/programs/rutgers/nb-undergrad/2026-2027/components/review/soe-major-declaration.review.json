@@ -1,0 +1,89 @@
+{
+  "packet_version": "review-packet/3",
+  "key": "soe-major-declaration",
+  "kind": "component",
+  "component_kind": "entry_stage",
+  "definition_file": "data/programs/rutgers/nb-undergrad/2026-2027/components/soe-major-declaration.json",
+  "file_sha256": "89ebe029e06aa565133794428e6bec14e04b96b2a5f58f66182b702a66ab933a",
+  "definition_sha256": "e0ddcfc5380ac19b10f5b11703b4db90c25ec06f5854762d5605765051acaf83",
+  "curated_by": "manual encoding, Prompt 08 B1 (Claude Code session, 2026-11-11)",
+  "lifecycle_state": "pending_review",
+  "sources": [
+    {
+      "id": "eng-catalog-programs-study",
+      "role": "catalog",
+      "note": null,
+      "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/programs",
+      "retrieved_at": "2026-11-11T19:10:56+00:00",
+      "sha256": "de71815c025c38a24566aac4754dcbf057109ef880110cf99de8aa645975a312",
+      "representation": "raw_html",
+      "archive": "data/source-archive/de71815c025c38a24566aac4754dcbf057109ef880110cf99de8aa645975a312.html",
+      "archive_present": true,
+      "status": "archived"
+    },
+    {
+      "id": "eng-catalog-degree-requirements",
+      "role": "catalog",
+      "note": null,
+      "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/degree-requirements",
+      "retrieved_at": "2026-11-11T19:09:05+00:00",
+      "sha256": "719d2b26b265cae87129ebb393909e1ca63426a002e2d6e0eb21e5b692595944",
+      "representation": "raw_html",
+      "archive": "data/source-archive/719d2b26b265cae87129ebb393909e1ca63426a002e2d6e0eb21e5b692595944.html",
+      "archive_present": true,
+      "status": "archived"
+    },
+    {
+      "id": "soe-declaring-major",
+      "role": "department",
+      "note": "HTTP 403 to a plain GET on 2026-11-11: open evidence gap.",
+      "url": "https://soe.rutgers.edu/academic-advising-and-policies/academic-policies/declaring-major",
+      "retrieved_at": "2026-11-11T19:09:12+00:00",
+      "sha256": null,
+      "representation": "failed",
+      "archive": null,
+      "archive_present": false,
+      "status": "failed (open evidence gap)"
+    }
+  ],
+  "machine_checks": {
+    "passed": true,
+    "quotes_found": 2,
+    "quotes_checked": 2,
+    "errors": [],
+    "warnings": [],
+    "note": "Machine checks are NOT review. They prove quotes exist verbatim in the archived sources and the file loads - not that the encoding means what the sources mean."
+  },
+  "requirements": [],
+  "school_rules": [],
+  "rules_not_yet_modeled": [
+    {
+      "rule": "Students declare a major after the first-year program (curriculum 004).",
+      "why_not": "The stage itself is modeled (labels); its timing and any prerequisites are on soe.rutgers.edu (HTTP 403) and remain unknown.",
+      "source": "eng-catalog-programs-study",
+      "quote": "Students in the first year of a four-year curriculum are listed under curriculum code 004."
+    },
+    {
+      "rule": "Students complete the prescribed program of study in their DECLARED major.",
+      "why_not": "Modeled: each SoE major's own nodes come after this stage (program_version.admission_stage).",
+      "source": "eng-catalog-degree-requirements",
+      "quote": "Students must complete a prescribed program of study in their declared major"
+    }
+  ],
+  "unknowns": [
+    "Declaration timing, deadlines and any minimum grades/GPA (soe.rutgers.edu declaring-major page, HTTP 403)."
+  ],
+  "conflicts": [],
+  "review_questions": [
+    "Are there entry requirements for declaring an SoE major in 2026-2027 (Phase A noted current guidance says majors are open without a GPA minimum, from an unarchived page)?"
+  ],
+  "what_to_verify": [
+    "Open each archived source (paths below) and find every quoted sentence.",
+    "For each node, confirm the encoding says what its quote says: courses, counts, levels, grade floors, credit minimums, stages.",
+    "Confirm nothing the sources require is missing - compare with 'rules not yet modeled' and 'unknowns'.",
+    "Resolve or explicitly accept each OPEN conflict; never pick a side silently.",
+    "Confirm admission/declaration rules are entry-stage requirements or labels, never completion requirements, and that no plan would assume admission.",
+    "Answer every review question; 'changes requested' is a valid outcome."
+  ],
+  "how_to_record": "Components have no review command yet: record the decision in the PR / review notes; the component stays 'pending_review' (and every audit and index label says so) until a component review command exists."
+}

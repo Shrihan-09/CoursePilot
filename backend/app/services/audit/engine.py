@@ -143,9 +143,35 @@ def constraint_counts(req, allocated: list[dict]) -> dict[str, int | None]:
     return {"outside": outside, "at_level": at_level}
 
 
+def _course_string(e: dict) -> str | None:
+    if e.get("course_string"):
+        return e["course_string"]
+    ref = e.get("ref")
+    return getattr(ref, "course_string", None)
+
+
+def group_cap_excess(req, allocated: list[dict]) -> list[tuple[dict, int]]:
+    """Prompt 08 B1: (cap, how many allocated courses come from its group) for
+    every `group_caps` entry whose count exceeds its `max`.
+
+        CS: "at most one of a student's electives may be one of these courses"
+        -> [{"courses": ["01:198:493", "01:198:494"], "max": 1}]
+    """
+    out = []
+    for cap in getattr(req, "group_caps", None) or []:
+        group = set(cap.get("courses", ()))
+        n = sum(1 for e in allocated if _course_string(e) in group)
+        if n > int(cap["max"]):
+            out.append((cap, n))
+    return out
+
+
 def _constraint_checks(req, allocated: list[dict]) -> list[str]:
     counts = constraint_counts(req, allocated)
     problems: list[str] = []
+    for cap, n in group_cap_excess(req, allocated):
+        problems.append(f"at most {cap['max']} may come from {', '.join(cap['courses'])} "
+                        f"(found {n})")
     if counts["outside"] is not None and counts["outside"] > req.max_outside_subject:
         problems.append(
             f"at most {req.max_outside_subject} may be outside subject "
@@ -194,13 +220,10 @@ class DegreeAuditEngine:
         return composed_requirements(self.session, version) if version else []
 
     def _load_rules(self, version_id) -> list[ProgramRule]:
-        return list(
-            self.session.scalars(
-                select(ProgramRule)
-                .where(ProgramRule.program_version_id == version_id)
-                .order_by(ProgramRule.code)
-            ).all()
-        )
+        # Prompt 08 B1: plus the school-level rules of composed components.
+        from app.services.academic_context import composed_rules
+        version = self.session.get(ProgramVersion, version_id)
+        return composed_rules(self.session, version) if version else []
 
     def _load_eligibility(
         self, requirement_ids: list
@@ -799,8 +822,11 @@ class DegreeAuditEngine:
         if req.code in getattr(self, "_exempt_requirement_codes", set()):
             result.status = RequirementStatus.SATISFIED
             result.reason = "Requirement exempted by explicitly verified academic evidence."
-            result.needed_count = req.min_count
-            result.satisfied_count = req.min_count
+            # An exempted group (Prompt 08 B1: a passed stage's all-of entry
+            # requirements) has no min_count; report its children as the count.
+            needed = req.min_count if req.min_count is not None else len(child_results)
+            result.needed_count = needed
+            result.satisfied_count = needed
             return result
         if rtype == RequirementType.ALL_OF.value:
             self._eval_all_of(result, child_results)
@@ -1364,6 +1390,7 @@ class DegreeAuditEngine:
                 "credits": credits,
                 "subject_code": course.subject_code,
                 "course_number": course.course_number,
+                "course_string": course.course_string,
                 # Phase 6.4
                 "grade": sc.grade,
                 "outcome": attempt_outcome,

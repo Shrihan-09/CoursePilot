@@ -1,0 +1,41 @@
+{
+  "_README": [
+    "ENTRY STAGE: major declaration in the School of Engineering (Prompt 08 B1).",
+    "First-year students are in curriculum 004 and declare a major later. A SoE major's OWN courses are labelled 'after major declaration' until a verified declaration record exists (StudentAcademicEvidence kind 'admission', key 'soe-major-declaration'). The plan never assumes the declaration.",
+    "No entry requirements are encoded: the archived catalog states none for declaration, and the SoE declaration policy page returned HTTP 403 to a plain GET. Unknown, not 'none'."
+  ],
+  "format": "component/1",
+  "component": {
+    "code": "soe-major-declaration",
+    "name": "Before SoE major declaration",
+    "kind": "entry_stage",
+    "composition": "linked",
+    "school": {"code": "SOE", "name": "School of Engineering", "campus_code": "NB"},
+    "catalog_year": "2026-2027",
+    "definition_version": "1",
+    "requirement_system": "entry",
+    "sharing_policy": "exclusive",
+    "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/programs",
+    "stage": {"code": "soe-major-declaration", "label": "after major declaration"}
+  },
+  "sources": [
+    {"id": "eng-catalog-programs-study", "role": "catalog"},
+    {"id": "eng-catalog-degree-requirements", "role": "catalog"},
+    {"id": "soe-declaring-major", "role": "department", "note": "HTTP 403 to a plain GET on 2026-11-11: open evidence gap."}
+  ],
+  "requirements": [],
+  "school_rules": [],
+  "rules_not_yet_modeled": [
+    {"rule": "Students declare a major after the first-year program (curriculum 004).", "why_not": "The stage itself is modeled (labels); its timing and any prerequisites are on soe.rutgers.edu (HTTP 403) and remain unknown.", "source": "eng-catalog-programs-study", "quote": "Students in the first year of a four-year curriculum are listed under curriculum code 004."},
+    {"rule": "Students complete the prescribed program of study in their DECLARED major.", "why_not": "Modeled: each SoE major's own nodes come after this stage (program_version.admission_stage).", "source": "eng-catalog-degree-requirements", "quote": "Students must complete a prescribed program of study in their declared major"}
+  ],
+  "unknowns": ["Declaration timing, deadlines and any minimum grades/GPA (soe.rutgers.edu declaring-major page, HTTP 403)."],
+  "review_questions": ["Are there entry requirements for declaring an SoE major in 2026-2027 (Phase A noted current guidance says majors are open without a GPA minimum, from an unarchived page)?"],
+  "conflicts": [],
+  "curation": {
+    "curated_by": "manual encoding, Prompt 08 B1 (Claude Code session, 2026-11-11)",
+    "encoded_at": "2026-11-11",
+    "curation_status": "curated_from_prose",
+    "extractor_version": "manual-encoding/2"
+  }
+}

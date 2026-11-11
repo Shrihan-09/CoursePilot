@@ -131,8 +131,17 @@ def resolve_version(session: Session, key: str, wanted: str):
         raise ProgramNotFound(f"No program {key!r} is known to CoursePilot.")
     program, _school = found
 
-    available = sorted((v.catalog_year for v in program.versions), reverse=True)
-    version = next((v for v in program.versions if v.catalog_year == wanted), None)
+    available = sorted({v.catalog_year for v in program.versions}, reverse=True)
+    matching = [v for v in program.versions if v.catalog_year == wanted]
+    if len(matching) > 1:
+        # Prompt 08 B1: class-scoped curricula (Industrial Engineering classes
+        # 2026-2029 vs class 2030). Which one governs is the student's verified
+        # class year - never chosen here, never derived from a graduation target.
+        keys = sorted(v.curriculum_key for v in matching)
+        raise ProgramChoiceRequired(
+            f"{program.name} ({program.degree_type}) {wanted} has curricula for different "
+            f"classes: {', '.join(keys)}. Choose the one that governs your class.", keys)
+    version = matching[0] if matching else None
     if version is None:
         # Never the latest, never the closest: choosing a catalog year is an
         # academic decision and there is no rule here to make it with.

@@ -120,6 +120,9 @@ export interface PlannedCourse {
   notes?: string[];
   /** Phase 7.6: the structured reason for the recommendation. */
   trace?: RecommendationTrace | null;
+  /** Prompt 08 B1: the stage this course comes after (not yet verified), e.g. "after admission to RBS". */
+  after_stage?: string | null;
+  after_stage_label?: string | null;
 }
 
 /** Phase 7.6 (backend app/domain/planning.py RecommendationTrace). */

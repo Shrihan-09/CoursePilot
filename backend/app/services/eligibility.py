@@ -90,6 +90,10 @@ def rule_from_definition(rdef: dict) -> dict | None:
     if rdef.get("course_categories"):
         rule["course_categories"] = {k: sorted(set(v))
                                      for k, v in sorted(rdef["course_categories"].items())}
+    if rdef.get("certification_codes"):
+        # Prompt 08 B1: a node whose courses are CERTIFIED per term in SOC
+        # coreCodes (SOEHS, SEBS ECN/GVT, the Rutgers Core goal codes).
+        rule["certification_codes"] = sorted(set(rdef["certification_codes"]))
     if rdef.get("eligible_course_query"):
         query = dict(rdef["eligible_course_query"])
         unknown = set(query) - QUERY_KEYS
@@ -139,6 +143,22 @@ class _CourseIndex:
             self.by_string.setdefault(course.course_string, course)
             self.by_subject[course.subject_code].append(course)
         self.all = [c for cs in self.by_subject.values() for c in cs]
+        self._session = session
+        self._certified: dict[str, set] | None = None
+
+    def certified(self, code: str) -> set:
+        """Course ids SOC certifies with `code` in ANY loaded term (case-insensitive:
+        the official pages write WCR where SOC writes WCr). The term-scoped
+        answer is the course knowledge index's; requirement eligibility is
+        term-independent, like every other eligibility row."""
+        if self._certified is None:
+            from app.models.core_codes import OfferingCoreCode
+
+            self._certified = defaultdict(set)
+            for course_id, c in self._session.execute(
+                    select(OfferingCoreCode.course_id, OfferingCoreCode.code).distinct()):
+                self._certified[c.casefold()].add(course_id)
+        return self._certified.get(code.casefold(), set())
 
     def query(self, query: dict) -> list[Course]:
         pool = self.by_subject.get(query["subject_code"], []) if "subject_code" in query else self.all
@@ -162,6 +182,8 @@ def desired_pairs(rule: dict, index: _CourseIndex, code: str, report: ReconcileR
                 pairs.add((course.id, category))
     if "query" in rule:
         pairs.update((c.id, "") for c in index.query(rule["query"]))
+    for code_ in rule.get("certification_codes", ()):
+        pairs.update((course_id, code_) for course_id in index.certified(code_))
     return pairs
 
 

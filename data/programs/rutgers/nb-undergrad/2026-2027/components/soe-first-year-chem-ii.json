@@ -1,0 +1,42 @@
+{
+  "_README": [
+    "General Chemistry for Engineers II (01:160:160) of the SoE first-year program, as its OWN component (Prompt 08 B1).",
+    "Not every major requires it, and which ones do depends on the class year. A major's curriculum version links this component only when the footnotes below say it applies - so the exception is explicit per curriculum, never a toggle on a universal tree."
+  ],
+  "format": "component/1",
+  "component": {
+    "code": "soe-first-year-chem-ii",
+    "name": "SoE First-Year Program: General Chemistry II (where required)",
+    "kind": "school_core",
+    "composition": "linked",
+    "school": {"code": "SOE", "name": "School of Engineering", "campus_code": "NB"},
+    "catalog_year": "2026-2027",
+    "definition_version": "1",
+    "requirement_system": "major",
+    "sharing_policy": "exclusive",
+    "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/first-year"
+  },
+  "sources": [{"id": "eng-catalog-first-year", "role": "catalog"}],
+  "requirements": [
+    {"code": "SOE_FY_CHEM_160", "name": "General Chemistry for Engineers II", "requirement_type": "course", "parent": null, "sort_order": 0,
+     "courses": ["01:160:160"],
+     "quotes": [
+       {"source": "eng-catalog-first-year", "quote": "01:160:160 General Chemistry for Engineers II (3cr) #"},
+       {"source": "eng-catalog-first-year", "quote": "# Not required for students pursuing a major in Electrical and Computer Engineering"},
+       {"source": "eng-catalog-first-year", "quote": "# Not required for students pursuing a major in Electrical and Computer Engineering, Aerospace Engineering (Class of 2030+), Civil Engineering (Class of 2030+), Industrial Engineering (Class of 2030+), or Mechanical Engineering (Class of 2030+)."}
+     ]}
+  ],
+  "school_rules": [],
+  "rules_not_yet_modeled": [],
+  "unknowns": [],
+  "review_questions": [
+    "Link guide for Phase C: ECE never links this; Aerospace, Civil, Industrial and Mechanical link it only in their classes-before-2030 curricula; every other major links it in both. Confirm."
+  ],
+  "conflicts": [],
+  "curation": {
+    "curated_by": "manual encoding, Prompt 08 B1 (Claude Code session, 2026-11-11)",
+    "encoded_at": "2026-11-11",
+    "curation_status": "curated_from_prose",
+    "extractor_version": "manual-encoding/2"
+  }
+}

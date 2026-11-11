@@ -5,9 +5,12 @@
     "1 and 2 are the B.A.'s, copied node for node; category 3 asks SEVEN electives; the",
     "science requirement is encoded as one choice among the sets the prose lists.",
     "",
-    "Same KNOWN GAP as the B.A.: the designated elective list is not in the catalog",
-    "(the department page lists it; see docs/DATA_SOURCES.md section 1e). PENDING human",
-    "review - plans for this program always say so."
+    "Prompt 08 B1 (2026-11-11): the elective list and its constraints are now SOURCED from the",
+    "archived department pages (B.S. degree page and electives page, raw HTML captured",
+    "2026-11-09, sha256 in data/programs/rutgers/sources.json) instead of an unarchived note.",
+    "The B.S. page's own wording settles the 300-level question; the 493/494 cap is modeled",
+    "(group_caps). Two source disagreements stay OPEN and visible: CS-INTRO-2027 (121/122 vs",
+    "111/112) and CS-BS-COPY (B.S. page clauses labelled 'B.A.'). PENDING human review."
   ],
   "source": {
     "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/computer-science-198",
@@ -22,17 +25,18 @@
     "campus_code": "NB"
   },
   "review_questions": [
-    "Category 3 for the B.S.: the B.A. text says 'at least two must be computer science courses at the 300 level or above'. The B.S. sentence repeats only the 'no more than two outside' limit. This encoding KEEPS the 300-level minimum (2) for the seven electives - confirm it applies to the B.S.",
+    "CS-INTRO-2027: the department requires 01:198:121/122 from Spring 2027 while the catalog names 111/112 (and 111 is not offered in Spring 2027). Which governs students on the 2026-2027 catalog, and is 121/122 an equivalent of 111/112?",
+    "CS-BS-COPY: do the residency (seven 01:198 courses) and ten-year elective clauses on the B.S. page bind B.S. students? The page labels them 'B.A.'.",
     "The physics list names '01:750:193 and 194' twice ('... or 01:750:193 and 194 ... or 01:750:193, 194'). Encoded once. Confirm no other course was meant.",
     "Chemistry 01:160:171 appears in all three chemistry options; each option is encoded as its own all-of set.",
-    "Same elective-list gap and graduate-course question as the B.A. (sas-198-ba.json review_questions).",
-    "CS_ELECTIVES now lists the department's designated electives (2026-10-23) instead of the {subject 198, number >= 300} query. Confirm the list and that it applies to catalog year 2026-2027 (the department page is undated)."
+    "Same graduate-course question as the B.A. (sas-198-ba.json review_questions)."
   ],
   "curation": {
     "curated_by": "manual encoding, Phase 7.3 (Claude Code session, 2026-10-23)",
     "extractor_version": "manual-encoding/1",
     "catalog_page": "/schools/sas/program-listing/computer-science-198",
-    "candidate_key": "major"
+    "candidate_key": "major",
+    "sourced_update": "Prompt 08 B1 (Claude Code session, 2026-11-11): department captures, group cap, conflicts"
   },
   "program": {
     "code": "198",
@@ -70,6 +74,16 @@
       "parent": "CS_CORE",
       "courses": [
         "01:198:111"
+      ],
+      "unresolved_conflicts": [
+        "CS-INTRO-2027"
+      ],
+      "notes": "The catalog names 01:198:111; the department's B.S. page names 01:198:121 and dates a new introductory sequence to Spring 2027. Open conflict CS-INTRO-2027: the node keeps the catalog's course until the transition policy is reviewed.",
+      "quotes": [
+        {
+          "source": "phase08a-cs-bs-degree",
+          "quote": "01:198:121 Introduction to Computer Science"
+        }
       ]
     },
     {
@@ -80,6 +94,16 @@
       "parent": "CS_CORE",
       "courses": [
         "01:198:112"
+      ],
+      "unresolved_conflicts": [
+        "CS-INTRO-2027"
+      ],
+      "notes": "The catalog names 01:198:112; the department's B.S. page names 01:198:122 and dates a new introductory sequence to Spring 2027. Open conflict CS-INTRO-2027: the node keeps the catalog's course until the transition policy is reviewed.",
+      "quotes": [
+        {
+          "source": "phase08a-cs-bs-degree",
+          "quote": "01:198:122 Data Structures"
+        }
       ]
     },
     {
@@ -171,7 +195,7 @@
       "constraint_subject_code": "198",
       "min_at_level": 300,
       "min_at_level_count": 2,
-      "notes": "Designated list from the Department of Computer Science electives page (https://www.cs.rutgers.edu/academics/undergraduate/electives, read 2026-10-23, undated), to which the catalog defers: 30 CS courses plus Electrical Engineering, Mathematics, Philosophy, Linguistics and Statistics options. Replaces the earlier query {subject 198, number >= 300}, which admitted courses the department does not list (e.g. 01:198:345). The catalog's own constraints are kept: at most two outside CS, at least two CS courses at the 300 level or above. B.S.: seven electives from this category.",
+      "notes": "The designated list is the Department of Computer Science electives page (archived capture phase08a-cs-electives, raw HTML, 2026-11-09), to which the catalog defers: 30 CS courses plus Electrical Engineering, Mathematics, Philosophy, Linguistics and Statistics options - identical to the list encoded 2026-10-23. Constraints from the department B.S. page: at least five of the seven in 01:198 (encoded as at most two outside subject 198; every listed course outside 198 is also outside unit 01:198), at least two of those at the 300 level or above, and at most one 01:198:493/494 (group cap).",
       "source_prose": "complete seven courses from category 3, no more than two of these outside the Department of Computer Science",
       "courses": [
         "01:198:210",
@@ -229,6 +253,29 @@
         "01:960:463",
         "01:960:476",
         "01:960:486"
+      ],
+      "group_caps": [
+        {
+          "courses": [
+            "01:198:493",
+            "01:198:494"
+          ],
+          "max": 1
+        }
+      ],
+      "quotes": [
+        {
+          "source": "phase08a-cs-bs-degree",
+          "quote": "Seven electives from a designated list of courses in computer science and related disciplines . At least five of the electives must be taken in the New Brunswick Department of Computer Science (i.e., they must be 01:198:xxx), of which at least two must be at the 300 level or above."
+        },
+        {
+          "source": "phase08a-cs-electives",
+          "quote": "A CS Advisor will help you make selections from this list to complete your CS major."
+        },
+        {
+          "source": "phase08a-cs-electives",
+          "quote": "However, at most one of a student's electives may be one of these courses. Whether or not a given instance of 493/494 counts for elective credit depends on the individual arrangement."
+        }
       ]
     },
     {
@@ -549,12 +596,26 @@
   ],
   "rules_not_yet_modeled": [
     {
-      "rule": "At most two of the five electives may be taken outside the Department of Computer Science; at least two must be CS at the 300 level or above.",
-      "why_not": "IMPLEMENTED as group constraints on CS_ELECTIVES (max_outside_subject / min_at_level), not as a program rule."
+      "rule": "At least five of the seven electives in 01:198, at least two of those at the 300 level or above; at most one 01:198:493/494.",
+      "why_not": "IMPLEMENTED on CS_ELECTIVES (max_outside_subject / min_at_level / group_caps), sourced from the department B.S. and electives pages."
     },
     {
-      "rule": "At most one of a student's electives may be 01:198:493/494 (Independent Study); whether an instance counts depends on the individual arrangement.",
-      "why_not": "No per-course-group cap in the requirement model yet; source: the department electives page (2026-10-23)."
+      "rule": "Whether an instance of 01:198:493/494 counts depends on the individual arrangement.",
+      "why_not": "An adviser decision per instance; CoursePilot counts at most one and says it needs confirmation.",
+      "source": "phase08a-cs-electives",
+      "quote": "Whether or not a given instance of 493/494 counts for elective credit depends on the individual arrangement."
+    },
+    {
+      "rule": "CS electives completed within the last ten years preceding graduation.",
+      "why_not": "Labelled 'B.A.' on the B.S. page (conflict CS-BS-COPY), and a recency window is not modeled.",
+      "source": "phase08a-cs-bs-degree",
+      "quote": "All CS electives required for the B.A. degree must have been completed within the last ten years preceding graduation."
+    },
+    {
+      "rule": "The new introductory sequence (01:198:121/122, with 01:198:120 preparatory and not for major credit) from Spring 2027.",
+      "why_not": "Open conflict CS-INTRO-2027 with the 2026-2027 catalog; no archived transition policy.",
+      "source": "phase08a-cs-bs-degree",
+      "quote": "Students earn SAS credit for CS120, but not Computer Science major credit."
     }
   ],
   "program_rules": [
@@ -585,6 +646,57 @@
       "is_evaluable": false,
       "not_evaluable_reason": "The rule requires knowing which courses were taken AT Rutgers-New Brunswick. StudentCourse records no transfer provenance, and a cross-listed course carries another department's code, so the count cannot be computed without guessing. Rutgers publishes no transfer-equivalence rule we could apply here.",
       "source_prose": "A minimum of seven courses must be taken in the Rutgers University-New Brunswick Department of Computer Science."
+    }
+  ],
+  "sources": [
+    {
+      "id": "catalog-cs-198-2026-2027",
+      "role": "catalog",
+      "primary": true
+    },
+    {
+      "id": "phase08a-cs-bs-degree",
+      "role": "department"
+    },
+    {
+      "id": "phase08a-cs-electives",
+      "role": "department"
+    }
+  ],
+  "conflicts": [
+    {
+      "id": "CS-INTRO-2027",
+      "status": "open",
+      "summary": "Catalog 2026-2027 requires 01:198:111 and 112; the department B.S. page requires 121 and 122 and says the new sequence begins Spring 2027. In the loaded Spring 2027 listing, 01:198:111 is not offered and 01:198:120 and 121 are. Not resolved: no official transition or equivalence policy is archived.",
+      "claims": [
+        {
+          "source": "catalog-cs-198-2026-2027",
+          "quote": "six required courses in computer science, 01:198:111, 112, 205, 206, 211, and 344"
+        },
+        {
+          "source": "phase08a-cs-bs-degree",
+          "quote": "Beginning Spring 2027, the Department of Computer Science has adopted a new introductory course sequence consisting of:"
+        },
+        {
+          "source": "phase08a-cs-bs-degree",
+          "quote": "Students complete the major requirements through CS121 and CS122. CS120 does not count toward Computer Science major requirements"
+        }
+      ]
+    },
+    {
+      "id": "CS-BS-COPY",
+      "status": "open",
+      "summary": "The department's B.S. page states the residency and ten-year elective clauses in terms of 'the B.A. degree'. Whether they bind B.S. students is not stated.",
+      "claims": [
+        {
+          "source": "phase08a-cs-bs-degree",
+          "quote": "Residency requirement: At least seven of the required and elective courses used to satisfy the B.A. degree requirements must be taken in the New Brunswick Department of Computer Science (01:198:xxx)."
+        },
+        {
+          "source": "phase08a-cs-bs-degree",
+          "quote": "All CS electives required for the B.A. degree must have been completed within the last ten years preceding graduation."
+        }
+      ]
     }
   ]
 }

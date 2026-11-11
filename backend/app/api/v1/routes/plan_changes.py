@@ -51,6 +51,16 @@ def _course(value: str) -> str:
 TERM = r"^\d{4}[0179]$"
 
 
+class CourseKnowledgeView(BaseModel):
+    """Prompt 08 B1: what the course knowledge index says about a course this term."""
+    status: str                     # mapped | excluded | free_elective_only | unknown
+    after_stage: str | None = None  # e.g. "rbs-nb-admission"
+    pending_review: bool = False
+    conflicts: list[str] = []
+    reasons: list[str] = []
+    stale: bool = False
+
+
 class OptionView(BaseModel):
     course: str
     title: CourseTitle
@@ -66,6 +76,8 @@ class OptionView(BaseModel):
     impact: str
     similar_to: str | None = None
     group: str
+    #: Prompt 08 B1: the course knowledge index's verdict (status, stage, review labels).
+    knowledge: CourseKnowledgeView | None = None
 
 
 class OptionGroupView(BaseModel):
@@ -153,6 +165,7 @@ class SearchHitView(BaseModel):
     similar_to: str | None = None
     planned_term: str | None = None
     fills_multiple: bool = False
+    knowledge: CourseKnowledgeView | None = None
 
 
 class InterpretationView(BaseModel):

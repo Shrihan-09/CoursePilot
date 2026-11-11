@@ -149,6 +149,8 @@ class SearchHit:
     #: Already in the plan for a LATER term: choosing it moves it here.
     planned_term: str | None = None
     fills_multiple: bool = False
+    #: Prompt 08 B1: the course knowledge index's verdict for the term.
+    knowledge: dict | None = None
 
 
 @dataclass
@@ -560,7 +562,9 @@ def _search(ctx: OptionsContext, it: Interpretation, limit: int) -> SearchResult
             delivery=delivery, workload_weight=w.weight if w else None,
             contact_hours=w.contact_hours if w else None, open_status=status,
             why=" · ".join(reasons) or f"offered in {label(term)}", similar_to=note,
-            planned_term=ctx.where.get(v.course), fills_multiple=ctx.engine._usable(codes) >= 2))
+            planned_term=ctx.where.get(v.course), fills_multiple=ctx.engine._usable(codes) >= 2,
+            knowledge=(ctx.knowledge_fields(v.course, term)
+                       if hasattr(ctx, "knowledge_fields") else None)))
     pref = ctx.c.filler_preference.value
 
     def key(h: SearchHit):

@@ -233,4 +233,14 @@ export const api = {
   forgetPlannedSection: (term: string, course: string) =>
     request<import("@/types/assistant").WebRegPanel>(
       `/student/plans/current/terms/${term}/sections/${course.replace(/:/g, "-")}`, { method: "DELETE" }),
+  /** Prompt 08 B1: "Report a wrong requirement" - program, node and message only. */
+  reportRequirement: (body: import("@/types/requirement-report").RequirementReportInput) =>
+    request<{ id: string; status: string }>("/requirements/reports", json("POST", body)),
+  requirementReports: (status: import("@/types/requirement-report").ReportStatus | "all" = "open") =>
+    request<import("@/types/requirement-report").RequirementReport[]>(
+      `/admin/requirement-reports?status=${encodeURIComponent(status)}`),
+  updateRequirementReport: (id: string, status: import("@/types/requirement-report").ReportStatus,
+                            resolved_note: string | null) =>
+    request<import("@/types/requirement-report").RequirementReport>(
+      `/admin/requirement-reports/${encodeURIComponent(id)}`, json("PATCH", { status, resolved_note })),
 };

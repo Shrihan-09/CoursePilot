@@ -155,7 +155,10 @@ MODEL_TOOLS: dict[str, ToolSpec] = {s.name: s for s in (
              "guessed), topic keywords and filters. REQUIRED for any 'a different X / "
              "another Y / something about Z' request.", SearchArgs, "Searched courses"),
     ToolSpec("get_course_details", "Public catalog data for one course: title, credits, "
-             "description, published prerequisite text, offering.", DetailsArgs,
+             "description, published prerequisite text, offering, and requirement_fit: what it "
+             "could fill for the student's program (course knowledge index; 'after admission' "
+             "stage and pending-review labels; status mapped/excluded/free_elective_only/unknown)"
+             " with the student's own status per requirement.", DetailsArgs,
              "Read the catalog entry"),
     ToolSpec("preview_plan_change", "What a change would do (nothing is saved): swap / move / "
              "remove / add / lock / unlock / lighten_term / choose_alternative.", PreviewArgs,

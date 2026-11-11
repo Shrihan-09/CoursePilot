@@ -1,7 +1,9 @@
 """Exhaustive SOC browser; options gates and search are shared, membership is replaceable.
 
-No planner shortlist or topic top-N limits define the universe. A future Prompt 08
-index implements MembershipProvider without changing browser or UI contracts.
+No planner shortlist or topic top-N limits define the universe. Prompt 08 B1: the
+course knowledge index (app.services.knowledge) is the membership provider and
+decides each course's coverage (mapped / excluded / free elective only / unknown);
+"free elective only" is never claimed from incomplete or stale coverage.
 """
 from __future__ import annotations
 
@@ -27,6 +29,38 @@ class ExistingMembership:
         return [code for code, pool in ctx.engine.pools.items() if code not in ctx.inactive and course in pool]
 
 
+FREE_ELECTIVE_LABEL = 'Counts only as a free elective (coverage complete and reviewed)'
+
+
+class IndexMembership:
+    """Prompt 08 B1: memberships from the course knowledge index for THIS term.
+
+    Restricted to the planner's own pools: the index never makes the browser
+    claim a requirement the Degree Engine would not count (its pools are the
+    audit's eligibility); it adds the term scope and the labels."""
+    source_name = 'course_knowledge_index'
+
+    def __init__(self, ctx, term: str):
+        from app.services.knowledge import KnowledgeView
+        self.view = KnowledgeView(ctx.session, ctx.version, term)
+
+    def judge(self, course: str):
+        return self.view.judge(course)
+
+    def candidates(self, ctx, course: str) -> list[str]:
+        codes = {f.requirement_code for f in self.view.judge(course).fills}
+        return sorted(code for code in codes if code not in ctx.inactive
+                      and course in ctx.engine.pools.get(code, ()))
+
+
+def _knowledge_fields(k) -> dict:
+    stage = next((f.after_stage for f in k.fills if f.after_stage), None)
+    return {'status': k.status, 'after_stage': stage,
+            'pending_review': any(f.pending_review for f in k.fills),
+            'conflicts': sorted({c for f in k.fills for c in f.conflicts}),
+            'reasons': k.reasons[:4], 'stale': k.stale}
+
+
 def term_courses(session, term: str):
     return session.scalars(select(Course).join(CourseOffering).where(
         CourseOffering.term_code == term, Course.supplement_code == ""
@@ -34,8 +68,11 @@ def term_courses(session, term: str):
 
 
 def browse(ctx, request, membership: MembershipProvider | None = None):
-    membership = membership or ExistingMembership()
     term = request.term_code
+    if membership is None:
+        from app.services.knowledge import current_build
+        membership = (IndexMembership(ctx, term) if current_build(ctx.session) is not None
+                      else ExistingMembership())
     if request.selection is not None:
         ctx.where = {k: t for k, t in ctx.where.items() if t != term}
         ctx.where.update({k: term for k in request.selection})
@@ -131,15 +168,24 @@ def browse(ctx, request, membership: MembershipProvider | None = None):
         w = v.workload
         _, note = similarity.best(k, c.title)
         known_degree_total = ctx.plan.degree_credits is not None
-        coverage = ('excluded' if k in ctx.engine.excluded else 'mapped' if codes else
-                    'free_elective' if known_degree_total else 'unknown')
+        knowledge = membership.judge(k) if hasattr(membership, 'judge') else None
+        if k in ctx.engine.excluded:
+            coverage = 'excluded'
+        elif codes:
+            coverage = 'mapped'
+        elif knowledge is not None:
+            # Only complete, fresh, reviewed coverage may say "free elective only".
+            coverage = 'free_elective' if knowledge.status == 'free_elective_only' else (
+                'excluded' if knowledge.status == 'excluded' else 'unknown')
+        else:
+            coverage = 'unknown'      # no index: never a free-elective claim
         if request.degree_credit_only and (coverage == 'excluded' or not known_degree_total):
             continue
         fills = [ctx.names.get(code, code) for code in codes]
         rows.append(dict(course=k, title=c.title, credits=str(c.credits) if c.credits is not None else None,
                          requirement_codes=codes, requirements=fills, coverage=coverage,
                          coverage_label=((('Potential (draft): ' if selected and potential else 'Potential (gated): ' if potential else '') + ' + '.join(fills)) if fills else "Doesn't count toward your degree" if coverage == 'excluded'
-                                         else 'Counts only as free elective; other requirement coverage not mapped' if coverage == 'free_elective'
+                                         else FREE_ELECTIVE_LABEL if coverage == 'free_elective'
                                          else 'Requirement coverage unknown; needs review'),
                          can_add=not selected and reason is None,
                          can_pin=not selected and reason in {'excluded_by_program', 'prerequisites_need_confirmation', 'special_permission_required'},
@@ -147,7 +193,9 @@ def browse(ctx, request, membership: MembershipProvider | None = None):
                          planned_term=selected_term, prerequisite=v.prerequisite.model_dump(mode='json') if v.prerequisite else None,
                          delivery=list(w.delivery) if w else [], open_status=status,
                          workload_weight=str(w.weight) if w else None,
-                         recommended=reason is None and (k in ctx.where or note is not None), similar_to=note))
+                         recommended=reason is None and (k in ctx.where or note is not None),
+                         similar_to=note,
+                         knowledge=_knowledge_fields(knowledge) if knowledge is not None else None))
     if request.sort == 'name':
         rows.sort(key=lambda r: (r['title'].casefold(), r['course']))
     elif request.sort == 'credits':

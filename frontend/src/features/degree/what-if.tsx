@@ -12,6 +12,7 @@ import { ApiError, api } from "@/lib/api";
 import { AUDIT_STATUS, REQUIREMENT_STATUS } from "@/lib/academic/vocabulary";
 import type { CourseComparison, ProgramOutcome, ScenarioAudit, ScenarioComparison } from "@/types/degree";
 
+import { ReportTargetContext } from "./report-requirement";
 import { evidenceFor, RequirementNode } from "./requirement-tree";
 
 /**
@@ -132,11 +133,14 @@ export function ScenarioResult({ compare, scenario }: { compare: ScenarioCompari
 
       <details className="rounded border border-border">
         <summary className="min-h-11 cursor-pointer p-3 text-sm font-medium text-fg">All what-if requirements</summary>
-        <ul className="space-y-2 border-t border-border p-3">
-          {scenario.audit.requirements.map((r) => (
-            <RequirementNode key={r.requirement_code} node={r} evidence={evidence} filter="all" />
-          ))}
-        </ul>
+        <ReportTargetContext.Provider value={{ program_key: scenario.target.program_key,
+                                               catalog_year: scenario.target.catalog_year }}>
+          <ul className="space-y-2 border-t border-border p-3">
+            {scenario.audit.requirements.map((r) => (
+              <RequirementNode key={r.requirement_code} node={r} evidence={evidence} filter="all" />
+            ))}
+          </ul>
+        </ReportTargetContext.Provider>
       </details>
     </div>
   );

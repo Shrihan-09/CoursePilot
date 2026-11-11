@@ -1,0 +1,219 @@
+{
+  "packet_version": "review-packet/3",
+  "key": "soe-school",
+  "kind": "component",
+  "component_kind": "gen_ed",
+  "definition_file": "data/programs/rutgers/nb-undergrad/2026-2027/components/soe-school.json",
+  "file_sha256": "85be2008b32d3c915efdfa463a50d25c690598e62073a3158b4f9c7edc62851d",
+  "definition_sha256": "c676c356666399d293fb1e467fb4f455c8b1faca4ef02722debe0144899b55a7",
+  "curated_by": "manual encoding, Prompt 08 B1 (Claude Code session, 2026-11-11)",
+  "lifecycle_state": "pending_review",
+  "sources": [
+    {
+      "id": "eng-catalog-degree-requirements",
+      "role": "catalog",
+      "note": null,
+      "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/degree-requirements",
+      "retrieved_at": "2026-11-11T19:09:05+00:00",
+      "sha256": "719d2b26b265cae87129ebb393909e1ca63426a002e2d6e0eb21e5b692595944",
+      "representation": "raw_html",
+      "archive": "data/source-archive/719d2b26b265cae87129ebb393909e1ca63426a002e2d6e0eb21e5b692595944.html",
+      "archive_present": true,
+      "status": "archived"
+    },
+    {
+      "id": "eng-catalog-first-year",
+      "role": "catalog",
+      "note": null,
+      "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/first-year",
+      "retrieved_at": "2026-11-11T19:09:07+00:00",
+      "sha256": "9913d2ee379fdb2761e1078127ba8a84af1062aca2ddcffaff93df9b8d1d868e",
+      "representation": "raw_html",
+      "archive": "data/source-archive/9913d2ee379fdb2761e1078127ba8a84af1062aca2ddcffaff93df9b8d1d868e.html",
+      "archive_present": true,
+      "status": "archived"
+    },
+    {
+      "id": "soc-core-code-descriptions",
+      "role": "soc",
+      "note": "SOC coreCodes as loaded in offering_core_code (each row's data_source is its archived SOC payload).",
+      "url": null,
+      "retrieved_at": null,
+      "sha256": null,
+      "representation": null,
+      "archive": null,
+      "archive_present": false,
+      "status": "not in manifest"
+    },
+    {
+      "id": "soe-engineering-curriculum",
+      "role": "department",
+      "note": "HTTP 403 to a plain GET on 2026-11-11: open evidence gap (H/SS distribution rules).",
+      "url": "https://soe.rutgers.edu/academics/undergraduate/engineering-curriculum",
+      "retrieved_at": "2026-11-11T19:09:10+00:00",
+      "sha256": null,
+      "representation": "failed",
+      "archive": null,
+      "archive_present": false,
+      "status": "failed (open evidence gap)"
+    },
+    {
+      "id": "soe-pass-no-credit",
+      "role": "department",
+      "note": "HTTP 403 to a plain GET on 2026-11-11: open evidence gap.",
+      "url": "https://soe.rutgers.edu/academic-advising-and-policies/academic-policies/passno-credit-courses",
+      "retrieved_at": "2026-11-11T19:09:14+00:00",
+      "sha256": null,
+      "representation": "failed",
+      "archive": null,
+      "archive_present": false,
+      "status": "failed (open evidence gap)"
+    }
+  ],
+  "machine_checks": {
+    "passed": true,
+    "quotes_found": 9,
+    "quotes_checked": 9,
+    "errors": [],
+    "warnings": [],
+    "note": "Machine checks are NOT review. They prove quotes exist verbatim in the archived sources and the file loads - not that the encoding means what the sources mean."
+  },
+  "requirements": [
+    {
+      "code": "SOE_SCHOOL",
+      "name": "School of Engineering requirements",
+      "type": "all_of",
+      "parent": null,
+      "quotes": [
+        {
+          "source": "eng-catalog-degree-requirements",
+          "quote": "Students must complete a prescribed program of study in their declared major, outlined in the Programs of Study chapter, including the distribution requirements for departmental, technical, general, and humanities/social sciences electives."
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "SOE_HSS_FIRST_YEAR",
+      "name": "Humanities/Social Sciences electives (first-year program)",
+      "type": "choose_n",
+      "parent": "SOE_SCHOOL",
+      "quotes": [
+        {
+          "source": "eng-catalog-first-year",
+          "quote": "Elective: Humanities/Social Sciences (H/SS) (3cr) * &"
+        },
+        {
+          "source": "eng-catalog-first-year",
+          "quote": "& May be completed at any time before graduation; it is recommended that students take one lower H/SS during the first year if their course load is not too heavy with the required courses."
+        },
+        {
+          "source": "soc-core-code-descriptions",
+          "quote": "SOEHS: SOE: Approved Humanities/Social Science"
+        }
+      ],
+      "quoted_via": null,
+      "notes": "Two H/SS electives appear in the first-year program common to all four-year curricula; one may be completed any time before graduation. Eligibility: SOC's per-term SOEHS certification.",
+      "min_count": 2,
+      "certification_codes": [
+        "SOEHS"
+      ],
+      "eligible_course_rows": 1371
+    }
+  ],
+  "school_rules": [
+    {
+      "code": "SOE_MIN_GPA",
+      "name": "Cumulative GPA of at least 2.000",
+      "rule_type": "min_gpa",
+      "min_gpa": 2.0,
+      "gpa_scope": "cumulative",
+      "quotes": [
+        {
+          "source": "eng-catalog-degree-requirements",
+          "quote": "Students must earn a cumulative grade point average (GPA) of at least 2.000"
+        }
+      ]
+    },
+    {
+      "code": "SOE_MAJOR_GPA",
+      "name": "GPA of at least 2.000 in the major (M-prefixed courses)",
+      "rule_type": "min_gpa",
+      "min_gpa": 2.0,
+      "gpa_scope": "major",
+      "is_evaluable": false,
+      "not_evaluable_reason": "The major GPA is over courses designated with an 'M' prefix on the record; CoursePilot's records do not carry that designation.",
+      "quotes": [
+        {
+          "source": "eng-catalog-degree-requirements",
+          "quote": "a cumulative grade point average in the major (as designated by \"M\" prefixes) of at least 2.000 to be awarded the degree of bachelor of science from the School of Engineering"
+        }
+      ]
+    },
+    {
+      "code": "SOE_30_RUTGERS_CREDITS",
+      "name": "At least 30 credits earned at Rutgers",
+      "rule_type": "residency_window",
+      "is_evaluable": false,
+      "not_evaluable_reason": "Needs certified attempt institution per credit; not evaluated yet.",
+      "quotes": [
+        {
+          "source": "eng-catalog-degree-requirements",
+          "quote": "The degree of bachelor of science from the School of Engineering is not awarded to any candidate who has earned fewer than 30 credits at Rutgers."
+        }
+      ]
+    },
+    {
+      "code": "SOE_LAST_42",
+      "name": "No more than 12 of the last 42 credits outside Rutgers",
+      "rule_type": "residency_window",
+      "is_evaluable": false,
+      "not_evaluable_reason": "A chronological window over the last 42 credits; not evaluated yet.",
+      "quotes": [
+        {
+          "source": "eng-catalog-degree-requirements",
+          "quote": "No more than 12 of the last 42 credits for the degree may be taken outside Rutgers."
+        }
+      ]
+    }
+  ],
+  "rules_not_yet_modeled": [
+    {
+      "rule": "Degree total: 120 to 132 credits depending on the major.",
+      "why_not": "No school-wide total exists; each major's encoding states its own (program_version.degree_credits). A plan without one says so - 120 is never assumed.",
+      "source": "eng-catalog-degree-requirements",
+      "quote": "The total number of credits required for graduation varies from 120 to 132 credits in the four-year program, depending on the major."
+    },
+    {
+      "rule": "H/SS distribution: total number of H/SS courses/credits and how many at the 200 level or above.",
+      "why_not": "Stated on soe.rutgers.edu (HTTP 403 to a plain GET); unknown until archived."
+    },
+    {
+      "rule": "Pass/No Credit limits for SoE students.",
+      "why_not": "Department page returned HTTP 403; unknown."
+    },
+    {
+      "rule": "Departmental, technical and general elective categories.",
+      "why_not": "They differ per major and are encoded with each major's curriculum."
+    }
+  ],
+  "unknowns": [
+    "H/SS distribution rules (soe.rutgers.edu engineering curriculum page, HTTP 403).",
+    "SoE Pass/No Credit policy (HTTP 403)."
+  ],
+  "conflicts": [],
+  "review_questions": [
+    "Confirm that SOC's SOEHS certification ('SOE: Approved Humanities/Social Science') is the authoritative H/SS list for every term a student may take H/SS.",
+    "Confirm the two first-year H/SS electives are school-wide (curriculum 004, 'common to all four-year engineering programs') and that each major's own H/SS slots are in addition to them."
+  ],
+  "what_to_verify": [
+    "Open each archived source (paths below) and find every quoted sentence.",
+    "For each node, confirm the encoding says what its quote says: courses, counts, levels, grade floors, credit minimums, stages.",
+    "Confirm nothing the sources require is missing - compare with 'rules not yet modeled' and 'unknowns'.",
+    "Resolve or explicitly accept each OPEN conflict; never pick a side silently.",
+    "Confirm admission/declaration rules are entry-stage requirements or labels, never completion requirements, and that no plan would assume admission.",
+    "Answer every review question; 'changes requested' is a valid outcome."
+  ],
+  "how_to_record": "Components have no review command yet: record the decision in the PR / review notes; the component stays 'pending_review' (and every audit and index label says so) until a component review command exists."
+}

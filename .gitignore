@@ -84,3 +84,7 @@ test-results/
 playwright-report/
 **/playwright-report/
 .pytest-tmp/
+
+# ---------- Prompt 08 B1: official requirement-source captures ----------
+# Bytes are reproducible from data/programs/rutgers/sources.json (URL + sha256).
+data/source-archive/

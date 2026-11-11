@@ -195,16 +195,19 @@ class RequirementLoader:
         # --- version ---
         vdef = definition["program_version"]
         cdef = definition.get("curation", {})
+        curriculum_key = vdef.get("curriculum_key", "")
         version = self.session.scalar(
             select(ProgramVersion).where(
                 ProgramVersion.program_id == program.id,
                 ProgramVersion.catalog_year == vdef["catalog_year"],
+                ProgramVersion.curriculum_key == curriculum_key,
             )
         )
         if version is None:
             version = ProgramVersion(
                 program_id=program.id,
                 catalog_year=vdef["catalog_year"],
+                curriculum_key=curriculum_key,
                 # Defaults to EXCLUSIVE: a definition that says nothing about
                 # sharing must not silently grant it.
                 sharing_policy=vdef.get("sharing_policy", "exclusive"),
@@ -227,6 +230,17 @@ class RequirementLoader:
         version.admission_prose = vdef.get("admission_prose")
         version.curated_by = cdef.get("curated_by")
         version.extractor_version = cdef.get("extractor_version")
+        # Prompt 08 B1: class-scoped curricula, the admission stage, the
+        # program's own degree total.
+        version.curriculum_class_years = vdef.get("curriculum_class_years")
+        version.admission_stage = vdef.get("admission_stage")
+        total = vdef.get("degree_credits")
+        version.degree_credits_min = _dec(total["credits"]) if total else None
+        if total:
+            from coursepilot_ingestion.loaders.components import _total_source
+            version.degree_credits_source = _total_source(total, definition)
+        else:
+            version.degree_credits_source = None
 
         # --- requirements (two passes: create, then wire parents) ---
         by_code: dict[str, Requirement] = {}
@@ -255,9 +269,11 @@ class RequirementLoader:
                 existing.min_at_level = rdef.get("min_at_level")
                 existing.min_at_level_count = rdef.get("min_at_level_count")
                 existing.notes = rdef.get("notes")
-                existing.source_prose = rdef.get("source_prose")
+                existing.source_prose = _prose(rdef)
                 existing.curation_status = curation
                 for attr, value in _grade_semantics(rdef).items():
+                    setattr(existing, attr, value)
+                for attr, value in _b1_fields(rdef).items():
                     setattr(existing, attr, value)
                 stats.requirements_updated += 1
                 by_code[rdef["code"]] = existing
@@ -278,10 +294,11 @@ class RequirementLoader:
                 min_at_level=rdef.get("min_at_level"),
                 min_at_level_count=rdef.get("min_at_level_count"),
                 notes=rdef.get("notes"),
-                source_prose=rdef.get("source_prose"),
+                source_prose=_prose(rdef),
                 curation_status=curation,
                 source_id=source.id,
                 **_grade_semantics(rdef),
+                **_b1_fields(rdef),
             )
             self.session.add(req)
             self.session.flush()
@@ -358,6 +375,7 @@ class RequirementLoader:
                 self.session.delete(stale)
 
         self.session.flush()
+        self._link_components(definition, version)
 
         if stats.unresolved_courses:
             logger.warning(
@@ -371,15 +389,49 @@ class RequirementLoader:
         return stats
 
 
+    def _link_components(self, definition: dict, version) -> None:
+        """Prompt 08 B1: compose the components the definition names - and
+        only those - with this program version (`program_version_component`).
+        A named component that is not loaded is an error: composing less than
+        the definition states would under-report requirements."""
+        from app.models import ProgramVersionComponent, SchoolRequirementSetVersion
+
+        found = {}
+        for order, code in enumerate(definition.get("components", [])):
+            comp = self.session.scalar(select(SchoolRequirementSetVersion).where(
+                SchoolRequirementSetVersion.code == code,
+                SchoolRequirementSetVersion.catalog_year == version.catalog_year))
+            if comp is None:
+                raise ValueError(f"component {code!r} ({version.catalog_year}) is not loaded")
+            found[comp.id] = order
+        existing = {link.component_id: link for link in self.session.scalars(
+            select(ProgramVersionComponent).where(
+                ProgramVersionComponent.program_version_id == version.id))}
+        for comp_id, link in existing.items():
+            if comp_id not in found:
+                self.session.delete(link)
+        for comp_id, order in found.items():
+            if comp_id in existing:
+                existing[comp_id].sort_order = order
+            else:
+                self.session.add(ProgramVersionComponent(
+                    program_version_id=version.id, component_id=comp_id, sort_order=order))
+        self.session.flush()
+
+
 #: Top-level keys that carry requirement meaning. `_README`, `source`,
 #: `curation` and `rules_not_yet_modeled` are documentation and provenance:
 #: editing them must not invalidate a review.
-SEMANTIC_KEYS = ("school", "program", "program_version", "requirements", "program_rules")
+SEMANTIC_KEYS = ("school", "program", "program_version", "requirements", "program_rules",
+                 "components")
 
 
 def definition_sha256(definition: dict) -> str:
     """Content identity of a curated definition: what a reviewer approves."""
-    semantic = {k: definition.get(k) for k in SEMANTIC_KEYS}
+    # A key a definition does not state is left out, so adding an optional
+    # key (Prompt 08 B1 "components") leaves every existing hash unchanged.
+    semantic = {k: definition.get(k) for k in SEMANTIC_KEYS
+                if k in definition or k in SEMANTIC_KEYS[:5]}
     canonical = json.dumps(semantic, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
@@ -402,6 +454,31 @@ def _grade_semantics(rdef: dict) -> dict:
         "category_sequences": ({k: [list(seq) for seq in v] for k, v in sorted(sequences.items())}
                                if sequences else None),
     }
+
+
+def _b1_fields(rdef: dict) -> dict:
+    """Prompt 08 B1 node columns (the component loader sets the same ones)."""
+    caps = rdef.get("group_caps")
+    for cap in caps or ():
+        if not cap.get("courses") or int(cap.get("max", -1)) < 0:
+            raise ValueError(f"{rdef['code']}: group_caps entries need courses and max >= 0")
+    return {
+        "available_after_stage": rdef.get("available_after_stage"),
+        "min_course_credits": _dec(rdef.get("min_course_credits")),
+        "certification_codes": sorted(set(rdef["certification_codes"]))
+        if rdef.get("certification_codes") else None,
+        "group_caps": caps or None,
+        "unresolved_conflicts": sorted(set(rdef["unresolved_conflicts"]))
+        if rdef.get("unresolved_conflicts") else None,
+    }
+
+
+def _prose(rdef: dict) -> str | None:
+    """`source_prose`, or a multi-source node's quotes joined with " ... "."""
+    if rdef.get("source_prose"):
+        return rdef["source_prose"]
+    quotes = [q["quote"] for q in rdef.get("quotes", []) if q.get("quote")]
+    return " ... ".join(quotes) or None
 
 
 def _dec(value) -> Decimal | None:

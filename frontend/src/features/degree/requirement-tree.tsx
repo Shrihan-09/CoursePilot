@@ -6,6 +6,8 @@ import { DN_REVIEW, REQUIREMENT_STATUS, termLabel } from "@/lib/academic/vocabul
 import { cn } from "@/lib/utils";
 import type { Allocation, GradeEvaluation, RequirementResult, RequirementStatus } from "@/types/degree";
 
+import { ReportRequirement } from "./report-requirement";
+
 /**
  * A requirement and its parts, exactly as the Degree Engine returned them.
  *
@@ -223,6 +225,7 @@ export function RequirementNode({
           {node.curation_status && CURATION[node.curation_status] && (
             <p className="text-xs text-fg-muted">{CURATION[node.curation_status]}</p>
           )}
+          <ReportRequirement code={node.requirement_code} name={node.requirement_name} />
 
           {children.length > 0 && (
             <ul className="space-y-2" aria-label={`Parts of ${node.requirement_name}`}>

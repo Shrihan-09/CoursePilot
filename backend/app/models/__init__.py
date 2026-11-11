@@ -59,11 +59,13 @@ from app.models.rules_version import RULES_TABLES, RulesVersion
 from app.models.search_version import SEARCH_TABLES, SearchVersion
 from app.models.requirements import (
     CatalogCourseEntry,
+    ComponentKind,
     CurationStatus,
     Program,
     ProgramRule,
     ProgramRuleType,
     ProgramVersion,
+    ProgramVersionComponent,
     Requirement,
     RequirementCourseOption,
     RequirementSystem,
@@ -196,4 +198,11 @@ from app.models.assistant import (  # noqa: E402 - Prompt 11 Part B
     AssistantMessage,
     AssistantUsage,
     StudentPlannedSection,
+)
+from app.models.knowledge import (  # noqa: E402 - Prompt 08 B1
+    KnowledgeBuild,
+    KnowledgeContext,
+    KnowledgeCoverage,
+    KnowledgeMembership,
+    RequirementReport,
 )

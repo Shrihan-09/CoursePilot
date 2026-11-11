@@ -1,0 +1,199 @@
+{
+  "packet_version": "review-packet/3",
+  "key": "rbs-entry",
+  "kind": "component",
+  "component_kind": "entry_stage",
+  "definition_file": "data/programs/rutgers/nb-undergrad/2026-2027/components/rbs-entry.json",
+  "file_sha256": "216900946eb5758459eb310bf671d1f854be9e1e06498468f66b9980c379267e",
+  "definition_sha256": "d87bbe54369a4438ebb7bc5173f30ce68b047b66955af6bfed5c9e4a8c328b63",
+  "curated_by": "manual encoding, Prompt 08 B1 (Claude Code session, 2026-11-11)",
+  "lifecycle_state": "pending_review",
+  "sources": [
+    {
+      "id": "rbs-catalog-programs",
+      "role": "catalog",
+      "note": null,
+      "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/programs-majors-minors/programs",
+      "retrieved_at": "2026-11-11T19:09:19+00:00",
+      "sha256": "87b56becf9a97ce20e4d3a2fbb48154ca8ba979a160edf49d743d9711056236d",
+      "representation": "raw_html",
+      "archive": "data/source-archive/87b56becf9a97ce20e4d3a2fbb48154ca8ba979a160edf49d743d9711056236d.html",
+      "archive_present": true,
+      "status": "archived"
+    },
+    {
+      "id": "rbs-catalog-admissions",
+      "role": "catalog",
+      "note": null,
+      "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/gen-info/admissions",
+      "retrieved_at": "2026-11-11T19:09:22+00:00",
+      "sha256": "86ce23f7ddd092e089f448a81c200eee52b03ae445796462eaa253aaa402fba4",
+      "representation": "raw_html",
+      "archive": "data/source-archive/86ce23f7ddd092e089f448a81c200eee52b03ae445796462eaa253aaa402fba4.html",
+      "archive_present": true,
+      "status": "archived"
+    },
+    {
+      "id": "rbs-transfer-eligibility",
+      "role": "department",
+      "note": "HTTP 403 to a plain GET on 2026-11-11: open evidence gap.",
+      "url": "https://www.business.rutgers.edu/undergraduate-new-brunswick/transfer-eligibility",
+      "retrieved_at": "2026-11-11T19:09:27+00:00",
+      "sha256": null,
+      "representation": "failed",
+      "archive": null,
+      "archive_present": false,
+      "status": "failed (open evidence gap)"
+    },
+    {
+      "id": "myrbs-policies-procedures",
+      "role": "department",
+      "note": "HTTP 403 to a plain GET on 2026-11-11: open evidence gap.",
+      "url": "https://myrbs.business.rutgers.edu/undergraduate-new-brunswick/policies-procedures",
+      "retrieved_at": "2026-11-11T19:09:29+00:00",
+      "sha256": null,
+      "representation": "failed",
+      "archive": null,
+      "archive_present": false,
+      "status": "failed (open evidence gap)"
+    }
+  ],
+  "machine_checks": {
+    "passed": true,
+    "quotes_found": 9,
+    "quotes_checked": 9,
+    "errors": [],
+    "warnings": [],
+    "note": "Machine checks are NOT review. They prove quotes exist verbatim in the archived sources and the file loads - not that the encoding means what the sources mean."
+  },
+  "requirements": [
+    {
+      "code": "RBS_FOUNDATIONS",
+      "name": "Foundational courses before admission to RBS",
+      "type": "all_of",
+      "parent": null,
+      "quotes": [
+        {
+          "source": "rbs-catalog-programs",
+          "quote": "The following are the four foundational courses that students should complete during their first three (four at most) semesters:"
+        },
+        {
+          "source": "rbs-catalog-programs",
+          "quote": "Foundational Courses (12-13 credits)"
+        },
+        {
+          "source": "rbs-catalog-programs",
+          "quote": "In addition to the four eligibility courses and courses that are required for the major"
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "RBS_FOUNDATION_MICRO",
+      "name": "Introduction to Microeconomics",
+      "type": "choose_n",
+      "parent": "RBS_FOUNDATIONS",
+      "quotes": [
+        {
+          "source": "rbs-catalog-programs",
+          "quote": "Introduction to Microeconomics (3)"
+        }
+      ],
+      "quoted_via": null,
+      "notes": "Named by title only in the catalog; course number not stated on an archived source.",
+      "min_count": 1,
+      "course_list_unknown": true,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "RBS_FOUNDATION_MACRO",
+      "name": "Introduction to Macroeconomics",
+      "type": "choose_n",
+      "parent": "RBS_FOUNDATIONS",
+      "quotes": [
+        {
+          "source": "rbs-catalog-programs",
+          "quote": "Introduction to Macroeconomics (3)"
+        }
+      ],
+      "quoted_via": null,
+      "notes": "Named by title only in the catalog; course number not stated on an archived source.",
+      "min_count": 1,
+      "course_list_unknown": true,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "RBS_FOUNDATION_CALCULUS",
+      "name": "Calculus",
+      "type": "choose_n",
+      "parent": "RBS_FOUNDATIONS",
+      "quotes": [
+        {
+          "source": "rbs-catalog-programs",
+          "quote": "Calculus (3-4)"
+        }
+      ],
+      "quoted_via": null,
+      "notes": "Named by title only in the catalog ('Calculus (3-4)'); which calculus courses qualify is not stated on an archived source.",
+      "min_count": 1,
+      "course_list_unknown": true,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "RBS_FOUNDATION_STATISTICS",
+      "name": "Introductory Statistics",
+      "type": "choose_n",
+      "parent": "RBS_FOUNDATIONS",
+      "quotes": [
+        {
+          "source": "rbs-catalog-programs",
+          "quote": "Introductory Statistics (3)"
+        }
+      ],
+      "quoted_via": null,
+      "notes": "Named by title only in the catalog; course number not stated on an archived source.",
+      "min_count": 1,
+      "course_list_unknown": true,
+      "eligible_course_rows": 0
+    }
+  ],
+  "school_rules": [],
+  "rules_not_yet_modeled": [
+    {
+      "rule": "Admission criteria for school-to-school transfer into RBS-NB (grades in the foundational courses, GPA, credits completed, application timing).",
+      "why_not": "The catalog defers them online; the department pages returned HTTP 403. Unknown - and admission is never inferred from course completion.",
+      "source": "rbs-catalog-admissions",
+      "quote": "Students who wish to transfer to Rutgers Business School: Undergraduate-New Brunswick from other Rutgers University schools should use the online application . More information about the requirements can be found online."
+    },
+    {
+      "rule": "Timing: the foundational courses within the first three (four at most) semesters.",
+      "why_not": "Guidance on timing ('should complete'), not a completion rule; plans keep the courses but do not impose a deadline."
+    },
+    {
+      "rule": "Students follow the major requirements in effect at their admission into the major.",
+      "why_not": "Cohort applicability (entered_school_from_term) is recorded on the business core; the admission term itself is a verified-evidence fact, never inferred.",
+      "source": "rbs-catalog-programs",
+      "quote": "Students must complete the requirements of the major that are in effect at the time of their admission into the major."
+    }
+  ],
+  "unknowns": [
+    "Course numbers for the four foundational courses. Archived pages mention 01:220:102, 01:220:103, 01:640:135 and 01:960:285 only as PREREQUISITES of business courses (phase08a-rbs-bait, phase08a-myrbs-bait): a review hint, not encoded.",
+    "Grade and GPA thresholds for admission to RBS (myRBS, HTTP 403)."
+  ],
+  "conflicts": [],
+  "review_questions": [
+    "From an official RBS source, which courses satisfy each foundational course (microeconomics, macroeconomics, calculus, introductory statistics)?",
+    "Do the entry requirements differ for first-year direct admits, school-to-school and external transfers? (Only the school-to-school route is a pre-business stage.)"
+  ],
+  "what_to_verify": [
+    "Open each archived source (paths below) and find every quoted sentence.",
+    "For each node, confirm the encoding says what its quote says: courses, counts, levels, grade floors, credit minimums, stages.",
+    "Confirm nothing the sources require is missing - compare with 'rules not yet modeled' and 'unknowns'.",
+    "Resolve or explicitly accept each OPEN conflict; never pick a side silently.",
+    "Confirm admission/declaration rules are entry-stage requirements or labels, never completion requirements, and that no plan would assume admission.",
+    "Answer every review question; 'changes requested' is a valid outcome."
+  ],
+  "how_to_record": "Components have no review command yet: record the decision in the PR / review notes; the component stays 'pending_review' (and every audit and index label says so) until a component review command exists."
+}

@@ -187,6 +187,8 @@ class CoreLoader:
 
             # A node may name one goal or several.
             goals = rdef.get("goals") or ([rdef["goal"]] if rdef.get("goal") else [])
+            # Prompt 08 B1: the codes the course knowledge index joins per term.
+            by_code[rdef["code"]].certification_codes = sorted(goals) or None
             for goal_code in goals:
                 goal_to_requirements.setdefault(goal_code.casefold(), []).append(rdef["code"])
 
