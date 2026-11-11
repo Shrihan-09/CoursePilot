@@ -1,0 +1,77 @@
+{
+  "packet_version": "review-packet/3",
+  "key": "soe-first-year-chem-ii",
+  "kind": "component",
+  "component_kind": "school_core",
+  "definition_file": "data/programs/rutgers/nb-undergrad/2026-2027/components/soe-first-year-chem-ii.json",
+  "file_sha256": "f5e3b006e8905b7ae4087f4815fb2031de680920a17a70194a1545f5accd8891",
+  "definition_sha256": "c5b777c926b921f6314c46c32b7ea85ad087861800c832760de948e03942fab6",
+  "curated_by": "manual encoding, Prompt 08 B1 (Claude Code session, 2026-11-11)",
+  "lifecycle_state": "pending_review",
+  "sources": [
+    {
+      "id": "eng-catalog-first-year",
+      "role": "catalog",
+      "note": null,
+      "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/first-year",
+      "retrieved_at": "2026-11-11T19:09:07+00:00",
+      "sha256": "9913d2ee379fdb2761e1078127ba8a84af1062aca2ddcffaff93df9b8d1d868e",
+      "representation": "raw_html",
+      "archive": "data/source-archive/9913d2ee379fdb2761e1078127ba8a84af1062aca2ddcffaff93df9b8d1d868e.html",
+      "archive_present": true,
+      "status": "archived"
+    }
+  ],
+  "machine_checks": {
+    "passed": true,
+    "quotes_found": 3,
+    "quotes_checked": 3,
+    "errors": [],
+    "warnings": [],
+    "note": "Machine checks are NOT review. They prove quotes exist verbatim in the archived sources and the file loads - not that the encoding means what the sources mean."
+  },
+  "requirements": [
+    {
+      "code": "SOE_FY_CHEM_160",
+      "name": "General Chemistry for Engineers II",
+      "type": "course",
+      "parent": null,
+      "quotes": [
+        {
+          "source": "eng-catalog-first-year",
+          "quote": "01:160:160 General Chemistry for Engineers II (3cr) #"
+        },
+        {
+          "source": "eng-catalog-first-year",
+          "quote": "# Not required for students pursuing a major in Electrical and Computer Engineering"
+        },
+        {
+          "source": "eng-catalog-first-year",
+          "quote": "# Not required for students pursuing a major in Electrical and Computer Engineering, Aerospace Engineering (Class of 2030+), Civil Engineering (Class of 2030+), Industrial Engineering (Class of 2030+), or Mechanical Engineering (Class of 2030+)."
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "courses": [
+        "01:160:160"
+      ],
+      "eligible_course_rows": 1
+    }
+  ],
+  "school_rules": [],
+  "rules_not_yet_modeled": [],
+  "unknowns": [],
+  "conflicts": [],
+  "review_questions": [
+    "Link guide for Phase C: ECE never links this; Aerospace, Civil, Industrial and Mechanical link it only in their classes-before-2030 curricula; every other major links it in both. Confirm."
+  ],
+  "what_to_verify": [
+    "Open each archived source (paths below) and find every quoted sentence.",
+    "For each node, confirm the encoding says what its quote says: courses, counts, levels, grade floors, credit minimums, stages.",
+    "Confirm nothing the sources require is missing - compare with 'rules not yet modeled' and 'unknowns'.",
+    "Resolve or explicitly accept each OPEN conflict; never pick a side silently.",
+    "Confirm admission/declaration rules are entry-stage requirements or labels, never completion requirements, and that no plan would assume admission.",
+    "Answer every review question; 'changes requested' is a valid outcome."
+  ],
+  "how_to_record": "Components have no review command yet: record the decision in the PR / review notes; the component stays 'pending_review' (and every audit and index label says so) until a component review command exists."
+}

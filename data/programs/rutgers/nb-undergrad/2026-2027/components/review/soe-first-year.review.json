@@ -1,0 +1,270 @@
+{
+  "packet_version": "review-packet/3",
+  "key": "soe-first-year",
+  "kind": "component",
+  "component_kind": "school_core",
+  "definition_file": "data/programs/rutgers/nb-undergrad/2026-2027/components/soe-first-year.json",
+  "file_sha256": "e46f128bfa431d1303ef18fb4ac84b3c526e6d3a50d8c53e6ff8a5575218cc05",
+  "definition_sha256": "a303a433d826afadbfbbd013df44674a57588bc6ad5a9d943dfa63f7ba1659bc",
+  "curated_by": "manual encoding, Prompt 08 B1 (Claude Code session, 2026-11-11)",
+  "lifecycle_state": "pending_review",
+  "sources": [
+    {
+      "id": "eng-catalog-first-year",
+      "role": "catalog",
+      "note": null,
+      "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/first-year",
+      "retrieved_at": "2026-11-11T19:09:07+00:00",
+      "sha256": "9913d2ee379fdb2761e1078127ba8a84af1062aca2ddcffaff93df9b8d1d868e",
+      "representation": "raw_html",
+      "archive": "data/source-archive/9913d2ee379fdb2761e1078127ba8a84af1062aca2ddcffaff93df9b8d1d868e.html",
+      "archive_present": true,
+      "status": "archived"
+    },
+    {
+      "id": "eng-catalog-programs-study",
+      "role": "catalog",
+      "note": null,
+      "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/programs",
+      "retrieved_at": "2026-11-11T19:10:56+00:00",
+      "sha256": "de71815c025c38a24566aac4754dcbf057109ef880110cf99de8aa645975a312",
+      "representation": "raw_html",
+      "archive": "data/source-archive/de71815c025c38a24566aac4754dcbf057109ef880110cf99de8aa645975a312.html",
+      "archive_present": true,
+      "status": "archived"
+    }
+  ],
+  "machine_checks": {
+    "passed": true,
+    "quotes_found": 13,
+    "quotes_checked": 13,
+    "errors": [],
+    "warnings": [],
+    "note": "Machine checks are NOT review. They prove quotes exist verbatim in the archived sources and the file loads - not that the encoding means what the sources mean."
+  },
+  "requirements": [
+    {
+      "code": "SOE_FY",
+      "name": "First-Year Program (004)",
+      "type": "all_of",
+      "parent": null,
+      "quotes": [
+        {
+          "source": "eng-catalog-first-year",
+          "quote": "FIRST-YEAR PROGRAM Curriculum Code 004 (common to all four-year engineering programs)"
+        },
+        {
+          "source": "eng-catalog-programs-study",
+          "quote": "Students in the first year of a four-year curriculum are listed under curriculum code 004."
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "SOE_FY_CHEM_159",
+      "name": "General Chemistry for Engineers I",
+      "type": "course",
+      "parent": "SOE_FY",
+      "quotes": [
+        {
+          "source": "eng-catalog-first-year",
+          "quote": "01:160:159 General Chemistry for Engineers I (3cr)"
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "courses": [
+        "01:160:159"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "SOE_FY_CHEM_171",
+      "name": "Introduction to Experimentation",
+      "type": "course",
+      "parent": "SOE_FY",
+      "quotes": [
+        {
+          "source": "eng-catalog-first-year",
+          "quote": "01:160:171 Introduction to Experimentation (1cr) *"
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "courses": [
+        "01:160:171"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "SOE_FY_WRITING",
+      "name": "College Writing",
+      "type": "course",
+      "parent": "SOE_FY",
+      "quotes": [
+        {
+          "source": "eng-catalog-first-year",
+          "quote": "01:355:101 College Writing (3cr) *"
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "courses": [
+        "01:355:101"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "SOE_FY_CALC_151",
+      "name": "Calculus I for Mathematical and Physical Sciences",
+      "type": "course",
+      "parent": "SOE_FY",
+      "quotes": [
+        {
+          "source": "eng-catalog-first-year",
+          "quote": "01:640:151 Calculus I for Mathematical and Physical Sciences (4cr)"
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "courses": [
+        "01:640:151"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "SOE_FY_PHYS_123",
+      "name": "Analytical Physics IA",
+      "type": "course",
+      "parent": "SOE_FY",
+      "quotes": [
+        {
+          "source": "eng-catalog-first-year",
+          "quote": "01:750:123 Analytical Physics IA (2cr)"
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "courses": [
+        "01:750:123"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "SOE_FY_ID3EA_101",
+      "name": "Introduction to Data-Driven Design for Engineering Applications",
+      "type": "course",
+      "parent": "SOE_FY",
+      "quotes": [
+        {
+          "source": "eng-catalog-first-year",
+          "quote": "14:440:101 Introduction to Data-Driven Design for Engineering Applications (2cr)"
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "courses": [
+        "14:440:101"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "SOE_FY_CALC_152",
+      "name": "Calculus II for Mathematical and Physical Sciences",
+      "type": "course",
+      "parent": "SOE_FY",
+      "quotes": [
+        {
+          "source": "eng-catalog-first-year",
+          "quote": "01:640:152 Calculus II for Mathematical and Physical Sciences (4cr)"
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "courses": [
+        "01:640:152"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "SOE_FY_PHYS_124",
+      "name": "Analytical Physics IB",
+      "type": "course",
+      "parent": "SOE_FY",
+      "quotes": [
+        {
+          "source": "eng-catalog-first-year",
+          "quote": "01:750:124 Analytical Physics IB (2cr)"
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "courses": [
+        "01:750:124"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "SOE_FY_ID3EA_102",
+      "name": "Integrated Data-Driven Design for Engineering Applications",
+      "type": "course",
+      "parent": "SOE_FY",
+      "quotes": [
+        {
+          "source": "eng-catalog-first-year",
+          "quote": "14:440:102 Integrated Data-Driven Design for Engineering Applications (2cr)"
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "courses": [
+        "14:440:102"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "SOE_FY_STATICS",
+      "name": "Engineering Mechanics: Statics",
+      "type": "course",
+      "parent": "SOE_FY",
+      "quotes": [
+        {
+          "source": "eng-catalog-first-year",
+          "quote": "14:440:221 Engineering Mechanics: Statics (3cr)"
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "courses": [
+        "14:440:221"
+      ],
+      "eligible_course_rows": 1
+    }
+  ],
+  "school_rules": [],
+  "rules_not_yet_modeled": [
+    {
+      "rule": "Semester placement of the first-year courses ('* May be taken in the second semester of the first year').",
+      "why_not": "Layout and timing guidance, not a completion rule.",
+      "source": "eng-catalog-first-year",
+      "quote": "* May be taken in the second semester of the first year."
+    }
+  ],
+  "unknowns": [],
+  "conflicts": [],
+  "review_questions": [
+    "Confirm the two printed first-year programs (before and starting from Class of 2030) differ only in the Chemistry II footnote.",
+    "Confirm 01:355:101 College Writing is required of every SoE student (no exemption path is stated on the archived page)."
+  ],
+  "what_to_verify": [
+    "Open each archived source (paths below) and find every quoted sentence.",
+    "For each node, confirm the encoding says what its quote says: courses, counts, levels, grade floors, credit minimums, stages.",
+    "Confirm nothing the sources require is missing - compare with 'rules not yet modeled' and 'unknowns'.",
+    "Resolve or explicitly accept each OPEN conflict; never pick a side silently.",
+    "Confirm admission/declaration rules are entry-stage requirements or labels, never completion requirements, and that no plan would assume admission.",
+    "Answer every review question; 'changes requested' is a valid outcome."
+  ],
+  "how_to_record": "Components have no review command yet: record the decision in the PR / review notes; the component stays 'pending_review' (and every audit and index label says so) until a component review command exists."
+}

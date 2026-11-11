@@ -216,6 +216,12 @@ def write_packets(files: list[pathlib.Path], out_dir: pathlib.Path,
     out_dir.mkdir(parents=True, exist_ok=True)
     written = []
     for f in files:
+        if json.loads(f.read_bytes()).get("sources"):
+            # Prompt 08 B1: a multi-source encoding gets the multi-source
+            # packet (quotes per node from every cited capture).
+            from coursepilot_ingestion.encoding.packets import write_packet
+            written.append(write_packet(f, out_dir, session))
+            continue
         packet = build_packet(f, session)
         stem = f.stem
         (out_dir / f"{stem}.review.json").write_text(

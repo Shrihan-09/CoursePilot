@@ -1,0 +1,492 @@
+{
+  "packet_version": "review-packet/3",
+  "key": "sebs-core",
+  "kind": "component",
+  "component_kind": "gen_ed",
+  "definition_file": "data/programs/rutgers/nb-undergrad/2026-2027/components/sebs-core.json",
+  "file_sha256": "a77891ee97fb35ccc42f3f108141372574281e897a0a3c868fee9fd765d40f68",
+  "definition_sha256": "9fc8d96182df46aa8607b33d3967116417c2986534d0ed66c4c1f468e3cff12f",
+  "curated_by": "manual encoding, Prompt 08 B1 (Claude Code session, 2026-11-11)",
+  "lifecycle_state": "pending_review",
+  "sources": [
+    {
+      "id": "sebs-catalog-core",
+      "role": "catalog",
+      "note": null,
+      "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/degree-requirements/mission-goals-core-curriculum-undergrad",
+      "retrieved_at": "2026-11-11T19:09:33+00:00",
+      "sha256": "87f0563f9759eb0d1476759c8d91108c0cf7e1cb3cbfb0657c4fe7e64993e9d6",
+      "representation": "raw_html",
+      "archive": "data/source-archive/87f0563f9759eb0d1476759c8d91108c0cf7e1cb3cbfb0657c4fe7e64993e9d6.html",
+      "archive_present": true,
+      "status": "archived"
+    },
+    {
+      "id": "sebs-catalog-credits-residency",
+      "role": "catalog",
+      "note": null,
+      "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sebs/degree-requirements/credits-residency",
+      "retrieved_at": "2026-11-11T19:09:36+00:00",
+      "sha256": "1c921ab769caf18e97182698973f33db95636feff9ed6e3c0c340760812746f8",
+      "representation": "raw_html",
+      "archive": "data/source-archive/1c921ab769caf18e97182698973f33db95636feff9ed6e3c0c340760812746f8.html",
+      "archive_present": true,
+      "status": "archived"
+    },
+    {
+      "id": "sebs-core",
+      "role": "department",
+      "note": "sebs.rutgers.edu/core returned HTTP 403 to a plain GET on 2026-11-11; the department source is an open evidence gap.",
+      "url": "https://sebs.rutgers.edu/core",
+      "retrieved_at": "2026-11-11T19:09:38+00:00",
+      "sha256": null,
+      "representation": "failed",
+      "archive": null,
+      "archive_present": false,
+      "status": "failed (open evidence gap)"
+    }
+  ],
+  "machine_checks": {
+    "passed": true,
+    "quotes_found": 25,
+    "quotes_checked": 25,
+    "errors": [],
+    "warnings": [],
+    "note": "Machine checks are NOT review. They prove quotes exist verbatim in the archived sources and the file loads - not that the encoding means what the sources mean."
+  },
+  "requirements": [
+    {
+      "code": "SEBS_CORE",
+      "name": "SEBS Core Curriculum",
+      "type": "all_of",
+      "parent": null,
+      "quotes": [
+        {
+          "source": "sebs-catalog-core",
+          "quote": "First-year and transfer students matriculating fall 2019 and later must complete a goal-based Core Curriculum ."
+        },
+        {
+          "source": "sebs-catalog-core",
+          "quote": "Only graded degree credit-bearing courses worth at least 3 credits and certified by the faculty may be used to meet core goals."
+        },
+        {
+          "source": "sebs-catalog-core",
+          "quote": "Courses may be counted as meeting multiple learning goals; students generally will complete the core in 10 to 13 courses of 3 or 4 credits each. A course used to meet core goals may also be used to fulfill a major or minor requirement."
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "min_course_credits": 3,
+      "graded_only": true,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "SEBS_CC",
+      "name": "Contemporary Challenges",
+      "type": "all_of",
+      "parent": "SEBS_CORE",
+      "quotes": [
+        {
+          "source": "sebs-catalog-core",
+          "quote": "(6 credits) Students must take two courses and meet one goal in each of the Contemporary Challenges areas. [CC-D, CC-O]"
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "SEBS_CCD",
+      "name": "Diversities and Social Inequalities",
+      "type": "choose_n",
+      "parent": "SEBS_CC",
+      "quotes": [
+        {
+          "source": "sebs-catalog-core",
+          "quote": "Diversities and Social Inequalities [CC-D]"
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "min_count": 1,
+      "allocation_scope": "sebs-core:contemporary",
+      "certification_codes": [
+        "CCD"
+      ],
+      "eligible_course_rows": 150
+    },
+    {
+      "code": "SEBS_CCO",
+      "name": "Our Common Future",
+      "type": "choose_n",
+      "parent": "SEBS_CC",
+      "quotes": [
+        {
+          "source": "sebs-catalog-core",
+          "quote": "Our Common Future [CC-O]"
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "min_count": 1,
+      "allocation_scope": "sebs-core:contemporary",
+      "certification_codes": [
+        "CCO"
+      ],
+      "eligible_course_rows": 123
+    },
+    {
+      "code": "SEBS_EL",
+      "name": "Experiential Learning",
+      "type": "choose_n",
+      "parent": "SEBS_CORE",
+      "quotes": [
+        {
+          "source": "sebs-catalog-core",
+          "quote": "(3 credits) Practical application of disciplinary knowledge. Students must participate in a certified experience that meets this goal. [EL]"
+        }
+      ],
+      "quoted_via": null,
+      "notes": "SOC certifies XPL ('Experiential Learning') on very few offerings; an approved experience may not be a course at all. A missing XPL course is never read as 'no experiential option'.",
+      "min_count": 1,
+      "allocation_scope": "sebs-core:experiential",
+      "certification_codes": [
+        "XPL"
+      ],
+      "eligible_course_rows": 1
+    },
+    {
+      "code": "SEBS_AOI",
+      "name": "Areas of Inquiry",
+      "type": "all_of",
+      "parent": "SEBS_CORE",
+      "quotes": [
+        {
+          "source": "sebs-catalog-core",
+          "quote": "Areas of Inquiry"
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "SEBS_NS",
+      "name": "Natural Sciences",
+      "type": "choose_n",
+      "parent": "SEBS_AOI",
+      "quotes": [
+        {
+          "source": "sebs-catalog-core",
+          "quote": "Natural Sciences (6 credits) Students must meet two goals with courses in two of the following disciplines: physical, biological or environmental sciences. [NS]"
+        }
+      ],
+      "quoted_via": null,
+      "notes": "Two courses certified NS. The condition that they come from two different disciplines (physical, biological or environmental sciences) is NOT modeled - see rules_not_yet_modeled.",
+      "min_count": 2,
+      "allocation_scope": "sebs-core:natural-sciences",
+      "certification_codes": [
+        "NS"
+      ],
+      "eligible_course_rows": 87
+    },
+    {
+      "code": "SEBS_HST",
+      "name": "Historical Analysis",
+      "type": "choose_n",
+      "parent": "SEBS_AOI",
+      "quotes": [
+        {
+          "source": "sebs-catalog-core",
+          "quote": "Historical Analysis (3 credits) Students must meet one goal. [HST]"
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "min_count": 1,
+      "allocation_scope": "sebs-core:historical-social",
+      "certification_codes": [
+        "HST"
+      ],
+      "eligible_course_rows": 205
+    },
+    {
+      "code": "SEBS_SCL",
+      "name": "Social Analysis",
+      "type": "all_of",
+      "parent": "SEBS_AOI",
+      "quotes": [
+        {
+          "source": "sebs-catalog-core",
+          "quote": "Social Analysis (6 credits) Students must meet one goal in each area below. [SCL]"
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "SEBS_SCL_SCA_ECN",
+      "name": "Social Cultural Analysis / Economic Analysis",
+      "type": "choose_n",
+      "parent": "SEBS_SCL",
+      "quotes": [
+        {
+          "source": "sebs-catalog-core",
+          "quote": "Social Cultural Analysis/ Economic Analysis (3 credits) [SCL-SCA/ECN]"
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "min_count": 1,
+      "allocation_scope": "sebs-core:historical-social",
+      "certification_codes": [
+        "SCL",
+        "ECN"
+      ],
+      "eligible_course_rows": 103
+    },
+    {
+      "code": "SEBS_SCL_GVT",
+      "name": "Governance and Regulation Analysis",
+      "type": "choose_n",
+      "parent": "SEBS_SCL",
+      "quotes": [
+        {
+          "source": "sebs-catalog-core",
+          "quote": "Governance and Regulation Analysis (3 credits) [SCL-GVT]"
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "min_count": 1,
+      "allocation_scope": "sebs-core:historical-social",
+      "certification_codes": [
+        "GVT"
+      ],
+      "eligible_course_rows": 9
+    },
+    {
+      "code": "SEBS_AH",
+      "name": "Arts and Humanities",
+      "type": "choose_n",
+      "parent": "SEBS_AOI",
+      "quotes": [
+        {
+          "source": "sebs-catalog-core",
+          "quote": "Arts and Humanities (3 credits) Students must meet one goal. [AH]"
+        }
+      ],
+      "quoted_via": null,
+      "notes": "The catalog prints [AH] and lists four goals whose wording matches SOC's AHo/AHp/AHq/AHr descriptions; the crosswalk is a review question.",
+      "min_count": 1,
+      "allocation_scope": "sebs-core:arts-humanities",
+      "certification_codes": [
+        "AHo",
+        "AHp",
+        "AHq",
+        "AHr"
+      ],
+      "eligible_course_rows": 445
+    },
+    {
+      "code": "SEBS_CSP",
+      "name": "Cognitive Skills and Processes",
+      "type": "all_of",
+      "parent": "SEBS_CORE",
+      "quotes": [
+        {
+          "source": "sebs-catalog-core",
+          "quote": "Cognitive Skills and Processes"
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "SEBS_WC",
+      "name": "Writing and Communication",
+      "type": "all_of",
+      "parent": "SEBS_CSP",
+      "quotes": [
+        {
+          "source": "sebs-catalog-core",
+          "quote": "Writing and Communication (6 credits) Students must meet one goal in two areas. [WC, WCd]"
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "SEBS_WC_COLLEGE",
+      "name": "College Writing",
+      "type": "choose_n",
+      "parent": "SEBS_WC",
+      "quotes": [
+        {
+          "source": "sebs-catalog-core",
+          "quote": "College Writing (101) or Extended College Writing (104) or Exposition and Argument (103) (3 credits) [WC]"
+        }
+      ],
+      "quoted_via": null,
+      "notes": "The catalog names College Writing (101), Extended College Writing (104) and Exposition and Argument (103) without a subject code; eligibility uses SOC's WC certification rather than assuming the subject.",
+      "min_count": 1,
+      "allocation_scope": "sebs-core:writing",
+      "certification_codes": [
+        "WC"
+      ],
+      "eligible_course_rows": 3
+    },
+    {
+      "code": "SEBS_WCD",
+      "name": "Writing in a Discipline",
+      "type": "choose_n",
+      "parent": "SEBS_WC",
+      "quotes": [
+        {
+          "source": "sebs-catalog-core",
+          "quote": "Writing in a Discipline (3 credits) [WCd]"
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "min_count": 1,
+      "allocation_scope": "sebs-core:writing",
+      "certification_codes": [
+        "WCd"
+      ],
+      "eligible_course_rows": 181
+    },
+    {
+      "code": "SEBS_QFR",
+      "name": "Quantitative and Formal Reasoning",
+      "type": "all_of",
+      "parent": "SEBS_CSP",
+      "quotes": [
+        {
+          "source": "sebs-catalog-core",
+          "quote": "Quantitative and Formal Reasoning (6 credits) Students must meet two goals. [QQ; QR]"
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "eligible_course_rows": 0
+    },
+    {
+      "code": "SEBS_QQ",
+      "name": "Quantitative Information",
+      "type": "choose_n",
+      "parent": "SEBS_QFR",
+      "quotes": [
+        {
+          "source": "sebs-catalog-core",
+          "quote": "Formulate, evaluate, and communicate conclusions and inferences from quantitative information. (Includes various quantitative methods courses as well as 640 courses) [QQ]"
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "min_count": 1,
+      "allocation_scope": "sebs-core:quantitative",
+      "certification_codes": [
+        "QQ"
+      ],
+      "eligible_course_rows": 46
+    },
+    {
+      "code": "SEBS_QR",
+      "name": "Mathematical or Formal Reasoning",
+      "type": "choose_n",
+      "parent": "SEBS_QFR",
+      "quotes": [
+        {
+          "source": "sebs-catalog-core",
+          "quote": "Apply effective and efficient mathematical or other formal processes to reason and to solve problems. (Includes 640 courses and formal reasoning course--or placement out of) [QR]"
+        }
+      ],
+      "quoted_via": null,
+      "notes": null,
+      "min_count": 1,
+      "allocation_scope": "sebs-core:quantitative",
+      "certification_codes": [
+        "QR"
+      ],
+      "eligible_course_rows": 41
+    }
+  ],
+  "school_rules": [
+    {
+      "code": "SEBS_MIN_GPA",
+      "name": "Cumulative GPA of at least 2.000",
+      "rule_type": "min_gpa",
+      "min_gpa": 2.0,
+      "gpa_scope": "cumulative",
+      "quotes": [
+        {
+          "source": "sebs-catalog-credits-residency",
+          "quote": "must complete a minimum of 120 credits* of coursework with a cumulative grade-point average of 2.000 or better"
+        }
+      ]
+    },
+    {
+      "code": "SEBS_LAST_42",
+      "name": "30 of the last 42 credits at Rutgers",
+      "rule_type": "residency_window",
+      "is_evaluable": false,
+      "not_evaluable_reason": "Needs certified attempt institution and a chronological window over the last 42 credits; CoursePilot does not yet evaluate rolling residency windows.",
+      "quotes": [
+        {
+          "source": "sebs-catalog-credits-residency",
+          "quote": "In addition, the student must complete 30 of the last 42 credits at Rutgers."
+        }
+      ]
+    },
+    {
+      "code": "SEBS_PASS_NO_CREDIT",
+      "name": "Pass/No Credit limited to unspecified electives",
+      "rule_type": "pass_fail_limit",
+      "is_evaluable": false,
+      "not_evaluable_reason": "The quoted P/NC limit appears under the catalog's area requirements for students matriculating prior to fall 2015; the current-cohort policy page (sebs.rutgers.edu) returned HTTP 403. Not evaluated.",
+      "quotes": [
+        {
+          "source": "sebs-catalog-core",
+          "quote": "Students who have completed at least 60 credits of coursework may register for up to two of these unspecified elective courses (no more than one per semester) on a Pass/No Credit basis."
+        }
+      ]
+    }
+  ],
+  "rules_not_yet_modeled": [
+    {
+      "rule": "Natural Sciences: the two courses must come from two different disciplines (physical, biological or environmental sciences).",
+      "why_not": "No source-backed course-to-discipline mapping is archived; a subject-code guess would invent one."
+    },
+    {
+      "rule": "Experiential Learning may be met by a certified experience that is not a course.",
+      "why_not": "No verified experiential-approval evidence kind exists yet; only XPL-certified offerings are eligible, and their absence is never read as 'no option'."
+    },
+    {
+      "rule": "Environmental Engineering students complete at least 129 credits.",
+      "why_not": "A program-level total; it belongs to the Environmental Engineering encoding (Phase C), not the school component."
+    }
+  ],
+  "unknowns": [
+    "The current SEBS Core page and Pass/No Credit policy on sebs.rutgers.edu (HTTP 403 to a plain GET).",
+    "Whether every SOC-certified CCD/CCO/NS/HST/SCL/AH/WC/WCd/QQ/QR course is certified for SEBS students (the catalog says lists are in Degree Navigator)."
+  ],
+  "conflicts": [],
+  "review_questions": [
+    "Confirm the bracket-to-SOC crosswalk: CC-D->CCD, CC-O->CCO, EL->XPL, SCL-SCA/ECN->SCL or ECN, SCL-GVT->GVT, AH->AHo/AHp/AHq/AHr, WC->WC, WCd->WCd, QQ->QQ, QR->QR.",
+    "Social Analysis: the catalog bracket is [SCL-SCA/ECN]. Confirm that a course certified SCL (without ECN) meets the Social Cultural Analysis/Economic Analysis area.",
+    "Confirm the 120-credit total applies to SEBS students in the 2026-2027 catalog (the Core page's 128-credit Area IX is for students matriculating prior to fall 2015)."
+  ],
+  "what_to_verify": [
+    "Open each archived source (paths below) and find every quoted sentence.",
+    "For each node, confirm the encoding says what its quote says: courses, counts, levels, grade floors, credit minimums, stages.",
+    "Confirm nothing the sources require is missing - compare with 'rules not yet modeled' and 'unknowns'.",
+    "Resolve or explicitly accept each OPEN conflict; never pick a side silently.",
+    "Confirm admission/declaration rules are entry-stage requirements or labels, never completion requirements, and that no plan would assume admission.",
+    "Answer every review question; 'changes requested' is a valid outcome."
+  ],
+  "how_to_record": "Components have no review command yet: record the decision in the PR / review notes; the component stays 'pending_review' (and every audit and index label says so) until a component review command exists."
+}
