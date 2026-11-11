@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Alert, Badge, Skeleton } from "@/components/ui/feedback";
 import { useToast } from "@/components/ui/overlay";
 import { PlanDiffView } from "@/features/plan/plan-changes";
-import { chipBody, deliveryWords, OPEN_STATUS, streamMessage } from "@/lib/assistant";
+import { ASSISTANT_MAX_INPUT_CHARS, chipBody, deliveryWords, OPEN_STATUS, streamMessage } from "@/lib/assistant";
 import { ApiError, api } from "@/lib/api";
 import { termLabel } from "@/lib/academic/vocabulary";
 import { cn } from "@/lib/utils";
@@ -156,6 +156,7 @@ export function AssistantChat({ compact = false, conversationId, contextTerm, bu
       </div>
 
       <Composer draft={draft} disabled={!s.enabled || pending || (remaining ?? s.remaining_today) <= 0}
+                maxChars={s.max_input_chars ?? ASSISTANT_MAX_INPUT_CHARS}
                 onSend={(text) => send({ text }, text)} />
       <p className="px-3 pb-2 text-[11px] leading-snug text-fg-muted">{s.footer}</p>
 
@@ -493,27 +494,41 @@ export function WebRegPanelView({ term }: { term: string }) {
 
 /* ------------------------------------------------------------- composer */
 
-function Composer({ disabled, onSend, draft }: { disabled: boolean; onSend: (text: string) => void; draft?: string }) {
+export function Composer({ disabled, onSend, draft, maxChars = ASSISTANT_MAX_INPUT_CHARS }: {
+  disabled: boolean; onSend: (text: string) => void; draft?: string; maxChars?: number;
+}) {
   const [text, setText] = useState(draft ?? "");
   useEffect(() => { if (draft) setText(draft); }, [draft]);
+  // Counted like the API counts: surrounding whitespace is free.
+  const used = text.trim().length;
+  const over = used > maxChars;
   const submit = () => {
     const t = text.trim();
-    if (!t || disabled) return;
+    if (!t || disabled || over) return;
     onSend(t);
     setText("");
   };
   return (
-    <form className="flex items-end gap-2 border-t border-border px-3 py-2"
+    <form className="border-t border-border px-3 py-2"
           onSubmit={(e) => { e.preventDefault(); submit(); }}>
-      <label htmlFor="assistant-input" className="sr-only">Message the assistant</label>
-      <textarea id="assistant-input" rows={1} maxLength={600} value={text} disabled={disabled}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
-                placeholder="Ask about your plan, a course, or a semester"
-                className="min-h-10 min-w-0 flex-1 resize-none rounded border border-border bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-muted" />
-      <Button type="submit" variant="primary" disabled={disabled || !text.trim()} aria-label="Send">
-        <Send aria-hidden className="size-4" />
-      </Button>
+      <div className="flex items-end gap-2">
+        <label htmlFor="assistant-input" className="sr-only">Message the assistant</label>
+        {/* No hard maxLength: a long paste stays visible and over the limit,
+            rather than being silently cut. */}
+        <textarea id="assistant-input" rows={1} value={text} disabled={disabled}
+                  aria-describedby="assistant-input-count" aria-invalid={over || undefined}
+                  onChange={(e) => setText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); } }}
+                  placeholder="Ask about your plan, a course, or a semester"
+                  className={`min-h-10 min-w-0 flex-1 resize-none rounded border bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-muted ${over ? "border-danger" : "border-border"}`} />
+        <Button type="submit" variant="primary" disabled={disabled || !text.trim() || over} aria-label="Send">
+          <Send aria-hidden className="size-4" />
+        </Button>
+      </div>
+      <p id="assistant-input-count" aria-live="polite"
+         className={`mt-1 text-right text-[11px] tabular-nums ${over ? "font-semibold text-danger" : "text-fg-muted"}`}>
+        {over ? `${used - maxChars} over the ${maxChars}-character limit` : `${used}/${maxChars}`}
+      </p>
     </form>
   );
 }

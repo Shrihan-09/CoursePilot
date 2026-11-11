@@ -9,6 +9,13 @@
 
 import type { Chip, MessageBody, StreamEvent } from "@/types/assistant";
 
+/**
+ * Longest message a student may type. The server sends its own value
+ * (`max_input_chars` on the status); this is the fallback, and it matches the
+ * backend default. The API refuses longer messages either way.
+ */
+export const ASSISTANT_MAX_INPUT_CHARS = 250;
+
 /** Split NDJSON chunks into events; returns the events and the unfinished tail. */
 export function parseNdjson(buffer: string): { events: StreamEvent[]; rest: string } {
   const lines = buffer.split("\n");
