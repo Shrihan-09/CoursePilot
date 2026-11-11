@@ -1,3 +1,16 @@
 #!/bin/sh
 # Enable with: git config core.hooksPath scripts/hooks
-exec python scripts/check_private_files.py
+# 1. Private material by path (data/private/, *.har, *state*.json).
+# 2. Secrets by content (gitleaks, staged changes only, values redacted).
+set -e
+
+python scripts/check_private_files.py
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+    echo "pre-commit: gitleaks is not installed, so staged changes cannot be scanned for secrets." >&2
+    echo "  Windows: winget install Gitleaks.Gitleaks   macOS: brew install gitleaks" >&2
+    echo "  Other:   https://github.com/gitleaks/gitleaks/releases" >&2
+    exit 1
+fi
+
+exec gitleaks git --pre-commit --staged --redact --no-banner --log-level warn .

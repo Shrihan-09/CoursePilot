@@ -299,6 +299,35 @@ def get_settings() -> Settings:
 #: Configuration that is fine locally and dangerous in production. Reported
 #: at startup rather than enforced, except where enforcement is free and
 #: unambiguous (see `_production_is_never_debug`).
+class MissingSecretError(RuntimeError):
+    """A provider is configured but the secret it needs is not set."""
+
+
+#: Settings that select an LLM backend. Any of them set to "openai" means the
+#: process will call OpenAI and therefore needs OPENAI_API_KEY.
+_OPENAI_PROVIDER_SETTINGS = ("llm_provider", "explanation_provider", "assistant_provider")
+
+
+def require_openai_key(settings: "Settings") -> None:
+    """Refuse to start when an OpenAI provider is selected but no key is set.
+
+    Fails at startup instead of on the first request, so a deployment with a
+    missing key never reports healthy. The message names settings, never
+    values. Choosing a provider that needs no key (none/echo/fake) is the
+    documented way to run without one.
+    """
+    users = [name for name in _OPENAI_PROVIDER_SETTINGS
+             if (getattr(settings, name, "") or "").lower() == "openai"]
+    if users and not (settings.openai_api_key or "").strip():
+        raise MissingSecretError(
+            "OPENAI_API_KEY is not set, but "
+            + ", ".join(f"{name.upper()}=openai" for name in users)
+            + ". Set OPENAI_API_KEY in the environment or backend .env, or pick a "
+            "provider that needs no key (for example ASSISTANT_PROVIDER=fake, "
+            "EXPLANATION_PROVIDER=none). See docs/SECURITY.md."
+        )
+
+
 def audit_production_settings(settings: "Settings") -> list[str]:
     """Findings a production deployment should act on. Empty is good.
 

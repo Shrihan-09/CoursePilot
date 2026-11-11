@@ -1,7 +1,9 @@
 """Pre-commit guard (Phase 7.3 trust boundary 7): refuse to commit private material.
 
-Fails if any staged path is under data/private/, ends in .har, or is a
-*state*.json file (a saved browser/session state). Reads staged NAMES only.
+Fails if any staged path is under data/private/ or coursepilot-private/, ends
+in .har, is a *state*.json file (a saved browser/session state), or is a .env
+file other than .env.example. Reads staged NAMES only; secrets in file
+CONTENTS are gitleaks' job (scripts/hooks/pre-commit).
 """
 
 from __future__ import annotations
@@ -10,7 +12,9 @@ import fnmatch
 import subprocess
 import sys
 
-PATTERNS = ("data/private/*", "*/data/private/*", "*.har", "*state*.json")
+PATTERNS = ("data/private/*", "*/data/private/*", "coursepilot-private/*",
+            "*/coursepilot-private/*", "*.har", "*state*.json", ".env", ".env.*")
+ALLOWED = (".env.example",)
 
 
 def blocked(paths: list[str]) -> list[str]:
@@ -18,6 +22,8 @@ def blocked(paths: list[str]) -> list[str]:
     for path in paths:
         name = path.replace("\\", "/")
         base = name.rsplit("/", 1)[-1]
+        if base in ALLOWED:
+            continue
         if any(fnmatch.fnmatch(name, p) or fnmatch.fnmatch(base, p) for p in PATTERNS):
             hits.append(name)
     return hits

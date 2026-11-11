@@ -58,6 +58,10 @@ docker-compose.override.yml
 # ---------- Phase 7.3: private developer/student material (PHASE_7_3_PLAN.md §2) ----------
 # Session state, HAR captures and real DN/WebReg exports never enter Git.
 data/private/
+# The out-of-repo private folder (C:\coursepilot-private) must never be copied
+# or linked in. Git cannot see paths outside the repo; this catches a copy.
+coursepilot-private/
+**/coursepilot-private/
 *.har
 *state*.json
 
