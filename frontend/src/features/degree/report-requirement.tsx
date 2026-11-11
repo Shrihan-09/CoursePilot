@@ -25,16 +25,20 @@ export const MAX_MESSAGE = 2000;
 
 export function ReportRequirement({ code, name }: { code: string; name: string }) {
   const target = useContext(ReportTargetContext);
+  // No hooks needing a query client run where there is nothing to report against.
+  return target ? <ReportForm code={code} name={name} target={target} /> : null;
+}
+
+function ReportForm({ code, name, target }: { code: string; name: string; target: ReportTarget }) {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const fieldId = useId();
   const send = useMutation({
     mutationFn: () => api.reportRequirement({
-      program_key: target!.program_key, catalog_year: target!.catalog_year,
+      program_key: target.program_key, catalog_year: target.catalog_year,
       requirement_code: code, message: message.trim(),
     }),
   });
-  if (!target) return null;
 
   if (send.isSuccess) {
     return (
