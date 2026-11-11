@@ -153,6 +153,10 @@ def test_a_fully_configured_production_setup_reports_nothing() -> None:
         oidc_jwks_uri="https://idp.rutgers.edu/jwks",
         cors_origins="https://coursepilot.example.edu",
         rate_limit_enabled=True,
+        # The assistant defaults to OpenAI, so a fully configured deployment
+        # has a key. A placeholder, not a credential; the audit only checks
+        # that one is present.
+        openai_api_key="placeholder-for-tests",
     )
     assert audit_production_settings(settings) == []
 
