@@ -322,7 +322,7 @@ def build_edit(plan: PlanResult, constraints: PlanningConstraints, edits: PlanEd
             errors.append(f"not_locked: {course} is not locked.")
         else:
             e.locks, e.selections = _without(e.locks, course), _without(e.selections, course)
-            summary = f"Unlock {course} (CoursePilot may change it)"
+            summary = f"Unlock {course} (Coursenav may change it)"
     elif k == "lock_term":
         term_plan = next((t for t in plan.terms if t.term_code == term), None)
         if term_plan is None:

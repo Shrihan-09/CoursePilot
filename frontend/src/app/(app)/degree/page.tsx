@@ -49,7 +49,7 @@ export default function DegreePage() {
         requestId={err instanceof ApiError ? err.requestId : null}
       >
         {err instanceof ApiError && err.status >= 500
-          ? "CoursePilot's degree engine hit a problem. Nothing about your record has changed."
+          ? "Coursenav's degree engine hit a problem. Nothing about your record has changed."
           : "Check your connection and try again."}
       </ErrorState>
     );

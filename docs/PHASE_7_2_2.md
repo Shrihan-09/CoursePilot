@@ -68,7 +68,7 @@ is valid allocated count divided by required count, capped at one; credit
 progress is valid allocated credits divided by required credits, capped at one.
 Simultaneous count/credit/category constraints use the least-satisfied fraction.
 An engine rejection for another constraint never becomes a full completed unit.
-These weights are an explicit CoursePilot display convention, not Rutgers
+These weights are an explicit Coursenav display convention, not Rutgers
 credits, workload, time remaining, or likelihood of graduation.
 
 ALL_OF sums child budgets and does not add a parent unit. ANY_OF requiring N
@@ -181,7 +181,7 @@ supported; unsupported entries may request support but must not produce fake aud
 ## Degree Navigator comparison: design only
 
 A future student-controlled audit upload is a comparison artifact, not an authority
-over CoursePilot's engine or a route to overwrite academic history. Parse/stage
+over Coursenav's engine or a route to overwrite academic history. Parse/stage
 under the same private upload limits; compare dated, scoped requirement verdicts
 with explicit mappings. MATCH means agreement within coverage; DIFFERENCE means
 review, not automatic reconciliation. No authenticated Degree Navigator scraping.

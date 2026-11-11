@@ -109,20 +109,20 @@ describe("every engine value has words", () => {
 
   it("states how often a course ran in the same season as a count, never a probability (7.3)", () => {
     expect(seasonRecord({ target_term: "20279", same_season_offered: 4, same_season_loaded: 5 }))
-      .toBe("Rutgers offering it in 4 of the last 5 Falls CoursePilot has data for");
+      .toBe("Rutgers offering it in 4 of the last 5 Falls Coursenav has data for");
     expect(seasonRecord({ target_term: "20281", same_season_offered: 1, same_season_loaded: 1 }))
-      .toMatch(/1 of the last 1 Spring CoursePilot/);
+      .toMatch(/1 of the last 1 Spring Coursenav/);
     expect(seasonRecord({ target_term: "20279", most_recent_term: "20259" })).toBe("Rutgers offering it in Fall 2025");
     expect(seasonRecord({ target_term: "20279", same_season_offered: 4, same_season_loaded: 5 })).not.toMatch(/%|probab|chance/i);
   });
 
-  it("history never claims Rutgers hasn't published a term CoursePilot didn't check (7.2.4)", () => {
+  it("history never claims Rutgers hasn't published a term Coursenav didn't check (7.2.4)", () => {
     const off = { target_term: "20281" };
-    expect(historicalBasis(off)).toBe("CoursePilot has no Spring 2028 schedule from Rutgers");
+    expect(historicalBasis(off)).toBe("Coursenav has no Spring 2028 schedule from Rutgers");
     expect(historicalBasis({ ...off, target_term_authority: "unchecked" })).not.toMatch(/hasn't published/);
     expect(historicalBasis({ ...off, target_term_authority: "not_published", target_term_checked_at: "2026-10-19T12:00:00Z" }))
       .toMatch(/^Rutgers hasn't published Spring 2028 yet \(checked /);
-    expect(OFFERING_KIND.target_term_data_pending).toMatch(/has published that term; CoursePilot hasn't loaded it/);
+    expect(OFFERING_KIND.target_term_data_pending).toMatch(/has published that term; Coursenav hasn't loaded it/);
     expect(blockedReasonText("target_term_data_pending")).toMatch(/hasn't loaded it yet/);
   });
 

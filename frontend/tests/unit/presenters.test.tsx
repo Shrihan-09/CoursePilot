@@ -111,7 +111,7 @@ describe("plan", () => {
       <StaleNotice plan={savedPlan({ freshness: { state: "stale", reasons: ["academic_record_changed", "rutgers_data_changed"] } })} onRegenerate={() => {}} regenerating={false} />));
     expect(t).toMatch(/out of date/);
     expect(t).toContain("Your academic record changed.");
-    expect(t).toContain("CoursePilot loaded newer Rutgers course data.");
+    expect(t).toContain("Coursenav loaded newer Rutgers course data.");
   });
 
   it("courses needing confirmation show the Rutgers condition and are not called ineligible", () => {
@@ -154,7 +154,7 @@ describe("schedule", () => {
     expect(t).toMatch(/By arrangement/);
   });
 
-  it("registration is the student's, in WebReg - CoursePilot never claims it", () => {
+  it("registration is the student's, in WebReg - Coursenav never claims it", () => {
     const t = text(renderToStaticMarkup(<RegistrationHandoff option={opt} />));
     expect(t).toContain("09211");
     expect(t).toMatch(/doesn't register you/);

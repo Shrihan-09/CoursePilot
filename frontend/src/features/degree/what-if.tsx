@@ -172,7 +172,7 @@ export function WhatIf({ currentKey }: { currentKey: string }) {
   return (
     <div className="space-y-5">
       <p className="text-sm text-fg-secondary">
-        See how your record would count toward another program CoursePilot supports. This runs the same
+        See how your record would count toward another program Coursenav supports. This runs the same
         Degree Engine; it does not change your program.
       </p>
       <form

@@ -39,7 +39,7 @@ const choices = { term_code: "20271", questions: [
 ] };
 const hit = (course, title, extra = {}) => ({ course, title, credits: "3", requirements: [], requirement_codes: [], coverage: "free_elective", coverage_label: "Counts only as free elective; other requirement coverage not mapped", workload_weight: "3", delivery: ["async"], can_add: true, can_pin: false, selected: false, gate: null, open_status: "open", prerequisite: { state: "satisfied_by_history", conditional_on: [] }, recommended: false, ...extra });
 const hits = [hit("01:700:101", "Music in Everyday Life"), hit("01:198:344", "Design and Analysis of Algorithms", { can_add: false, gate: "prerequisites_not_met" }), hit("01:730:101", "Introduction to Philosophy", { recommended: true, requirements: ["Historical Analysis"], requirement_codes: ["CORE_HST"], coverage_label: "Historical Analysis" })];
-const footer = "CoursePilot is a planning aid; your advisor and Degree Navigator are authoritative.";
+const footer = "Coursenav is a planning aid; your advisor and Degree Navigator are authoritative.";
 const blank = (extra = {}) => ({ text: "Here is a suggestion for your draft.", intent: "search", questions: [], cards: [], proposals: [], sections: [], suggestions: [], activity: [], webreg_term: null, generated_by: "template", footer, ...extra });
 const sent = [], previews = [], applies = [], scheduleRequests = [];
 let preview;
@@ -95,7 +95,7 @@ try {
   const choicesCard = page.getByTestId("your-choices"); await expect(choicesCard).toBeVisible();
   await expect(page.getByTestId("semester-section").nth(1)).not.toHaveAttribute("open", "");
   await expect(page.getByTestId("plan-course").first().locator("h4")).toHaveText("Calculus II");
-  await expect(choicesCard).toContainText("CoursePilot picked World History"); await noOverflow(); await shot("plan-desktop");
+  await expect(choicesCard).toContainText("Coursenav picked World History"); await noOverflow(); await shot("plan-desktop");
   await choicesCard.getByRole("button", { name: "Change", exact: true }).click();
   const choiceDialog = page.getByRole("dialog", { name: "Change your choice", exact: true });
   await expect(choiceDialog.getByTestId("option-card")).toHaveCount(3);
@@ -119,8 +119,8 @@ try {
   await page.keyboard.press("Control+/");
   await expect(page.getByTestId("assistant-context")).toContainText("Builder draft (4 courses)");
   await page.keyboard.press("Escape");
-  await builder.getByRole("button", { name: "Ask CoursePilot about my last slot" }).click();
-  const assistant = page.getByRole("dialog", { name: "CoursePilot assistant", exact: true }); await expect(assistant).toBeVisible();
+  await builder.getByRole("button", { name: "Ask Coursenav about my last slot" }).click();
+  const assistant = page.getByRole("dialog", { name: "Coursenav assistant", exact: true }); await expect(assistant).toBeVisible();
   await page.getByRole("button", { name: "Send", exact: true }).click(); await expect(assistant.getByRole("button", { name: "Add to semester" })).toBeVisible();
   assert.equal(sent[0].context_term, "20271"); assert.deepEqual(sent[0].builder_selection, [...courses.map((c) => c.course), "01:700:101"]);
   assert.equal(applies.length, 0); await shot("builder-assistant");

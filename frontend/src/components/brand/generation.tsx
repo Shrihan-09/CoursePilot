@@ -37,8 +37,8 @@ export interface GenerationStage {
 export function GenerationAnimation({
   status,
   stages,
-  title = "CoursePilot is building your plan",
-  caption = "Computed by CoursePilot's deterministic planning engine from your record and Rutgers data.",
+  title = "Coursenav is building your plan",
+  caption = "Computed by Coursenav's deterministic planning engine from your record and Rutgers data.",
   onResolved,
   reducedMotion,
   className,

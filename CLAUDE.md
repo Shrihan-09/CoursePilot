@@ -1,4 +1,4 @@
-# CoursePilot - standing instructions
+# Coursenav - standing instructions
 
 ## Git workflow
 - After every commit, push the current branch to origin immediately (set upstream on first push).

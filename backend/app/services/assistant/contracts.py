@@ -19,6 +19,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from app.core.config import APP_NAME
+
 COURSE_KEY = re.compile(r"\b\d{2}:\d{3}:\d{3}\b")
 SEASONS = {"0": "Winter", "1": "Spring", "7": "Summer", "9": "Fall"}
 
@@ -284,7 +286,7 @@ class Activity(BaseModel):
     label: str
 
 
-FOOTER = ("CoursePilot is a planning aid; your advisor and Degree Navigator are "
+FOOTER = (f"{APP_NAME} is a planning aid; your advisor and Degree Navigator are "
           "authoritative.")
 
 

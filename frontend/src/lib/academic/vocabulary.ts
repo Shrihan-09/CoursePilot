@@ -77,11 +77,11 @@ export const REQUIREMENT_STATUS: Record<RequirementStatus, Presentation> = {
   },
   indeterminate: {
     label: "Can't determine", tone: "warning", icon: "unknown",
-    meaning: "CoursePilot cannot determine this automatically from the data it has. It is not a finding that you fail it.",
+    meaning: "Coursenav cannot determine this automatically from the data it has. It is not a finding that you fail it.",
   },
   not_evaluable: {
     label: "Can't evaluate automatically", tone: "warning", icon: "unknown",
-    meaning: "CoursePilot cannot evaluate this condition automatically. It is not a finding that you fail it.",
+    meaning: "Coursenav cannot evaluate this condition automatically. It is not a finding that you fail it.",
   },
 };
 
@@ -101,7 +101,7 @@ export const RULE_STATUS: Record<RequirementStatus, Presentation> = {
 export const AUDIT_STATUS: Record<AuditStatus, Presentation> = {
   complete: {
     label: "All requirements complete", tone: "success", icon: "complete",
-    meaning: "Every requirement CoursePilot evaluates is met by completed coursework.",
+    meaning: "Every requirement Coursenav evaluates is met by completed coursework.",
   },
   in_progress: {
     label: "Complete once current courses finish", tone: "info", icon: "progress",
@@ -117,7 +117,7 @@ export const AUDIT_STATUS: Record<AuditStatus, Presentation> = {
   },
   insufficient_data: {
     label: "Not enough information", tone: "warning", icon: "unknown",
-    meaning: "CoursePilot can't reach an overall result with the data it has.",
+    meaning: "Coursenav can't reach an overall result with the data it has.",
   },
 };
 
@@ -136,7 +136,7 @@ export const PLAN_STATUS: Record<PlanStatus, Presentation> = {
   },
   partial: {
     label: "Partial plan", tone: "warning", icon: "partial",
-    meaning: "Some requirements, or the degree credit total, could not be planned with the evidence CoursePilot has. See what's blocking them below.",
+    meaning: "Some requirements, or the degree credit total, could not be planned with the evidence Coursenav has. See what's blocking them below.",
   },
   nothing_to_plan: {
     label: "Nothing left to plan", tone: "success", icon: "complete",
@@ -159,7 +159,7 @@ export const ELIGIBILITY_STATE: Record<EligibilityState, Presentation> = {
   },
   needs_confirmation: {
     label: "Needs confirmation", tone: "warning", icon: "unknown",
-    meaning: "CoursePilot cannot evaluate this prerequisite automatically, so it did not place the course. Confirm with the department or an advisor.",
+    meaning: "Coursenav cannot evaluate this prerequisite automatically, so it did not place the course. Confirm with the department or an advisor.",
   },
 };
 
@@ -173,14 +173,14 @@ export const STALE_REASON: Record<StaleReason, string> = {
   program_changed: "Your program or catalog year changed.",
   academic_record_changed: "Your academic record changed.",
   program_rules_changed: "Your program's requirements were updated.",
-  rutgers_data_changed: "CoursePilot loaded newer Rutgers course data.",
-  engine_updated: "CoursePilot's planning engine was updated.",
+  rutgers_data_changed: "Coursenav loaded newer Rutgers course data.",
+  engine_updated: "Coursenav's planning engine was updated.",
   start_term_passed: "The plan's first semester has started or is already on your record.",
   planning_preferences_changed: "You changed your planning preferences.",
   offering_assumption_contradicted:
     "Rutgers published a semester this plan had estimated from past offerings, and a planned course isn't in it.",
   target_term_published:
-    "Rutgers published a semester this plan had estimated from past offerings; CoursePilot is still loading it.",
+    "Rutgers published a semester this plan had estimated from past offerings; Coursenav is still loading it.",
 };
 
 /* ------------------------------------------------- readiness (7.2.1) */
@@ -373,7 +373,7 @@ export function planReasonText(reason: PlanReason, course: PlannedCourse): strin
     case "requires_math_placement":
       return "Requires math placement: Rutgers accepts a placement result, and your profile doesn't state one yet";
     case "prerequisites_need_confirmation":
-      return "You pinned it here; CoursePilot can't verify its prerequisites, so confirm them before registering";
+      return "You pinned it here; Coursenav can't verify its prerequisites, so confirm them before registering";
     case "prerequisites_met_by_placement":
       return `Prerequisites met by placement (source: ${PLACEMENT_POLICY_URL})`;
   }
@@ -384,7 +384,7 @@ export const OFFERING_KIND: Record<OfferingEvidenceKind, string> = {
   not_offered_in_term: "Not listed in that term's published Rutgers schedule yet",
   historically_offered_in_season: "Offered in past terms of the same season",
   offered_in_other_seasons_only: "Only offered in other seasons",
-  target_term_data_pending: "Rutgers has published that term; CoursePilot hasn't loaded it yet",
+  target_term_data_pending: "Rutgers has published that term; Coursenav hasn't loaded it yet",
   no_offering_evidence: "No record of Rutgers offering it",
 };
 
@@ -399,7 +399,7 @@ export function seasonRecord(off: { target_term: string; most_recent_term?: stri
   const season = ({ "0": "Winter", "1": "Spring", "7": "Summer", "9": "Fall" } as Record<string, string>)[off.target_term.charAt(4)] ?? "";
   if (off.same_season_loaded && off.same_season_offered !== undefined) {
     const plural = off.same_season_loaded === 1 ? season : `${season}s`;
-    return `Rutgers offering it in ${off.same_season_offered} of the last ${off.same_season_loaded} ${plural} CoursePilot has data for`;
+    return `Rutgers offering it in ${off.same_season_offered} of the last ${off.same_season_loaded} ${plural} Coursenav has data for`;
   }
   return `Rutgers offering it in ${off.most_recent_term ? termLabel(off.most_recent_term) : "this season before"}`;
 }
@@ -411,7 +411,7 @@ export function historicalBasis(off: { target_term: string; target_term_authorit
     const when = off.target_term_checked_at ? ` (checked ${new Date(off.target_term_checked_at).toLocaleDateString()})` : "";
     return `Rutgers hasn't published ${term} yet${when}`;
   }
-  return `CoursePilot has no ${term} schedule from Rutgers`;
+  return `Coursenav has no ${term} schedule from Rutgers`;
 }
 
 /**
@@ -424,11 +424,11 @@ export function blockedReasonText(code: string): string {
   const detail = rest.join(":");
   switch (prefix) {
     case "unmodeled_condition":
-      return `A condition CoursePilot doesn't model${detail ? ` (${detail.replace(/_/g, " ")})` : ""}`;
+      return `A condition Coursenav doesn't model${detail ? ` (${detail.replace(/_/g, " ")})` : ""}`;
     case "unsupported":
-      return "Prerequisite wording CoursePilot can't interpret automatically";
+      return "Prerequisite wording Coursenav can't interpret automatically";
     case "corequisite_not_interpreted":
-      return "Co-requisite wording CoursePilot can't interpret automatically";
+      return "Co-requisite wording Coursenav can't interpret automatically";
     case "no_corequisite_published":
       return "Rutgers publishes no co-requisite for it";
     case "requires_math_placement":
@@ -452,9 +452,9 @@ export function blockedReasonText(code: string): string {
     case "not_offered_in_term":
       return "Not listed for the planned term yet (Rutgers has published it)";
     case "target_term_data_pending":
-      return "Rutgers has published the planned term, but CoursePilot hasn't loaded it yet";
+      return "Rutgers has published the planned term, but Coursenav hasn't loaded it yet";
     case "variable_credit":
-      return "Variable credits - CoursePilot won't guess a credit value";
+      return "Variable credits - Coursenav won't guess a credit value";
     case "no_prerequisite_path":
       return "No way to meet its prerequisites within this plan";
     default:
@@ -478,7 +478,7 @@ export const SCHEDULE_STATUS: Record<ScheduleStatus, Presentation> = {
   },
   term_schedule_not_published: {
     label: "Term not published", tone: "warning", icon: "unknown",
-    meaning: "CoursePilot has no Rutgers section data for this term yet, so it cannot build a schedule. It never borrows another term's sections.",
+    meaning: "Coursenav has no Rutgers section data for this term yet, so it cannot build a schedule. It never borrows another term's sections.",
   },
   course_eligibility_failed: {
     label: "Course eligibility problem", tone: "danger", icon: "failed",
@@ -522,7 +522,7 @@ export const RESTRICTION_OUTCOME: Record<RestrictionOutcome, Presentation> = {
   },
   unknown: {
     label: "Restriction can't be checked", tone: "warning", icon: "unknown",
-    meaning: "CoursePilot can't tell whether this restriction includes you. Check before registering.",
+    meaning: "Coursenav can't tell whether this restriction includes you. Check before registering.",
   },
 };
 
@@ -540,7 +540,7 @@ export function availabilityText(a: AvailabilityEvidence): Presentation {
   if (a.freshness === "unobserved" || a.state === "unknown") {
     return {
       label: "Availability unknown", tone: "neutral", icon: "unknown",
-      meaning: "CoursePilot has no recent open/closed observation for this section.",
+      meaning: "Coursenav has no recent open/closed observation for this section.",
     };
   }
   const word = a.state === "open" ? "Open" : "Closed";
@@ -549,7 +549,7 @@ export function availabilityText(a: AvailabilityEvidence): Presentation {
       label: a.observed_at ? `${word} as of ${timeOf(a.observed_at)}` : word,
       tone: a.state === "open" ? "success" : "warning",
       icon: a.state === "open" ? "complete" : "failed",
-      meaning: `Rutgers reported this section ${word.toLowerCase()} in CoursePilot's latest check.`,
+      meaning: `Rutgers reported this section ${word.toLowerCase()} in Coursenav's latest check.`,
     };
   }
   return {

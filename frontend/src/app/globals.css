@@ -350,3 +350,21 @@
   }
   .cp-glow-fill { transition: none; }
 }
+
+/* The affiliation footer is rendered once, by the root layout. Inside the app
+   shell it must clear the fixed mobile tab bar (h-14 + safe area). */
+body:has([data-app-shell]) .site-footer {
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+}
+/* Below 640px the Plan page's floating "Ask" button sits at bottom-24
+   (6rem + its 3rem height): keep the notice clear of it too. */
+@media (max-width: 639px) {
+  body:has([data-assistant-launcher]) .site-footer {
+    padding-bottom: calc(9.5rem + env(safe-area-inset-bottom));
+  }
+}
+@media (min-width: 1024px) {
+  body:has([data-app-shell]) .site-footer {
+    padding-bottom: 1rem;
+  }
+}

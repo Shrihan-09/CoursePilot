@@ -101,7 +101,7 @@ def declaration_for(session: Session, student: Student, *, program_key: str,
     if data is None:
         return Declaration(
             status="undeclared", program_key=program_key, label=label,
-            message=("CoursePilot has no official source stating the requirements to declare "
+            message=("Coursenav has no official source stating the requirements to declare "
                      "this major, so none are shown or assumed. Ask the department."))
     history = attempts_by_course(session, student)
     requirements = []

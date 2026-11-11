@@ -46,7 +46,7 @@ class TermOrderConflict:
         names = ", ".join(f"{c} ({label(t)})" for c, t in self.later)
         return (f"NEEDS REVIEW - {self.course} is recorded in {label(self.term_code)}, before "
                 f"its prerequisite {names}. Check that course's term on your transcript "
-                "import; CoursePilot has not changed your record.")
+                "import; Coursenav has not changed your record.")
 
 
 def _met(expr, have: set[str], same: set[str]) -> bool | None:

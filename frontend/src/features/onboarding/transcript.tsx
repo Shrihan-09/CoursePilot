@@ -192,7 +192,7 @@ export function TranscriptReview({
           Review your transcript
         </h2>
         <p className="text-sm text-fg-secondary">
-          CoursePilot read {rows.length} course{rows.length === 1 ? "" : "s"}. Nothing is saved until
+          Coursenav read {rows.length} course{rows.length === 1 ? "" : "s"}. Nothing is saved until
           you confirm.
         </p>
       </div>
@@ -264,7 +264,7 @@ export function TranscriptReview({
           }
         >
           The transcript shows no average for their term, so they&apos;re probably in progress.
-          CoursePilot won&apos;t assume it - confirm if that&apos;s right.
+          Coursenav won&apos;t assume it - confirm if that&apos;s right.
         </Alert>
       )}
 

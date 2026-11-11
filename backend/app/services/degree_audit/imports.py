@@ -74,10 +74,10 @@ FAILURE_MESSAGES = {
     "PDF_ENCRYPTED": "This PDF is password-protected.",
     "PDF_TOO_MANY_PAGES": "This PDF has more pages than a Degree Navigator audit.",
     "PDF_TEXT_TOO_LARGE": "This PDF holds more text than a Degree Navigator audit.",
-    "UNSUPPORTED_LAYOUT": "This PDF's page layout is not one CoursePilot can read.",
-    "PDF_UNREADABLE": "CoursePilot could not read this PDF.",
+    "UNSUPPORTED_LAYOUT": "This PDF's page layout is not one Coursenav can read.",
+    "PDF_UNREADABLE": "Coursenav could not read this PDF.",
     "PDF_EXTRACTION_TIMEOUT": "Reading this PDF took too long.",
-    "PDF_EXTRACTION_CRASHED": "CoursePilot could not read this PDF.",
+    "PDF_EXTRACTION_CRASHED": "Coursenav could not read this PDF.",
     "PROCESSING_INTERRUPTED": "Reading this PDF was interrupted; upload it again.",
 }
 
@@ -101,9 +101,9 @@ _PROBLEMS = {
     "READING_ORDER_UNRELIABLE": ("Course details were read on a line without a course code (the "
                                  "columns may have run together)."),
     "UNRECOGNIZED_COURSE_LIST": ("This course is listed under a Degree Navigator heading "
-                                 "CoursePilot has not seen before. Check it against your "
+                                 "Coursenav has not seen before. Check it against your "
                                  "transcript, or exclude it."),
-    "UNCLASSIFIED_COURSE_ROW": ("CoursePilot does not recognise this kind of course row (transfer, "
+    "UNCLASSIFIED_COURSE_ROW": ("Coursenav does not recognise this kind of course row (transfer, "
                                 "AP or an exception?). Its text is kept; exclude it or check it "
                                 "against your transcript."),
 }
@@ -228,12 +228,12 @@ def normalize_requirement_row(row: DegreeAuditRequirementRow, mapping: DnMapping
     row.mapping_role = entry.role if row.requirement_code is not None else None
     if row.requirement_code is None:
         reason = (entry.reason if entry is not None and entry.reason else
-                  "No reviewed CoursePilot requirement corresponds to this Degree Navigator "
-                  "row, so it is shown but not used; CoursePilot's own estimate applies.")
+                  "No reviewed Coursenav requirement corresponds to this Degree Navigator "
+                  "row, so it is shown but not used; Coursenav's own estimate applies.")
         issues.append(_issue("DN_REQUIREMENT_UNMAPPED", IssueSeverity.INFO, reason))
     elif row.mapping_review_status != "reviewed":
         issues.append(_issue("DN_MAPPING_PENDING_REVIEW", IssueSeverity.INFO,
-                             "Mapping not yet reviewed: the mapping of this row to a CoursePilot "
+                             "Mapping not yet reviewed: the mapping of this row to a Coursenav "
                              "requirement has not been checked by a person yet."))
     if row.mapping_role == "member_goal":
         issues.append(_issue("DN_MEMBER_GOAL", IssueSeverity.INFO, (
@@ -686,11 +686,11 @@ def confirm_import(session: Session, account_id: uuid.UUID, import_id: uuid.UUID
     what_if = scope == "what_if"
     if what_if and (imp.track_check != "mismatch" or imp.mapping_key is None):
         raise ImportRefused("DN_WHAT_IF_NOT_ANOTHER_PROGRAM", (
-            "Only a Degree Navigator audit for another program CoursePilot has a mapping for "
+            "Only a Degree Navigator audit for another program Coursenav has a mapping for "
             "can be confirmed into a what-if."))
     if imp.track_check == "mismatch" and not what_if:
         raise ImportRefused("DN_TRACK_MISMATCH", imp.track_message or
-                            "This audit is for a different program than your CoursePilot track.")
+                            "This audit is for a different program than your Coursenav track.")
     mapping = _mapping_for(session, imp, student)
     for row in imp.requirement_rows:
         normalize_requirement_row(row, mapping)

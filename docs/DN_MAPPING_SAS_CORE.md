@@ -1,4 +1,4 @@
-# SAS Core: Degree Navigator → CoursePilot mapping (for review)
+# SAS Core: Degree Navigator → Coursenav mapping (for review)
 
 Source: `data/programs/rutgers/nb-undergrad/2026-2027/dn-mapping/sas-core.json`.
 It covers DN subject "The SAS Core Curriculum (NB)", DN version "Summer 2019".
@@ -9,7 +9,7 @@ entry then becomes `reviewed` in one commit, and the label goes away.
 
 ## Requirements (6)
 
-| DN requirement (exact printed heading) | CoursePilot node | Review status |
+| DN requirement (exact printed heading) | Coursenav node | Review status |
 |---|---|---|
 | Requirement R1 : Contemporary Challenges [CC] | `CORE_CC` Contemporary Challenges | pending_review |
 | Requirement R2 : Areas of Inquiry: Natural Sciences [NS] | `CORE_NS` Natural Sciences | pending_review |
@@ -20,7 +20,7 @@ entry then becomes `reviewed` in one commit, and the label goes away.
 
 ## Goal codes (14)
 
-| DN code | Goal title | CoursePilot node | Role | Review status |
+| DN code | Goal title | Coursenav node | Role | Review status |
 |---|---|---|---|---|
 | CCO | Our Common Future | `CORE_CCO` Our Common Future | node | pending_review |
 | CCD | Diversities and Social Inequalities | `CORE_CCD` Diversities and Social Inequalities | node | pending_review |
@@ -39,7 +39,7 @@ entry then becomes `reviewed` in one commit, and the label goes away.
 
 ## How the roles work
 
-- **node:** this DN row's status is the CoursePilot node's status.
+- **node:** this DN row's status is the Coursenav node's status.
 - **member_goal:** one of several DN goals of a single node. `CORE_AH` is
   "2 courses meeting 2 of AHo/AHp/AHq/AHr". These rows are mapped and shown,
   and never `unmapped`. They never decide the node: requirement R4 does.

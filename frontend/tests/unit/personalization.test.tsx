@@ -66,10 +66,10 @@ describe("readiness", () => {
     expect(READINESS_CHECK.missing.icon).not.toBe("failed");
     const t = text(renderToStaticMarkup(<ReadinessList readiness={{ state: "needs_planning_profile", checks: [
       { code: "academic_history", state: "done", message: "Academic history confirmed." },
-      { code: "planning_profile", state: "missing", message: "Tell CoursePilot how you'd like your semesters planned." },
+      { code: "planning_profile", state: "missing", message: "Tell Coursenav how you'd like your semesters planned." },
     ] }} />));
     expect(t).toContain("Done: Academic history confirmed.");
-    expect(t).toContain("Needed: Tell CoursePilot");
+    expect(t).toContain("Needed: Tell Coursenav");
   });
 });
 

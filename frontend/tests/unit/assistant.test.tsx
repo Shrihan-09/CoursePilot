@@ -44,7 +44,7 @@ const card = (over: Partial<OptionCard> = {}): OptionCard => ({
 const reply = (over: Partial<AssistantReply> = {}): AssistantReply => ({
   text: "Here are 2 options.", intent: "guided_swap", questions: [], cards: [], proposals: [], sections: [],
   suggestions: [], activity: [], webreg_term: null, applied_summary: null, undo_available: false,
-  generated_by: "template", footer: "CoursePilot is a planning aid; your advisor and Degree Navigator are authoritative.",
+  generated_by: "template", footer: "Coursenav is a planning aid; your advisor and Degree Navigator are authoritative.",
   ...over,
 });
 
@@ -157,7 +157,7 @@ describe("Ready for WebReg", () => {
       without_section: [{ course: "01:198:211", title: "Computer Architecture" }], warnings: ["01:640:152 and 01:198:211 overlap"],
       steps: ["Open WebReg", "Choose the term", "Paste the index numbers", "Add to schedule", "Submit"],
       webreg_url: "https://sims.rutgers.edu/webreg/",
-      note: "CoursePilot does not sign in to WebReg or register you. Copy the index numbers and add them in WebReg yourself.",
+      note: "Coursenav does not sign in to WebReg or register you. Copy the index numbers and add them in WebReg yourself.",
     };
     const html = withClient(<WebRegPanelView term="20271" />, (c) => c.setQueryData(["webreg", "20271"], panel));
     const t = text(html);

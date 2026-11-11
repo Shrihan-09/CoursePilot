@@ -48,7 +48,7 @@ _RANK = {RequirementStatus.SATISFIED: 2, RequirementStatus.PROVISIONALLY_SATISFI
 ESTIMATED_LABEL = "Estimated - import your Degree Navigator audit for accuracy"
 #: Task 3: DN "not fulfilled" where CoursePilot says met (shown until resolved).
 DN_NOT_MET_MESSAGE = "Degree Navigator says this isn't met — confirm with your advisor."
-DISAGREE_LABEL = "Degree Navigator and CoursePilot disagree; confirm with your advisor"
+DISAGREE_LABEL = "Degree Navigator and Coursenav disagree; confirm with your advisor"
 
 
 @dataclass(frozen=True)
@@ -167,7 +167,7 @@ def planning_status(row: DegreeAuditRequirementRow,
               or c.get("icon") in ("current", "planned")]
     if not behind:
         return "planned", ("Degree Navigator says in progress or planned but lists no current "
-                           "course, so CoursePilot counts it as planned (not satisfied).")
+                           "course, so Coursenav counts it as planned (not satisfied).")
     planned = [c["course"] for c in behind
                if c.get("kind") == "planned" or c.get("icon") == "planned"]
     if planned:
@@ -269,12 +269,12 @@ def apply_overlay(result: DegreeAuditResult, overlay: DnOverlay) -> DegreeAuditR
             own = node.status.value.replace("_", " ")
             node.status = target
             node.reason = (f"From your Degree Navigator audit{as_of}: {status.rule} "
-                           f"CoursePilot's own check says {own}. {DISAGREE_LABEL}.")
+                           f"Coursenav's own check says {own}. {DISAGREE_LABEL}.")
             changed = True
             return True
         if status.planning_status in ("planned", "not_satisfied") and node.status in MET:
             node.reason = (f"Degree Navigator{as_of} does not show this satisfied "
-                           f"({status.rule}) while CoursePilot does. {DISAGREE_LABEL}. "
+                           f"({status.rule}) while Coursenav does. {DISAGREE_LABEL}. "
                            f"{node.reason}")
         return child_changed
 

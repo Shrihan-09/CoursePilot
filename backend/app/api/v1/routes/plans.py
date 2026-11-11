@@ -289,7 +289,7 @@ async def save(body: SavePlanRequest,
             ready = readiness(session, principal.account_id, datetime.now(UTC))
             if ready.state not in READY_STATES:
                 missing = next((c.message for c in ready.checks if c.state == "missing"),
-                               "CoursePilot isn't ready to build your plan yet.")
+                               "Coursenav isn't ready to build your plan yet.")
                 raise HTTPException(status_code=409, detail=missing)
             profile = get_profile(session, student)
             saved = save_plan(session, student, start_term=body.start_term,

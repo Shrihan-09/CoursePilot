@@ -209,7 +209,7 @@ export function SetupWizard() {
         className="cp-glow-card animate-cp-slide-up space-y-6 rounded-xl border border-border bg-surface-elevated p-5 sm:p-8">
         <header className="space-y-1.5">
           <h1 id="setup-step-title" ref={heading} tabIndex={-1} className="text-2xl font-semibold tracking-tight text-fg outline-none sm:text-3xl">
-            {step === "welcome" ? "Welcome to CoursePilot" : info.title}
+            {step === "welcome" ? "Welcome to Coursenav" : info.title}
           </h1>
           {info.why && <p className="text-sm text-fg-secondary">{info.why}</p>}
         </header>
@@ -217,7 +217,7 @@ export function SetupWizard() {
         {step === "welcome" && (
           <div className="space-y-4">
             <p className="text-base text-fg-secondary">
-              CoursePilot lays out the semesters that finish your degree, checked against Rutgers&apos; own requirements.
+              Coursenav lays out the semesters that finish your degree, checked against Rutgers&apos; own requirements.
             </p>
             <p className="flex items-center gap-2 text-sm text-fg-muted"><Clock3 aria-hidden className="size-4" /> Takes about 3 minutes. You can stop and come back.</p>
           </div>
@@ -234,7 +234,7 @@ export function SetupWizard() {
         {step === "build" && (
           <div className="space-y-4">
             <p className="text-base text-fg-secondary">
-              CoursePilot will lay out your semesters from what you&apos;ve told it. Everything stays editable under Plan → Preferences.
+              Coursenav will lay out your semesters from what you&apos;ve told it. Everything stays editable under Plan → Preferences.
             </p>
             <p className="text-sm font-medium text-fg">{planSourceLabel(dn.data)}</p>
           </div>

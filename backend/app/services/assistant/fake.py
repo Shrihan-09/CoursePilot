@@ -207,7 +207,7 @@ def policy(messages: list[Message]) -> dict:
                 return _calls(("get_course_details", {"course": keys[0]}))
             if errors:
                 return _reply(f"I couldn't find {keys[0]} in the Rutgers catalog data "
-                              "CoursePilot has, so I can't tell you about it.")
+                              "Coursenav has, so I can't tell you about it.")
             d = details[-1]
             pre = d.get("prerequisite_text") or "none published"
             return _reply(f"{_name(d)}: the published prerequisite text is \"{pre}\".")
@@ -233,7 +233,7 @@ def policy(messages: list[Message]) -> dict:
                                               or None}))
         hits = found[-1].get("results") or []
         if not hits:
-            return _reply("I couldn't find a course like that in the catalog data CoursePilot "
+            return _reply("I couldn't find a course like that in the catalog data Coursenav "
                           "has, so I won't describe one.")
         return _reply(f"Here {'is' if len(hits) == 1 else 'are'} the closest match"
                       f"{'' if len(hits) == 1 else 'es'} I found.",

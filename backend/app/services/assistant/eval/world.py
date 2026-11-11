@@ -243,7 +243,7 @@ STUDENTS: dict[str, dict] = {
                      "credits_completed": 52, "credits_required": 120, "requirements": [
                          {"code": "WCd", "name": WCD, "status": "needs_review",
                           "label_text": "needs review", "system": "core",
-                          "note": "Degree Navigator counts 01:355:201 here; CoursePilot "
+                          "note": "Degree Navigator counts 01:355:201 here; Coursenav "
                                   "could not confirm it"},
                          {"code": "AHp", "name": AH, "status": "planned", "system": "core"},
                          {"code": "HST", "name": HST, "status": "open", "system": "core"},
@@ -443,7 +443,7 @@ class SyntheticTools:
     def get_course_details(self, course: str) -> dict:
         info = CATALOG.get(course)
         if info is None:
-            raise LookupError(f"{course} is not in the catalog data CoursePilot has")
+            raise LookupError(f"{course} is not in the catalog data Coursenav has")
         return {"course": course, "title": info["title"], "credits": info["credits"],
                 "description": info["description"],
                 "prerequisite_text": info["prereq_text"] or (", ".join(info["prereq"]) or None),
@@ -567,7 +567,7 @@ class SyntheticTools:
         elif k == "add":
             if course not in CATALOG:
                 return self._refuse(change, f"unknown_course: {course} is not in the catalog "
-                                            "data CoursePilot has")
+                                            "data Coursenav has")
             info = CATALOG[course]
             if course in self.completed or course in where:
                 return self._refuse(change, f"already_planned: {course} is already in your "

@@ -209,7 +209,7 @@ meetings.
 | 07:966:333 | 15813 | T | 2330 | 1250 |
 | 07:966:333 | 15813 | F | 2330 | 1250 |
 
-A `CHECK (end > start)` constraint would reject authentic data. CoursePilot
+A `CHECK (end > start)` constraint would reject authentic data. Coursenav
 warns instead. See `DATA_MODEL.md`.
 
 ### Instructors
@@ -233,7 +233,7 @@ course's full identifier components plus `registrationIndex` and
 `primaryRegistrationIndex`; all 966 have a `registrationIndex`.
 
 **36 of the 966 point at an index not present in this campus/term payload** —
-the partner section lives elsewhere. This is why CoursePilot stores identifier
+the partner section lives elsewhere. This is why Coursenav stores identifier
 components rather than a foreign key.
 
 ### Section-level credits — DO NOT EXIST
@@ -300,7 +300,7 @@ validates the term through the watcher's own `record_probe`/`ingest_term`
 archive (no network): READY, coverage still `partial`.
 
 **Rule since 2026-10-23: a published term places only what it lists.** A term
-is published once CoursePilot holds a non-empty SOC payload for it - whatever
+is published once Coursenav holds a non-empty SOC payload for it - whatever
 its coverage, registry row or not (`OfferingIndex.published`). In that term
 only `confirmed_in_term` courses are placed; a course it omits is
 `not_offered_in_term`, shown as "not listed for <term> yet", and may still be
@@ -348,7 +348,7 @@ vary from year to year according to the interests of students and faculty."
 or 2026-2027). No SOC course/section/unit note on 442-445 mentions repeating.
 The department electives page states repeat limits only for 493/494 ("There
 is no restriction on the number of times 493/494 can be taken. However, at
-most one of a student's electives may be one of these courses."). CoursePilot
+most one of a student's electives may be one of these courses."). Coursenav
 therefore makes no repeat assumption: each course number counts once (the
 existing audit behaviour), and different-topic repeats of one number are an
 open question for CS advising - not guessed.
@@ -693,7 +693,7 @@ Evidence: `docs/investigations/phase-6-7-live-availability.md`.
 | what it is | a JSON array of 5-digit index strings that are open now: 96,009 B (28,308 B gzip), 12,001 entries, 50-300 ms, `Cache-Control: max-age=30` |
 | absence | a section of the term NOT listed is closed: membership matched `courses.json` `openStatus` on all 12,012 Fall 2026 sections (0 disagreements, including 2,905 special-permission, 5,758 TBA/async and 826 cross-listed sections) |
 | richer state | none: no seats, capacity, waitlist or reason. `openStatusText` is only OPEN/CLOSED |
-| timestamp | none: no `Last-Modified`, and the ETag changes on identical bodies. CoursePilot's fetch time is the only "as of" |
+| timestamp | none: no `Last-Modified`, and the ETag changes on identical bodies. Coursenav's fetch time is the only "as of" |
 | `campus` | **ignored**: NK returns NB's bytes. The list is term-wide across campuses (3,488 entries were other campuses' indexes, ignored by joining on the term's sections) |
 | term | **not in the body**, and indexes are reused across terms (Spring 2026 shares 116 open indexes with the Fall fixture), so the request URL's year/term must match |
 | empty | `[]` means an unpublished term (Spring 2027), year 1999 or campus XX alike: ambiguous, never "everything closed" |
@@ -838,7 +838,7 @@ requirement primitives (`requirementType`, `courseCount`, `requirementSelect`,
 programs inspected. The CS major requirement is a single 1,661-character
 English paragraph.
 
-Consequence: CoursePilot cannot *extract* requirements. It must **curate**
+Consequence: Coursenav cannot *extract* requirements. It must **curate**
 them - a human reads official prose and encodes the structure. Every curated
 row therefore stores `source_prose`, `source_url`, and a `curation_status` of
 `curated_from_prose`, and there is deliberately **no `extracted` status**.
@@ -870,7 +870,7 @@ Rutgers' own description settles its authority:
 
 Degree Navigator is a **derived audit tool**, not a source of requirements. It
 is therefore not scraped: it is authenticated, explicitly non-authoritative,
-and duplicates what the catalog already publishes. CoursePilot owns its own
+and duplicates what the catalog already publishes. Coursenav owns its own
 deterministic requirement engine, and adopts the same disclaimer.
 
 **What Degree Navigator has that we cannot otherwise get:** a student's
@@ -1029,7 +1029,7 @@ information gap that makes the CS residency rule unevaluable.
 
 ### Authority matrix
 
-Core is the first CoursePilot subject where two official Rutgers sources are
+Core is the first Coursenav subject where two official Rutgers sources are
 each authoritative for a DIFFERENT fact. Neither is authoritative for both.
 
 | Fact | Authoritative source | Why |

@@ -58,7 +58,7 @@ export function DesignGallery() {
 
   return (
     <main className="mx-auto max-w-6xl space-y-10 px-4 py-8 sm:px-6">
-      <PageHeader eyebrow="Phase 7.1" title="CoursePilot design system"
+      <PageHeader eyebrow="Phase 7.1" title="Coursenav design system"
                   description="Tokens, primitives and the motion language. Development only." />
 
       <section className="space-y-3">
@@ -84,10 +84,10 @@ export function DesignGallery() {
               ))}
             </div>
             <div className="mt-4 space-y-1">
-              <p className="text-fg">Primary text - CoursePilot</p>
+              <p className="text-fg">Primary text - Coursenav</p>
               <p className="text-fg-secondary">Secondary text</p>
               <p className="text-fg-muted">Muted text</p>
-              <p className="text-primary-text underline">A link in CoursePilot blue</p>
+              <p className="text-primary-text underline">A link in Coursenav blue</p>
             </div>
           </Panel>
         ))}

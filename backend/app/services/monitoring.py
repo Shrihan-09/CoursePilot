@@ -163,7 +163,7 @@ def create_watch(session: Session, account_id, *, term_code: str, index_number: 
     section = session.scalar(select(CourseSection).where(
         CourseSection.term_code == term_code, CourseSection.index_number == index_number))
     if section is None:
-        raise TargetNotFound(f"No section {index_number} in CoursePilot's {term_code} data.")
+        raise TargetNotFound(f"No section {index_number} in Coursenav's {term_code} data.")
     if section.id in removed_section_ids(session, term_code, [section.id]):
         raise TargetRemoved(f"Section {index_number} is no longer in Rutgers' {term_code} "
                             "schedule; it can never open.")

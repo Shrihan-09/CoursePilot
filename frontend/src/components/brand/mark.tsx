@@ -1,11 +1,12 @@
 import Image from "next/image";
 
+import { APP_NAME } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
 /**
- * The CoursePilot mark - the supplied logo with its baked black background
+ * The Coursenav mark - the supplied logo with its baked black background
  * extracted to real transparency (scripts/brand-assets.mjs). Never recoloured,
- * never redrawn. `decorative` when a visible "CoursePilot" label sits beside it.
+ * never redrawn. `decorative` when a visible product-name label sits beside it.
  */
 export function Mark({
   size = 32,
@@ -27,7 +28,7 @@ export function Mark({
       src={src}
       width={size}
       height={size}
-      alt={decorative ? "" : "CoursePilot"}
+      alt={decorative ? "" : APP_NAME}
       priority={priority}
       className={cn("select-none", className)}
       draggable={false}
@@ -39,7 +40,7 @@ export function Wordmark({ size = 28, className }: { size?: number; className?: 
   return (
     <span className={cn("inline-flex items-center gap-2", className)}>
       <Mark size={size} decorative />
-      <span className="text-[15px] font-semibold tracking-tight text-fg">CoursePilot</span>
+      <span className="text-[15px] font-semibold tracking-tight text-fg">{APP_NAME}</span>
     </span>
   );
 }

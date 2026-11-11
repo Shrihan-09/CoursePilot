@@ -55,7 +55,7 @@ export default function PersonalizePage() {
       <PageHeader
         eyebrow="Plan"
         title={existing ? "Your planning preferences" : "Personalize your plan"}
-        description="How you'd like your semesters to look. Your courses, grades and program come from your confirmed record - CoursePilot doesn't ask for them again."
+        description="How you'd like your semesters to look. Your courses, grades and program come from your confirmed record - Coursenav doesn't ask for them again."
       />
       {draft === null ? (
         <>
@@ -75,7 +75,7 @@ export default function PersonalizePage() {
         </>
       ) : (
         <section aria-labelledby="review-heading" className="space-y-4">
-          <h2 id="review-heading" className="text-base font-semibold text-fg">Here&apos;s how CoursePilot will plan for you</h2>
+          <h2 id="review-heading" className="text-base font-semibold text-fg">Here&apos;s how Coursenav will plan for you</h2>
           <ProfileSummary profile={draft} programName={profile.data?.program.program_name} />
           {confirm.isError && (
             <Alert tone="danger" title="Your preferences weren't saved">

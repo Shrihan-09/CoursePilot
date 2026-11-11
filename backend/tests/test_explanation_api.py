@@ -285,7 +285,7 @@ def test_valid_model_output_is_used() -> None:
     evidence, audit = _evidence()
     payload = json.dumps(
         {
-            "summary": "CoursePilot allocated 01:198:344 to CS_ELECTIVES.",
+            "summary": "Coursenav allocated 01:198:344 to CS_ELECTIVES.",
             "reasons": ["The requirement is satisfied after this allocation."],
             "citations": ["coursepilot_degree_audit"],
         }

@@ -36,12 +36,12 @@ const PLANNING: Record<string, string> = {
   in_progress: "In progress",
   planned: "Planned (counts as not satisfied)",
   not_satisfied: "Not satisfied",
-  unknown: "CoursePilot estimate",
+  unknown: "Coursenav estimate",
 };
 
 const RECONCILIATION: Record<Reconciliation, { label: string; tone: "success" | "warning" | "neutral" }> = {
-  agrees: { label: "Agrees with CoursePilot", tone: "success" },
-  dn_satisfied_cp_not: { label: "Needs review: CoursePilot doesn't count it yet", tone: "warning" },
+  agrees: { label: "Agrees with Coursenav", tone: "success" },
+  dn_satisfied_cp_not: { label: "Needs review: Coursenav doesn't count it yet", tone: "warning" },
   cp_satisfied_dn_not: { label: "Needs review: Degree Navigator doesn't count it", tone: "warning" },
   allocation_differs: { label: "Needs review: different courses used", tone: "warning" },
   unmapped: { label: "Unmapped - shown, not used", tone: "neutral" },
@@ -65,7 +65,7 @@ export function DnSourceNotice({ progress, onImport }: { progress?: DnProgress; 
         title="Requirement status is estimated"
         action={<Button size="sm" variant="secondary" onClick={onImport}>Import audit</Button>}
       >
-        {progress.label}. CoursePilot's own audit can't see Rutgers exceptions or equivalencies;
+        {progress.label}. Coursenav's own audit can't see Rutgers exceptions or equivalencies;
         Degree Navigator can.
       </Alert>
     );
@@ -117,7 +117,7 @@ export function dnLookup(progress?: DnProgress) {
 
 export function DnNodeSource({ row, hasImport }: { row?: DnRequirementRow; hasImport: boolean }) {
   if (!row) {
-    return <p className="text-xs text-fg-muted">{hasImport ? "Not in your Degree Navigator audit - CoursePilot estimate." : "Estimated by CoursePilot."}</p>;
+    return <p className="text-xs text-fg-muted">{hasImport ? "Not in your Degree Navigator audit - Coursenav estimate." : "Estimated by Coursenav."}</p>;
   }
   return (
     <div className="space-y-1">
@@ -185,13 +185,13 @@ export function ExportInstructions() {
     <section aria-labelledby="dn-how" className="space-y-2 rounded border border-border bg-surface-elevated p-4 text-sm">
       <h2 id="dn-how" className="font-semibold text-fg">Export your audit from Degree Navigator</h2>
       <ol className="list-decimal space-y-1 pl-5 text-fg-secondary">
-        <li>Sign in to Degree Navigator (dn.rutgers.edu) yourself - CoursePilot never asks for your NetID.</li>
+        <li>Sign in to Degree Navigator (dn.rutgers.edu) yourself - Coursenav never asks for your NetID.</li>
         <li>Open the audit you want: your major, or your school&apos;s Core.</li>
         <li>In Chrome, choose Print → Destination <span className="font-medium">Save as PDF</span> (not Microsoft Print to PDF) and save it.</li>
         <li>Upload that PDF below. It&apos;s read, then deleted; only the rows you review are kept.</li>
       </ol>
       <p className="text-xs text-fg-muted">
-        Confirmed Degree Navigator statuses decide what planning treats as done. CoursePilot&apos;s own
+        Confirmed Degree Navigator statuses decide what planning treats as done. Coursenav&apos;s own
         audit stays as a cross-check, and every disagreement is shown for you to take to your advisor.
       </p>
     </section>
@@ -349,7 +349,7 @@ export function DnReviewBody({ detail: d, busy, confirming = false, error, onRes
 
       {lines.length > 0 && (
         <section aria-labelledby="dn-lines" className="space-y-2">
-          <h3 id="dn-lines" className="text-sm font-semibold text-fg">Lines CoursePilot couldn&apos;t classify</h3>
+          <h3 id="dn-lines" className="text-sm font-semibold text-fg">Lines Coursenav couldn&apos;t classify</h3>
           <ul className="divide-y divide-border rounded border border-border bg-surface-elevated">
             {lines.map((c) => (
               <li key={c.id} className="flex flex-col gap-2 p-3 text-sm sm:flex-row sm:items-center sm:justify-between">
@@ -417,7 +417,7 @@ export function RequirementTable({ title, rows, busy, editable, onResolve }: {
                   <p className="text-xs text-fg-muted">
                     Degree Navigator: {DN_STATUS[r.dn_status]}
                     {r.extracted_needs && ` · ${r.extracted_needs}`}
-                    {r.requirement_code ? ` · CoursePilot ${r.requirement_code}: ${r.cp_status?.replaceAll("_", " ") ?? "-"}` : ""}
+                    {r.requirement_code ? ` · Coursenav ${r.requirement_code}: ${r.cp_status?.replaceAll("_", " ") ?? "-"}` : ""}
                   </p>
                   {r.requirement_code && <p className="text-xs text-fg-secondary">Planning uses: {PLANNING[r.planning_status]}. {r.planning_rule}</p>}
                 </div>

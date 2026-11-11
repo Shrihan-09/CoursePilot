@@ -253,7 +253,7 @@ RETURN
 
 This question deserves the most caution in the product. The honest answer is
 often "based on the data we have, and assuming X, Y, Z — with these caveats."
-A bare "yes" here is a promise CoursePilot is not positioned to make.
+A bare "yes" here is a promise Coursenav is not positioned to make.
 
 ---
 
@@ -266,7 +266,7 @@ A bare "yes" here is a promise CoursePilot is not positioned to make.
    data.
 5. **Always name the binding constraint** when returning a negative result.
 6. **Always attach sources** to Rutgers-derived claims.
-7. **Always disclaim**: CoursePilot is a planning aid; the student's official
+7. **Always disclaim**: Coursenav is a planning aid; the student's official
    Rutgers advising record and academic advisor govern.
 
 ---
@@ -347,7 +347,7 @@ STRUCTURED RESULT (Pydantic DegreeAuditResult)
 ### Requirement allocation (the substantive decision)
 
 Rutgers publishes **no allocation rules** — the catalog says only "see a
-computer science adviser". So CoursePilot defines its own, explicitly:
+computer science adviser". So Coursenav defines its own, explicitly:
 
 ```
 maximum bipartite matching (Kuhn's algorithm)
@@ -411,7 +411,7 @@ DERIVE OVERALL STATUS
 > Every modeled requirement being satisfied is **not** the same as a complete
 > degree.
 
-If an authoritative rule exists that CoursePilot cannot check, the audit
+If an authoritative rule exists that Coursenav cannot check, the audit
 returns `INDETERMINATE` and says which rule and why. A student is told to
 confirm with an advisor rather than being told they are finished.
 

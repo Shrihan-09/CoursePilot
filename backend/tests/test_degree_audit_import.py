@@ -471,7 +471,7 @@ async def test_an_audit_for_another_program_blocks_confirmation(ob, storage, map
         await _profile(ac, ob)
         [imp] = await _upload(ac, build_audit_pdf(model(ob)))
         assert imp["track_check"] == "mismatch"
-        assert "your CoursePilot track is" in imp["track_message"]
+        assert "your Coursenav track is" in imp["track_message"]
         assert imp["readiness"]["ready"] is False
         refused = await _confirm(ac, imp, code=422)
         assert refused["error"]["issues"][0]["code"] == "DN_TRACK_MISMATCH"

@@ -1,4 +1,4 @@
-# CoursePilot backend
+# Coursenav backend
 
 FastAPI service and the deterministic academic core.
 

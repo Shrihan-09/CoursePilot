@@ -67,7 +67,7 @@ class SourceRef(BaseModel):
     url: HttpUrl | None = Field(
         default=None, description="Canonical URL of the source document, if web-derived."
     )
-    retrieved_at: datetime = Field(description="When CoursePilot fetched this content.")
+    retrieved_at: datetime = Field(description="When Coursenav fetched this content.")
     source_last_modified: datetime | None = Field(
         default=None, description="Last-modified reported by the source, if available."
     )

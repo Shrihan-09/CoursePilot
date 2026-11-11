@@ -34,7 +34,7 @@ export default async function SignInPage({
         <div className="flex flex-col items-center gap-4 text-center">
           <Mark size={88} priority />
           <div className="space-y-1.5">
-            <h1 className="text-2xl font-semibold tracking-tight text-fg">Welcome to CoursePilot</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-fg">Welcome to Coursenav</h1>
             <p className="text-sm text-fg-secondary">
               Plan your Rutgers degree with answers you can check.
             </p>
@@ -42,7 +42,7 @@ export default async function SignInPage({
         </div>
 
         <div className="space-y-4 rounded-lg border border-border bg-surface-elevated p-5 shadow-elevated sm:p-6">
-          {params.signed_out && <Alert tone="success">You're signed out of CoursePilot.</Alert>}
+          {params.signed_out && <Alert tone="success">You're signed out of Coursenav.</Alert>}
           {error && <Alert tone="danger">{error}</Alert>}
 
           {config.mode === "oidc" && (
@@ -91,7 +91,7 @@ export default async function SignInPage({
             <li className="flex gap-3">
               <KeyRound aria-hidden className="mt-0.5 size-4 shrink-0 text-fg-muted" />
               <span>
-                Signing in only tells CoursePilot who you are. We never ask for your Rutgers
+                Signing in only tells Coursenav who you are. We never ask for your Rutgers
                 password and can't see your Rutgers records, email or files.
               </span>
             </li>
@@ -105,7 +105,7 @@ export default async function SignInPage({
             <li className="flex gap-3">
               <ShieldCheck aria-hidden className="mt-0.5 size-4 shrink-0 text-fg-muted" />
               <span>
-                CoursePilot is a planning aid, not an official Rutgers service. Your advisor and
+                Coursenav is a planning aid, not an official Rutgers service. Your advisor and
                 Rutgers' records are authoritative.
               </span>
             </li>

@@ -141,7 +141,7 @@ def webreg_panel(session: Session, student: Student, term_code: str,
             "without_section": [{"course": c["course"], "title": c.get("title", "")}
                                 for c in missing],
             "warnings": warnings, "steps": STEPS, "webreg_url": WEBREG_URL,
-            "note": ("CoursePilot does not sign in to WebReg or register you. Copy the index "
+            "note": ("Coursenav does not sign in to WebReg or register you. Copy the index "
                      "numbers and add them in WebReg yourself.")}
 
 

@@ -44,7 +44,7 @@ function Settings({ prefs, onChange }: { prefs: SchedulePreferences; onChange: (
       <summary className="min-h-11 cursor-pointer p-3 text-sm font-medium text-fg">Schedule settings</summary>
       <div className="space-y-4 border-t border-border p-3">
         <p className="text-xs text-fg-muted">
-          Hard limits: a section outside them is never used. These are your CoursePilot settings, not Rutgers rules.
+          Hard limits: a section outside them is never used. These are your Coursenav settings, not Rutgers rules.
         </p>
         <div className="grid gap-4 sm:grid-cols-3">
           <Field label="No classes before">
@@ -72,7 +72,7 @@ function Settings({ prefs, onChange }: { prefs: SchedulePreferences; onChange: (
         <fieldset>
           <legend className="text-sm font-medium text-fg">Closed sections</legend>
           <Radio name="availability" label="Allow closed sections, list open ones first" checked={prefs.availability === "prefer_open"} onChange={() => onChange({ ...prefs, availability: "prefer_open" })} />
-          <Radio name="availability" label="Only sections open now" description="Uses CoursePilot's latest Rutgers check; seats change constantly." checked={prefs.availability === "require_open"} onChange={() => onChange({ ...prefs, availability: "require_open" })} />
+          <Radio name="availability" label="Only sections open now" description="Uses Coursenav's latest Rutgers check; seats change constantly." checked={prefs.availability === "require_open"} onChange={() => onChange({ ...prefs, availability: "require_open" })} />
         </fieldset>
       </div>
     </details>
@@ -176,7 +176,7 @@ function PlannedSchedule() {
   return (
     <div className="space-y-6">
       <p className="text-sm text-fg-secondary">
-        Real Rutgers sections for a planned semester, combined by CoursePilot&apos;s schedule engine without time conflicts.
+        Real Rutgers sections for a planned semester, combined by Coursenav&apos;s schedule engine without time conflicts.
       </p>
 
       <Tabs
@@ -209,7 +209,7 @@ function PlannedSchedule() {
             {semester && !isLoaded(semester.term_code) && (
               <Alert
                 tone="warning"
-                title={`CoursePilot doesn't have ${semester.label} sections from Rutgers yet`}
+                title={`Coursenav doesn't have ${semester.label} sections from Rutgers yet`}
                 action={
                   <Button size="sm" variant="secondary" onClick={() => { setSource("custom"); setCustomCourses(semester.courses.map((c) => c.course).slice(0, 8)); setCustomTerm(""); generate.reset(); }}>
                     Explore another term

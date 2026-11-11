@@ -9,6 +9,7 @@ import { AssistantHeaderButton, AssistantProvider } from "@/features/assistant/a
 
 import { Wordmark } from "@/components/brand/mark";
 import { Sheet, ToastProvider } from "@/components/ui/overlay";
+import { APP_NAME } from "@/lib/brand";
 import { NAV, type NavItem } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 
@@ -93,7 +94,7 @@ export function AppShell({
   return (
     <ToastProvider>
       <AssistantProvider>
-      <div className="min-h-dvh lg:grid lg:grid-cols-[15rem_1fr] lg:bg-canvas">
+      <div data-app-shell className="min-h-dvh lg:grid lg:grid-cols-[15rem_1fr] lg:bg-canvas">
         <a
           href="#main"
           className="sr-only z-50 rounded bg-surface-elevated px-3 py-2 focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
@@ -104,7 +105,7 @@ export function AppShell({
         {/* Desktop sidebar */}
         <aside className="sticky top-0 hidden h-dvh flex-col bg-canvas lg:flex">
           <div className="flex h-14 items-center px-4">
-            <Link href="/home" className="rounded" aria-label="CoursePilot home">
+            <Link href="/home" className="rounded" aria-label={`${APP_NAME} home`}>
               <Wordmark />
             </Link>
           </div>
@@ -134,13 +135,13 @@ export function AppShell({
         <div className="flex min-h-dvh min-w-0 flex-col lg:min-h-[calc(100dvh-1rem)] lg:my-2 lg:mr-2 lg:rounded-xl lg:border lg:border-border lg:bg-background lg:shadow-[0_1px_3px_rgb(var(--overlay)/0.06)]">
           {/* Mobile top bar */}
           <header className="sticky top-0 z-30 flex h-14 items-center border-b border-border bg-background/90 px-4 pr-16 backdrop-blur">
-            <Link href="/home" className="rounded lg:invisible" aria-label="CoursePilot home">
+            <Link href="/home" className="rounded lg:invisible" aria-label={`${APP_NAME} home`}>
               <Wordmark size={26} />
             </Link>
             <AssistantHeaderButton />
           </header>
 
-          <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-6 sm:px-6 lg:px-10 lg:pb-12 lg:pt-10">
+          <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 pb-10 pt-6 sm:px-6 lg:px-10 lg:pb-12 lg:pt-10">
             {children}
           </main>
         </div>

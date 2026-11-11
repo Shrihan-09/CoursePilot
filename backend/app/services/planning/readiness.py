@@ -67,7 +67,7 @@ def readiness(session: Session, account_id, now: datetime) -> Readiness:
         checks.append(Check("planning_profile", "done", "Planning preferences confirmed."))
     else:
         checks.append(Check("planning_profile", "missing",
-                            "Tell CoursePilot how you'd like your semesters planned."))
+                            "Tell Coursenav how you'd like your semesters planned."))
 
     # Context worth knowing - never a blocker.
     from app.models import ProgramVersion
@@ -100,7 +100,7 @@ def readiness(session: Session, account_id, now: datetime) -> Readiness:
         if goals:
             checks.append(Check("additional_goals", "info",
                                 "Additional programs you're exploring are not included in the "
-                                "plan: CoursePilot doesn't combine programs yet."))
+                                "plan: Coursenav doesn't combine programs yet."))
     start = default_start(latest)
     checks.append(Check("start_term", "info", f"Your plan would start in {label(start)}."))
 

@@ -66,7 +66,7 @@ _NEVER = (
 )
 
 _ALLOWED_PHRASES = {
-    "degree navigator", "coursepilot", "webreg", "rutgers", "sas core", "core", "new brunswick",
+    "degree navigator", "coursepilot", "coursenav", "webreg", "rutgers", "sas core", "core", "new brunswick",
     "choose this", "more like this", "not now", "confirm", "undo", "ready for webreg",
     "historically offered", "needs review", "preview not yet reviewed",
     "computer science", "school of arts and sciences", "arts and humanities",

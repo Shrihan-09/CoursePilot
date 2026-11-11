@@ -36,11 +36,11 @@ const progress = (rows: DnRequirementRow[]): DnProgress => ({
   source: "degree_navigator", label: "From your Degree Navigator audit", imports: [], requirements: rows, nudge: null,
 });
 
-describe("Degree Navigator says not met, CoursePilot says met", () => {
+describe("Degree Navigator says not met, Coursenav says met", () => {
   const tree = node("ROOT", [node("REQ_A"), node("REQ_B")]);
   const review = new Set(["REQ_B"]);
 
-  it("finds only DN 'not fulfilled' where CoursePilot says met - never a member goal", () => {
+  it("finds only DN 'not fulfilled' where Coursenav says met - never a member goal", () => {
     const rows = [row({}), row({ id: "g", kind: "goal", requirement_code: "CORE_AH", mapping_role: "member_goal" }),
                   row({ id: "x", requirement_code: "REQ_X", excluded: true })];
     expect(dnNotMet(progress(rows))).toEqual([{ code: "REQ_B", name: "Invented B [IB]" }]);

@@ -96,8 +96,8 @@ def resolve_course(session: Session, code: str | None, supplement: str | None = 
     if not rows:
         return CourseMatch(None, Issue(
             "COURSE_NOT_FOUND", "course_code", unknown_severity,
-            "CoursePilot has no course with this code. It may be retired, renumbered or "
-            "not offered in the terms CoursePilot has loaded."))
+            "Coursenav has no course with this code. It may be retired, renumbered or "
+            "not offered in the terms Coursenav has loaded."))
     base = [c for c in rows if (c.supplement_code or "") == ""]
     if base:
         return CourseMatch(base[0], None)

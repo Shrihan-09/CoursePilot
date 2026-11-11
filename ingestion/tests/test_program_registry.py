@@ -239,7 +239,7 @@ def test_publish_refuses_a_review_of_different_content(session) -> None:
 @pytest.mark.parametrize("reviewer", [
     "Claude", "claude-opus", "AI", "AI assistant", "Anthropic", "ChatGPT", "GPT-5", "LLM",
     "system", "System Validator", "bot", "automated check", "script", "pipeline", "CI",
-    "unknown", "N/A", "", "  ", "ab", "CoursePilot", "test", "schema validator",
+    "unknown", "N/A", "", "  ", "ab", "CoursePilot", "Coursenav", "test", "schema validator",
 ])
 def test_machine_and_placeholder_reviewers_are_refused(session, reviewer) -> None:
     version = _validated(session)

@@ -1,6 +1,6 @@
-# CoursePilot Learning Guide
+# Coursenav Learning Guide
 
-Your engineering textbook for this project. It grows as CoursePilot grows.
+Your engineering textbook for this project. It grows as Coursenav grows.
 
 **How this document works**
 
@@ -86,7 +86,7 @@ def answer_question(question):
 This has no seams. You cannot test it, cannot check it, cannot fix half of it.
 When it's wrong you have one lever: change the prompt and hope.
 
-**How CoursePilot uses it.** Four layers, each with one job:
+**How Coursenav uses it.** Four layers, each with one job:
 
 ```
 DATA        stores facts          (PostgreSQL)
@@ -95,7 +95,7 @@ REASONING   proposes an answer    (LLM)
 VALIDATION  decides if it's valid (plain Python)
 ```
 
-**Why CoursePilot needs it.** Now there *are* levers. Bad recommendations?
+**Why Coursenav needs it.** Now there *are* levers. Bad recommendations?
 That's reasoning. Missing courses in results? Retrieval. Wrong prerequisite?
 Data. And crucially, validation can be tested exhaustively without any model
 involved — it's just functions over inputs.
@@ -108,7 +108,7 @@ involved — it's just functions over inputs.
 Not a flaw; it's what makes models useful for open-ended work. But it means
 you cannot build a *guarantee* on top of one.
 
-**How CoursePilot uses it.** The LLM proposes. Python decides.
+**How Coursenav uses it.** The LLM proposes. Python decides.
 
 ```
 LLM says:        "Take CS 112 in Spring 2027."
@@ -126,7 +126,7 @@ Python decides:  valid / invalid / could-not-determine
 
 Every one of those checks is ordinary code. Boring, testable, repeatable.
 
-**Why CoursePilot needs it.** The student acts on the answer. "Probably right"
+**Why Coursenav needs it.** The student acts on the answer. "Probably right"
 isn't good enough when the cost of wrong is a delayed graduation.
 
 ### The third state: `INDETERMINATE`
@@ -147,13 +147,13 @@ Both choices are bad:
 - collapse into `PASSED` → unverified things get green checkmarks
 - collapse into `FAILED` → valid plans get blocked for no reason
 
-**How CoursePilot uses it.** `CheckStatus` in
+**How Coursenav uses it.** `CheckStatus` in
 [validation.py](backend/app/domain/validation.py) has four values, including
 `INDETERMINATE`. When a prerequisite couldn't be parsed from the Rutgers
 catalog, the validator says "I don't know," and the UI must render that
 differently from a confirmed pass.
 
-**Why CoursePilot needs it.** Rutgers data will be incomplete, ambiguous, and
+**Why Coursenav needs it.** Rutgers data will be incomplete, ambiguous, and
 sometimes unparseable. That's not an edge case here — it's Tuesday. A system
 that can't say "I don't know" will lie instead.
 
@@ -162,7 +162,7 @@ that can't say "I don't know" will lie instead.
 **General idea.** Provenance = where a piece of information came from. Not the
 value, but its *receipt*: source, URL, when we fetched it, which version.
 
-**How CoursePilot uses it.** Look at
+**How Coursenav uses it.** Look at
 [provenance.py](backend/app/domain/provenance.py). Every Rutgers fact carries a
 `SourceRef`: source kind, URL, `retrieved_at`, `academic_year`, `version`,
 `verification`.
@@ -170,7 +170,7 @@ value, but its *receipt*: source, URL, when we fetched it, which version.
 Note `Sourced[T]` — a value welded to its sources, with `min_length=1`. The
 type system itself refuses an unsourced Rutgers fact.
 
-**Why CoursePilot needs it.** Three reasons, and the third is the one people
+**Why Coursenav needs it.** Three reasons, and the third is the one people
 learn the hard way:
 
 1. Students can check our work.
@@ -184,7 +184,7 @@ learn the hard way:
 **General idea.** An *abstraction* is an interface that hides which concrete
 thing is behind it. Callers depend on the shape, not the implementation.
 
-**How CoursePilot uses it.** [base.py](backend/app/llm/base.py) defines an
+**How Coursenav uses it.** [base.py](backend/app/llm/base.py) defines an
 `LLMProvider` Protocol — `complete()` in, `Completion` out. Two implementations
 exist: `EchoProvider` (a fake) and `AnthropicProvider` (a stub). Config picks
 one.
@@ -192,7 +192,7 @@ one.
 A Python `Protocol` is *structural* typing: any class with a matching
 `complete()` method satisfies it. No inheritance required.
 
-**Why CoursePilot needs it.** Model providers change. Prices change. But the
+**Why Coursenav needs it.** Model providers change. Prices change. But the
 deeper reason is testing: `echo` is the default, so the whole test suite runs
 with no API key, no network, and no randomness. A test that calls a real LLM
 fails intermittently, and intermittent tests get muted.
@@ -202,17 +202,17 @@ fails intermittently, and intermittent tests get muted.
 **General idea.** Define the shape of a thing before writing its guts. Here,
 the shapes are Pydantic models and Protocols.
 
-**How CoursePilot uses it.** `PlanResponse`, `ValidationReport`, `Retriever`,
+**How Coursenav uses it.** `PlanResponse`, `ValidationReport`, `Retriever`,
 `Validator` all exist. None of the logic behind them does.
 
-**Why CoursePilot needs it.** The contract is where the architecture actually
+**Why Coursenav needs it.** The contract is where the architecture actually
 lives. Once `ValidationReport` has no field an LLM can write to, no future
 implementation can let the LLM declare a plan valid. **The design is enforced
 by the types, not by remembering to be careful.**
 
 ---
 
-## How CoursePilot Uses It
+## How Coursenav Uses It
 
 ```
 Student in a browser
@@ -350,7 +350,7 @@ Plus four database tables, a migration, and 47 tests.
 
 ## Why We Built It
 
-CoursePilot's architecture says the database is the source of truth. That is
+Coursenav's architecture says the database is the source of truth. That is
 an empty promise until something actually puts trustworthy data in it. This
 phase is that something.
 
@@ -367,7 +367,7 @@ phase is that something.
 3. **JavaScript-rendered pages** — the HTML arrives nearly empty and JS fills
    it in. You need a real browser (Playwright) to see anything.
 
-**How CoursePilot uses it.** `classes.rutgers.edu/soc/` is a category-3 page:
+**How Coursenav uses it.** `classes.rutgers.edu/soc/` is a category-3 page:
 a JavaScript app. The obvious move is to reach for Playwright.
 
 That would have been a mistake. The SPA loads its data from a JSON endpoint,
@@ -408,7 +408,7 @@ Had we shipped `courseString` as the key, the lab would have overwritten the
 lecture (or vice versa) and 9 more courses would have collided — silently.
 Nothing would have crashed. The data would just have been wrong.
 
-**Why CoursePilot needs the habit.** Ten minutes of counting prevented a bug
+**Why Coursenav needs the habit.** Ten minutes of counting prevented a bug
 that would have surfaced months later as "why does Physics say 0 credits?"
 
 Also measured, with the same payoff:
@@ -428,7 +428,7 @@ Also measured, with the same payoff:
 - **Natural key** — real-world attributes that identify the thing
   (unit + subject + number + supplement).
 
-**How CoursePilot uses both.** Every table has a UUID primary key *and* a
+**How Coursenav uses both.** Every table has a UUID primary key *and* a
 UNIQUE constraint on the natural key:
 
 ```python
@@ -488,7 +488,7 @@ course (id, ..., subject_id)
 **General idea.** A constraint is a rule the *database* enforces. Application
 code can have bugs; a constraint cannot be bypassed by one.
 
-CoursePilot uses four kinds:
+Coursenav uses four kinds:
 
 | Constraint | Here | Prevents |
 |---|---|---|
@@ -533,7 +533,7 @@ Two subtleties worth internalizing:
 **General idea.** A *hash* turns any input into a short fixed-size
 fingerprint. Same bytes → same hash; any change → a completely different one.
 
-**How CoursePilot uses it.** Every fetch computes `sha256(payload)`. On
+**How Coursenav uses it.** Every fetch computes `sha256(payload)`. On
 re-ingest:
 
 - hash unchanged → reuse the existing `data_source` row
@@ -547,7 +547,7 @@ noise. With it, a new source row means something genuinely changed.
 
 **General idea.** Pydantic validates data at runtime against a typed model.
 
-**How CoursePilot uses it** — two models, opposite strictness:
+**How Coursenav uses it** — two models, opposite strictness:
 
 ```python
 class RawSocCourse(BaseModel):
@@ -590,7 +590,7 @@ Three rules this suite follows:
 
 ---
 
-## How CoursePilot Uses It
+## How Coursenav Uses It
 
 ```
 Rutgers SOC API (JSON, 21 MB, 4,400 courses)
@@ -736,7 +736,7 @@ Monday?" against repeated columns means
 `WHERE day_1='M' OR day_2='M' OR day_3='M' ...` — and it silently breaks the
 day someone adds `day_6`.
 
-**How CoursePilot uses it.** `section_meeting` is its own table. The Monday
+**How Coursenav uses it.** `section_meeting` is its own table. The Monday
 query is `WHERE meeting_day = 'M'`, and it keeps working at any cardinality.
 
 **The signal to watch for:** if you are about to number a column, you want a
@@ -801,7 +801,7 @@ later." Resist it. An empty column invites someone to fill it — with a guess,
 a scraped number, or a default — and once a value is in the database nothing
 distinguishes it from a real one.
 
-**CoursePilot's rule:** if the source does not provide it, there is no column.
+**Coursenav's rule:** if the source does not provide it, there is no column.
 The absence is documented in `DATA_SOURCES.md` so the next person does not
 re-investigate.
 
@@ -826,7 +826,7 @@ never to delete the data — it is to decide what the anomaly *means*:
 | Silently accept | Anomaly invisible; conflict detection later produces nonsense. |
 | **Accept + warn** | Data preserved, anomaly surfaced, someone can decide. |
 
-CoursePilot warns. The three warnings appear on every run.
+Coursenav warns. The three warnings appear on every run.
 
 **The general lesson:** validate against *measured* source behavior, not
 against what a well-behaved source would do. A rule that sounds obviously
@@ -958,7 +958,7 @@ field belongs where it is.
 
 ---
 
-## How CoursePilot Uses It
+## How Coursenav Uses It
 
 ```
 Rutgers SOC courses.json  (sections nested inside courses)
@@ -1211,7 +1211,7 @@ requirement tree → allocation → a typed audit result. No LLM anywhere in it.
 
 ## Why
 
-Everything CoursePilot eventually wants to say — "take this next", "can you
+Everything Coursenav eventually wants to say — "take this next", "can you
 graduate on time" — reduces to *which requirements are done*. If that answer
 is wrong, every answer built on it is wrong, confidently.
 
@@ -1239,7 +1239,7 @@ CS major requirement is one 1,661-character English paragraph:
 data that merely *contains* structure. Prose containing course codes is not
 machine-readable requirements — the codes are extractable, the *logic* is not.
 
-**How CoursePilot handles it.** The structure is **curated**: a human reads the
+**How Coursenav handles it.** The structure is **curated**: a human reads the
 prose and encodes it, and every row stores the sentence it came from plus a
 `curation_status`. The enum has `curated_from_prose`, `synthetic`, and
 `unverified` — and deliberately **no `extracted`**, because that value would be
@@ -1258,7 +1258,7 @@ unsupported-claim failure this project exists to avoid.
 - *Satisfaction*: "This student's Course X **does** satisfy Requirement Y." A
   property of one student at one moment.
 
-**How CoursePilot uses it.** `requirement_course_option` stores only
+**How Coursenav uses it.** `requirement_course_option` stores only
 eligibility and contains no student data at all. Satisfaction is **computed**
 and never stored.
 
@@ -1384,7 +1384,7 @@ silently ignored.
 
 ## What I Should Be Able To Explain
 
-1. Why can't CoursePilot *extract* Rutgers requirements? What does it do instead?
+1. Why can't Coursenav *extract* Rutgers requirements? What does it do instead?
 2. What is the difference between eligibility and satisfaction, and why is only one stored?
 3. Why does greedy allocation fail, and what does maximum matching fix?
 4. Maximum matching found a valid maximum assignment that was still wrong. Why — and what fixed it?
@@ -1441,7 +1441,7 @@ audit either earns trust or loses it.
 - A **requirement** is *satisfied by* things. "Take six CS courses."
 - A **rule** *constrains how* things count. "No more than one grade of D."
 
-**How CoursePilot uses it.** The requirement tree evaluates each node from the
+**How Coursenav uses it.** The requirement tree evaluates each node from the
 courses allocated to it. But "at most one D" is not satisfied by any course —
 it is a property of the whole transcript. Modeling it as a requirement node
 would mean inventing a node nothing can satisfy.
@@ -1464,7 +1464,7 @@ take them, and they count fully toward *other* programs. The exclusion is not a
 fact about the course — it is a fact about the relationship between that course
 and *one program version*.
 
-**How CoursePilot models it.** The exclusion lives on the `ProgramVersion` and
+**How Coursenav models it.** The exclusion lives on the `ProgramVersion` and
 is applied at audit time. `01:198:405` stays a normal `Course`, stays
 *eligible* for the elective requirement, and is only skipped during allocation
 and credit counting for this specific degree.
@@ -1511,7 +1511,7 @@ There were three options:
    quietly wrong for any transfer student.
 3. **Record the rule, mark it unevaluable, say why.**
 
-CoursePilot does (3). `is_evaluable = False` plus a `not_evaluable_reason`, and
+Coursenav does (3). `is_evaluable = False` plus a `not_evaluable_reason`, and
 a database CHECK enforces that an unevaluable rule *must* carry a reason —
 because a rule marked unevaluable with no explanation is indistinguishable from
 one someone forgot to finish.
@@ -1725,7 +1725,7 @@ collapse is invisible until it over-reports a student's progress:
 A 4-credit course satisfying a major requirement *and* a core goal means two
 requirements are done and **4 credits earned — not 8**.
 
-**How CoursePilot guarantees it.** Not with a de-duplication pass. Applicable
+**How Coursenav guarantees it.** Not with a de-duplication pass. Applicable
 credits are summed per *student-course row*, before allocation runs at all:
 
 ```python
@@ -1862,7 +1862,7 @@ No new tables. No migration.
 
 ## Why
 
-Core is the first part of CoursePilot where **no single Rutgers source can
+Core is the first part of Coursenav where **no single Rutgers source can
 answer the whole question**. That turns out to change how you model, not just
 where you fetch from.
 
@@ -1941,7 +1941,7 @@ page. Three options:
 2. Drop them silently — hides a real discrepancy.
 3. **Apply the authority matrix and record the conflict.**
 
-CoursePilot does (3). The SAS pages are authoritative for *which goals exist*,
+Coursenav does (3). The SAS pages are authoritative for *which goals exist*,
 so no requirement node is created — and the 37 orphaned certifications are
 counted and reported, with the conflict written into `DATA_SOURCES.md` and the
 fixture itself.
@@ -2076,7 +2076,7 @@ future surprise.
 6. Why did Core require no migration — and what earlier decision made that possible?
 7. Why can Core not be its own Program? What breaks?
 8. Why did `credits` requirements never work before, and how is the slot count decided now?
-9. Name two Core rules CoursePilot does **not** enforce, and how you would know.
+9. Name two Core rules Coursenav does **not** enforce, and how you would know.
 
 ## Try It Yourself
 
@@ -2108,7 +2108,7 @@ allocator, and why?
 ## What We Built
 
 Two columns, one helper, one post-matching pass — and two rules that Rutgers
-publishes and CoursePilot previously could not express:
+publishes and Coursenav previously could not express:
 
 - "meet at least two of these goals"
 - "6 credits", stated with no course count
@@ -2340,7 +2340,7 @@ should make. So it is written into `DATA_MODEL.md` 16.6 and left visible.
 8. What is the difference between deterministic and reproducible here?
 9. Why was a passing Phase 4 test changed, and what makes that different from
    deleting an inconvenient test?
-10. Name one rule CoursePilot still does not optimize for, and why it was left.
+10. Name one rule Coursenav still does not optimize for, and why it was left.
 
 ## Try It Yourself
 
@@ -2532,7 +2532,7 @@ max satisfied requirements = maximum set packing        NP-hard
 ```
 
 Maximum matching is polynomial. The objective Rutgers describes is not. That
-does not end the discussion — CoursePilot's instances are about 26 nodes and
+does not end the discussion — Coursenav's instances are about 26 nodes and
 a few dozen courses, already split by system, which is tiny — but it changes
 the recommendation from "swap the objective" to "choose a search strategy and
 state its bound".
@@ -2591,7 +2591,7 @@ shipping nothing.
 7. What exactly does the Rutgers FAQ sentence authorize you to conclude — and
    what does it not?
 8. Sketch the Set Packing reduction. Why does it not settle the question for
-   CoursePilot?
+   Coursenav?
 9. Give a system that is deterministic, reproducible, and wrong.
 10. Why was nothing implemented this phase?
 
@@ -2904,7 +2904,7 @@ and exact course equality the wrong one?
 ## What We Built
 
 An oracle, a proof, a decomposition, and a measurement — and no change to how
-CoursePilot allocates anything.
+Coursenav allocates anything.
 
 Lesson 9 said the allocator optimizes the wrong thing. This phase asked what
 it would take to optimize the right thing, and the answer turned out to be
@@ -3233,7 +3233,7 @@ A   stateless   depends only on the current transcript
 B, C stateful   need a baseline of previously satisfied requirements
 ```
 
-Today every audit recomputes from scratch and CoursePilot stores no prior
+Today every audit recomputes from scratch and Coursenav stores no prior
 audit. So B and C are not settings — they require either persisting audit
 history or defining the baseline as "the audit before the newest course".
 Those are different products with different failure modes.
@@ -3342,7 +3342,7 @@ reasons worth distinguishing:
 
 "Rutgers does X" is an input to a product decision, never a substitute for
 one. The honest structure is: documented external behaviour, possible
-CoursePilot behaviour, the difference, and the student impact — four separate
+Coursenav behaviour, the difference, and the student impact — four separate
 lines.
 
 ### Handing over a decision properly
@@ -3798,7 +3798,7 @@ arrive.
 ### Curated data versus a model's opinion
 
 The expansion map could have been a bag of guesses. Instead it follows the
-same rules as CoursePilot's curated requirement data:
+same rules as Coursenav's curated requirement data:
 
 - every expansion points at wording that appears **verbatim** in the corpus,
   so it is a pointer to real text, not a claim about what a course is about;
@@ -3919,7 +3919,7 @@ give.
 
 ## What We Built
 
-A layer that explains CoursePilot's decisions in readable prose — and that
+A layer that explains Coursenav's decisions in readable prose — and that
 produces a correct explanation **before** any model is involved.
 
 No chatbot. No provider configured. The model is optional by construction,
@@ -4081,7 +4081,7 @@ imply we have?" are different questions.**
 Part O asked whether to widen catalog ingestion. Rather than guess:
 
 ```
-programs CoursePilot audits     1 (CS BA)
+programs Coursenav audits     1 (CS BA)
 SAS program paths discoverable  97
 parser generalises?             YES, unmodified
   mathematics-640   62 courses, 61 descriptions
@@ -4201,7 +4201,7 @@ component testable.**
 
 ### Keeping two abstractions can be right
 
-CoursePilot ended up with two: Phase 0's `LLMProvider` (async, roles, token
+Coursenav ended up with two: Phase 0's `LLMProvider` (async, roles, token
 usage) and Phase 5.1's `ExplanationModel` (sync, two methods). The tidying
 instinct says collapse them.
 
@@ -4402,7 +4402,7 @@ actually comes from?
 ## What We Built
 
 Authentication, data isolation, rate limiting and AI cost controls around
-CoursePilot — with the Degree Engine completely untouched and no migration.
+Coursenav — with the Degree Engine completely untouched and no migration.
 
 The most important line of code in the phase is one I **deleted**.
 
@@ -4421,7 +4421,7 @@ Conflating them is how systems end up trusting a client-supplied user ID: the
 caller proved *something* (they had a token), so the server assumes they
 proved *everything* (this is their data).
 
-CoursePilot's Phase 5.2 endpoint had neither. It accepted:
+Coursenav's Phase 5.2 endpoint had neither. It accepted:
 
 ```json
 {"student_ref": "anyone-at-all", "course_key": "01:198:344"}
@@ -4502,7 +4502,7 @@ because it looks protected.
 ### Rate limiting: money is not the same resource as CPU
 
 Most rate limiting protects compute. An AI endpoint has a second, stranger
-resource: **spend**. So CoursePilot has two budgets.
+resource: **spend**. So Coursenav has two budgets.
 
 ```
 60 requests / identity / minute      protects the database and audit engine
@@ -4535,7 +4535,7 @@ Two decisions followed:
   409, 429 and 5xx — never 400/401/403/404. A bad credential fails
   identically on attempt two; retrying it burns time and money for nothing.
 - **never retry a validation failure.** When the model returns something that
-  contradicts the decision facts, CoursePilot does **not** ask again more
+  contradicts the decision facts, Coursenav does **not** ask again more
   firmly. It discards the response and uses the deterministic explanation. A
   test pins this by scripting two responses and asserting the second is never
   consumed.
@@ -4576,7 +4576,7 @@ Every control in this phase is about the *request*. None of them stops a
 model from asserting something false, and none of them was asked to.
 
 That job still belongs to the Phase 5.2 validator comparing model output
-against CoursePilot's facts. Security controls who may ask; validation
+against Coursenav's facts. Security controls who may ask; validation
 controls what may be said. **Layers fail for different reasons, which is why
 they are layers.**
 
@@ -6302,7 +6302,7 @@ cannot drift from what the cache really did.
 ### The parameter that was secretly the answer
 
 Even corrected, "30 collateral misses, 28.6% of audit time" is not a fact
-about CoursePilot. It is a fact about `PROGRAMS = 4`, a number chosen
+about Coursenav. It is a fact about `PROGRAMS = 4`, a number chosen
 because it seemed reasonable.
 
 Sweeping it changed the entire conclusion:
@@ -6315,7 +6315,7 @@ P=8    70                36.1%
 P=32  310                40.2%
 ```
 
-The counts follow **(P-1)/P** exactly. And CoursePilot has **one program**,
+The counts follow **(P-1)/P** exactly. And Coursenav has **one program**,
 where collateral is not "small" or "negligible" but *zero by construction* -
 with one program there is no other program whose rules could invalidate
 anyone. The two designs are indistinguishable on the current data.
@@ -6421,7 +6421,7 @@ control that moves tells you the instrument moved, not the subject.
 2. What made the extra instrumentation nearly free?
 3. The first benchmark reported 72.8% avoidable. What two categories was it
    wrongly including, and why is neither avoidable?
-4. Why is "30 collateral misses" not a fact about CoursePilot?
+4. Why is "30 collateral misses" not a fact about Coursenav?
 5. What is the collateral fraction at P=1, and why is it that value *by
    construction* rather than approximately?
 6. Describe the cascade hazard in per-program versioning, using the actual
@@ -6674,7 +6674,7 @@ behind, which no mock would have reproduced.
    distinguishes them?
 10. Why is "empty response" counted as a rejection rather than a failure?
 11. Why does the service attempt the model exactly once?
-12. What can an operator infer from CoursePilot's metrics, and what can they
+12. What can an operator infer from Coursenav's metrics, and what can they
     not?
 
 ## Try It Yourself
@@ -6932,7 +6932,7 @@ A passing suite proves *your code behaves as you expect given your
 assumptions about the outside world*. It cannot prove the assumptions.
 
 ```
-tested     CoursePilot falls back correctly when a provider times out
+tested     Coursenav falls back correctly when a provider times out
 verified   Anthropic actually times out the way we modelled
 ```
 
@@ -6948,7 +6948,7 @@ valuable column is the one that says "not externally verified".
 `ANTHROPIC_API_KEY` is empty. There is no Rutgers client registration.
 
 There were tempting routes around both. The environment has `CLAUDE_*`
-variables belonging to the tool running the session - not a CoursePilot
+variables belonging to the tool running the session - not a Coursenav
 credential, and using one would have been manufacturing a credential while
 telling myself I had found one. Rutgers has no published OIDC endpoint to
 register against; guessing a URL would have been inventing an integration.
@@ -7230,7 +7230,7 @@ changed from run to run.
 1. What did the second vendor adapter reveal about `ProviderError`, and why
    was it invisible with one vendor?
 2. Why is "is the model accurate about degree requirements?" the wrong
-   question for CoursePilot?
+   question for Coursenav?
 3. Why does the pipeline make zero model calls for a course the engine never
    allocated?
 4. In the injection test, the model gives in completely. Why does the test
@@ -7290,7 +7290,7 @@ never had.
 ### Multi-tenant is not multi-program
 
 A multi-tenant system isolates *customers*: one database, many
-organizations, and nothing crosses between them. CoursePilot's problem is
+organizations, and nothing crosses between them. Coursenav's problem is
 different. It has **one** student whose single academic record must be
 readable under **many** rulesets. The record is shared on purpose, and the
 rules are what vary.
@@ -7372,7 +7372,7 @@ computation, re-check that claim.
 "Mathematics" is not a ruleset. "Mathematics, 2026-2027 catalog" is. When a
 student asks about a program, the scenario uses *their* catalog year. If that
 version does not exist, it says which years do. It never picks the latest,
-because choosing a catalog year is an academic decision and CoursePilot has
+because choosing a catalog year is an academic decision and Coursenav has
 no rule to make it with. It is always tempting to paper over a missing rule
 with a plausible default. The honest behaviour is to expose the gap.
 
@@ -7514,7 +7514,7 @@ letter, and the only `<em>` contents are OR and AND.
 The existing normalizer "cleaned" prerequisite text by stripping the HTML
 tags. That was reasonable for display, and fatal for parsing: once
 `<em> OR </em>` becomes a bare `OR`, it looks exactly like the OR in a
-title. The column CoursePilot had stored for months could not be parsed at
+title. The column Coursenav had stored for months could not be parsed at
 all.
 
 The lesson is general: **keep the raw source.** A normalized copy serves one
@@ -7552,7 +7552,7 @@ wrong. Kleene logic sits correctly between them.
 ### Uninterpreted conditions may lower confidence, never raise it
 
 Rutgers puts "Student needs C or better in all prerequisites" in a
-*different field* from the expression. CoursePilot stores the note and never
+*different field* from the expression. Coursenav stores the note and never
 interprets it. In evaluation, the note can turn SATISFIED into UNKNOWN,
 because the grade might not meet it. It can never turn UNSATISFIED into
 anything better: an extra restriction can't make an unmet expression pass.
@@ -7564,7 +7564,7 @@ more cautious.
 A prerequisite is not a property of a course. It is a property of a course
 **in a term**. The data proved it: 76 courses changed their prerequisites
 between the archived terms. So the prerequisite attaches to the offering
-(course × term × campus), an abstraction CoursePilot already had.
+(course × term × campus), an abstraction Coursenav already had.
 
 The same idea exposed a second bug. `course` holds one "current" title and
 credit value, and loading an older term was overwriting values a newer term
@@ -7773,7 +7773,7 @@ credit (SAS: a course passed with C or better "must be repeated for E
 credit"), so "B or better" is not met. For a PREREQUISITE, the student did
 earn a C - an E-credit repeat does not erase it. For the GPA, the repeat is
 excluded - but after an F or D, whether the original stays in the average
-depends on a prefix CoursePilot does not store, so the GPA is UNKNOWN. "Latest
+depends on a prefix Coursenav does not store, so the GPA is UNKNOWN. "Latest
 wins" and "highest wins" are each wrong for one of the three.
 
 ### Scope is the hard part of a rule
@@ -7889,7 +7889,7 @@ in what the call meant, not in what it computed. A named flag
 
 ### Missing data is not an empty prerequisite
 
-A Newark course CoursePilot has never loaded has no prerequisite row, so a
+A Newark course Coursenav has never loaded has no prerequisite row, so a
 naive search treats it as free and routes students through it. "We know
 nothing about it" must be infeasible, not zero-cost - the same principle as
 UNKNOWN in Phase 6.2, applied to search.
@@ -7981,7 +7981,7 @@ names each, frees only the first, and ranks the rest last.
 ### Unknown is a third answer, again
 
 A section open to "MAJ: 694" is not closed to a CS major: the student may
-have a 694 major or minor CoursePilot has never recorded. The honest answer
+have a 694 major or minor Coursenav has never recorded. The honest answer
 is "needs confirmation", and the engine can only say "not satisfied" when it
 knows the student's attributes are complete - which today it never does.
 
@@ -8035,7 +8035,7 @@ rebuilding anything - and stops an old download from posing as live data.
 
 ## What We Built
 
-Proof, on real Rutgers records, that CoursePilot tells apart a lab that is a
+Proof, on real Rutgers records, that Coursenav tells apart a lab that is a
 meeting of the same registration, a lab that is a second registration of the
 same course, and a lab that is a separate course with its own credits - and
 that none of them can be silently dropped from a plan or a schedule.
@@ -8145,7 +8145,7 @@ log. It writes nothing when nothing changed.
 ### Freshness belongs to the answer, not the database
 
 Rutgers publishes no "last updated" time, so the only "as of" is when
-CoursePilot looked. The same stored state is "current" at 02:30 and "stale"
+Coursenav looked. The same stored state is "current" at 02:30 and "stale"
 at 02:45. That is why freshness is computed against the request's time (an
 explicit `reference_time`) rather than stored. It is also why a file's
 timestamp is not trusted: copying an archive resets it.
@@ -8221,7 +8221,7 @@ them gives up exactness:
 
 ## What We Built
 
-A student can ask CoursePilot to watch a section. The server keeps that
+A student can ask Coursenav to watch a section. The server keeps that
 promise with the browser closed: the one availability refresh per term (6.7)
 records each section that goes from closed to open. A processor then turns
 each such change into one durable event per watcher. The events are stored,
@@ -8235,7 +8235,7 @@ never sent; sending them is a later phase.
 
 If each watch polled Rutgers, 10,000 students watching sections would mean
 10,000 requests per cycle for the same 96 KB list. Rutgers already publishes
-the whole term in that one list. So CoursePilot asks once and lets the
+the whole term in that one list. So Coursenav asks once and lets the
 database do the fan-out: "which active watches point at a section that just
 opened?" is a join, not a request. User count changes how many rows are
 written, never how many times Rutgers is asked.
@@ -8285,9 +8285,9 @@ guarantees live in different tables for that reason.
 ### First observations and unknowns are not openings
 
 The first refresh of a term "changes" about 8,500 sections from nothing to
-open. None of them opened; CoursePilot simply had not looked before. An
+open. None of them opened; Coursenav simply had not looked before. An
 UNKNOWN that becomes OPEN is the same story. Only an observed closed → open
-earns "it opened", because only then did CoursePilot see both sides.
+earns "it opened", because only then did Coursenav see both sides.
 
 ### Term-scoped identity
 
@@ -8464,7 +8464,7 @@ kind of unsupported fact this project is built to refuse.
 3. Why is `read_at` not a column of `notification_event`?
 4. APNs returns 403 `ExpiredProviderToken`. Should the device's endpoint be revoked? Why not?
 5. Why does a crash after APNs accepted a push lead to a second send, and why is that acceptable?
-6. When a student has a Live Activity for a watch, why does CoursePilot not also send the ordinary push?
+6. When a student has a Live Activity for a watch, why does Coursenav not also send the ordinary push?
 
 ## Try It Yourself
 
@@ -8487,7 +8487,7 @@ kind of unsupported fact this project is built to refuse.
 
 ## What We Built
 
-Before this phase, a real student could not use CoursePilot alone: an
+Before this phase, a real student could not use Coursenav alone: an
 administrator had to create and link their record. Phase 7.0 adds the front
 door. Students can now:
 
@@ -8641,7 +8641,7 @@ mark every affected row for review and say why.
 
 ## What We Built
 
-CoursePilot became a product a student can open:
+Coursenav became a product a student can open:
 
 - **sign-in** through a real identity provider;
 - **a guided onboarding flow** that turns a transcript into a reviewed record;
@@ -8659,7 +8659,7 @@ The work was about two kinds of trust:
 ### Identity, data and authority are three different things
 
 "Continue with Google" answers one question: who is this? It does not mean
-"CoursePilot may read your Rutgers records", and it does not mean "CoursePilot
+"Coursenav may read your Rutgers records", and it does not mean "Coursenav
 may act for you at Rutgers".
 
 - **Who you are** comes from the identity provider.
@@ -8673,7 +8673,7 @@ provider, a new import path, or one day an official integration.
 
 The sign-in requests `openid email` and nothing else, and a test asserts that
 exact list. Adding `profile` "just in case" would make the consent screen ask
-for more, and would quietly make CoursePilot hold more personal data. Failure
+for more, and would quietly make Coursenav hold more personal data. Failure
 injection proves the test catches it.
 
 ### A subject is only unique within its issuer
@@ -8725,7 +8725,7 @@ stays readable.
 
 ## Self-Check
 
-1. A student signs in with their ScarletMail account. What does CoursePilot now know about their academic record?
+1. A student signs in with their ScarletMail account. What does Coursenav now know about their academic record?
 2. Why must the account key include the issuer?
 3. Why is the email's domain not used to decide Rutgers membership?
 4. Why does the browser never see the ID token?
@@ -8778,9 +8778,9 @@ an engine value to a label, an icon and a sentence.
 The table has no logic that turns one state into another. That makes the
 rule easy to audit: there is one place to look.
 
-### UNKNOWN is a statement about CoursePilot, FAILED is a statement about you
+### UNKNOWN is a statement about Coursenav, FAILED is a statement about you
 
-"CoursePilot cannot evaluate this prerequisite" and "you do not meet this
+"Coursenav cannot evaluate this prerequisite" and "you do not meet this
 prerequisite" lead to opposite actions. One means "ask an advisor"; the other
 means "take something else first".
 
@@ -8809,7 +8809,7 @@ version that drifts.
 ### Validity and availability are different facts
 
 "These sections fit together" was proven by the engine and stays true. "This
-section has seats" was true when CoursePilot last looked. Mixing them, for
+section has seats" was true when Coursenav last looked. Mixing them, for
 example by hiding valid schedules whenever a section closes, would make the
 answer change every few minutes for reasons that have nothing to do with
 whether the schedule works.
@@ -8897,7 +8897,7 @@ fields, and the server rejects anything else.
 A student ahead on credits COULD finish earlier. That does not mean they WANT
 to. The planner may say what is possible, but it changes the plan's goal only
 when the student chooses to. The message is careful too: it talks about the
-requirements CoursePilot models, never about a graduation date.
+requirements Coursenav models, never about a graduation date.
 
 ### A target is not a limit, and a limit is not a target
 
@@ -8929,7 +8929,7 @@ where plans start.
 ### Never guess what you can ask
 
 A course on the record is not a section. Rather than picking the "likely"
-one, CoursePilot lists the real sections and lets the student choose. A guess
+one, Coursenav lists the real sections and lets the student choose. A guess
 that is right most of the time is still wrong for someone, and here it would
 be shown as fact.
 

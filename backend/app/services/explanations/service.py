@@ -89,7 +89,7 @@ def deterministic_explanation(evidence: ExplanationEvidence) -> Explanation:
     if not evidence.is_grounded:
         return Explanation(
             summary=(
-                f"CoursePilot has no recorded decision about {evidence.course_key} "
+                f"Coursenav has no recorded decision about {evidence.course_key} "
                 "to explain."
             ),
             limitations=evidence.notes
@@ -101,12 +101,12 @@ def deterministic_explanation(evidence: ExplanationEvidence) -> Explanation:
         summary = f"{evidence.course_key} {evidence.course_title}".strip()
     elif evidence.explanation_type is ExplanationType.WHY_NOT_RECOMMENDED:
         summary = (
-            f"CoursePilot did not allocate {evidence.course_key} in this audit."
+            f"Coursenav did not allocate {evidence.course_key} in this audit."
         )
     else:
         codes = ", ".join(evidence.requirement_codes) or "your degree requirements"
         summary = (
-            f"CoursePilot allocated {evidence.course_key} "
+            f"Coursenav allocated {evidence.course_key} "
             f"{evidence.course_title} to {codes}."
         ).replace("  ", " ")
 

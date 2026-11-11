@@ -17,16 +17,16 @@ detail lives in the code named in each row.
 | Current registration | Student-confirmed WebReg PDF import (7.2.2) | `student_registration`, import hash, parser version |
 | Academic history | Transcript import / manual entry (confirmed) | `student_course.source_kind` |
 | Program requirements | Catalog + human-reviewed definitions | `rules_fingerprint`, program lifecycle |
-| Degree audit | CoursePilot Degree Engine | `AUDIT_ENGINE_VERSION` |
+| Degree audit | Coursenav Degree Engine | `AUDIT_ENGINE_VERSION` |
 | Degree Navigator comparison | Student-provided DN audit (future; never overwrites rules) | - |
 | Professor sentiment | Permitted external summaries / first-party feedback (verified identity only) | `Provenance` (source, sample, window, confidence) |
 | Difficulty / workload | First-party feedback aggregates only; otherwise **NOT_ENOUGH_DATA** | `Provenance`; min sample 5 |
 
 **The target-term rule.** Once a term is READY, history decides nothing about
 it: a course missing from it is `not_offered_in_term`. A term Rutgers
-publishes but CoursePilot has not validly loaded is `target_term_data_pending`
+publishes but Coursenav has not validly loaded is `target_term_data_pending`
 (UNKNOWN, not placeable). Only unpublished or unchecked terms use history, and
-the UI says so ("CoursePilot has no Spring 2028 schedule from Rutgers";
+the UI says so ("Coursenav has no Spring 2028 schedule from Rutgers";
 "Rutgers hasn't published …" only after an actual check). Saved plans that
 relied on history become stale (`offering_assumption_contradicted`,
 `target_term_published`); nothing is swapped silently.

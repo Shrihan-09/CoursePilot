@@ -21,7 +21,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     settings = get_settings()
     configure_logging(settings)
     logger.info(
-        "CoursePilot backend starting (env=%s, llm_provider=%s)",
+        "%s backend starting (env=%s, llm_provider=%s)",
+        settings.app_name,
         settings.coursepilot_env.value,
         settings.llm_provider,
     )
@@ -52,14 +53,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     from app.db.session import dispose_engines_async
 
     await dispose_engines_async()
-    logger.info("CoursePilot backend shutting down")
+    logger.info("%s backend shutting down", get_settings().app_name)
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
 
     app = FastAPI(
-        title="CoursePilot API",
+        title=f"{settings.app_name} API",
         version="0.1.0",
         description=(
             "Rutgers degree-planning and schedule-optimization API. "

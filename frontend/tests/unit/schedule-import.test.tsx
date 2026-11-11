@@ -86,7 +86,7 @@ describe("Phase 7.4: what confirming a WebReg import does to the record", () => 
       { term_code: "20999", course_string: "01:999:202", section_number: "01", index_number: "95555", source: "webreg_import" }]} />));
     expect(t).toContain("Not on your latest WebReg schedule - dropped?");
     expect(t).toContain("01:999:202");
-    expect(t).toContain("CoursePilot removes nothing");
+    expect(t).toContain("Coursenav removes nothing");
     expect(renderToStaticMarkup(<DroppedList courses={[]} />)).toBe("");
   });
 

@@ -5,13 +5,14 @@ from __future__ import annotations
 
 import json
 
+from app.core.config import APP_NAME
 from app.services.assistant.tools import tool_catalog
 
 TOOL_RESULTS = "TOOL_RESULTS"
 REJECTED = "REJECTED"
 STUDENT = "STUDENT"
 
-SYSTEM = """You are CoursePilot's planning assistant for one Rutgers student. You know nothing \
+SYSTEM = "You are " + APP_NAME + """'s planning assistant for one Rutgers student. You know nothing \
 about this student or Rutgers except what tools return in THIS turn.
 
 Answer with ONE JSON object and nothing else, either

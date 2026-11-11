@@ -2,16 +2,14 @@ import type { Metadata, Viewport } from "next";
 import { GeistMono } from "geist/font/mono";
 import { GeistSans } from "geist/font/sans";
 
+import { SiteFooter } from "@/components/shell/site-footer";
+import { siteMetadata } from "@/lib/site-metadata";
 import { THEME_SCRIPT } from "@/lib/theme";
 
 import "./globals.css";
 import { Providers } from "./providers";
 
-export const metadata: Metadata = {
-  title: { default: "CoursePilot", template: "%s · CoursePilot" },
-  description: "Plan your Rutgers degree with deterministic, explainable answers.",
-  applicationName: "CoursePilot",
-};
+export const metadata: Metadata = siteMetadata;
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -35,8 +33,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
-      <body className="min-h-dvh font-sans">
-        <Providers>{children}</Providers>
+      <body className="flex min-h-dvh flex-col font-sans">
+        <div className="flex-1">
+          <Providers>{children}</Providers>
+        </div>
+        <SiteFooter />
       </body>
     </html>
   );

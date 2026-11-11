@@ -37,7 +37,7 @@ export function GradesPersonalization() {
       {set.isError && <Alert tone="danger" title="Setting wasn't saved">Try again. Your previous setting still applies.</Alert>}
       <p className="text-xs text-fg-secondary">
         When on, options similar to courses you did well in (A to B) or marked &quot;doing well&quot; come first. Your grades
-        only order your own suggestions - they never change what CoursePilot can plan, and nobody else sees them.
+        only order your own suggestions - they never change what Coursenav can plan, and nobody else sees them.
       </p>
     </section>
   );

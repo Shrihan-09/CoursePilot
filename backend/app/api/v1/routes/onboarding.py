@@ -494,7 +494,7 @@ def _program_error(exc) -> HTTPException:
     if isinstance(exc, ProgramNotFound):
         return _issues_error(404, "No such program.", [Issue(
             "PROGRAM_NOT_FOUND", "program_key", IssueSeverity.INVALID,
-            "CoursePilot has no program with this key.")])
+            "Coursenav has no program with this key.")])
     if isinstance(exc, CatalogYearUnavailable):
         return _issues_error(404, "No such catalog year for this program.", [Issue(
             "CATALOG_YEAR_UNAVAILABLE", "catalog_year", IssueSeverity.INVALID,
@@ -506,7 +506,7 @@ def _program_error(exc) -> HTTPException:
     if isinstance(exc, ProgramNotEvaluable):
         return _issues_error(422, "This program cannot be evaluated.", [Issue(
             "PROGRAM_NOT_EVALUABLE", "program_key", IssueSeverity.INVALID,
-            "CoursePilot has no curated requirements it can evaluate for this program "
+            "Coursenav has no curated requirements it can evaluate for this program "
             "and catalog year.")])
     if isinstance(exc, InvalidProgramKey):
         return _issues_error(422, "Not a program key.", [Issue(
@@ -558,7 +558,7 @@ async def _run(work, event: str, principal: Principal):
 
 _UPLOAD_MESSAGES = {
     "FILE_EMPTY": "The upload was empty.",
-    "FILE_TOO_LARGE": "The document is larger than CoursePilot accepts.",
+    "FILE_TOO_LARGE": "The document is larger than Coursenav accepts.",
     "FILE_NOT_PDF": "The document is not a PDF.",
 }
 

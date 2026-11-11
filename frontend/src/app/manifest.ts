@@ -1,10 +1,12 @@
 import type { MetadataRoute } from "next";
 
+import { APP_DESCRIPTION, APP_NAME } from "@/lib/brand";
+
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "CoursePilot",
-    short_name: "CoursePilot",
-    description: "Plan your Rutgers degree with deterministic, explainable answers.",
+    name: APP_NAME,
+    short_name: APP_NAME,
+    description: APP_DESCRIPTION,
     start_url: "/",
     display: "standalone",
     background_color: "#0A0B0D",

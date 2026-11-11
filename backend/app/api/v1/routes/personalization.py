@@ -153,7 +153,7 @@ class ProfileResponse(BaseModel):
     commitments_text: str = COMMITMENTS_TEXT
     major_related_text: str = MAJOR_RELATED_TEXT
     #: Planning settings are CoursePilot's, never Rutgers credit-load policy.
-    disclaimer: str = ("These are your CoursePilot planning settings, not Rutgers credit-load "
+    disclaimer: str = ("These are your Coursenav planning settings, not Rutgers credit-load "
                        "policy. Check your school's rules before planning an overload.")
 
 
@@ -230,7 +230,7 @@ async def _run(work, event: str):
         raise
     except Exception:
         logger.exception(event)
-        raise HTTPException(status_code=500, detail="Something went wrong on CoursePilot's side.") \
+        raise HTTPException(status_code=500, detail="Something went wrong on Coursenav's side.") \
             from None
     return out
 
@@ -279,7 +279,7 @@ async def put_planning_profile(body: PlanningProfileInput,
 
 
 @router.get("/planning-readiness", response_model=ReadinessView,
-            summary="Whether CoursePilot has what it needs to build my plan")
+            summary="Whether Coursenav has what it needs to build my plan")
 async def get_readiness(principal: Principal = Depends(enforce_request_rate_limit)
                         ) -> ReadinessView:
     def work():

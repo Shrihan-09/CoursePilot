@@ -1,38 +1,38 @@
 # Authentication and trust boundaries
 
-CoursePilot keeps three questions separate:
+Coursenav keeps three questions separate:
 
 | | The question | Answered by | What it grants |
 |---|---|---|---|
-| **1. Authentication** | *Who is this CoursePilot user?* | An OIDC identity provider (Phase 7.1) | A CoursePilot account. Nothing academic. |
-| **2. CoursePilot academic data** | *What academic information has this student explicitly given CoursePilot?* | The student: an uploaded transcript they review and confirm, or courses they enter (Phase 7.0) | The student's own record, used by CoursePilot's deterministic engines |
+| **1. Authentication** | *Who is this Coursenav user?* | An OIDC identity provider (Phase 7.1) | A Coursenav account. Nothing academic. |
+| **2. Coursenav academic data** | *What academic information has this student explicitly given Coursenav?* | The student: an uploaded transcript they review and confirm, or courses they enter (Phase 7.0) | The student's own record, used by Coursenav's deterministic engines |
 | **3. Institutional authorization** | *What Rutgers data or actions has the student explicitly authorized through an official integration?* | **Nothing today.** No official Rutgers integration exists. | Nothing |
 
 Signing in answers question 1 and nothing else. In particular:
 
 - signing in with a Rutgers-associated account imports no academic data;
 - it grants no access to any Rutgers system;
-- it never makes CoursePilot an agent of the student at Rutgers.
+- it never makes Coursenav an agent of the student at Rutgers.
 
 ---
 
-## 1. Authentication: "Who is this CoursePilot user?"
+## 1. Authentication: "Who is this Coursenav user?"
 
 ### The flow
 
 ```
-browser ──► CoursePilot web (Next.js server = confidential OIDC client)
+browser ──► Coursenav web (Next.js server = confidential OIDC client)
                 │  Authorization Code + PKCE (S256) + state + nonce
                 ▼
           identity provider (e.g. Google)  ◄── the person signs in THERE
                 │  one-time code
                 ▼
-          CoursePilot web exchanges the code (client secret + PKCE verifier)
+          Coursenav web exchanges the code (client secret + PKCE verifier)
                 │  ID token, stored in an ENCRYPTED, httpOnly, SameSite=Lax cookie
                 ▼
 browser ──► /api/cp/*  (same-origin proxy: adds the ID token as Bearer)
                 ▼
-          CoursePilot API verifies the token AGAIN, on every request:
+          Coursenav API verifies the token AGAIN, on every request:
           signature (provider JWKS) · iss · aud · exp · iat · sub
                 ▼
           account = (provider, ISSUER, subject)   ← created on first sign-in
@@ -56,7 +56,7 @@ list.
 | `openid` | Who the user is: a stable `sub` for the issuer. |
 | `email` | The provider's verified-email assertion. With Google this comes with the signed `hd` (hosted domain) claim used for institution checks. |
 
-CoursePilot does **not** request:
+Coursenav does **not** request:
 
 - `profile`;
 - offline access or refresh tokens;
@@ -80,7 +80,7 @@ client with PKCE, against the same API.
 - The session lasts as long as the ID token (Google: 1 hour).
 - After that the API answers 401 and the app runs sign-in again. With an
   existing provider session that is a redirect, not a password prompt.
-- Signing out deletes the CoursePilot session. It does not sign the person
+- Signing out deletes the Coursenav session. It does not sign the person
   out of their provider.
 
 ### Fails closed
@@ -103,10 +103,10 @@ only, it says so on screen, and both halves refuse it in production.
 **Investigated, from public sources:**
 
 - **ScarletMail is Google Workspace for Education.** Students sign in to it
-  through Rutgers CAS with NetID and Duo, so CoursePilot never sees a Rutgers
+  through Rutgers CAS with NetID and Duo, so Coursenav never sees a Rutgers
   password.
 - **Google documents the `hd` claim** as the value to check for domain
-  restrictions, and warns against using the email domain. CoursePilot
+  restrictions, and warns against using the email domain. Coursenav
   follows that: membership is decided from the signed `hd` claim only, never
   from an email address.
 - **ScarletMail accounts are kept by alumni.** A ScarletMail identity
@@ -120,7 +120,7 @@ establish an institution rule.
 **Not verified:**
 
 - No public source states the `hd` value a ScarletMail identity carries, and
-  the real sign-in deliberately did not read it. CoursePilot stores no `hd`
+  the real sign-in deliberately did not read it. Coursenav stores no `hd`
   value.
 - One account would not be enough evidence for a rule covering every Rutgers
   identity in any case.
@@ -139,7 +139,7 @@ establish an institution rule.
 
 Even then, the UI must not claim enrollment.
 
-### CoursePilot never
+### Coursenav never
 
 - asks for, stores or proxies a Rutgers password;
 - automates CAS, WebReg, Degree Navigator or any Rutgers sign-in;
@@ -172,7 +172,7 @@ Even then, the UI must not claim enrollment.
 
 ---
 
-## 2. CoursePilot academic data: "What has the student explicitly provided?"
+## 2. Coursenav academic data: "What has the student explicitly provided?"
 
 Only two paths write academic history (DATA_MODEL §46):
 
@@ -192,18 +192,18 @@ step and its own scoped credential, never implied by signing in.
 
 **Read path (if ever offered):** the student authorizes, then an official
 integration returns the specifically permitted data, and that data enters
-CoursePilot as a reviewed import.
+Coursenav as a reviewed import.
 
 **Action path, for example "move my class to the later section":**
 
 | Today | With an official integration (future) |
 |---|---|
 | 1. The student asks. | 1. The student asks. |
-| 2. CoursePilot's deterministic engines (eligibility, schedule) propose a valid change. | 2. CoursePilot's engines validate the exact action. |
-| 3. CoursePilot shows the section and index details. | 3. CoursePilot shows that **exact** action. |
+| 2. Coursenav's deterministic engines (eligibility, schedule) propose a valid change. | 2. Coursenav's engines validate the exact action. |
+| 3. Coursenav shows the section and index details. | 3. Coursenav shows that **exact** action. |
 | 4. **The student registers through Rutgers.** | 4. The student explicitly confirms it. |
 | | 5. The official integration performs it. |
-| | 6. CoursePilot verifies the result. |
+| | 6. Coursenav verifies the result. |
 
 What keeps that future possible without building it now:
 

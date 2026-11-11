@@ -127,7 +127,7 @@ function WhyHere({ course }: { course: PlannedCourse }) {
 const SOURCE_LABEL: Record<string, string> = {
   soc_courses_json: "Rutgers Schedule of Classes",
   degree_navigator_audit: "your Degree Navigator audit",
-  coursepilot_audit: "CoursePilot's estimate",
+  coursepilot_audit: "Coursenav's estimate",
 };
 
 /** Phase 7.6: the structured reason - requirement status source, Core codes, restrictions, sources. */
@@ -138,7 +138,7 @@ function TraceDetails({ trace }: { trace: NonNullable<PlannedCourse["trace"]> })
         <p key={r.requirement_code}>
           <span className="text-xs font-medium uppercase tracking-wide text-fg-muted">Fills </span>
           {r.requirement_name} -{" "}
-          {r.status_source === "degree_navigator" ? "open according to your Degree Navigator audit" : "open by CoursePilot's estimate"}
+          {r.status_source === "degree_navigator" ? "open according to your Degree Navigator audit" : "open by Coursenav's estimate"}
         </p>
       ))}
       {trace.requirements.length === 0 && trace.unlocks_for.length > 0 && (
@@ -313,7 +313,7 @@ export function Blockers({ issues, blocked }: { issues: PlanningIssue[]; blocked
         <div className="space-y-2">
           <h3 className="text-sm font-semibold text-fg">Courses that need confirmation</h3>
           <p className="text-sm text-fg-secondary">
-            CoursePilot can&apos;t evaluate these prerequisites automatically, so it did not place these
+            Coursenav can&apos;t evaluate these prerequisites automatically, so it did not place these
             courses. That is not a finding that you are ineligible - confirm with the department or an
             advisor.
           </p>
@@ -362,7 +362,7 @@ export function PlanView({
       {actions && <UndoBar plan={plan} changes={actions.changes} />}
       {(plan.needs_reselection ?? []).length > 0 && (
         <Alert tone="warning" title="Some of your choices no longer fit">
-          <p>CoursePilot kept them and didn&apos;t pick anything else for you. Choose again from each course&apos;s Options:</p>
+          <p>Coursenav kept them and didn&apos;t pick anything else for you. Choose again from each course&apos;s Options:</p>
           <ul className="mt-1 list-disc pl-5">
             {(plan.needs_reselection ?? []).map((r) => <li key={r.course}>{r.message}</li>)}
           </ul>
@@ -373,7 +373,7 @@ export function PlanView({
           <ul className="list-disc pl-5">
             {dnNotMet.map((i) => <li key={i.requirement_code ?? i.message}>{String(i.details.name ?? i.requirement_code)}</li>)}
           </ul>
-          <span className="block">This plan counts {dnNotMet.length === 1 ? "it" : "them"} as met (CoursePilot&apos;s audit) and does not guess which course Degree Navigator is missing.</span>
+          <span className="block">This plan counts {dnNotMet.length === 1 ? "it" : "them"} as met (Coursenav&apos;s audit) and does not guess which course Degree Navigator is missing.</span>
         </Alert>
       )}
       <section aria-labelledby="plan-summary" className="space-y-2 animate-cp-rise rounded-xl border border-border bg-surface-elevated p-4">
@@ -415,7 +415,7 @@ export function PlanView({
         <p className="text-xs text-fg-muted">
           Generated {new Date(plan.updated_at).toLocaleString()} by planning engine {r.metadata.planning_engine_version}.{" "}
           {plan.constraints.pace ? `${PACE_LABEL[plan.constraints.pace] ?? plan.constraints.pace} pace, ` : ""}
-          {loadText(plan.constraints)} - your CoursePilot planning preferences, not Rutgers rules.
+          {loadText(plan.constraints)} - your Coursenav planning preferences, not Rutgers rules.
         </p>
       </section>
 

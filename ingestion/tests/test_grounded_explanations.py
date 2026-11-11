@@ -124,7 +124,7 @@ def _audit(
         findings=[],
         excluded_courses=[ref] if excluded else [],
         unallocated_courses=[],
-        disclaimers=["CoursePilot is a planning aid, not an official degree audit."],
+        disclaimers=["Coursenav is a planning aid, not an official degree audit."],
     )
 
 
@@ -298,7 +298,7 @@ def test_rendered_explanation_lists_its_sources() -> None:
 
 def _valid_payload(**overrides) -> str:
     payload = {
-        "summary": f"CoursePilot allocated {COURSE} to CS_ELECTIVES.",
+        "summary": f"Coursenav allocated {COURSE} to CS_ELECTIVES.",
         "reasons": ["The requirement is satisfied after this allocation."],
         "course_information": ["title: DESIGN AND ANALYSIS OF COMPUTER ALGORITHMS"],
         "limitations": [],
@@ -324,7 +324,7 @@ def test_malformed_json_is_rejected() -> None:
 
 def test_wrong_course_key_is_rejected() -> None:
     service = _service(
-        model=ScriptedModel([_valid_payload(summary="CoursePilot allocated 01:640:151.")])
+        model=ScriptedModel([_valid_payload(summary="Coursenav allocated 01:640:151.")])
     )
     outcome = service.explain_recommendation(_audit(), COURSE)
     assert outcome.used_model is False

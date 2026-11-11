@@ -33,7 +33,7 @@ export default function Fixture() {
  <CourseOptionsSheet target={target} onClose={()=>setTarget(null)} changes={changes}/></>;
 }`);
 
-const footer = "CoursePilot is a planning aid; your advisor and Degree Navigator are authoritative.";
+const footer = "Coursenav is a planning aid; your advisor and Degree Navigator are authoritative.";
 const blank = (extra = {}) => ({ text: "Here are your options.", intent: "guided_swap", questions: [], cards: [], proposals: [],
   sections: [], suggestions: [], activity: [], webreg_term: null, applied_summary: null, undo_available: false,
   generated_by: "template", footer, ...extra });
@@ -92,7 +92,7 @@ const server = createServer(async (req, res) => {
   }
   if (route.endsWith("/undo")) return send({});
   if (route.endsWith("/webreg")) return send({ term_code: "20271", label: "Spring 2027", items: [{ course: "01:700:101", title: "Music", index_number: "12345", section_number: "01", meetings: ["Online"], open_status: "open", warnings: [] }],
-    index_numbers: ["12345"], without_section: [], warnings: [], steps: ["Open WebReg", "Paste index numbers", "Submit"], webreg_url: "https://sims.rutgers.edu/webreg/", note: "CoursePilot does not register you." });
+    index_numbers: ["12345"], without_section: [], warnings: [], steps: ["Open WebReg", "Paste index numbers", "Submit"], webreg_url: "https://sims.rutgers.edu/webreg/", note: "Coursenav does not register you." });
   if (route.includes("/options")) return send({ course: "01:082:105", title: "Art History", term_code: "20271", state: "planner_selected", locked: false, locked_reason: null, groups: [], requirements: ["Arts and Humanities"], move_terms: [], not_available: [], can_remove: false });
   if (route.includes("readiness")) return send({ state: "needs_academic_history" });
   if ((route.includes("planning-context") || route.endsWith("/plans/context"))) return send({ earliest_start_term: "20271", start_options: [{ term_code: "20271", label: "Spring 2027" }], latest_recorded_term: null });
@@ -125,11 +125,11 @@ try {
   await page.locator('input[name="returnTo"]').evaluate((el) => { el.value = "/plan"; });
   await page.click('button[type="submit"]');
   await page.waitForURL("**/plan");
-  const trigger = page.getByRole("button", { name: "Ask CoursePilot (Ctrl+/)", exact: true });
+  const trigger = page.getByRole("button", { name: "Ask Coursenav (Ctrl+/)", exact: true });
   await expect(trigger).toHaveAttribute("data-pulse", "true");
   await expect(trigger).toHaveCSS("animation-name", "assistant-breathe");
   await trigger.click();
-  const panel = page.getByRole("dialog", { name: "CoursePilot assistant", exact: true });
+  const panel = page.getByRole("dialog", { name: "Coursenav assistant", exact: true });
   await expect(panel).toBeVisible();
   await expect(panel).toHaveCSS("width", "400px");
   await expect(page.getByTestId("assistant-context")).toContainText("Spring 2027");
@@ -147,7 +147,7 @@ try {
   await page.goto("http://localhost:3101/panel-options");
   await page.getByRole("button", { name: "Course Options", exact: true }).click();
   await expect(page.getByTestId("options-sheet")).toBeVisible();
-  await page.getByRole("button", { name: "Ask CoursePilot about alternatives" }).click();
+  await page.getByRole("button", { name: "Ask Coursenav about alternatives" }).click();
   await expect(panel).toBeVisible();
   await expect(page.getByLabel("Message the assistant")).toHaveValue("Help me pick something instead of 01:082:105");
   await page.getByRole("button", { name: "Send", exact: true }).click();

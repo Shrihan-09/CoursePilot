@@ -114,7 +114,7 @@ def test_fulfilled_and_not_fulfilled_map_directly():
 
 def _node(code, status, rtype="course", children=()):
     return RequirementResult(requirement_code=code, requirement_name=code, requirement_type=rtype,
-                             status=status, reason="CoursePilot.", children=list(children))
+                             status=status, reason="Coursenav.", children=list(children))
 
 
 def _result(*roots):

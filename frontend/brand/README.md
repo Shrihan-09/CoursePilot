@@ -1,8 +1,8 @@
-# CoursePilot brand assets
+# Coursenav brand assets
 
 ## Source of truth
 
-`source/coursepilot-logo-source.jpg` is the supplied CoursePilot logo,
+`source/coursepilot-logo-source.jpg` is the supplied Coursenav logo,
 **byte-for-byte**:
 
 | Property | Value |

@@ -87,7 +87,7 @@ export function DroppedList({ courses }: { courses: DroppedCourse[] }) {
           <li key={`${c.term_code}-${c.course_string}`}>{termLabel(c.term_code)} · {c.course_string}{c.index_number ? ` · index ${c.index_number}` : ""}</li>
         ))}
       </ul>
-      <span className="block">CoursePilot removes nothing. If you dropped a course, update your record.</span>
+      <span className="block">Coursenav removes nothing. If you dropped a course, update your record.</span>
     </Alert>
   );
 }
@@ -96,7 +96,7 @@ export function DroppedList({ courses }: { courses: DroppedCourse[] }) {
 export function WebRegExportSteps() {
   return (
     <ol className="list-decimal space-y-1 pl-5 text-sm text-fg-secondary">
-      <li>Sign in to WebReg yourself - CoursePilot never asks for your NetID.</li>
+      <li>Sign in to WebReg yourself - Coursenav never asks for your NetID.</li>
       <li>Open <span className="font-medium">View / Print Schedule</span> for the term.</li>
       <li>In Chrome, choose Print → Destination <span className="font-medium">Save as PDF</span> (not Microsoft Print to PDF) and save it.</li>
       <li>Upload that PDF here. It&apos;s read, then discarded; only the rows you review are kept.</li>
@@ -120,7 +120,7 @@ export function ScheduleImportReview() {
   const upload = useMutation({
     mutationFn: api.uploadSchedule,
     onSuccess: (value) => { setStaged(value); setError(null); client.invalidateQueries({queryKey: ["schedule-imports"]}); },
-    onError: () => setError("This PDF could not be read safely. CoursePilot reads only PDFs that keep their text: in WebReg, open View / Print Schedule and choose your browser's own \"Save as PDF\" destination. \"Microsoft Print to PDF\" and scans turn the text into drawings, which CoursePilot does not read (no OCR). You can still confirm sections manually."),
+    onError: () => setError("This PDF could not be read safely. Coursenav reads only PDFs that keep their text: in WebReg, open View / Print Schedule and choose your browser's own \"Save as PDF\" destination. \"Microsoft Print to PDF\" and scans turn the text into drawings, which Coursenav does not read (no OCR). You can still confirm sections manually."),
   });
   const edit = useMutation({
     mutationFn: ({row, changes}: {row: ScheduleImportRow; changes: Record<string, unknown>}) =>

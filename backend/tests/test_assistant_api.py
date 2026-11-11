@@ -153,7 +153,7 @@ async def test_a_turn_streams_activity_then_a_validated_reply(world) -> None:  #
         assert [e["type"] for e in events][-1] == "reply"
         assert any(e["type"] == "activity" for e in events)
         reply = events[-1]["reply"]
-        assert reply["text"] and reply["footer"].startswith("CoursePilot is a planning aid")
+        assert reply["text"] and reply["footer"].startswith("Coursenav is a planning aid")
         assert events[-1]["remaining_today"] == 49
         refused = await _ask(ac, text="Register me in WebReg please")
         assert refused[-1]["reply"]["generated_by"] == "router"

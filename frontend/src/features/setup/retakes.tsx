@@ -42,7 +42,7 @@ export function RetakeList({ data, pins, onChange }: { data: RetakesResponse; pi
   if (data.retakes.length === 0) {
     return (
       <Alert tone="info" title="No retakes needed">
-        Nothing on your record needs to be taken again. If that changes, CoursePilot adds the retake to your plan.
+        Nothing on your record needs to be taken again. If that changes, Coursenav adds the retake to your plan.
       </Alert>
     );
   }

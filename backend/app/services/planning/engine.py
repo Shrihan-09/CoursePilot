@@ -184,7 +184,7 @@ def _needs_reselection(choice) -> PlanningIssue:
         severity=Severity.NEEDS_CONFIRMATION, code="ALTERNATIVE_NEEDS_RESELECTION",
         requirement_code=choice.requirement_code,
         message=(f"The alternative you chose ({names}) cannot be completed in this plan. "
-                 "Choose another - CoursePilot keeps your choice and does not switch it."),
+                 "Choose another - Coursenav keeps your choice and does not switch it."),
         details={"selected": choice.selected, "unavailable": choice.unavailable,
                  "recommended": [a.code for a in choice.recommended]})
 
@@ -1268,7 +1268,7 @@ class PlanningEngine:
         if degree is None:
             assumptions = [*assumptions, ScenarioAssumption(
                 code="degree_credit_total_not_modelled",
-                message=(f"CoursePilot has not read {school.code if school else 'this'} school's "
+                message=(f"Coursenav has not read {school.code if school else 'this'} school's "
                          f"degree credit total for the {version.catalog_year} catalog, so this "
                          "plan does not check one."))]
         elif not degree.met:
@@ -1972,7 +1972,7 @@ class PlanningEngine:
         Warnings that do not prevent it (won't count, may be restricted) are
         recorded as issues here."""
         if key not in self.course_info or key not in evaluated:
-            return "CoursePilot has no record of this course"
+            return "Coursenav has no record of this course"
         a, b, ev = evaluated[key]
         if key in self.passed and key not in self.retakes and not any(
                 p.course == key and p.term_code == term and p.retake
@@ -1986,7 +1986,7 @@ class PlanningEngine:
             return {
                 OfferingEvidenceKind.NOT_OFFERED_IN_TERM: f"it is not listed for {label(term)}",
                 OfferingEvidenceKind.TERM_DATA_PENDING:
-                    f"Rutgers has published {label(term)} but CoursePilot has not loaded it yet",
+                    f"Rutgers has published {label(term)} but Coursenav has not loaded it yet",
                 OfferingEvidenceKind.OTHER_SEASONS_ONLY: "it has only been offered in other seasons",
                 OfferingEvidenceKind.NO_EVIDENCE: "there is no record of Rutgers offering it",
             }.get(ev.kind, f"offering evidence: {ev.kind.value}")
@@ -1999,7 +1999,7 @@ class PlanningEngine:
                 severity=Severity.NEEDS_CONFIRMATION, code="PIN_PREREQUISITES_UNVERIFIED",
                 course=key, details={"reasons": reasons},
                 message=(f"{key} is placed in {label(term)} because you pinned it, but "
-                         "CoursePilot cannot verify its prerequisites - confirm them before "
+                         "Coursenav cannot verify its prerequisites - confirm them before "
                          "registering.")))
         elif not self._placeable_state(states[key], b):
             text = b.prerequisite.canonical_text if b is not None else None
@@ -2019,7 +2019,7 @@ class PlanningEngine:
             self._pin_issues.append(PlanningIssue(
                 severity=Severity.NEEDS_CONFIRMATION, code="PIN_MAY_BE_RESTRICTED", course=key,
                 message=(f"{key} in {label(term)}: its sections list enrollment restrictions "
-                         "CoursePilot cannot check against your record.")))
+                         "Coursenav cannot check against your record.")))
         if key in self.excluded:
             self._pin_issues.append(PlanningIssue(
                 severity=Severity.WARNING, code="PIN_WILL_NOT_COUNT", course=key,
@@ -2951,7 +2951,7 @@ class PlanningEngine:
                     reason = "prerequisite_chain" if chained else "constrained"
                     msg = (f"{term.label} is lighter than your target because each course here "
                            f"needs a course from {label(prev)} first." if chained else
-                           f"{term.label} is lighter than your target: CoursePilot couldn't move "
+                           f"{term.label} is lighter than your target: Coursenav couldn't move "
                            "more courses here without breaking a prerequisite order or Rutgers' "
                            "known offering seasons.")
                 out.append(PlanObservation(code="light_term", term_code=term.term_code,
@@ -3260,7 +3260,7 @@ class PlanningEngine:
             mine = self.undeclared and any(
                 r.kind in ("major", "unit_major") and r.code == self.major_subject
                 for rows in rows_by_section.values() for r in rows)
-            message = (f"Every {label(term)} section lists restrictions CoursePilot cannot "
+            message = (f"Every {label(term)} section lists restrictions Coursenav cannot "
                        f"check against your record (open to: {', '.join(names) or 'see SOC'})"
                        + ("; you have not declared this major yet, so confirm you can enroll."
                           if mine else "; confirm before registering."))
@@ -3424,12 +3424,12 @@ class PlanningEngine:
         out.only_season = SEASON[season]
         if term[4] == season:
             out.next_chance = f"{int(term[:4]) + 1}{season}"
-            out.message = (f"Offered only in {SEASON[season]} in the schedules CoursePilot has "
+            out.message = (f"Offered only in {SEASON[season]} in the schedules Coursenav has "
                            f"loaded ({len(observed)} {SEASON[season]} terms, none in "
                            f"{SEASON[other]}); after {label(term)} the next chance is "
                            f"{label(out.next_chance)}.")
         else:
-            out.message = (f"Offered only in {SEASON[season]} in the schedules CoursePilot has "
+            out.message = (f"Offered only in {SEASON[season]} in the schedules Coursenav has "
                            f"loaded ({len(observed)} {SEASON[season]} terms).")
         return out
 
@@ -3613,7 +3613,7 @@ class PlanningEngine:
                 source=("degree_navigator_audit" if any(t.status_source == "degree_navigator"
                                                         for t in traced) else "coursepilot_audit"),
                 detail=(f"Degree Navigator audit as of {', '.join(sorted(dn_dates))}"
-                        if dn_dates else "estimated by CoursePilot's own audit")))
+                        if dn_dates else "estimated by Coursenav's own audit")))
         pattern = self._pattern(pc.course, pc.term_code)
         if pattern.message and pattern.only_season and pattern.next_chance:
             pc.notes.append(pattern.message)
@@ -3639,7 +3639,7 @@ class PlanningEngine:
             if not pool:
                 out.append(PlanningIssue(
                     severity=Severity.BLOCKER, code="NO_ELIGIBLE_COURSE", requirement_code=code,
-                    message=f"No course in CoursePilot's data can satisfy {leaf.requirement_name}.",
+                    message=f"No course in Coursenav's data can satisfy {leaf.requirement_name}.",
                     details=details))
                 continue
             cycle = next((cycles[k] for k in pool if k in cycles), None)
@@ -3653,7 +3653,7 @@ class PlanningEngine:
                     severity=Severity.NEEDS_CONFIRMATION, code="ELIGIBILITY_UNKNOWN",
                     requirement_code=code,
                     message=(f"Some courses for {leaf.requirement_name} have prerequisites or "
-                             "co-requisites CoursePilot cannot evaluate; they were not planned."),
+                             "co-requisites Coursenav cannot evaluate; they were not planned."),
                     details={**details, "courses": {k: v for k, v in
                                                     sorted(needs_confirmation[code].items())[:10]},
                              "count": len(needs_confirmation[code])}))
@@ -3675,7 +3675,7 @@ class PlanningEngine:
                 requirement_code=code,
                 message=(f"{leaf.requirement_name} could not be completed within the plan horizon."
                          if horizon else f"{leaf.requirement_name} could not be planned with "
-                         "the evidence CoursePilot has (see related issues)."),
+                         "the evidence Coursenav has (see related issues)."),
                 details={**details, "status": leaf.status.value}))
         return out
 

@@ -35,7 +35,7 @@ export function DnNotMetNotice({ items }: { items: { code: string; name: string 
       <ul className="list-disc pl-5">
         {items.map((i) => <li key={i.code}>{i.name}</li>)}
       </ul>
-      <span className="block">CoursePilot counts {items.length === 1 ? "it" : "them"} as met and plans on that basis; it does not guess which course Degree Navigator is missing.</span>
+      <span className="block">Coursenav counts {items.length === 1 ? "it" : "them"} as met and plans on that basis; it does not guess which course Degree Navigator is missing.</span>
     </Alert>
   );
 }
@@ -52,7 +52,7 @@ export function PendingReviewNotice({ program, audit }: { program: Pick<ProgramV
   if (!pending) return null;
   return (
     <Alert tone="warning" title="This program's requirements are pending human review">
-      CoursePilot has encoded {program.program_name} from the Rutgers catalog, but a person has not
+      Coursenav has encoded {program.program_name} from the Rutgers catalog, but a person has not
       yet verified the encoding. Treat these results as a guide, not an official audit - confirm with
       your advisor or Degree Navigator.
     </Alert>

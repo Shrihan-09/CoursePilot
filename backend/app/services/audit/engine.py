@@ -91,7 +91,7 @@ from app.services.audit.rules import (
 logger = logging.getLogger(__name__)
 
 DISCLAIMER = (
-    "CoursePilot is a planning aid, not an official degree audit. Rutgers "
+    "Coursenav is a planning aid, not an official degree audit. Rutgers "
     "states that verification of college and degree requirements can only be "
     "certified by an academic advisor."
 )
@@ -1316,7 +1316,7 @@ class DegreeAuditEngine:
                         code="grade_outcome_not_final",
                         message=(
                             f"{course.course_string} has grade {sc.grade!r}, which is not a final "
-                            "outcome CoursePilot can interpret; it counts only provisionally."
+                            "outcome Coursenav can interpret; it counts only provisionally."
                         ),
                     )
                 )
@@ -1544,7 +1544,7 @@ class DegreeAuditEngine:
                         requirement_code=rr.rule_code,
                         remediation=(
                             "This is an authoritative Rutgers rule. Confirm it with an "
-                            "academic advisor - CoursePilot cannot check it."
+                            "academic advisor - Coursenav cannot check it."
                         ),
                     )
                 )

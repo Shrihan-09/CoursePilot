@@ -1,4 +1,4 @@
-# CoursePilot Data Model
+# Coursenav Data Model
 
 Status: **partly implemented.** Two migrations are applied and verified on
 PostgreSQL 16.
@@ -85,7 +85,7 @@ One row per distinct source document or feed.
 | `kind` | enum | `SourceKind` in `app/domain/provenance.py` |
 | `url` | text | canonical source URL |
 | `title` | text | |
-| `retrieved_at` | timestamptz | when CoursePilot fetched it |
+| `retrieved_at` | timestamptz | when Coursenav fetched it |
 | `source_last_modified` | timestamptz | as reported by the source |
 | `content_hash` | text | detects change without re-parsing |
 | `raw_payload_ref` | text | pointer to the archived raw response |
@@ -1289,7 +1289,7 @@ Maximum-cardinality matching is polynomial; this is not. So the objective
 Rutgers describes is genuinely harder than the one implemented, and the
 change is not a drop-in replacement.
 
-That is an argument about the general case, not about CoursePilot's
+That is an argument about the general case, not about Coursenav's
 instances, which are small: roughly 26 requirement nodes and a few dozen
 courses per audit, already partitioned by system. Exhaustive or
 branch-and-bound search over that is entirely tractable. The point is that
@@ -1323,7 +1323,7 @@ Two open questions this ordering does not settle, both listed in 17.10.
 2. **No stated major/core precedence.** Where sharing is EXCLUSIVE and both
    systems want one course, nothing official says which wins. Today the
    systems are processed in sorted order. Any rule here would be
-   CoursePilot's invention and must be labelled as such.
+   Coursenav's invention and must be labelled as such.
 3. **Weighting.** Nothing says a major requirement is worth more than a core
    goal, so level 1 counts nodes equally. That is a choice, not a finding.
 4. **DN's actual algorithm is unpublished.** The quoted sentence states an
@@ -1795,7 +1795,7 @@ from done to not-done after adding an unrelated course. Rutgers describes
 exactly this behaviour ("DN will adjust itself automatically as soon as
 another course is taken... so that the maximum number of requirements are
 complete", section 17.7), so it is institutionally normal. Whether
-CoursePilot should present it that way is a **product decision**, and this
+Coursenav should present it that way is a **product decision**, and this
 phase stops at that boundary rather than choosing.
 
 ### 19.9 Recommendation
@@ -1860,7 +1860,7 @@ the audit engine.
 ### 20.1 The product question
 
 > If an allocation can complete more requirements, but causes a requirement
-> that was previously complete to become incomplete, should CoursePilot
+> that was previously complete to become incomplete, should Coursenav
 > prefer that allocation?
 
 The shape, from Phase 4.3 real data:
@@ -1873,7 +1873,7 @@ CORE_QFR  partial            CORE_QFR  satisfied
 ```
 
 A keeps what the student already had. B completes more. Neither is labelled
-better here, because "better" is a statement about what CoursePilot values
+better here, because "better" is a statement about what Coursenav values
 and no Rutgers source supplies one.
 
 ### 20.2 The policies, exactly
@@ -1905,7 +1905,7 @@ C   stateful    same
 D   either
 ```
 
-Today every audit is recomputed from scratch and CoursePilot stores no prior
+Today every audit is recomputed from scratch and Coursenav stores no prior
 audit. Adopting B or C therefore requires either persisting prior results or
 defining the baseline as "the audit before the newest course" - **different
 products, not different tunings**. With an empty baseline, B and C collapse
@@ -2042,7 +2042,7 @@ the price of declining completions in the 20.7 shape. On the measured data
 that price was never actually charged - but "never observed in 800 samples"
 is not "cannot happen".
 
-### 20.9 Rutgers behaviour versus CoursePilot policy
+### 20.9 Rutgers behaviour versus Coursenav policy
 
 Kept deliberately separate, per the brief.
 
@@ -2064,11 +2064,11 @@ observed regression without completing fewer requirements.
 **Potential student impact.** Under A, a student can see a requirement flip
 from complete to incomplete after taking an unrelated course, with no
 explanation and no change in their actual progress. Rutgers students already
-experience this with DN. Whether CoursePilot should reproduce it, avoid it
-where free (C), or guarantee against it (B) is a CoursePilot product
+experience this with DN. Whether Coursenav should reproduce it, avoid it
+where free (C), or guarantee against it (B) is a Coursenav product
 decision.
 
-**This section does not conclude that CoursePilot must match Rutgers.**
+**This section does not conclude that Coursenav must match Rutgers.**
 
 ### 20.10 Arbitrary weights remain unjustified
 
@@ -2083,7 +2083,7 @@ measure (20.5), which is why it is flagged rather than adopted.
 ### 20.11 The decision that remains open
 
 ```
-Does CoursePilot treat "a previously completed requirement becoming
+Does Coursenav treat "a previously completed requirement becoming
 incomplete" as a cost?
 
   no           -> Policy A
@@ -2470,7 +2470,7 @@ non-default weight has to cite the evaluation set.
 **test data** (`ingestion/tests/data/retrieval_eval.json`), never hard-coded
 in production.
 
-Relevance is scoped to **undergraduate New Brunswick** courses: CoursePilot
+Relevance is scoped to **undergraduate New Brunswick** courses: Coursenav
 plans SAS undergraduate degrees, so a graduate section surfacing for a
 student query is a wrong answer, not a near miss.
 
@@ -2629,7 +2629,7 @@ orders of magnitude larger.
 
 ## 23. Grounded explanations, and the AI boundary (Phase 5.1)
 
-> **CoursePilot computes the answer. Retrieval supplies evidence. The LLM
+> **Coursenav computes the answer. Retrieval supplies evidence. The LLM
 > explains the answer.**
 
 This section documents the first AI-facing layer, and the constraints that
@@ -2708,7 +2708,7 @@ ever asked to infer a reason.
    **discarded, never repaired or blended** - the fallback was correct all
    along.
 
-The validator is honest about its limits: it checks what CoursePilot holds as
+The validator is honest about its limits: it checks what Coursenav holds as
 structured data, where "wrong" is decidable. It is not general-purpose fact
 checking, and the unsupported-claim check is a heuristic that catches the
 failure that matters most - fluent prose upgrading "allocated to" into "you
@@ -2760,7 +2760,7 @@ Findings:
 
 | Question | Answer |
 |---|---|
-| Programs CoursePilot audits | **one** - CS BA (198) |
+| Programs Coursenav audits | **one** - CS BA (198) |
 | Program paths derivable from a pattern? | **No** - same lesson as catalog hosts; they must be discovered |
 | Can they be discovered? | **Yes** - 97 SAS program paths are enumerable from the school index page |
 | Does the existing parser generalise? | **Yes, unmodified** |
@@ -2835,7 +2835,7 @@ The LLM is never upstream of the Degree Engine.
 
 ### 24.1 Two abstractions, both kept
 
-CoursePilot already had an LLM abstraction from Phase 0. Neither it nor the
+Coursenav already had an LLM abstraction from Phase 0. Neither it nor the
 Phase 5.1 port was deleted:
 
 | | Defined in | Shape | Job |
@@ -2875,7 +2875,7 @@ Boundary rules, all enforced:
 
 Structured output is requested and parsed, but the provider does not claim
 the result is valid. **A schema proves shape, not truthfulness** — content is
-checked downstream against CoursePilot's own facts, where "wrong" is
+checked downstream against Coursenav's own facts, where "wrong" is
 decidable.
 
 The SDK is an **optional** dependency (`pip install -e '.[ai]'`).
@@ -2958,7 +2958,7 @@ downstream.
 
 ### 24.7 Security posture
 
-CoursePilot has no authentication yet, and this phase did not invent one —
+Coursenav has no authentication yet, and this phase did not invent one —
 that is a product decision, not something to bolt on during an AI phase. What
 it does do:
 
@@ -3020,7 +3020,7 @@ is no migration.
 
 ## 25. API security, request identity and AI cost controls (Phase 5.3)
 
-> **Security wraps CoursePilot. Security does not redefine CoursePilot.**
+> **Security wraps Coursenav. Security does not redefine Coursenav.**
 
 Nothing in this section touches the Degree Engine. It decides *who is asking*
 and *how often they may ask*; what is academically true remains entirely the
@@ -3216,7 +3216,7 @@ External Identity Provider
 AuthenticatedPrincipal          verified, provider-neutral
         |
         v
-UserAccount.id                  CoursePilot's stable internal identity
+UserAccount.id                  Coursenav's stable internal identity
         |  owns
         v
 Student.id
@@ -3259,7 +3259,7 @@ by deleting the field; Phase 5.4 makes the underlying relationship real.
 | `(identity_provider, external_subject)` | the university migrates IdPs, an account is recreated | finding the account from a token |
 | `UserAccount.id` | **never** | rate-limit keys, logs, every internal reference |
 
-Making the provider's `sub` the primary key would weld CoursePilot's internal
+Making the provider's `sub` the primary key would weld Coursenav's internal
 graph to one vendor's identifier — the exact coupling the provider-neutral
 boundary exists to prevent.
 
@@ -3274,7 +3274,7 @@ Note the table is **`user_account`**: `user` is reserved in PostgreSQL.
   record is never shared between people.
 
 A person with two programmes would need a second `Student`, because the audit
-engine evaluates exactly one `ProgramVersion` (Phase 4). CoursePilot has no
+engine evaluates exactly one `ProgramVersion` (Phase 4). Coursenav has no
 dual-programme support and no product decision about it, so the stricter
 constraint ships now. Relaxing it later is a dropped constraint; adding it
 later to data that has already violated it is much worse.
@@ -3434,7 +3434,7 @@ still dominates and is still deliberately uncached.
 
 **Intentionally deferred:** account deletion/merge flows, provider-subject
 migration, multi-programme students, and any password-based login —
-CoursePilot should not become its own identity provider.
+Coursenav should not become its own identity provider.
 
 ### 26.13 Unchanged
 
@@ -3481,7 +3481,7 @@ reintroduced as trust anywhere in this phase.**
 
 ### 27.2 Choosing the linking model
 
-Four models were considered against what CoursePilot can actually verify
+Four models were considered against what Coursenav can actually verify
 **today**, not what it might verify eventually.
 
 | model | verdict |
@@ -3499,7 +3499,7 @@ project. Building against a claim that does not arrive would produce code
 that looks like verification and performs none.
 
 **B is deferred for a specific reason, not vagueness.** A one-time code is
-only as trustworthy as the channel that delivers it, and CoursePilot has no
+only as trustworthy as the channel that delivers it, and Coursenav has no
 trusted channel — no email integration, no SMS, no registrar feed. A code
 generated here and relayed by an administrator adds a whole secret lifecycle
 (storage, hashing, expiry, replay and brute-force surface) **without adding
@@ -3840,7 +3840,7 @@ checked the curation against published prose. A student reading their
 requirements is entitled to know that.
 
 **`source_kind` is exposed.** It reads `student_self_reported` until a
-registrar feed exists. CoursePilot is reasoning from evidence the student
+registrar feed exists. Coursenav is reasoning from evidence the student
 supplied, and saying so is the honest thing.
 
 ### 28.5 What is deliberately absent
@@ -4589,7 +4589,7 @@ versioning needs each trigger to resolve its row's owning program version,
 and for `requirement_course_option` that means a lookup through
 `requirement` - which may already be gone when a cascading delete fires the
 trigger. Subtle ordering logic in a correctness-critical path, to buy
-program isolation that nothing currently needs: CoursePilot has one program,
+program isolation that nothing currently needs: Coursenav has one program,
 and recuration is a human reading catalog prose.
 
 The cost of A is over-invalidation - recurating Computer Science makes a
@@ -4885,7 +4885,7 @@ alembic check                          clean
 
 ## 31. Is per-program invalidation worth it? (Phase 5.9)
 
-> **Decision: A - keep global invalidation.** At CoursePilot's actual scale
+> **Decision: A - keep global invalidation.** At Coursenav's actual scale
 > the collateral cost is *exactly zero*, and the alternative carries a
 > verified correctness hazard.
 
@@ -5008,7 +5008,7 @@ all          mean 16.55   p50  5.93   p95 38.57
 
 ### 31.6 The decisive number
 
-**CoursePilot has one program.** At P=1 the collateral count is zero, and it
+**Coursenav has one program.** At P=1 the collateral count is zero, and it
 is zero not by approximation but by construction: with a single program
 there is no "other program" whose rules could invalidate anyone. A global
 rules version and a per-program rules version are **behaviourally
@@ -5154,7 +5154,7 @@ it.
 
 1. **The benchmark is synthetic and tiny** - up to 32 programs x 5 students
    x 6 courses, on one laptop. It establishes the *shape* of the cost, not
-   CoursePilot's production cost.
+   Coursenav's production cost.
 2. **The recuration rate is invented** and far above reality. It had to be,
    to make the effect measurable in ten rounds.
 3. **P=1 is the real datum**, and it is a datum about a project with one
@@ -5190,7 +5190,7 @@ alembic check                          clean, no migration added
 
 > **Observability must not become a second source of sensitive data.**
 
-No new product functionality. This phase makes the path CoursePilot already
+No new product functionality. This phase makes the path Coursenav already
 has diagnosable, and closes the gaps a trace of the real request path
 exposed.
 
@@ -5420,7 +5420,7 @@ making it distributed, which is the worst of both.
    application's own logs no longer carry it, but an ASGI server or proxy
    access log will - a real exposure surface this phase cannot close from
    inside the application, and the reason the log-privacy test filters to
-   CoursePilot's own loggers.
+   Coursenav's own loggers.
 4. **No tracing spans**, no parent/child relationships - one flat id per
    request.
 5. **Rate limiting is still in-memory and per-process** (Phase 5.3).
@@ -5428,7 +5428,7 @@ making it distributed, which is the worst of both.
    records engine, cache lookup, cache write and total; several declared
    stage metrics are available for callers that do not yet use them.
 7. **Live Rutgers SSO and the live Anthropic API remain unverified**; the
-   provider matrix uses a scripted model, which tests CoursePilot's
+   provider matrix uses a scripted model, which tests Coursenav's
    behaviour and not the vendor's.
 8. **The BM25 rebuild on every explanation request** remains the dominant
    cost in that path and is untouched here.
@@ -5758,15 +5758,15 @@ exists in this environment.** No credential was fabricated, no call was
 made, and no live test is marked passed.
 
 The `CLAUDE_*` variables present in the shell belong to the development tool
-running this session. They are not a CoursePilot credential, and using them
+running this session. They are not a Coursenav credential, and using them
 would have been manufacturing one.
 
-What *is* verified is CoursePilot's behaviour around a provider: the Phase
+What *is* verified is Coursenav's behaviour around a provider: the Phase
 5.10 scripted matrix covers success, timeout, connection error, 408, 409,
 429, 500, 502, 503, empty response, malformed output and an unsupported
 claim - all falling back to the deterministic explanation, with the service
 attempting the model exactly once. **What remains unverified is the vendor's
-behaviour**, not CoursePilot's handling of it.
+behaviour**, not Coursenav's handling of it.
 
 A live smoke test exists and skips with an explicit reason rather than
 silently passing.
@@ -5828,7 +5828,7 @@ that rotates and signs in the same instant will see up to 30 s of
 failures**.
 
 Also measured: `PyJWKClient` defaults to **`timeout=30`** for the JWKS
-fetch, and CoursePilot does not override it. The fetch is therefore bounded,
+fetch, and Coursenav does not override it. The fetch is therefore bounded,
 but by an inherited default rather than a decision, and 30 s is a long time
 to hold a request thread.
 
@@ -6023,7 +6023,7 @@ alembic check                          clean
 
 ## 35. OpenAI GPT-5.6 Luna as the explanation model (Phase 5.13)
 
-The decision was made before the phase started: CoursePilot's live
+The decision was made before the phase started: Coursenav's live
 explanation model is **OpenAI GPT-5.6 Luna** rather than Anthropic. This phase
 adds the adapter behind the existing boundary and checks the RAG path that
 feeds it. **It does not redesign anything**, and the Degree Engine is still
@@ -6229,7 +6229,7 @@ system prompt    2,204 chars
 
 **Not measured, because no request was made:** OpenAI network latency, model
 latency, and real token usage. When the live call happens, it will almost
-certainly be the largest single stage. Everything CoursePilot adds around it
+certainly be the largest single stage. Everything Coursenav adds around it
 is about 30 ms, most of it the baseline computation.
 
 ### 35.9 Live verification
@@ -6431,7 +6431,7 @@ catalog index (archived) -> program path -> CatalogFetcher -> archived HTML
   caught one non-contiguous quote while the definition was being written.
 
 **Curation status: `unverified`.** The definition was encoded by an AI
-assistant. Under CoursePilot's source-authority rule, a model's reading of
+assistant. Under Coursenav's source-authority rule, a model's reading of
 prose does not become authoritative on its own. It stays `unverified` until a
 person re-checks it against the archive, so it reports as `pending_review`
 everywhere.
@@ -6508,7 +6508,7 @@ year applies after a change of program is not modeled.
 - `catalog_year_differs`;
 - `requirements_pending_review`.
 
-"CoursePilot can evaluate this requirement set" is never presented as "Rutgers
+"Coursenav can evaluate this requirement set" is never presented as "Rutgers
 would admit you".
 
 **Support status** is derived from provenance by `app.services.programs`, so a
@@ -6755,7 +6755,7 @@ CourseIngestionPipeline ── CourseLoader (courses, offerings)
    course_prerequisite  (one per course_offering = course x term x campus)
      raw_text, sha256        <- what Rutgers published
      classification, expression (JSON IR), canonical_text, parser_version
-                             <- how CoursePilot understood it
+                             <- how Coursenav understood it
      condition_note          <- courseNotes prerequisite condition, never interpreted
      source_id -> data_source (SOC, term, archive path, content hash, coverage)
    prerequisite_reference   (course_string always; course_id when known)
@@ -7212,7 +7212,7 @@ status uncertain, and the answer UNKNOWN.
 * Program rule `min_gpa` with `gpa_scope` (`cumulative`, `subject:<code>`,
   `courses:...`; `major` is refused - Rutgers does not define it). Computed
   values are evidence; satisfaction needs a record known to be complete,
-  which no CoursePilot record is today -> NOT_EVALUABLE.
+  which no Coursenav record is today -> NOT_EVALUABLE.
 * Evidence: `DegreeAuditResult.grade_evaluations` (course, attempt term,
   earned grade, required grade, result, reason, policy source) and
   `Allocation.earned_grade` / `required_grade`; `RuleResult.evidence`.
@@ -7222,7 +7222,7 @@ status uncertain, and the answer UNKNOWN.
 A program with variants is a set of programs (Phase 6.3). Phase 6.4: a key
 without a variant for a program that exists only as variants
 (`sas-640-ba` when only `...-option-a` exists) raises
-`ProgramVariantRequired` -> HTTP 409 listing the variant keys. CoursePilot
+`ProgramVariantRequired` -> HTTP 409 listing the variant keys. Coursenav
 never selects an option.
 
 ### 39.6 Course eligibility
@@ -7358,7 +7358,7 @@ candidate alone (plus explicit partners); the planner always uses it.
   text)`. Unsupported/unreadable prerequisites, cycles (reported with the
   path) and depth > 6 are infeasible. A course with no Course row or no
   offering evidence is NOT a free course - **finding**: Newark's
-  21:640:113/114 (absent from CoursePilot's data) looked like a zero-cost
+  21:640:113/114 (absent from Coursenav's data) looked like a zero-cost
   path to 01:640:135 until `plannable` was added. The prerequisite closure
   is prefetched one batch per level, not one query per course.
 * Co-requisites: a candidate unmet ALONE only for a missing same-term partner
@@ -7398,7 +7398,7 @@ on. Stop: nothing remains, `max_terms`, or one empty term per season in a
 row. The plan is never described as optimal or as the earliest graduation.
 
 Load limits (`max_credits_per_term` 15, `max_courses_per_term` 5,
-`max_terms` 8) are CoursePilot settings; the response labels them
+`max_terms` 8) are Coursenav settings; the response labels them
 `coursepilot_planning_setting_not_rutgers_policy` and the client cannot
 change that label. A variable-credit course is never placed (reported).
 There is no difficulty model.
@@ -7520,7 +7520,7 @@ assumed to overlap - they can add a conflict, never hide one.
   `LINKED_COMPONENT_UNVERIFIED`, never bundled.
 * Restrictions: SATISFIED when the student's declared major, school unit
   (SAS = "01", as SOC pairs them) or unit/major pair is listed; otherwise
-  UNKNOWN, because CoursePilot records no minors, second majors, honors or
+  UNKNOWN, because Coursenav records no minors, second majors, honors or
   class standing. Special permission and uninterpreted eligibility prose are
   UNKNOWN too. NOT_SATISFIED requires attributes declared complete (none are
   today) and is a hard exclusion. UNKNOWN is scheduled only with a
@@ -7635,7 +7635,7 @@ with its own credits.
 | a second record exists, no explicit "both" statement | not bundled; `LINKED_COMPONENT_UNVERIFIED` + relationship `registration_component_unverified` |
 | verified required component cannot fit | blocker naming both slots (`ALL_SECTIONS_CONFLICT`, `01:750:193#LB`) - never a schedule without it |
 | co-requisite on some sections, partner not requested | course eligibility UNKNOWN, needs confirmation |
-| co-requisite text CoursePilot cannot read (ROTC "... F 8:00AM - 1:00PM", "01:563:1 31") | stored `unsupported`: UNKNOWN |
+| co-requisite text Coursenav cannot read (ROTC "... F 8:00AM - 1:00PM", "01:563:1 31") | stored `unsupported`: UNKNOWN |
 | meeting time only in prose | `time_verified = false`, ranked after verified, never "conflict-free" |
 | section pairing only in prose | needs confirmation; no compatibility invented |
 
@@ -7890,7 +7890,7 @@ no "3 seats left" can ever be derived.
 
 ### 43.9 Limitations
 
-* Rutgers publishes no timestamp. "Current" means CoursePilot fetched it
+* Rutgers publishes no timestamp. "Current" means Coursenav fetched it
   within 10 minutes, not that Rutgers updated it then.
 * A body mislabelled with a correct-looking URL cannot be detected from
   content, because indexes are reused across terms.
@@ -7908,7 +7908,7 @@ no "3 seats left" can ever be derived.
 
 ## 44. Section monitoring and notification events (Phase 6.8)
 
-A **watch** is a server-side record: a user asks CoursePilot to watch one
+A **watch** is a server-side record: a user asks Coursenav to watch one
 term-scoped section. It is not a subscription and not a payment. When the
 single global availability refresh observes that section going from closed
 to open, a durable **notification event** is created for every active watch
@@ -7943,7 +7943,7 @@ many users' events.
 ### 44.2 The invariant: watches never add Rutgers requests
 
 The refresh asks Rutgers for a whole term's open list: one request,
-whoever is watching. A watch is a row that CoursePilot *joins against*
+whoever is watching. A watch is a row that Coursenav *joins against*
 changes the refresh already recorded; it is never a poller. Tests prove the
 request count is the same with 0 and 200 watches (one per refresh), and that
 the event processor's statement count does not grow with the number of
@@ -8010,8 +8010,8 @@ becomes `section_id = NULL` with its natural key intact.
 | transition | event? | why |
 |---|---|---|
 | closed → open | **yes** | the only observed opening |
-| first observation → open | no | the first refresh of a term records about 8,500 of these. CoursePilot never saw them closed |
-| unknown → open | no | CoursePilot did not know it was closed |
+| first observation → open | no | the first refresh of a term records about 8,500 of these. Coursenav never saw them closed |
+| unknown → open | no | Coursenav did not know it was closed |
 | open → closed | no | the watch stays active for the next opening |
 | open → open, closed → closed | no | not a transition, so never recorded (6.7) |
 | closed → unknown, open → unknown, unknown → closed | no | not an opening |
@@ -8224,9 +8224,9 @@ is justified by these numbers.
 
 ---
 
-## 45. CoursePilot Live: scheduler, inbox, delivery, Live Activities (Phase 6.9)
+## 45. Coursenav Live: scheduler, inbox, delivery, Live Activities (Phase 6.9)
 
-> **A CoursePilot opening notification reports an observed Rutgers
+> **A Coursenav opening notification reports an observed Rutgers
 > availability change. It does not guarantee eligibility, schedule
 > compatibility, or successful registration.**
 
@@ -8275,7 +8275,7 @@ Nothing else is needed: no Redis, broker, queue or cron. At the measured volumes
 
 - **Schedule the terms:** `live_cli schedule add --term 20269 --interval 90` for
   each Rutgers term to poll, and `schedule deactivate` at term end.
-  CoursePilot has no other notion of an active term.
+  Coursenav has no other notion of an active term.
 - **Choose the push provider:** `PUSH_PROVIDER` is `none` by default
   (deliveries stay visible and pending), `fake`, or `apns` (45.12).
 
@@ -8588,7 +8588,7 @@ numbers make no claim about Apple-side throughput.
    - the token-registration calls in 45.6.
 5. A sandbox end-to-end run on a real device. **Until then, nothing in this
    phase has reached an iPhone.** The tested boundary is the exact HTTP
-   request CoursePilot sends (path, headers, ES256 JWT, payload), checked
+   request Coursenav sends (path, headers, ES256 JWT, payload), checked
    against a mock transport.
 6. To confirm in that run (Apple does not document them):
    - the hourly Live Activity budget;
@@ -8616,9 +8616,9 @@ starting "Watch Live"), before the watch exists (§44.10).
 
 ## 46. Student onboarding: profile, history, transcript import (Phase 7.0)
 
-> **A transcript import is student-provided evidence.** CoursePilot reads the
+> **A transcript import is student-provided evidence.** Coursenav reads the
 > student's own unofficial transcript, and it becomes academic history only
-> when the student reviews the extracted rows and confirms them. CoursePilot
+> when the student reviews the extracted rows and confirms them. Coursenav
 > never fetches anything from Rutgers on the student's behalf, never asks for a
 > Rutgers password, and no model decides what a transcript says.
 
@@ -9258,7 +9258,7 @@ availability is not a planning input.
   coverage and retrieval time. This is the Schedule Engine's own definition
   of "published" (`candidates.load_term`).
 - `default_constraints` and `constraints_source`. The defaults are labelled
-  as CoursePilot settings, not Rutgers policy.
+  as Coursenav settings, not Rutgers policy.
 
 There is still no notion of "the current term". The server does not read a
 clock to invent one.
@@ -9307,7 +9307,7 @@ What each surface explains, and from which engine field:
 | Planned course | each `Reason` code as a sentence built only from that course's fields (requirement names, `unlocks`, offering evidence, rules term, tie-break count); the prerequisite state and conditional dependencies; the Rutgers prerequisite text |
 | Schedule option | `Reason` codes, engine issues (travel time between campuses, closed sections, unknown restrictions), and the ranking objective in words |
 
-**UNKNOWN is never FAILED.** "CoursePilot cannot determine this" and "you do
+**UNKNOWN is never FAILED.** "Coursenav cannot determine this" and "you do
 not meet this" never share a label, an icon (question mark vs cross) or the
 danger tone. `tests/unit/vocabulary.test.ts` pins this, and
 `scripts/inject_core_failures.py` faults A, B and I break it on purpose.
@@ -9326,7 +9326,7 @@ surfaced in 7.2.
   seen"). A valid schedule can include a closed section. Availability never
   changes validity.
 - **Registration:** the page lists the index numbers to enter in WebReg and
-  says CoursePilot registers no one. Nothing calls, scrapes or deep-links an
+  says Coursenav registers no one. Nothing calls, scrapes or deep-links an
   authenticated Rutgers system.
 
 ### 48.8 What the frontend computes, exhaustively
@@ -9656,7 +9656,7 @@ A stale plan is shown with its reasons and never relabelled current.
 present it as AI:
 
 - it asks only what the record cannot know;
-- it shows "Here's how CoursePilot will plan for you";
+- it shows "Here's how Coursenav will plan for you";
 - nothing is saved until the student confirms.
 
 It can be edited any time from Plan and from Settings → Planning preferences.
@@ -9695,7 +9695,7 @@ change, by the Phase 6.7 refresh. It is reused rather than duplicated:
 | `index_number`   | `section_availability_change.index_number` (+ `section_id`)    |
 | `from_open`      | `from_status` (`open` / `closed` / `unknown`; NULL = first observation) |
 | `to_open`        | `to_status`                                                    |
-| `observed_at`    | `observed_at`: CoursePilot's fetch time (Rutgers publishes none) |
+| `observed_at`    | `observed_at`: Coursenav's fetch time (Rutgers publishes none) |
 | `data_source_id` | `refresh_id` → `availability_refresh` (URL, payload SHA-256, verdict, archive path) |
 
 A row is written ONLY when a section's state changes. An identical payload
@@ -9819,7 +9819,7 @@ Nothing is backfilled, because openSections has no history.
 > confirmed, it becomes their **progress record**. Its completed and current
 > courses join their history through the existing transcript path. Its
 > requirement statuses decide what planning treats as done, for every
-> requirement mapped to a CoursePilot node. It never changes a requirement
+> requirement mapped to a Coursenav node. It never changes a requirement
 > rule. Decisions: `PHASE_7_3_PLAN.md` §10.
 
 ### 51.1 Pipeline
@@ -9918,20 +9918,20 @@ mapping. The newest one is the record.
 
 ### 51.4 Reconciliation
 
-Each row is compared with CoursePilot's own Degree Engine audit of the
+Each row is compared with Coursenav's own Degree Engine audit of the
 record as it is now. This runs at staging, after each review edit, and at
 confirmation.
 
 | label | meaning |
 |---|---|
 | `agrees` | same verdict and same allocated courses |
-| `dn_satisfied_cp_not` | DN met or in progress; CoursePilot not met |
-| `cp_satisfied_dn_not` | CoursePilot met; DN not met |
+| `dn_satisfied_cp_not` | DN met or in progress; Coursenav not met |
+| `cp_satisfied_dn_not` | Coursenav met; DN not met |
 | `allocation_differs` | same verdict, different courses |
 | `unmapped` | no usable mapping for the row |
 | `unknown` | DN's status unreadable, or the node is not in the audit |
 
-The three disagreements are shown as "Degree Navigator and CoursePilot
+The three disagreements are shown as "Degree Navigator and Coursenav
 disagree; confirm with your advisor" in three places:
 
 - the review;
@@ -9953,12 +9953,12 @@ planner runs, both the base audit and each projection.
 | satisfied | **SATISFIED** |
 | in progress or planned, every course behind it in the confirmed current schedule for its term - a WebReg schedule import (`student_registration`) or a hand-confirmed section (`student_current_section`) | **in progress**: PROVISIONALLY_SATISFIED |
 | in progress or planned, otherwise | **planned**: not satisfied, and the rule says which course is missing from the schedule |
-| not satisfied | CoursePilot's status stands |
-| unknown, excluded or unmapped | CoursePilot's status stands, labelled "estimated" |
+| not satisfied | Coursenav's status stands |
+| unknown, excluded or unmapped | Coursenav's status stands, labelled "estimated" |
 
 - A lifted node re-derives its `all_of` / `any_of` ancestors. Its reason
-  states the DN rule and CoursePilot's own verdict.
-- A DN "not satisfied" against a CoursePilot "met" is shown as NEEDS REVIEW,
+  states the DN rule and Coursenav's own verdict.
+- A DN "not satisfied" against a Coursenav "met" is shown as NEEDS REVIEW,
   but it is not lowered: DN does not name the missing course.
 - Requirement rows take precedence over goal rows on the same node.
 
@@ -9972,7 +9972,7 @@ Plans carry notes in every case:
 Each recommendation also carries notes (`PlannedCourse.notes`). The
 requirement it counts toward, or a group above it, may take its status from
 the DN audit; the note says so, and starts "NEEDS REVIEW" when DN and
-CoursePilot disagree.
+Coursenav disagree.
 
 `academic_fingerprint` includes confirmed DN rows, so a new confirmation
 marks saved plans out of date (`degree_navigator_audit_imported`).
@@ -10024,7 +10024,7 @@ student's is "not found".
 ## 52. WebReg current-schedule PDF import (Phase 7.4, Prompt 04)
 
 > The student uploads their own WebReg "View / Print Schedule" PDF. After
-> review and confirmation, CoursePilot records two things:
+> review and confirmation, Coursenav records two things:
 >
 > - the courses they are taking now, as in-progress history for that term
 >   (so next term's prerequisites are "satisfied if passed");
@@ -10133,11 +10133,11 @@ item by item; only the missing parts were built.
 | School Core | the PROGRAM's school + catalog year (`school_requirement_sets`) | yes (7.3) |
 | School Core not encoded (SEBS, SOE...) | `PlanResult.school_core.status = "unknown"`, issue `SCHOOL_CORE_UNKNOWN`; SAS Core never substituted | **new** |
 | Confirmed DN audit | the overlay drives mapped nodes (7.4) | yes |
-| DN requirement with no mapping | issue `DN_REQUIREMENT_OPEN_UNMAPPED`: "Degree Navigator says this is still open, and CoursePilot can't map it yet." Requirement headings only; nothing is planned for it | **new** |
-| No DN audit | CoursePilot's audit, labelled "estimated" | yes |
+| DN requirement with no mapping | issue `DN_REQUIREMENT_OPEN_UNMAPPED`: "Degree Navigator says this is still open, and Coursenav can't map it yet." Requirement headings only; nothing is planned for it | **new** |
+| No DN audit | Coursenav's audit, labelled "estimated" | yes |
 | WebReg in-progress courses | satisfied-if-passed for next-term prerequisites | yes (7.4 part 2) |
 
-DN "not satisfied" where CoursePilot says met is still shown as NEEDS
+DN "not satisfied" where Coursenav says met is still shown as NEEDS
 REVIEW and does not reopen the node (the 7.4 decision, PHASE_7_3_PLAN
 section 10a). Prompt 05's "exactly what DN marks not satisfied" would
 reverse it; left for the owner.
@@ -10172,7 +10172,7 @@ excluded and fit the load - all from 6.5-7.3 - and now:
   (`evaluate_restriction` says NOT_SATISFIED): excluded. `SECTION_RESTRICTED`
   names who the sections are open to, for major-side courses and needed
   prerequisites; a restricted Core alternative is only excluded. Sections
-  listing restrictions CoursePilot cannot check (a minor): placed with a note
+  listing restrictions Coursenav cannot check (a minor): placed with a note
   and `SECTION_RESTRICTION_UNCONFIRMED`. Unpublished sections:
   `sections_not_published`. Levelling never moves a course into a term where
   it is restricted.
@@ -10201,7 +10201,7 @@ sequences):
 - the search keeps every alternative open, as in 7.3. Closing the others once
   one had progress stranded B.S. plans: the started sequence can be a dead end
   (the Physics 206 and Chemistry 171 labs have co-requisite wording
-  CoursePilot cannot evaluate), and full-coverage plans fell from 3 to 0;
+  Coursenav cannot evaluate), and full-coverage plans fell from 3 to 0;
 - once an ANY_OF is MET, pruning counts only its met alternatives
   (`progress(useful_only=True)`), so a course credited only to another
   alternative is removed;
@@ -10237,7 +10237,7 @@ INTENDED major:
   retrieval date and the archive's hash. A "C or better in these courses"
   condition is checked against the record (met, in progress, below the
   minimum, not taken); grades are not repeated. Disagreeing sources are both
-  shown. With no file: "CoursePilot has no official source stating the
+  shown. With no file: "Coursenav has no official source stating the
   requirements to declare this major", and nothing is invented;
 - section restrictions: no declared major (major-only sections are closed),
   the school unit known, so the attributes are complete; minor and honors
@@ -10373,7 +10373,7 @@ an honors program or permission") and the issue
   on one is refused with that reason, and a course the major needs gets
   `HONORS_ONLY_NOT_PLANNED`.
 - If `honors` is `true`, the course is plannable and stays needs-confirmation
-  (CoursePilot cannot verify membership).
+  (Coursenav cannot verify membership).
 - The Schedule Engine applies the same rule to sections (`honors = false`
   excludes honors-only sections).
 
@@ -10456,7 +10456,7 @@ The requirement also appears in `requirements` as `DEGREE_CREDITS`.
 total. A plan short of the total is `partial`, with `DEGREE_CREDITS_SHORT`.
 
 **Free electives.** These are any degree-credit courses the student chooses.
-CoursePilot plans their credits (`PlanTerm.free_elective_credits`), never a
+Coursenav plans their credits (`PlanTerm.free_elective_credits`), never a
 course, and gives them no workload weight. They are added after the
 requirement courses are placed:
 
@@ -10495,7 +10495,7 @@ co-requisite partner of another open leaf's course is not counted again.
 ## 56. Degree Navigator follow-ups (Task 3)
 
 **Member goals.** A mapping goal entry may carry `"role": "member_goal"`:
-one of several DN goals of ONE CoursePilot node. AHo, AHp, AHq and AHr all
+one of several DN goals of ONE Coursenav node. AHo, AHp, AHq and AHr all
 map to `CORE_AH`. Their rows are mapped (`degree_audit_requirement_row.
 mapping_role = member_goal`) and shown, but they never decide the node:
 
@@ -10506,10 +10506,10 @@ mapping_role = member_goal`) and shown, but they never decide the node:
 NS stays unmapped: requirement R2 carries `CORE_NS`. The reviewable table is
 in `docs/DN_MAPPING_SAS_CORE.md`.
 
-**DN says not met, CoursePilot says met** (`cp_satisfied_dn_not` with DN
+**DN says not met, Coursenav says met** (`cp_satisfied_dn_not` with DN
 "not fulfilled"):
 
-- planning keeps CoursePilot's status and guesses no course;
+- planning keeps Coursenav's status and guesses no course;
 - the Degree page, the progress page and the plan never show "Complete",
   "All requirements complete" or "Covers every remaining requirement" for it,
   for any group above it, or overall. They show "Needs review" and the

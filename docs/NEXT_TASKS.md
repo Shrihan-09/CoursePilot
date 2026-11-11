@@ -5,7 +5,7 @@ wrong today, what the published source says, and what done looks like.
 
 ## Section-level prerequisite notes that narrow the published prerequisite
 
-Found in the Task 1 science-sequence audit (2026-10-27). CoursePilot reads a
+Found in the Task 1 science-sequence audit (2026-10-27). Coursenav reads a
 course-level OR-list note that narrows `preReqNotes` (parser 4,
 `prerequisite_lists`; e.g. 01:160:171). It does **not** read the same kind of
 statement when Rutgers prints it in a SECTION note, so these courses are
@@ -76,7 +76,7 @@ Follow-ups it leaves:
   means a soft preference (fewer campus changes per day) in the option
   ranking, with the change count shown.
 - **Overload credit rules.** "Never above the school's max without an
-  overload" is not modelled: CoursePilot caps credits at 24 and shows a
+  overload" is not modelled: Coursenav caps credits at 24 and shows a
   disclaimer. Done means the school's published credit-load and overload
   rules (cited), a plan that asks before planning above the limit, and a
   warning that names the rule.
@@ -86,10 +86,10 @@ Follow-ups it leaves:
 
 The owner's stored catalog year is 2026-2027. Their first Rutgers term is
 Fall 2025, though, so their real catalog year is likely 2025-2026, and
-CoursePilot only has the 2026-2027 catalog. Not built.
+Coursenav only has the 2026-2027 catalog. Not built.
 
 Done means: when a student's entry term implies an earlier catalog year than
-the one CoursePilot plans against, the plan and the Degree page show a notice:
+the one Coursenav plans against, the plan and the Degree page show a notice:
 "planned against the 2026-27 catalog". The notice names both years and never
 changes the student's catalog year by itself.
 
@@ -98,7 +98,7 @@ changes the student's catalog year by itself.
 - **WebReg autofill helper (post-beta).** A browser extension running only on
   the student's own device. The student logs into WebReg and approves Duo
   themselves; the extension reads the student's "Ready for WebReg" index list
-  from CoursePilot and fills the WebReg add form. The student clicks Submit.
+  from Coursenav and fills the WebReg add form. The student clicks Submit.
   Never: storing credentials or sessions, auto-submit, auto-refresh/retry
   loops, server-side access to WebReg. Before building, check Rutgers
   acceptable-use wording on browser extensions/automation or ask the
@@ -108,7 +108,7 @@ changes the student's catalog year by itself.
   (`backend/app/core/data/registration_schedule_20271.json`,
   `RegistrationSchedule.tier_for_credits`); done means the Plan/Schedule page
   names the student's tier and opening time ("You register from Thu, Nov 12,
-  9:00 am - 60+ degree credits"), labelled as computed from CoursePilot's
+  9:00 am - 60+ degree credits"), labelled as computed from Coursenav's
   credit count (Degree Navigator's degree credits are authoritative), plus a
   reminder before it opens.
 

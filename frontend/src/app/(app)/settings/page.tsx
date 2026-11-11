@@ -22,7 +22,7 @@ const OPTIONS: { value: Appearance; label: string; icon: typeof Sun }[] = [
 const INSTITUTION: Record<string, string> = {
   verified: "Your identity provider confirms an accepted Rutgers account. This does not confirm current enrollment.",
   not_verified: "Your identity provider didn't confirm an accepted Rutgers account.",
-  not_configured: "CoursePilot doesn't check institution membership on this server.",
+  not_configured: "Coursenav doesn't check institution membership on this server.",
 };
 
 export default function SettingsPage() {
@@ -75,7 +75,7 @@ export default function SettingsPage() {
             </>
           ) : null}
           <Row label="Privacy">
-            CoursePilot knows who you are from your sign-in and nothing else. It never sees your
+            Coursenav knows who you are from your sign-in and nothing else. It never sees your
             Rutgers password or accesses your Rutgers records, email or files.
           </Row>
         </div>
@@ -111,7 +111,7 @@ export default function SettingsPage() {
           <ProfileSummary profile={planning.data.profile} />
         ) : (
           <p className="rounded-lg border border-dashed border-border-strong p-4 text-sm text-fg-muted">
-            Not set yet. CoursePilot asks before building your first plan.
+            Not set yet. Coursenav asks before building your first plan.
           </p>
         )}
       </section>

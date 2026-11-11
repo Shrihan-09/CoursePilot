@@ -61,7 +61,7 @@ def pending_term_assumptions(session: Session, start_term: str,
     last = max((t.term_code for t in result.terms), default=start_term)
     return [ScenarioAssumption(
         code="target_term_data_pending",
-        message=(f"Rutgers has published {label(code)}, but CoursePilot hasn't loaded and "
+        message=(f"Rutgers has published {label(code)}, but Coursenav hasn't loaded and "
                  f"checked that schedule yet, so no course was placed in {label(code)} on "
                  "past offerings. Regenerate once it is loaded."))
         for code, state in sorted(term_states(session).items())
@@ -91,8 +91,8 @@ def degree_navigator_overlay(session: Session, student: Student, version: Progra
         code="requirement_status_from_degree_navigator",
         message=(f"Requirement status for {len(overlay.statuses)} requirement(s) comes from your "
                  f"Degree Navigator audit (as of {', '.join(dates) or 'unknown date'}); "
-                 "CoursePilot's own audit is the cross-check. Unmapped requirements are "
-                 "estimated by CoursePilot."))]
+                 "Coursenav's own audit is the cross-check. Unmapped requirements are "
+                 "estimated by Coursenav."))]
     for status in sorted(overlay.statuses.values(), key=lambda s: s.requirement_code):
         if status.disagrees:
             notes.append(ScenarioAssumption(
@@ -156,7 +156,7 @@ def school_core_status(session: Session, version: ProgramVersion) -> SchoolCoreS
             message=f"Core requirements: {names}, chosen by your program's school ({school.code}).")
     return SchoolCoreStatus(
         school_code=school.code, status="unknown",
-        message=(f"Core status is unknown: CoursePilot has not encoded the "
+        message=(f"Core status is unknown: Coursenav has not encoded the "
                  f"{school.name or school.code} Core requirements yet, so this plan covers only "
                  "your program's own requirements. SAS Core is not used in their place."))
 
@@ -172,7 +172,7 @@ def declaration_of(session: Session, student: Student, version: ProgramVersion, 
 
 
 #: The words Prompt 05 asks for, for a DN requirement CoursePilot cannot map.
-UNMAPPED_OPEN = "Degree Navigator says this is still open, and CoursePilot can't map it yet."
+UNMAPPED_OPEN = "Degree Navigator says this is still open, and Coursenav can't map it yet."
 
 
 def unmapped_degree_navigator_issues(session: Session, student: Student,
@@ -234,7 +234,7 @@ def generate_plan(session: Session, student: Student, *, start_term: str,
         code="plan_is_a_projection",
         message=("Planned courses count only provisionally: no grade is assumed, offerings "
                  "beyond loaded schedules are historical evidence, and load limits are "
-                 "CoursePilot defaults, not Rutgers policy."))]
+                 "Coursenav defaults, not Rutgers policy."))]
     if not target.is_current_program:
         assumptions += _assumptions(session, student, target)
 

@@ -111,7 +111,7 @@ def check_track(mappings: list[DnMapping], subject: str | None, version_label: s
     printed = subject or "an unnamed degree"
     if found is None:
         return TrackCheck("no_mapping", (
-            f"CoursePilot has no reviewed Degree Navigator mapping for \"{printed}\", so it "
+            f"Coursenav has no reviewed Degree Navigator mapping for \"{printed}\", so it "
             "cannot check which program this audit is for, and none of its requirements is "
             "used for planning (all are shown as unmapped). Its courses can still be "
             "imported after your review."), None)
@@ -121,8 +121,8 @@ def check_track(mappings: list[DnMapping], subject: str | None, version_label: s
         result, message = "matches_school_core", f"This audit is your school's Core ({printed})."
     else:
         return TrackCheck("mismatch", (
-            f"This audit is for {printed}, your CoursePilot track is {track_name}. Change your "
-            "program in CoursePilot or import the matching Degree Navigator audit."), found,
+            f"This audit is for {printed}, your Coursenav track is {track_name}. Change your "
+            "program in Coursenav or import the matching Degree Navigator audit."), found,
             blocks=True)
     if version_label and found.dn_versions and version_label not in found.dn_versions:
         # Same program, but a DN version nobody has mapped: never assume the

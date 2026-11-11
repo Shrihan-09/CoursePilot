@@ -147,7 +147,7 @@ def _get(key: str) -> ProgramInfo | None:
         return get_program(session, key)
 
 
-@router.get("", response_model=ProgramListResponse, summary="Programs CoursePilot can describe")
+@router.get("", response_model=ProgramListResponse, summary="Programs Coursenav can describe")
 async def programs(
     include_discovered: bool = Query(
         False, description="Also list catalog entries with no curated requirements."),

@@ -1,10 +1,10 @@
-# CoursePilot design system (Phase 7.1)
+# Coursenav design system (Phase 7.1)
 
-CoursePilot should feel **modern, precise, intelligent, calm, trustworthy,
+Coursenav should feel **modern, precise, intelligent, calm, trustworthy,
 student-focused, and premium without being flashy**. It is a student
 academic-planning product, not an analytics dashboard.
 
-The interface presents what CoursePilot's deterministic backend computed. It
+The interface presents what Coursenav's deterministic backend computed. It
 never decides academic facts itself: whether a requirement is complete, whether
 a course counts, prerequisites, GPA, eligibility, schedule conflicts or section
 validity. Visual simplicity must never hide uncertainty.
@@ -25,7 +25,7 @@ upward navigation arrow, dimensional, rounded and strongly silhouetted. It is
 **never redrawn, recoloured or regenerated**. See `frontend/brand/README.md` for
 every derived asset and how it was made.
 
-## Colour: neutral first, CoursePilot blue for emphasis
+## Colour: neutral first, Coursenav blue for emphasis
 
 All colour is semantic tokens, defined as CSS variables. Components never use
 literal colours.
@@ -65,7 +65,7 @@ actions use the logo's own colour in both themes.
 - the one primary action on a view;
 - active navigation and selected controls;
 - progress, links and focus;
-- CoursePilot's generation motion.
+- Coursenav's generation motion.
 
 Cards, backgrounds and most buttons stay neutral. A mostly neutral interface is
 what makes the blue identity strong. Gradients appear only in the logo itself.
@@ -157,7 +157,7 @@ different kinds of "loading":
 |---|---|
 | **App initialization** | No splash and no artificial delay. If the app is ready, it shows. |
 | **Ordinary data loading** | Skeletons, inline progress, a spinner inside a button. **Never** the branded animation. |
-| **CoursePilot generating something substantial** (a semester or multi-semester plan, a schedule, a significant replan) | `GenerationAnimation` |
+| **Coursenav generating something substantial** (a semester or multi-semester plan, a schedule, a significant replan) | `GenerationAnimation` |
 
 **GenerationAnimation** (`components/brand/generation.tsx`):
 
@@ -166,12 +166,12 @@ different kinds of "loading":
 - **It travels along the logo's own arrow vector.** The vector is measured from
   the artwork: from the tail at lower-left (~22%, 86%) to the tip at
   upper-right (~84%, 24%).
-- **It continues onward,** as if CoursePilot made the plan and is sending it
+- **It continues onward,** as if Coursenav made the plan and is sending it
   into the interface.
 - **On completion the sheet comes forward and resolves into the result**
   (`onResolved`), never into a spinner.
 - **Stages are passed in by the caller** and should mirror real backend stages.
-  The default caption credits CoursePilot's **deterministic** engine and never
+  The default caption credits Coursenav's **deterministic** engine and never
   implies an LLM decides anything.
 - **Implementation:** pure CSS keyframes and SVG, with no animation library.
   `z-index` is never animated. Visual QA caught that interpolating it put the
@@ -204,7 +204,7 @@ contrast is unchanged (AA verified by axe in light and dark). Under
 ## Board layout (Sunsama-inspired refresh)
 
 The planning surfaces borrow a daily-planner's *structure and motion*, not its
-colours: CoursePilot's neutral-first palette and logo blue are unchanged.
+colours: Coursenav's neutral-first palette and logo blue are unchanged.
 
 - **Canvas and inset panel (lg+).** The app sits on `--canvas`; the sidebar has
   no border, and the page content is an inset rounded panel. Phones keep the

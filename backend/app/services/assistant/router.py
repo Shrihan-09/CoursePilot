@@ -171,7 +171,7 @@ def route(text: str) -> Route:
 
 REFUSALS = {
     "registration": ("I can't register you or sign in to WebReg - that would need your NetID, "
-                     "password and Duo, and CoursePilot never asks for them. I can get you "
+                     "password and Duo, and Coursenav never asks for them. I can get you "
                      "ready instead: pick sections that fit your week, then copy their index "
                      "numbers into WebReg yourself."),
     "coursework": ("I can't do coursework, but I can help you plan around it - for example, "

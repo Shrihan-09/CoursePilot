@@ -1,6 +1,6 @@
 # Security: secrets and keys
 
-How CoursePilot keeps credentials out of Git and out of logs, what to do when a
+How Coursenav keeps credentials out of Git and out of logs, what to do when a
 key leaks, and how key handling changes at deploy time.
 
 Scope: API keys (OpenAI, Anthropic, APNs), OIDC configuration, the local
@@ -96,7 +96,7 @@ paste, a log line or a shared terminal. Also rotate on a fixed schedule, every
 
 **OpenAI**
 
-1. In the OpenAI dashboard, open **API keys** for the CoursePilot project and
+1. In the OpenAI dashboard, open **API keys** for the Coursenav project and
    **create a new key** first. Use a project-scoped key with only the model
    permissions the app uses.
 2. Put the new key in `.env` locally, or in the platform secret store when
@@ -124,9 +124,9 @@ A leaked or runaway key should cost a bounded amount. Set both layers.
 
 **At OpenAI (the hard stop)**, in the organization's billing / limits settings:
 
-- Set a **monthly budget** for the CoursePilot project at the expected spend
+- Set a **monthly budget** for the Coursenav project at the expected spend
   plus a margin, and a **notification threshold** at about 50% and 80%.
-- Use a **separate project** for CoursePilot, so its key and budget are
+- Use a **separate project** for Coursenav, so its key and budget are
   isolated from anything else on the account.
 - Restrict the project's allowed models to the ones configured
   (`OPENAI_MODEL`, `ASSISTANT_MODEL`, `ASSISTANT_ESCALATION_MODEL`).

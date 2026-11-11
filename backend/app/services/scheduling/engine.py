@@ -317,7 +317,7 @@ def _option_issues(choices: list[SectionCandidate], prefs: SchedulePreferences) 
         elif a.state is AvailabilityState.UNKNOWN:
             issues.append(ScheduleIssue(
                 severity=Severity.WARNING, code="AVAILABILITY_UNKNOWN",
-                message=(f"{c.course} index {c.index_number}: CoursePilot cannot tell whether "
+                message=(f"{c.course} index {c.index_number}: Coursenav cannot tell whether "
                          "it is open or closed."),
                 courses=[c.course], indexes=[c.index_number],
                 details={"component": c.component, "reasons": a.reasons,
@@ -326,7 +326,7 @@ def _option_issues(choices: list[SectionCandidate], prefs: SchedulePreferences) 
             issues.append(ScheduleIssue(
                 severity=Severity.NEEDS_CONFIRMATION, code="MEETING_TIME_IN_NOTES",
                 message=(f"{c.course} index {c.index_number}: Rutgers describes meeting times "
-                         "in the section note that CoursePilot cannot verify against the "
+                         "in the section note that Coursenav cannot verify against the "
                          "published meetings; conflict freedom is not verified."),
                 courses=[c.course], indexes=[c.index_number],
                 details={"note": c.meeting_text_in_notes}))
@@ -337,14 +337,14 @@ def _option_issues(choices: list[SectionCandidate], prefs: SchedulePreferences) 
                     severity=Severity.NEEDS_CONFIRMATION,
                     code="SECTION_NOTE_REFERENCES_REQUESTED_COURSE",
                     message=(f"{c.course} index {c.index_number}'s note names section "
-                             f"{m.group(2)} of {other}, also requested; CoursePilot cannot "
+                             f"{m.group(2)} of {other}, also requested; Coursenav cannot "
                              "verify which sections Rutgers allows together."),
                     courses=sorted({c.course, other}), indexes=[c.index_number],
                     details={"note": c.notes}))
         if c.restriction.outcome is RestrictionOutcome.UNKNOWN:
             issues.append(ScheduleIssue(
                 severity=Severity.NEEDS_CONFIRMATION, code="SECTION_RESTRICTION_UNKNOWN",
-                message=(f"{c.course} index {c.index_number}: CoursePilot cannot confirm the "
+                message=(f"{c.course} index {c.index_number}: Coursenav cannot confirm the "
                          "student may register for this section."),
                 courses=[c.course], indexes=[c.index_number],
                 details={"reasons": c.restriction.reasons,
@@ -382,7 +382,7 @@ def _option_issues(choices: list[SectionCandidate], prefs: SchedulePreferences) 
                 issues.append(ScheduleIssue(
                     severity=Severity.WARNING, code="CAMPUS_CHANGE_BETWEEN_CLASSES",
                     message=(f"{day}: {k1} ({c1}) ends {s2 - e1} min before {k2} ({c2}). "
-                             "CoursePilot does not model travel time."),
+                             "Coursenav does not model travel time."),
                     courses=[k1, k2], details={"day": day, "gap_minutes": s2 - e1,
                                                "from": c1, "to": c2}))
     return issues
@@ -464,7 +464,7 @@ def schedule(term: TermData, courses: list[str], prefs: SchedulePreferences, max
     if not term.published:
         issues.append(ScheduleIssue(
             severity=Severity.BLOCKER, code="TERM_SCHEDULE_NOT_PUBLISHED",
-            message=(f"CoursePilot has no Rutgers section data for {term.term_code}. Sections "
+            message=(f"Coursenav has no Rutgers section data for {term.term_code}. Sections "
                      "from earlier terms are never used to build a schedule.")))
         return result(ScheduleStatus.TERM_SCHEDULE_NOT_PUBLISHED)
 
@@ -473,7 +473,7 @@ def schedule(term: TermData, courses: list[str], prefs: SchedulePreferences, max
         issues.append(ScheduleIssue(
             severity=Severity.BLOCKER if required else Severity.WARNING,
             code="AVAILABILITY_NOT_CURRENT",
-            message=(f"CoursePilot's latest open/closed information for {term.term_code} is "
+            message=(f"Coursenav's latest open/closed information for {term.term_code} is "
                      + (f"from {term.availability_observed_at} ({term.availability_source})"
                         if term.availability_observed_at else "missing")
                      + ", not current. "
@@ -490,7 +490,7 @@ def schedule(term: TermData, courses: list[str], prefs: SchedulePreferences, max
         issues.append(ScheduleIssue(
             severity=Severity.NEEDS_CONFIRMATION if partial else Severity.BLOCKER,
             code="COURSE_NOT_IN_PARTIAL_TERM_DATA" if partial else "COURSE_NOT_OFFERED",
-            message=(f"{key} has no sections in CoursePilot's {term.term_code} data"
+            message=(f"{key} has no sections in Coursenav's {term.term_code} data"
                      + (" (the term's data is partial)." if partial else ".")),
             courses=[key]))
     for key, sups in sorted(term.unverified_components.items()):

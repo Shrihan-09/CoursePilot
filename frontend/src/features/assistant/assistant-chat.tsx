@@ -537,7 +537,7 @@ export function Composer({ disabled, onSend, draft, maxChars = ASSISTANT_MAX_INP
 
 export function AssistantLauncher({ onOpen }: { onOpen: () => void }) {
   return (
-    <button type="button" onClick={onOpen} aria-label="Open the assistant"
+    <button type="button" onClick={onOpen} aria-label="Open the assistant" data-assistant-launcher
             className="fixed bottom-24 right-4 z-40 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-elevated sm:bottom-6">
       <MessageSquareText aria-hidden className="size-5" /> Ask
     </button>

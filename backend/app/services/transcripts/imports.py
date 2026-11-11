@@ -295,7 +295,7 @@ def normalize_row(session: Session, row: TranscriptImportRow, student_id: uuid.U
     if row.extracted_credit_prefix:
         issues.append(Issue("CREDIT_PREFIX_NOT_RECORDED", "credits_earned", IssueSeverity.INFO,
                             f"The document shows credit prefix {row.extracted_credit_prefix}; "
-                            "CoursePilot does not store credit prefixes yet."))
+                            "Coursenav does not store credit prefixes yet."))
     if row.credits_earned is None and row.extracted_credits is None:
         issues.append(Issue("CREDITS_NOT_EXTRACTED", "credits_earned", IssueSeverity.INFO,
                             "No credits were read; the catalog credits will be used."))
@@ -312,7 +312,7 @@ def normalize_row(session: Session, row: TranscriptImportRow, student_id: uuid.U
             if external:
                 issue = Issue("EXTERNAL_CREDIT_NO_EQUIVALENT", "course_code",
                               IssueSeverity.NEEDS_REVIEW,
-                              "No CoursePilot course matches this transfer/exam credit. "
+                              "No Coursenav course matches this transfer/exam credit. "
                               "Enter its Rutgers equivalent, or exclude the row.")
         issues.append(issue)
 

@@ -1,4 +1,4 @@
-# CoursePilot — local development stack.
+# Coursenav — local development stack.
 #
 # The frontend is intentionally NOT containerized. Next.js dev-server hot
 # reload through a Docker bind mount on Windows is slow and flaky; running
@@ -60,7 +60,7 @@ services:
     command: >
       uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
-  # Phase 6.9 - CoursePilot Live: the ONE long-lived worker production needs
+  # Phase 6.9 - Coursenav Live: the ONE long-lived worker production needs
   # (scheduled Rutgers refresh -> monitoring events -> inbox -> push outbox).
   # Several replicas are safe: a per-term lease keeps Rutgers at one request
   # per term per interval. Terms to poll are added with

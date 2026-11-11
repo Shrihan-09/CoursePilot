@@ -72,7 +72,7 @@ class Explanation:
         if self.course_information:
             lines += ["", *[f"- {c}" for c in self.course_information]]
         if self.limitations:
-            lines += ["", "Not established by CoursePilot:"]
+            lines += ["", "Not established by Coursenav:"]
             lines += [f"- {limitation}" for limitation in self.limitations]
         if self.citations:
             lines += ["", "Sources: " + "; ".join(self.citations)]

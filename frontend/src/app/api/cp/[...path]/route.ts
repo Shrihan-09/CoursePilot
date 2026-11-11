@@ -53,7 +53,7 @@ async function proxy(request: NextRequest, { params }: { params: Promise<{ path:
       redirect: "manual",
     });
   } catch {
-    return json(502, "internal_error", "The CoursePilot service is unreachable.");
+    return json(502, "internal_error", "The Coursenav service is unreachable.");
   }
   const out = new Headers();
   for (const name of FORWARDED_RESPONSE_HEADERS) {

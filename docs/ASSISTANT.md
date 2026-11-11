@@ -1,4 +1,4 @@
-# CoursePilot Assistant (Prompt 11 Part B)
+# Coursenav Assistant (Prompt 11 Part B)
 
 A chat panel ("Assistant" in the nav, plus an **Ask** button on the Plan page)
 that answers questions about a student's plan and progress, suggests course
@@ -100,14 +100,14 @@ message ─► router (deterministic)
    (`student_planned_section`).
 5. **Ready for WebReg**: index numbers, Copy all, steps, a link to WebReg's own
    login page, and warnings (closed, special permission, time conflicts).
-   CoursePilot never signs in to WebReg and never registers anyone.
+   Coursenav never signs in to WebReg and never registers anyone.
 
 ## Privacy
 
 * The model sees only what tools return for the signed-in student; tools are
   bound to that student (no student id in any request).
 * GPA reaches the model only when the student asks about GPA (enforced in the
-  tool layer, whatever the model requests). CoursePilot does not compute a GPA
+  tool layer, whatever the model requests). Coursenav does not compute a GPA
   for display, so the real tool says so rather than guessing.
 * Chat history is stored per student (`assistant_message`), deletable with one
   call (`DELETE /student/assistant/history`), and CASCADE-deleted with the

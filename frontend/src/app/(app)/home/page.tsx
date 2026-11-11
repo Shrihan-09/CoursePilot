@@ -22,10 +22,10 @@ import type { SavedPlan } from "@/types/plan";
 
 function nextStep(state: string, readiness: ReadinessState | undefined, plan: SavedPlan | null | undefined): { title: string; body: string; href: string; cta: string } {
   if (state !== "complete") {
-    return { title: "Finish setting up", body: "Add your courses so CoursePilot can show your progress.", href: "/onboarding", cta: "Continue setup" };
+    return { title: "Finish setting up", body: "Add your courses so Coursenav can show your progress.", href: "/onboarding", cta: "Continue setup" };
   }
   if (readiness === "needs_planning_profile") {
-    return { title: "Personalize your plan", body: "Tell CoursePilot your pace and how many credits to aim for. It takes about a minute.", href: "/plan/personalize", cta: "Personalize" };
+    return { title: "Personalize your plan", body: "Tell Coursenav your pace and how many credits to aim for. It takes about a minute.", href: "/plan/personalize", cta: "Personalize" };
   }
   if (!plan) {
     return { title: "Build your semester plan", body: "Lay out the courses that complete your remaining requirements.", href: "/plan", cta: "Build a plan" };
@@ -164,13 +164,13 @@ export default function HomePage() {
         {profile.transcript_reported_gpa && (
           <p className="text-sm text-fg-secondary">
             Cumulative GPA <span className="tabular font-medium text-fg">{profile.transcript_reported_gpa.value}</span>{" "}
-            <span className="text-fg-muted">- as stated on the transcript you uploaded, not calculated by CoursePilot.</span>
+            <span className="text-fg-muted">- as stated on the transcript you uploaded, not calculated by Coursenav.</span>
           </p>
         )}
       </section>
 
       <p className="text-xs text-fg-muted">
-        Coming later: course search and notifications. The CoursePilot assistant is in Planning.
+        Coming later: course search and notifications. The Coursenav assistant is in Planning.
       </p>
     </div>
   );

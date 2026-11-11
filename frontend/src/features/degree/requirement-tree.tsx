@@ -105,8 +105,8 @@ export function progressText(node: RequirementResult): string | null {
 }
 
 const CURATION: Record<string, string> = {
-  curated_from_prose: "Encoded by CoursePilot from the Rutgers catalog text above.",
-  synthetic: "A grouping CoursePilot added to organise the requirement; not catalog text.",
+  curated_from_prose: "Encoded by Coursenav from the Rutgers catalog text above.",
+  synthetic: "A grouping Coursenav added to organise the requirement; not catalog text.",
   unverified: "Not yet verified against the Rutgers catalog.",
 };
 
@@ -179,7 +179,7 @@ export function RequirementNode({
 
           {own.allocations.length > 0 && (
             <div className="space-y-1">
-              <p className="text-xs font-medium uppercase tracking-wide text-fg-muted">Courses CoursePilot used</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-fg-muted">Courses Coursenav used</p>
               <ul className="divide-y divide-border rounded border border-border">
                 {own.allocations.map((a) => (
                   <li key={`${a.course.course_string}-${a.term_code}`} className="flex flex-col gap-0.5 p-2 text-sm sm:flex-row sm:items-baseline sm:gap-3">

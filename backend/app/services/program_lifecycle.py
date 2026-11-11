@@ -56,7 +56,7 @@ STATES = (PARSED, VALIDATED, REVIEWED, PUBLISHED, NEEDS_REREVIEW)
 _NOT_A_HUMAN = re.compile(
     r"\b(claude|anthropic|openai|gpt|chatgpt|gemini|llm|ai|assistant|model|bot|robot|"
     r"system|automated|automation|auto|script|pipeline|ci|cron|unknown|n/?a|none|"
-    r"test|anonymous|coursepilot|validator|validation|parser|checker|linter|extractor)\b",
+    r"test|anonymous|coursepilot|coursenav|validator|validation|parser|checker|linter|extractor)\b",
     re.I,
 )
 

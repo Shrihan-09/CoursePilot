@@ -128,7 +128,7 @@ def resolve_version(session: Session, key: str, wanted: str):
     except ProgramVariantRequired as exc:
         raise ProgramChoiceRequired(str(exc), exc.variants) from None
     if found is None:
-        raise ProgramNotFound(f"No program {key!r} is known to CoursePilot.")
+        raise ProgramNotFound(f"No program {key!r} is known to Coursenav.")
     program, _school = found
 
     available = sorted((v.catalog_year for v in program.versions), reverse=True)
@@ -138,7 +138,7 @@ def resolve_version(session: Session, key: str, wanted: str):
         # academic decision and there is no rule here to make it with.
         raise CatalogYearUnavailable(
             f"{program.name} ({program.degree_type}) has no {wanted} catalog "
-            f"version in CoursePilot. Available: {', '.join(available) or 'none'}.",
+            f"version in Coursenav. Available: {', '.join(available) or 'none'}.",
             available,
         )
 
@@ -146,7 +146,7 @@ def resolve_version(session: Session, key: str, wanted: str):
     if not info.support_status.evaluable:
         raise ProgramNotEvaluable(
             f"{program.name} ({program.degree_type}) {wanted} has no curated "
-            "requirements CoursePilot can evaluate."
+            "requirements Coursenav can evaluate."
         )
     return version, info
 

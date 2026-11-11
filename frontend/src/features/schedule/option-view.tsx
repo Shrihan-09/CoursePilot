@@ -171,7 +171,7 @@ export function RegistrationHandoff({ option }: { option: ScheduleOption }) {
     <section aria-labelledby="register-heading" className="space-y-2 animate-cp-rise rounded-xl border border-border bg-surface-elevated p-4">
       <h3 id="register-heading" className="text-sm font-semibold text-fg">Register in WebReg yourself</h3>
       <p className="text-sm text-fg-secondary">
-        CoursePilot doesn&apos;t register you, and nothing here adds or drops a course. Enter these index
+        Coursenav doesn&apos;t register you, and nothing here adds or drops a course. Enter these index
         numbers in Rutgers WebReg when your registration window opens.
       </p>
       <p className="code tabular text-base font-semibold tracking-wide text-fg">{indexes.join("  ")}</p>

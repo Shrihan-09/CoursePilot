@@ -1,4 +1,4 @@
-# CoursePilot Architecture
+# Coursenav Architecture
 
 Status: **foundation only.** Most systems described here are designed, not
 built. Each section marks what exists.
@@ -14,7 +14,7 @@ graduate on time?" is making a decision with real consequences — tuition,
 time, graduation date. A language model that is fluent and wrong is worse than
 no answer at all, because it is trusted.
 
-So CoursePilot is structured to make it *structurally impossible* for a model
+So Coursenav is structured to make it *structurally impossible* for a model
 to certify academic correctness. The model never sets a validity flag. It
 proposes; `app/services/validation` returns a verdict; the API reports the
 verdict.
@@ -93,7 +93,7 @@ DETERMINISTIC VALIDATION
                                       partial plan and the blocking findings
 ```
 
-The last branch matters. When replanning fails, CoursePilot says so and shows
+The last branch matters. When replanning fails, Coursenav says so and shows
 its work. It does not degrade into a plausible guess.
 
 ---

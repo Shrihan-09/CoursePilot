@@ -157,7 +157,7 @@ class Assistant:
                 term = str(answers["webreg"])
                 reply = AssistantReply(
                     text=(f"Here's your WebReg checklist for {term_label(term) or term}. Copy "
-                          "the index numbers, then add them in WebReg yourself - CoursePilot "
+                          "the index numbers, then add them in WebReg yourself - Coursenav "
                           "never signs in for you."),
                     intent="question", generated_by="template", webreg_term=term)
             elif flow and flow.get("kind") == "guided_swap" and self._continues(r, text, answers):

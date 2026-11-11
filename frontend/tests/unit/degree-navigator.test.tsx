@@ -20,7 +20,7 @@ import type { DnImportDetail, DnProgress, DnRequirementRow } from "@/types/degre
 import type { PlannedCourse } from "@/types/plan";
 
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#x27;|&apos;/g, "'").replace(/&quot;/g, "\"").replace(/\s+/g, " ");
-const DISAGREE = "Degree Navigator and CoursePilot disagree; confirm with your advisor";
+const DISAGREE = "Degree Navigator and Coursenav disagree; confirm with your advisor";
 
 const req = (over: Partial<DnRequirementRow>): DnRequirementRow => ({
   id: "r1", kind: "requirement", row_index: 0, parent_row_index: null, dn_number: 1,
@@ -93,8 +93,8 @@ describe("staged review table and reconciliation view", () => {
   });
 
   it("labels each reconciliation and shows every disagreement as needs review", () => {
-    expect(t).toContain("Agrees with CoursePilot");
-    expect(t).toContain("Needs review: CoursePilot doesn't count it yet");
+    expect(t).toContain("Agrees with Coursenav");
+    expect(t).toContain("Needs review: Coursenav doesn't count it yet");
     expect(t).toContain(DISAGREE);
     expect(t).toContain("Unmapped - shown, not used");
   });
@@ -112,10 +112,10 @@ describe("staged review table and reconciliation view", () => {
     expect(review(detail({}))).toMatch(/<button[^>]*disabled[^>]*>[^<]*<svg[^>]*>.*?Confirm/);
     const mismatch = text(review(detail({
       track_check: "mismatch",
-      track_message: "This audit is for Invented Minor (NB), your CoursePilot track is Invented Program.",
+      track_message: "This audit is for Invented Minor (NB), your Coursenav track is Invented Program.",
       readiness: { ready: false, blocking: 0, requirement_counts: {}, course_counts: {}, history_counts: {}, track_blocks: true },
     })));
-    expect(mismatch).toContain("your CoursePilot track is Invented Program");
+    expect(mismatch).toContain("your Coursenav track is Invented Program");
     expect(mismatch).toContain("this audit is for a different program");
   });
 
@@ -166,9 +166,9 @@ describe("estimated vs from your Degree Navigator audit", () => {
     expect(dn).toContain("From your Degree Navigator audit:");
     expect(dn).toContain(DISAGREE);
     expect(text(renderToStaticMarkup(<DnNodeSource row={lookup("REQ_OTHER")} hasImport />)))
-      .toContain("Not in your Degree Navigator audit - CoursePilot estimate.");
+      .toContain("Not in your Degree Navigator audit - Coursenav estimate.");
     expect(text(renderToStaticMarkup(<DnNodeSource row={undefined} hasImport={false} />)))
-      .toContain("Estimated by CoursePilot.");
+      .toContain("Estimated by Coursenav.");
   });
 });
 

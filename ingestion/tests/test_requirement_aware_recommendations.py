@@ -361,7 +361,7 @@ def test_degree_navigator_status_overrides_the_estimate(world):
     assert "requirement_status_estimated" in {a.code for a in estimated.assumptions}
     est_ah = [pc for pc in _placed(estimated).values()
               if any(r.requirement_code.startswith("CORE_AH") for r in pc.requirements)]
-    assert est_ah, "without DN, CoursePilot's estimate plans Arts and Humanities"
+    assert est_ah, "without DN, Coursenav's estimate plans Arts and Humanities"
     assert all(t.status_source == "estimated" for pc in est_ah for t in pc.trace.requirements)
 
     dn = _plan(world, _dn_student(world))

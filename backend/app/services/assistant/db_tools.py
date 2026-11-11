@@ -184,7 +184,7 @@ class DbAssistantTools:
                      "source_label": "from your Degree Navigator audit" if dn else "estimated"}
             if review:
                 entry["label_text"] = "needs review"
-                entry["note"] = "Degree Navigator and CoursePilot disagree; confirm with your " \
+                entry["note"] = "Degree Navigator and Coursenav disagree; confirm with your " \
                                 "advisor"
             reqs.append(entry)
 
@@ -201,7 +201,7 @@ class DbAssistantTools:
         if include_gpa:
             # CoursePilot does not compute a GPA for display; it never guesses one.
             out["gpa"] = None
-            out["gpa_note"] = "CoursePilot does not calculate your GPA; Degree Navigator shows it."
+            out["gpa_note"] = "Coursenav does not calculate your GPA; Degree Navigator shows it."
         return out
 
     def _line(self, pc, term: str) -> dict:
@@ -278,7 +278,7 @@ class DbAssistantTools:
 
         row = self.session.scalar(select(Course).where(Course.course_string == course))
         if row is None:
-            raise LookupError(f"{course} is not in the catalog data CoursePilot has")
+            raise LookupError(f"{course} is not in the catalog data Coursenav has")
         terms = sorted({t for (t,) in self.session.execute(
             select(CourseOffering.term_code).where(CourseOffering.course_id == row.id))},
             reverse=True)[:6]

@@ -210,10 +210,10 @@ describe("Your choices for the next semester", () => {
     expect(t).toContain("Your choices for Spring 2027");
     expect(t).toContain("Already set: CALCULUS II (required retake)");
     expect(t).toContain("Arts and the Humanities / pick 1");
-    expect(t).toContain("CoursePilot picked INTRO TO MUSIC");
+    expect(t).toContain("Coursenav picked INTRO TO MUSIC");
     expect(t).toContain("Keep");
     expect(t).toContain("Change");
-    expect(t).not.toContain("Let CoursePilot choose");
+    expect(t).not.toContain("Let Coursenav choose");
     expect(t).not.toContain("Skip for now");
 
   });

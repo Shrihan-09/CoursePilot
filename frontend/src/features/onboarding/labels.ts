@@ -23,7 +23,7 @@ export const ROW_STATE: Record<
     label: "Not recognized",
     tone: "neutral",
     icon: CircleHelp,
-    help: "CoursePilot has no course with this code. Correct it or leave it out.",
+    help: "Coursenav has no course with this code. Correct it or leave it out.",
   },
   conflict: {
     label: "Conflicts with your record",
@@ -73,7 +73,7 @@ export const FAILURE: Record<string, string> = {
   FILE_EMPTY: "That file is empty.",
   FILE_TOO_LARGE: "That file is larger than 5 MB. Your unofficial transcript PDF is much smaller.",
   FILE_NOT_PDF: "That file isn't a PDF. Upload the PDF of your unofficial transcript.",
-  PDF_ENCRYPTED: "This PDF is password-protected, so CoursePilot can't read it.",
+  PDF_ENCRYPTED: "This PDF is password-protected, so Coursenav can't read it.",
   PDF_TOO_MANY_PAGES: "This PDF has more pages than a transcript should.",
   PDF_TEXT_TOO_LARGE: "This PDF has more text than a transcript should.",
   PDF_NO_TEXT_LAYER:
@@ -90,7 +90,7 @@ export const FAILURE: Record<string, string> = {
 export const DOC_WARNING: Record<string, { title: string; body: string }> = {
   READING_ORDER_UNRELIABLE: {
     title: "Parts of this transcript were read out of order",
-    body: "Its columns ran together, so CoursePilot can't be sure which term each course belongs to. Every row needs your check.",
+    body: "Its columns ran together, so Coursenav can't be sure which term each course belongs to. Every row needs your check.",
   },
   TERM_TOTAL_MISMATCH: {
     title: "Some terms don't add up",

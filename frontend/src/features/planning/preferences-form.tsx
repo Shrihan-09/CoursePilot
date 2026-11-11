@@ -139,7 +139,7 @@ export function PreferencesForm({
       <PrefSection id="about" title="About you" summary="When you want to graduate" open={openSection === "about"}>
         <fieldset className="space-y-2">
           <legend className="text-base font-semibold text-fg">When do you want to graduate?</legend>
-          <p className="text-sm text-fg-muted">This sets how many semesters your plan has, counted from your first semester. On time is the default; CoursePilot never assumes you want to finish early.</p>
+          <p className="text-sm text-fg-muted">This sets how many semesters your plan has, counted from your first semester. On time is the default; Coursenav never assumes you want to finish early.</p>
           <Field label="Expected graduation term (optional)" hint="Overrides the choice below when set.">
             {({ id, describedBy }) => (
               <Select id={id} aria-describedby={describedBy} value={gradTerm} onChange={(e) => setGradTerm(e.target.value)}>
@@ -180,7 +180,7 @@ export function PreferencesForm({
         {(meta.filler_preferences?.length ?? 0) > 0 && level && (
           <fieldset className="space-y-2">
             <legend className="text-base font-semibold text-fg">For the rest of a semester&apos;s credits</legend>
-            <p className="text-sm text-fg-muted">After the courses you need, CoursePilot fills up to your credit range with courses that complete a requirement.</p>
+            <p className="text-sm text-fg-muted">After the courses you need, Coursenav fills up to your credit range with courses that complete a requirement.</p>
             <div className="space-y-1">
               {meta.filler_preferences!.map((f) => (
                 <Radio key={f.value} name="filler_preference" label={f.label} description={f.description}
@@ -198,7 +198,7 @@ export function PreferencesForm({
           <fieldset className="space-y-2">
             <legend className="text-base font-semibold text-fg">When several courses fit, which should come first?</legend>
             <p className="text-sm text-fg-muted">
-              This only changes the order of courses CoursePilot has already checked you can take. It never skips a
+              This only changes the order of courses Coursenav has already checked you can take. It never skips a
               prerequisite, goes over your maximum, or plans a course Rutgers isn&apos;t offering.
             </p>
             <div className="space-y-1">
@@ -213,7 +213,7 @@ export function PreferencesForm({
           <legend className="text-base font-semibold text-fg">Semester load</legend>
           {level && <p className="text-sm text-fg-muted">Your workload level sets the credit range; the course limit below still applies.</p>}
           <div className="grid gap-4 sm:grid-cols-3">
-            {!level && <Field label="Aim for (credits)" hint="CoursePilot aims near this; it isn't a minimum." error={errors.target}>
+            {!level && <Field label="Aim for (credits)" hint="Coursenav aims near this; it isn't a minimum." error={errors.target}>
               {({ id, describedBy, invalid }) => <Input id={id} aria-describedby={describedBy} aria-invalid={invalid} type="number" inputMode="decimal" min={1} max={24} step={0.5} value={target} onChange={(e) => setTarget(e.target.value)} />}
             </Field>}
             {!level && <Field label="Never more than (credits)" hint="A hard limit for every semester." error={errors.max}>
@@ -314,7 +314,7 @@ export function PreferencesForm({
         <fieldset className="space-y-3">
           <legend className="text-base font-semibold text-fg">Anything else you&apos;re considering?</legend>
           <p className="text-sm text-fg-muted">
-            Recorded as something you&apos;re exploring. Your plan doesn&apos;t include it: CoursePilot can&apos;t combine
+            Recorded as something you&apos;re exploring. Your plan doesn&apos;t include it: Coursenav can&apos;t combine
             programs yet. You can compare a major in Degree → What-if.
           </p>
           {goals.length > 0 && (
@@ -338,7 +338,7 @@ export function PreferencesForm({
                   </Select>
                 )}
               </Field>
-              <Field label="Program" hint={goalKind === "second_major" ? undefined : "Minors and certificates aren't in CoursePilot's data yet; describe it in words."}>
+              <Field label="Program" hint={goalKind === "second_major" ? undefined : "Minors and certificates aren't in Coursenav's data yet; describe it in words."}>
                 {({ id, describedBy }) => goalKind === "second_major" ? (
                   <Select id={id} aria-describedby={describedBy} value={goalProgram} onChange={(e) => setGoalProgram(e.target.value)}>
                     <option value="">Choose a program</option>

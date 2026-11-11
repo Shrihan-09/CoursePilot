@@ -35,7 +35,7 @@ function StartTermField({ value, onChange, options, latest }: {
   return (
     <Field
       label="Plan starting semester"
-      hint={`The first semester CoursePilot plans courses for${latest ? `. Your record runs through ${termLabel(latest)}` : ""}. Plans always start in a future semester.`}
+      hint={`The first semester Coursenav plans courses for${latest ? `. Your record runs through ${termLabel(latest)}` : ""}. Plans always start in a future semester.`}
     >
       {({ id, describedBy }) => (
         <Select id={id} aria-describedby={describedBy} value={value} onChange={(e) => onChange(e.target.value)}>
@@ -128,7 +128,7 @@ export default function PlanPage() {
       <div className="py-10">
         <GenerationAnimation
           status={generate.isPending ? "generating" : "complete"}
-          title="CoursePilot is building your plan"
+          title="Coursenav is building your plan"
           caption="The planning engine checks your remaining requirements, prerequisites and Rutgers offering data, then balances your semesters within your preferences. It doesn't report step-by-step progress, so none is shown."
           stages={[{ key: "engine", label: "Planning engine running", state: generate.isPending ? "active" : "done" }]}
           onResolved={() => setResolved(true)}
@@ -154,7 +154,7 @@ export default function PlanPage() {
       <PageHeader
         eyebrow="Plan"
         title="Your semester plan"
-        description="Built by CoursePilot's planning engine from your confirmed record, your program, Rutgers data and your planning preferences. Planned courses count only once you pass them."
+        description="Built by Coursenav's planning engine from your confirmed record, your program, Rutgers data and your planning preferences. Planned courses count only once you pass them."
         actions={confirmed ? editPrefs : undefined}
       />
 
@@ -169,7 +169,7 @@ export default function PlanPage() {
       {(ready.state === "needs_program" || ready.state === "needs_academic_history") ? (
         <EmptyState icon={MapIcon} title="Finish setting up first"
           action={<Link href="/onboarding" className={buttonVariants({ variant: "primary", size: "sm" })}>Continue setup</Link>}>
-          CoursePilot plans from your confirmed academic history.
+          Coursenav plans from your confirmed academic history.
         </EmptyState>
       ) : ready.state === "needs_planning_profile" ? (
         <section aria-labelledby="personalize-heading" className="space-y-4 animate-cp-rise rounded-xl border border-border bg-surface-elevated p-4 sm:p-5">
@@ -178,7 +178,7 @@ export default function PlanPage() {
             <div className="space-y-1">
               <h2 id="personalize-heading" className="text-base font-semibold text-fg">Personalize your plan</h2>
               <p className="text-sm text-fg-secondary">
-                Tell CoursePilot how you&apos;d like your semesters to look: your pace, how many credits to aim for,
+                Tell Coursenav how you&apos;d like your semesters to look: your pace, how many credits to aim for,
                 and whether summer or winter courses are an option. It takes about a minute.
               </p>
             </div>
@@ -192,7 +192,7 @@ export default function PlanPage() {
           <ReadinessList readiness={ready} />
           {confirmed && (
             <details className="rounded border border-border">
-              <summary className="min-h-11 cursor-pointer p-3 text-sm font-medium text-fg">How CoursePilot will plan for you</summary>
+              <summary className="min-h-11 cursor-pointer p-3 text-sm font-medium text-fg">How Coursenav will plan for you</summary>
               <div className="border-t border-border p-3">
                 <ProfileSummary profile={confirmed} programName={profile.data?.program.program_name} />
               </div>

@@ -123,7 +123,7 @@ def generate_schedule(session: Session, student: Student, *, term_code: str,
             elif check.status is PrereqStatus.UNKNOWN:
                 issues.append(ScheduleIssue(
                     severity=Severity.NEEDS_CONFIRMATION, code="COURSE_ELIGIBILITY_UNKNOWN",
-                    message=f"{key}: CoursePilot cannot confirm the student may take this course.",
+                    message=f"{key}: Coursenav cannot confirm the student may take this course.",
                     courses=[key], details={"reasons": sorted(
                         set(check.prerequisite.reasons) | set(check.corequisite.reasons))}))
 

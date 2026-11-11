@@ -14,27 +14,27 @@ unchanged**.
 
 **Context.** Rutgers students plan in **Course Schedule Planner (CSP)**,
 register in **WebReg**, and track progress in **Degree Navigator (DN)**.
-CoursePilot is only useful if it agrees with what students see in those tools.
+Coursenav is only useful if it agrees with what students see in those tools.
 
 **Decision.**
 
-| Data | Preferred source | How it reaches CoursePilot | Fallback |
+| Data | Preferred source | How it reaches Coursenav | Fallback |
 |---|---|---|---|
 | Section data (term-scoped, identical for every student) | **SOC** (existing public pipeline) - see §1a | Unchanged | - |
-| A student's requirement status | **DN audit** | The student uploads a DN audit **PDF**; staged, reviewed, confirmed | CoursePilot's own Degree Engine |
+| A student's requirement status | **DN audit** | The student uploads a DN audit **PDF**; staged, reviewed, confirmed | Coursenav's own Degree Engine |
 | What the student is taking now | **WebReg schedule PDF** | The student uploads it (7.2.2 importer); staged, reviewed, confirmed | Manual section confirmation |
 
 The combined data view keeps every field's provenance. Where sources
 disagree, the disagreement is recorded and surfaced (the 7.2.4 rule) - never
-silently resolved. CoursePilot's Degree Engine stays CoursePilot's engine: a
+silently resolved. Coursenav's Degree Engine stays Coursenav's engine: a
 confirmed DN status is a **student-provided comparison and status record**,
 not a replacement for the deterministic audit.
 
 > **Revised 2026-10-24 (Phase 7.4, §10 decision 5).** Once the student
 > confirms a DN audit, DN's status **drives planning** for every *mapped*
-> requirement - DN reflects exceptions and equivalencies CoursePilot cannot
-> see. It decides a requirement's STATUS only; it never changes a CoursePilot
-> requirement rule. CoursePilot's own audit stays the cross-check, and every
+> requirement - DN reflects exceptions and equivalencies Coursenav cannot
+> see. It decides a requirement's STATUS only; it never changes a Coursenav
+> requirement rule. Coursenav's own audit stays the cross-check, and every
 > disagreement is shown as NEEDS REVIEW.
 
 ### 1a. Revision after discovery (2026-10-22): CSP is not adopted
@@ -58,14 +58,14 @@ DN and WebReg data still enter only as student uploads (trust boundary 3).
 
 ## 2. Trust boundaries (non-negotiable for every later prompt)
 
-1. **The CoursePilot server never receives, stores or proxies** any student's
+1. **The Coursenav server never receives, stores or proxies** any student's
    NetID password, Duo approval or Rutgers session cookie. Nothing in the
-   product asks a student to sign in to Rutgers through CoursePilot.
+   product asks a student to sign in to Rutgers through Coursenav.
 2. **No CSP collector exists (§1a).** Discovery re-checks only: manual,
    headed sign-in by the developer (Duo never automated), recording only
    after sign-in, files only under `COURSEPILOT_PRIVATE_DIR` (outside
    OneDrive, gitignored). A saved CSP session is never used for automated
-   collection and never reaches the CoursePilot server, database, logs or Git.
+   collection and never reaches the Coursenav server, database, logs or Git.
 3. **Per-student data (DN, WebReg) enters only as a document the student
    uploads (PDF)**: extraction → staging → student review → explicit
    confirmation, mirroring `services/transcripts/`. A document never writes
@@ -134,7 +134,7 @@ These amendments were drafted, then **declined by the owner** after
 discovery. `AUTHENTICATION.md` and `DATA_SOURCES.md` stay unchanged. Kept here
 only as the record of what was considered:
 
-- `AUTHENTICATION.md` "CoursePilot never" - to be narrowed: the **server**
+- `AUTHENTICATION.md` "Coursenav never" - to be narrowed: the **server**
   still never asks for, stores or proxies a Rutgers credential and never
   automates a sign-in; the developer-only CSP collector (trust boundary 2)
   would be the single documented exception to "scrapes an authenticated
@@ -154,7 +154,7 @@ presentational extras, while lacking SOC's minor/unit restrictions.
 Both documents must be saved with the **browser's own "Save as PDF"**
 (Chrome: Print → Destination "Save as PDF"). **Do not use "Microsoft Print
 to PDF"**: it draws every character as a shape, so the file has no text layer
-and CoursePilot cannot read it (no OCR - verified on a real WebReg print,
+and Coursenav cannot read it (no OCR - verified on a real WebReg print,
 7.2.4). The importers refuse such files with a message saying exactly this.
 
 ## 6. Discovery steps (this prompt)
@@ -224,7 +224,7 @@ past the level's maximum or (except anchors) the budget.
 Pins are hard constraints: placed in their term or nowhere, never pruned.
 Impossible pins are explained (not listed for the term, prerequisites unmet,
 already completed, every section restricted). A pinned course whose
-prerequisites CoursePilot cannot verify is placed and flagged
+prerequisites Coursenav cannot verify is placed and flagged
 (`PIN_PREREQUISITES_UNVERIFIED`); a pinned course the program excludes is
 placed with `PIN_WILL_NOT_COUNT` (e.g. 01:198:142 Data 101 for CS).
 
@@ -273,11 +273,11 @@ Answers to the Step 4 open questions, recorded as given by the product owner
 (they override Prompt 03 where the two conflict). Implementation:
 `app.services.degree_audit`, DATA_MODEL section 51.
 
-1. **Mapping DN requirements to CoursePilot nodes.** A reviewed mapping table
+1. **Mapping DN requirements to Coursenav nodes.** A reviewed mapping table
    per track and catalog year:
    `data/programs/rutgers/nb-undergrad/<year>/dn-mapping/<program-key>.json`.
    It maps DN `Requirement R<n> : Title [CODE]` (exact printed heading) to a
-   CoursePilot requirement node id, each with a `review_status`. The CS BA
+   Coursenav requirement node id, each with a `review_status`. The CS BA
    and SAS Core tables are to be built from the developer's real audit. Names
    are never matched. A DN requirement with no entry is `unmapped` - kept and
    shown, never guessed.
@@ -290,14 +290,14 @@ Answers to the Step 4 open questions, recorded as given by the product owner
    cannot classify is `needs_review` with its raw text kept. No format is
    invented; one is added when a real audit containing them is available.
 4. **Several degrees in one audit.** The student picks which degree block to
-   import. Its heading/program code is checked against their CoursePilot
+   import. Its heading/program code is checked against their Coursenav
    track. A mismatch blocks confirmation ("this audit is for X, your
-   CoursePilot track is Y"). Each block can be imported separately (what-if).
+   Coursenav track is Y"). Each block can be imported separately (what-if).
 5. **A confirmed DN status drives planning** for mapped requirements; this
-   reverses the "comparison record only" stance (§1). CoursePilot's own audit
+   reverses the "comparison record only" stance (§1). Coursenav's own audit
    is the cross-check. Disagreements are shown on the Degree page (per
    requirement), in the plan's reasons, and in an anonymous developer report
-   for encoding review. Unmapped requirements use CoursePilot's audit,
+   for encoding review. Unmapped requirements use Coursenav's audit,
    labelled "estimated".
 6. **Freshness.** The audit's "as of" is the Chrome print timestamp in the
    PDF header, else the upload time. It is stale if it predates the last
@@ -327,8 +327,8 @@ Parsing notes from discovery that the importer handles:
 |---|---|---|
 | CS mapping (decision 1) | **Not built.** `sas-198-ba.json` / `sas-198-bs.json` exist with no entries, so every CS DN requirement is `unmapped`. | The developer's two real prints are "The SAS Core Curriculum (NB) (Summer 2019)" and "Undeclared (NB) (Fall 2003)". The second has 0 requirements, because DN has no declared major on record. Neither has a CS block, and a CS mapping without a CS print would be name-matching. A DN "What-If" audit for Computer Science, or a print after the major is declared, would supply the headings. |
 | SAS Core mapping | 6 requirements (R1-R6 → CORE_CC, CORE_NS, CORE_HSA, CORE_AH, CORE_WC, CORE_QFR) and 9 goal codes mapped, `review_status: pending_review` (used, and labelled "mapping not yet reviewed"). | Built from the real audit's exact headings; needs a named reviewer to mark `reviewed`. |
-| Goal codes (decision 7) | The real audit has **14** goal codes (CCO, CCD, NS, HST, SCL, AHo, AHp, AHq, AHr, WC, WCr, WCd, QQ, QR) plus the requirement code CC - not 13. AHo/AHp/AHq/AHr are `unmapped` (CoursePilot has one CORE_AH node for all four). NS is `unmapped` as a goal (it is R2's own multi-course pool; R2 carries CORE_NS). | One-to-one rule. |
-| DN "not satisfied" vs CoursePilot "met" | Shown as NEEDS REVIEW everywhere, but planning does **not** lower CoursePilot's status. | DN's "Needs" line does not say which course is missing, so planning would have to guess. DN "satisfied" and "in progress" do lift a node. |
+| Goal codes (decision 7) | The real audit has **14** goal codes (CCO, CCD, NS, HST, SCL, AHo, AHp, AHq, AHr, WC, WCr, WCd, QQ, QR) plus the requirement code CC - not 13. AHo/AHp/AHq/AHr are `unmapped` (Coursenav has one CORE_AH node for all four). NS is `unmapped` as a goal (it is R2's own multi-course pool; R2 carries CORE_NS). | One-to-one rule. |
+| DN "not satisfied" vs Coursenav "met" | Shown as NEEDS REVIEW everywhere, but planning does **not** lower Coursenav's status. | DN's "Needs" line does not say which course is missing, so planning would have to guess. DN "satisfied" and "in progress" do lift a node. |
 | Final-grade dates (decision 6) | A cited table (`app/core/grade_calendar.py`) from the Registrar's Spring and Fall 2026 calendars. A term without a published date is not used. | Never estimated. |
 | Print timestamp time zone | Read as America/New_York. | Chrome prints the student's local time; Rutgers NB students are assumed Eastern. |
 | Document retention | The PDF is deleted as soon as extraction ends (success or failure) - the transcript rule. | Stricter than "after confirmation or expiry". |
@@ -392,7 +392,7 @@ Built:
 
 For review:
 
-- **DN "not satisfied" vs CoursePilot "met"** still does not reopen the node
+- **DN "not satisfied" vs Coursenav "met"** still does not reopen the node
   (section 10a). Prompt 05's wording would reverse that; left as decided.
 - **Degree Engine, EXCLUSIVE programs.** The credit-requirement pass checks
   only the requirement's own scope, so under an all-exclusive policy a course
@@ -403,5 +403,5 @@ For review:
   only. Coverage stays where it was. Broader versions were measured and
   reverted (DATA_MODEL 53.3). See the plan_quality numbers in the PR.
 - **B.S. science data gap.** The Physics 206 and Chemistry 171 labs carry
-  co-requisite wording CoursePilot cannot evaluate, so no B.S. science
+  co-requisite wording Coursenav cannot evaluate, so no B.S. science
   sequence can be completed. The planner may start two candidate sequences.

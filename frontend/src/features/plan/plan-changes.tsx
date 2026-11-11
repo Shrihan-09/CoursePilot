@@ -38,7 +38,7 @@ import type {
 
 const GATE_TEXT: Record<string, string> = {
   prerequisites_not_met: "prerequisites not met by then",
-  prerequisites_need_confirmation: "prerequisites CoursePilot can't verify",
+  prerequisites_need_confirmation: "prerequisites Coursenav can't verify",
   needs_a_corequisite_in_the_same_term: "needs a co-requisite in the same semester",
   already_taken: "already on your record",
   already_planned: "already in your plan",
@@ -268,7 +268,7 @@ export function CourseOptionsSheet({ target, onClose, changes }: {
         onClose();
         assistant?.open({ term: target.term, course: target.course,
                           draft: `Help me pick something instead of ${target.course}` });
-      }}>Ask CoursePilot about alternatives</Button>
+      }}>Ask Coursenav about alternatives</Button>
       {q.isPending ? <Skeleton className="h-64" /> : q.isError ? (
         <Alert tone="danger" title="Options couldn't be loaded">{q.error instanceof ApiError ? q.error.message : "Try again."}</Alert>
       ) : o && (
@@ -284,7 +284,7 @@ export function CourseOptionsSheet({ target, onClose, changes }: {
             <Alert tone="info" title={o.locked_reason === "anchor" ? "Required here" : "Locked by you"}>
               {o.locked_reason === "anchor"
                 ? "This course is an anchor (a required retake or one of your Musts), so it has no swap. It can move to another valid semester."
-                : "Unlock it to see other options. CoursePilot never replaces a course you locked."}
+                : "Unlock it to see other options. Coursenav never replaces a course you locked."}
             </Alert>
           )}
           {o.groups.map((g) => (
@@ -377,7 +377,7 @@ export function YourChoicesCard({ changes, revision = 0, onBuild }: { changes: P
     </div>
     {expanded && <div className="divide-y divide-border">
       {q.data.questions.map((x) => <div key={key(x)} className="flex min-w-0 flex-wrap items-center justify-between gap-2 py-2 text-sm">
-        <p className="min-w-0 flex-1 basis-40 [overflow-wrap:anywhere]">{fixed(x) ? <><Lock aria-hidden className="mr-1 inline size-3" />{x.prompt.replace(/^Your choice:/, "Already set:")}</> : <>{x.kind === "alternative" ? x.prompt : `${x.groups[0]?.requirement_name ?? "Core slot"} / pick 1`}<span className="block text-xs text-fg-secondary">CoursePilot picked {x.title ?? x.alternatives.find((a) => x.recommended.includes(a.code))?.name ?? "the recommended option"}</span></>}</p>
+        <p className="min-w-0 flex-1 basis-40 [overflow-wrap:anywhere]">{fixed(x) ? <><Lock aria-hidden className="mr-1 inline size-3" />{x.prompt.replace(/^Your choice:/, "Already set:")}</> : <>{x.kind === "alternative" ? x.prompt : `${x.groups[0]?.requirement_name ?? "Core slot"} / pick 1`}<span className="block text-xs text-fg-secondary">Coursenav picked {x.title ?? x.alternatives.find((a) => x.recommended.includes(a.code))?.name ?? "the recommended option"}</span></>}</p>
         {!fixed(x) && <div className="flex gap-1"><Button size="sm" variant="ghost" onClick={() => { setKept([...kept, key(x)]); setReview(null); }}>{kept.includes(key(x)) ? "Kept" : "Keep"}</Button><Button size="sm" variant="secondary" onClick={() => { setSelected(x); setGroupIndex(0); setMore(false); }}>Change</Button></div>}
       </div>)}
     </div>}

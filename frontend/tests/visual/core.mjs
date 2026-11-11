@@ -178,7 +178,7 @@ for (const scheme of ["light", "dark"]) {
   await page.getByRole("button", { name: "Add" }).click();
   await shot(page, `${scheme}-personalize-filled`, { full: true });
   await page.getByRole("button", { name: "Review" }).click();
-  await page.getByText("Here's how CoursePilot will plan for you").waitFor();
+  await page.getByText("Here's how Coursenav will plan for you").waitFor();
   await shot(page, `${scheme}-personalize-review`, { full: true });
   await page.setViewportSize(VIEWPORTS.narrow);
   await shot(page, `${scheme}-personalize-review-narrow`, { full: true });
@@ -193,7 +193,7 @@ for (const scheme of ["light", "dark"]) {
   const startOptions = await page.locator("#" + (await page.getByLabel("Plan starting semester").getAttribute("id")) + " option").allTextContents();
   expect(`${scheme} no past semester is offered`, !startOptions.some((o) => /2025|Spring 2026|Fall 2026/.test(o)), startOptions.join(","));
   await page.getByRole("button", { name: "Build my plan" }).click();
-  await page.getByText("CoursePilot is building your plan").waitFor();
+  await page.getByText("Coursenav is building your plan").waitFor();
   await page.waitForTimeout(600);
   await shot(page, `${scheme}-plan-generating`, { audit: true });
   const planReady = (p) => p.getByRole("heading", { name: /semesters? from/ }).waitFor({ timeout: 90000 });

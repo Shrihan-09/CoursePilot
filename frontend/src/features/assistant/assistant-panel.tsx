@@ -11,6 +11,7 @@ import { Dialog, ToastProvider, Tooltip, useToast } from "@/components/ui/overla
 import { AssistantChat } from "@/features/assistant/assistant-chat";
 import { api } from "@/lib/api";
 import { termLabel } from "@/lib/academic/vocabulary";
+import { APP_NAME } from "@/lib/brand";
 import type { Conversation } from "@/types/assistant";
 
 export type AssistantContext = { term?: string; course?: string; draft?: string; builderTerm?: string; selection?: string[]; onAddCourse?: (course: string) => void };
@@ -105,11 +106,11 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   // The active id is shared by the drawer and the full Assistant page.
   const active = conversation ?? status.data?.conversation_id;
   const headerButton = (<div className="absolute right-4 top-2 z-40" data-testid="assistant-header-button">
-      <Tooltip content="Ask CoursePilot (Ctrl+/)" below>
-        <button ref={trigger} type="button" aria-label="Ask CoursePilot (Ctrl+/)"
+      <Tooltip content={`Ask ${APP_NAME} (Ctrl+/)`} below>
+        <button ref={trigger} type="button" aria-label={`Ask ${APP_NAME} (Ctrl+/)`}
                 aria-haspopup="dialog" aria-expanded={isOpen}
                 className="assistant-glow flex size-10 items-center justify-center rounded-lg border"
-                data-pulse={!seen ? "true" : "false"} title="Ask CoursePilot (Ctrl+/)" onClick={() => isOpen ? close() : open()}>
+                data-pulse={!seen ? "true" : "false"} title={`Ask ${APP_NAME} (Ctrl+/)`} onClick={() => isOpen ? close() : open()}>
           <Sparkles aria-hidden className="size-5" />
         </button>
       </Tooltip>
@@ -118,11 +119,11 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
                                   select, isOpen, busy, setBusy }}>
     {children}
 
-    <dialog ref={ref} aria-label="CoursePilot assistant" onCancel={(e) => { e.preventDefault(); close(); }}
+    <dialog ref={ref} aria-label={`${APP_NAME} assistant`} onCancel={(e) => { e.preventDefault(); close(); }}
             className="assistant-drawer fixed inset-y-0 left-auto right-0 m-0 h-dvh max-h-none w-full max-w-none border-l border-border bg-surface-elevated p-0 text-fg shadow-elevated backdrop:bg-overlay/30 sm:w-[400px]">
       {(isOpen || (hasOpened && !fullPage)) && <ToastProvider contained><div className="flex h-full min-w-0 flex-col">
         <div className="flex shrink-0 items-center justify-between border-b border-border px-3 py-2">
-          <h2 className="text-sm font-semibold">CoursePilot</h2>
+          <h2 className="text-sm font-semibold">{APP_NAME}</h2>
           <div className="flex items-center gap-2">
             <Link href="/assistant" className="inline-flex items-center gap-1 text-xs" aria-disabled={busy} onClick={(e) => {
               if (busy) { e.preventDefault(); return; }

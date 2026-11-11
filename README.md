@@ -1,6 +1,13 @@
-# CoursePilot
+# Coursenav
+
+*Formerly CoursePilot.* The product was renamed for public launch; the
+repository, package, database and container names still say `coursepilot`
+(see "Kept internal names" in [docs/pr/PR_BODY_launch_prep.md](docs/pr/PR_BODY_launch_prep.md)).
 
 Rutgers degree-planning and schedule-optimization platform.
+
+> Coursenav is a student project and is not affiliated with or endorsed by
+> Rutgers University.
 
 > **Status: a tested backend and a working student web app (Degree, Plan, Schedule).**
 >
@@ -37,7 +44,7 @@ That distinction drives the whole design:
 
 A language model is good at interpreting a vague question, weighing tradeoffs
 and explaining a plan. It is not a reliable authority on whether a specific
-student has a specific prerequisite, so CoursePilot never lets it be one. Every
+student has a specific prerequisite, so Coursenav never lets it be one. Every
 academic claim is computed by ordinary, testable Python from public Rutgers
 data and the student's own record. A model may only *explain* a result the
 engine produced.
@@ -163,7 +170,7 @@ history without the student's confirmation. See
 - **Saved plans.** A plan is saved with fingerprints of its inputs, and is
   flagged out of date when your record, program, its rules or the Rutgers data
   change.
-- **Unknowns are labelled.** Conditions CoursePilot cannot evaluate are
+- **Unknowns are labelled.** Conditions Coursenav cannot evaluate are
   labelled as such, never as failures.
 - **Live availability.** It is shown apart from schedule validity.
 - **Phase 7.2.1:**
@@ -227,7 +234,7 @@ authenticated account's own record; no request can name another student.
   - See [DATA_MODEL.md §46.6](docs/DATA_MODEL.md).
 - **Production deployment.** Hosting, real OIDC configuration and Apple push
   credentials.
-- **Registration.** By design: CoursePilot never logs in to Rutgers systems
+- **Registration.** By design: Coursenav never logs in to Rutgers systems
   (CAS, WebReg, Degree Navigator), never asks for a Rutgers password, and never
   registers anyone.
 
@@ -265,13 +272,13 @@ Every Rutgers fact in this repository comes from a public Rutgers source:
 
 Each fact carries its provenance (`data_source`). Requirement encodings stay
 **pending review** until a person has checked them against the official prose.
-Where Rutgers does not say something, CoursePilot reports *unknown*; it never
+Where Rutgers does not say something, Coursenav reports *unknown*; it never
 guesses.
 
 ---
 
 ## Disclaimer
 
-CoursePilot is a planning aid. It is not affiliated with, endorsed by, or an
+Coursenav is a planning aid. It is not affiliated with, endorsed by, or an
 official service of Rutgers University. A student's official Rutgers advising
 record and their academic advisor are authoritative.

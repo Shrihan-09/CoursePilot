@@ -34,7 +34,7 @@ Rutgers SOC API
       |          fetchers/soc.py
    Parser       JSON -> RawSocCourse; reports bad records, never repairs them
       |          parsers/soc.py
-  Normalizer    Rutgers vocabulary -> CoursePilot vocabulary
+  Normalizer    Rutgers vocabulary -> Coursenav vocabulary
       |          normalizers/soc.py
   Validator     cross-field + cross-record checks; loud, specific rejections
       |          validators/course.py

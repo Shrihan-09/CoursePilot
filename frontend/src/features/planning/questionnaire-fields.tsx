@@ -380,7 +380,7 @@ export function HonorsQuestion({ value, onChange }: ValueProps) {
   return (
     <fieldset className="space-y-1">
       <legend className="text-base font-semibold text-fg">Are you in an honors program? (optional)</legend>
-      <p className="text-sm text-fg-muted">Courses open only to honors programs are planned only if you are in one. CoursePilot can&apos;t verify membership, so they still need your confirmation.</p>
+      <p className="text-sm text-fg-muted">Courses open only to honors programs are planned only if you are in one. Coursenav can&apos;t verify membership, so they still need your confirmation.</p>
       <Radio name="honors" label="Yes" checked={value.honors === true} onChange={() => onChange({ ...value, honors: true })} />
       <Radio name="honors" label="No" checked={value.honors === false} onChange={() => onChange({ ...value, honors: false })} />
       <Radio name="honors" label="Skip (treated as no)" checked={value.honors === null} onChange={() => onChange({ ...value, honors: null })} />

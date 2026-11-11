@@ -21,7 +21,7 @@ export interface SetupStep {
 
 export const SETUP_STEPS: SetupStep[] = [
   { key: "welcome", title: "Welcome", why: "", skippable: false },
-  { key: "about", title: "About you", why: "Your program decides which requirements CoursePilot checks.", skippable: false },
+  { key: "about", title: "About you", why: "Your program decides which requirements Coursenav checks.", skippable: false },
   { key: "record", title: "Bring your record", why: "Your real courses make the plan start from where you are.", skippable: true },
   { key: "intensity", title: "How intense?", why: "This sets how many credits and major courses go in each semester.", skippable: true },
   { key: "week", title: "Your week", why: "Time you spend elsewhere lowers how much each semester holds.", skippable: true },

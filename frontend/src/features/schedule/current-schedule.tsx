@@ -42,7 +42,7 @@ function SectionPicker({ course, onClose }: { course: CurrentCourse; onClose: ()
       open
       onClose={onClose}
       title={`Your section of ${course.course}`}
-      description="Choose the section you're actually registered in. CoursePilot doesn't guess it."
+      description="Choose the section you're actually registered in. Coursenav doesn't guess it."
       footer={<>
         <Button variant="secondary" onClick={onClose}>Cancel</Button>
         <Button variant="primary" disabled={!index} loading={confirm.isPending} onClick={() => confirm.mutate()}>Confirm section</Button>
@@ -51,7 +51,7 @@ function SectionPicker({ course, onClose }: { course: CurrentCourse; onClose: ()
       {sections.isPending ? <Skeleton className="h-40" /> : sections.isError ? (
         <p className="text-sm text-danger">The sections couldn&apos;t be loaded.</p>
       ) : list.length === 0 ? (
-        <p className="text-sm text-fg-secondary">CoursePilot has no Rutgers sections for this course in {termLabel(course.term_code)}.</p>
+        <p className="text-sm text-fg-secondary">Coursenav has no Rutgers sections for this course in {termLabel(course.term_code)}.</p>
       ) : (
         <fieldset className="max-h-[50vh] space-y-2 overflow-y-auto">
           <legend className="sr-only">Sections</legend>
@@ -119,7 +119,7 @@ function CurrentScheduleContent() {
     <div className="space-y-5">
       <p className="text-sm text-fg-secondary">
         {cs.term_label}: the courses on your record as in progress. Only sections you confirm appear on the calendar -
-        CoursePilot never infers a section from a course.
+        Coursenav never infers a section from a course.
       </p>
       {cs.other_in_progress_terms.length > 0 && (
         <Alert tone="info">
@@ -128,7 +128,7 @@ function CurrentScheduleContent() {
       )}
       {!cs.term_published && (
         <Alert tone="warning" title={`No Rutgers section data for ${cs.term_label}`}>
-          CoursePilot knows your courses but can&apos;t show or confirm their sections for this term.
+          Coursenav knows your courses but can&apos;t show or confirm their sections for this term.
         </Alert>
       )}
 

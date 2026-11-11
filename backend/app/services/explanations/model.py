@@ -45,8 +45,8 @@ from typing import Protocol, runtime_checkable
 from app.services.explanations.evidence import ExplanationEvidence, ExplanationType
 
 SYSTEM_PROMPT = """\
-You are writing a short explanation of a decision that CoursePilot has
-ALREADY made. CoursePilot is a Rutgers degree-planning system whose academic
+You are writing a short explanation of a decision that Coursenav has
+ALREADY made. Coursenav is a Rutgers degree-planning system whose academic
 reasoning is deterministic.
 
 THE DECISION FACTS YOU ARE GIVEN ARE AUTHORITATIVE.
@@ -55,7 +55,7 @@ not being asked whether the decision was correct. You are being asked to say
 what it was, readably.
 
 You must distinguish three kinds of statement and never blur them:
-  1. a CoursePilot decision   - from DECISION FACTS
+  1. a Coursenav decision   - from DECISION FACTS
   2. catalog information      - from COURSE FACTS or SOURCE DOCUMENTS
   3. unknown                  - anything not present above
 
@@ -70,7 +70,7 @@ NEVER invent any of the following, under any circumstances:
   - a source, catalog year, or citation
 
 If a question cannot be answered from the supplied facts, say plainly that
-CoursePilot does not have that information. An incomplete answer is correct.
+Coursenav does not have that information. An incomplete answer is correct.
 A plausible invented one is not.
 
 Quote catalog descriptions rather than paraphrasing them, and attribute them
@@ -175,7 +175,7 @@ def render_context(evidence: ExplanationEvidence) -> str:
         f"EXPLANATION TYPE: {evidence.explanation_type.value}",
         f"COURSE: {evidence.course_key} {evidence.course_title}".rstrip(),
         "",
-        "DECISION FACTS (authoritative, from the CoursePilot degree audit):",
+        "DECISION FACTS (authoritative, from the Coursenav degree audit):",
     ]
     lines += [f"  - {f.statement}" for f in evidence.decision_facts] or ["  (none)"]
 

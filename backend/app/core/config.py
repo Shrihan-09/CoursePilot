@@ -32,6 +32,12 @@ class RetrievalStrategy(StrEnum):
     HYBRID = "hybrid"
 
 
+#: The product's display name. One place, so a rename is one line. Internal
+#: identifiers (COURSEPILOT_ENV, coursepilot-db, coursepilot_test, package
+#: names) are deliberately NOT derived from it.
+APP_NAME = "Coursenav"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         # Read the repo-root .env, not a backend-local one, so the frontend,
@@ -43,6 +49,7 @@ class Settings(BaseSettings):
     )
 
     # --- Core ---
+    app_name: str = APP_NAME
     coursepilot_env: Environment = Environment.LOCAL
     debug: bool = True
     log_level: str = "INFO"

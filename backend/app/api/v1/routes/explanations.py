@@ -192,7 +192,7 @@ def _build_explanation(
     "/recommendation",
     response_model=ExplanationResponse,
     status_code=status.HTTP_200_OK,
-    summary="Explain a decision CoursePilot has already made",
+    summary="Explain a decision Coursenav has already made",
 )
 async def explain_recommendation(
     payload: RecommendationExplanationRequest,

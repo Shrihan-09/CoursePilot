@@ -493,7 +493,7 @@ def next_term_choices(ctx: OptionsContext) -> tuple[str | None, list[ChoiceQuest
                                    + ("Core course" if any(c.startswith("CORE") for c in
                                                            [g.requirement_code for g in groups])
                                       else "course")
-                                   + ". Which do you want to knock out first? CoursePilot "
+                                   + ". Which do you want to knock out first? Coursenav "
                                      f"picked {pc.course} ("
                                      f"{', '.join(opts.requirements) or 'a requirement'})."),
                     course=pc.course, title=pc.title, groups=groups,
