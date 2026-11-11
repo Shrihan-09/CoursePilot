@@ -344,11 +344,9 @@ def rules_fingerprint(session: Session, program_version_id: uuid.UUID) -> str:
         ).all(),
     )
 
-    for rule in session.scalars(
-        select(ProgramRule)
-        .where(ProgramRule.program_version_id == program_version_id)
-        .order_by(ProgramRule.code)
-    ):
+    # Prompt 08 B1: the school-level rules of composed components too.
+    from app.services.academic_context import composed_rules
+    for rule in composed_rules(session, version):
         _hash_entity(hasher, rule)
 
     return hasher.hexdigest()

@@ -72,6 +72,37 @@ def degree_total(school_code: str | None, catalog_year: str | None) -> DegreeTot
     return TOTALS.get((school_code or "", catalog_year or ""))
 
 
+def degree_total_for(session, version) -> DegreeTotalSource | None:
+    """The sourced degree total that governs `version` (Prompt 08 B1).
+
+    In order: the program's own total (School of Engineering: "120 to 132
+    credits ... depending on the major"), then a composed school component's
+    total (RBS, SEBS: each school's "Credits and Residency" page), then the
+    registry above. None when no source states one - a total is never assumed.
+    """
+    from app.services.academic_context import school_requirement_sets
+
+    school = version.program.school if version.program else None
+    code = school.code if school else ""
+    if version.degree_credits_min is not None:
+        return _from_record(code, version.catalog_year, version.degree_credits_min,
+                            version.degree_credits_source, version.source_url)
+    for component in school_requirement_sets(session, version):
+        if component.degree_credits_min is not None:
+            return _from_record(code, version.catalog_year, component.degree_credits_min,
+                                component.degree_credits_source, component.source_url)
+    return degree_total(code, version.catalog_year)
+
+
+def _from_record(school_code, catalog_year, credits, source, url) -> DegreeTotalSource:
+    source = source or {}
+    return DegreeTotalSource(
+        school_code=school_code, catalog_year=catalog_year, credits=Decimal(credits),
+        title=source.get("title", "Degree credit total"), url=source.get("url") or url or "",
+        quote=source.get("quote", ""), retrieved_at=source.get("retrieved_at", ""),
+        archive=source.get("archive", ""), archive_sha256=source.get("archive_sha256", ""))
+
+
 def spread_electives(terms: list[tuple[Decimal, Decimal, Decimal]], need: Decimal, *,
                      early: bool) -> list[Decimal]:
     """Free-elective credits per term.
@@ -132,4 +163,5 @@ def _level_up(terms, used, out, totals, need: Decimal) -> Decimal:
     return need
 
 __all__ = ["REQUIREMENT_CODE", "SAS_2026_2027", "TOTALS", "DegreeTotalSource", "degree_total",
+           "degree_total_for",
            "spread_electives"]

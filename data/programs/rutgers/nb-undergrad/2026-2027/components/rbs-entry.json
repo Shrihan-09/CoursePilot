@@ -1,0 +1,70 @@
+{
+  "_README": [
+    "ENTRY STAGE: what a pre-business student completes before admission to Rutgers Business School-New Brunswick (Prompt 08 B1).",
+    "Linked to each RBS program version. While a student is not VERIFIED as admitted (StudentAcademicEvidence kind 'admission', key 'rbs-nb-admission'), the plan includes these requirements and labels every business course 'after admission to RBS'. Completing them never grants admission.",
+    "The catalog names the four foundational ('eligibility') courses by TITLE only. Their course numbers, grade minimums, GPA and application timing are on myRBS / business.rutgers.edu pages that returned HTTP 403 to a plain GET, so each course list is UNKNOWN here. Course numbers that appear on archived pages only as PREREQUISITES are listed as review hints, never encoded."
+  ],
+  "format": "component/1",
+  "component": {
+    "code": "rbs-entry",
+    "name": "Before admission to RBS-New Brunswick (foundational courses)",
+    "kind": "entry_stage",
+    "composition": "linked",
+    "school": {"code": "RBSNB", "name": "Rutgers Business School-New Brunswick", "campus_code": "NB"},
+    "catalog_year": "2026-2027",
+    "definition_version": "1",
+    "requirement_system": "entry",
+    "sharing_policy": "share_across_systems",
+    "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/programs-majors-minors/programs",
+    "stage": {"code": "rbs-nb-admission", "label": "after admission to RBS"}
+  },
+  "sources": [
+    {"id": "rbs-catalog-programs", "role": "catalog"},
+    {"id": "rbs-catalog-admissions", "role": "catalog"},
+    {"id": "rbs-transfer-eligibility", "role": "department", "note": "HTTP 403 to a plain GET on 2026-11-11: open evidence gap."},
+    {"id": "myrbs-policies-procedures", "role": "department", "note": "HTTP 403 to a plain GET on 2026-11-11: open evidence gap."}
+  ],
+  "requirements": [
+    {
+      "code": "RBS_FOUNDATIONS", "name": "Foundational courses before admission to RBS", "requirement_type": "all_of", "parent": null, "sort_order": 0,
+      "quotes": [
+        {"source": "rbs-catalog-programs", "quote": "The following are the four foundational courses that students should complete during their first three (four at most) semesters:"},
+        {"source": "rbs-catalog-programs", "quote": "Foundational Courses (12-13 credits)"},
+        {"source": "rbs-catalog-programs", "quote": "In addition to the four eligibility courses and courses that are required for the major"}
+      ]
+    },
+    {"code": "RBS_FOUNDATION_MICRO", "name": "Introduction to Microeconomics", "requirement_type": "choose_n", "parent": "RBS_FOUNDATIONS", "sort_order": 0,
+     "min_count": 1, "course_list_unknown": true, "notes": "Named by title only in the catalog; course number not stated on an archived source.",
+     "quotes": [{"source": "rbs-catalog-programs", "quote": "Introduction to Microeconomics (3)"}]},
+    {"code": "RBS_FOUNDATION_MACRO", "name": "Introduction to Macroeconomics", "requirement_type": "choose_n", "parent": "RBS_FOUNDATIONS", "sort_order": 1,
+     "min_count": 1, "course_list_unknown": true, "notes": "Named by title only in the catalog; course number not stated on an archived source.",
+     "quotes": [{"source": "rbs-catalog-programs", "quote": "Introduction to Macroeconomics (3)"}]},
+    {"code": "RBS_FOUNDATION_CALCULUS", "name": "Calculus", "requirement_type": "choose_n", "parent": "RBS_FOUNDATIONS", "sort_order": 2,
+     "min_count": 1, "course_list_unknown": true, "notes": "Named by title only in the catalog ('Calculus (3-4)'); which calculus courses qualify is not stated on an archived source.",
+     "quotes": [{"source": "rbs-catalog-programs", "quote": "Calculus (3-4)"}]},
+    {"code": "RBS_FOUNDATION_STATISTICS", "name": "Introductory Statistics", "requirement_type": "choose_n", "parent": "RBS_FOUNDATIONS", "sort_order": 3,
+     "min_count": 1, "course_list_unknown": true, "notes": "Named by title only in the catalog; course number not stated on an archived source.",
+     "quotes": [{"source": "rbs-catalog-programs", "quote": "Introductory Statistics (3)"}]}
+  ],
+  "school_rules": [],
+  "rules_not_yet_modeled": [
+    {"rule": "Admission criteria for school-to-school transfer into RBS-NB (grades in the foundational courses, GPA, credits completed, application timing).", "why_not": "The catalog defers them online; the department pages returned HTTP 403. Unknown - and admission is never inferred from course completion.", "source": "rbs-catalog-admissions", "quote": "Students who wish to transfer to Rutgers Business School: Undergraduate-New Brunswick from other Rutgers University schools should use the online application . More information about the requirements can be found online."},
+    {"rule": "Timing: the foundational courses within the first three (four at most) semesters.", "why_not": "Guidance on timing ('should complete'), not a completion rule; plans keep the courses but do not impose a deadline."},
+    {"rule": "Students follow the major requirements in effect at their admission into the major.", "why_not": "Cohort applicability (entered_school_from_term) is recorded on the business core; the admission term itself is a verified-evidence fact, never inferred.", "source": "rbs-catalog-programs", "quote": "Students must complete the requirements of the major that are in effect at the time of their admission into the major."}
+  ],
+  "unknowns": [
+    "Course numbers for the four foundational courses. Archived pages mention 01:220:102, 01:220:103, 01:640:135 and 01:960:285 only as PREREQUISITES of business courses (phase08a-rbs-bait, phase08a-myrbs-bait): a review hint, not encoded.",
+    "Grade and GPA thresholds for admission to RBS (myRBS, HTTP 403)."
+  ],
+  "review_questions": [
+    "From an official RBS source, which courses satisfy each foundational course (microeconomics, macroeconomics, calculus, introductory statistics)?",
+    "Do the entry requirements differ for first-year direct admits, school-to-school and external transfers? (Only the school-to-school route is a pre-business stage.)"
+  ],
+  "conflicts": [],
+  "curation": {
+    "curated_by": "manual encoding, Prompt 08 B1 (Claude Code session, 2026-11-11)",
+    "encoded_at": "2026-11-11",
+    "curation_status": "curated_from_prose",
+    "extractor_version": "manual-encoding/2"
+  }
+}

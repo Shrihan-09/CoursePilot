@@ -158,7 +158,9 @@ def find_version(session: Session, definition: dict) -> ProgramVersion | None:
         .where(School.code == definition["school"]["code"], Program.code == pdef["code"],
                Program.degree_type == pdef["degree_type"],
                Program.variant == pdef.get("variant", ""),
-               ProgramVersion.catalog_year == vdef["catalog_year"]))
+               ProgramVersion.catalog_year == vdef["catalog_year"],
+               # Prompt 08 B1: class-scoped curricula of one program and year.
+               ProgramVersion.curriculum_key == vdef.get("curriculum_key", "")))
 
 
 @dataclass(slots=True)

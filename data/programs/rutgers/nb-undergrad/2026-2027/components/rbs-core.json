@@ -1,0 +1,91 @@
+{
+  "_README": [
+    "Rutgers Core as Rutgers Business School-New Brunswick states it in the 2026-2027 catalog, composed with every RBS-NB program (Prompt 08 B1).",
+    "The catalog gives the STRUCTURE (two Contemporary Challenges courses, six Areas of Inquiry courses, five Cognitive Skills and Processes courses; at least 3 credits each; degree credit; no Pass/No Credit) and defers the course lists: 'Students should see Degree Navigator for specific courses and conditions.'",
+    "So the eligible-course lists are UNKNOWN here (course_list_unknown). They are not borrowed from SAS or SEBS: the RBS page does not state which goal codes fill which category. Plans show these requirements as open with that reason."
+  ],
+  "format": "component/1",
+  "component": {
+    "code": "rbs-core",
+    "name": "Rutgers Core (RBS-New Brunswick)",
+    "kind": "gen_ed",
+    "composition": "school",
+    "school": {"code": "RBSNB", "name": "Rutgers Business School-New Brunswick", "campus_code": "NB"},
+    "catalog_year": "2026-2027",
+    "definition_version": "1",
+    "requirement_system": "core",
+    "sharing_policy": "exclusive",
+    "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/programs-majors-minors/programs",
+    "degree_credits": {
+      "credits": 120,
+      "capture": "rbs-catalog-credits-residency",
+      "title": "RBS-NB Credits and Residency, 2026-2027 catalog",
+      "quote": "All students must earn at least 120 degree credits, with a minimum cumulative grade-point average of 2.000."
+    }
+  },
+  "sources": [
+    {"id": "rbs-catalog-programs", "role": "catalog"},
+    {"id": "rbs-catalog-credits-residency", "role": "catalog"},
+    {"id": "myrbs-degree-requirements", "role": "department", "note": "HTTP 403 to a plain GET on 2026-11-11: open evidence gap."},
+    {"id": "myrbs-policies-procedures", "role": "department", "note": "HTTP 403 to a plain GET on 2026-11-11: open evidence gap."}
+  ],
+  "requirements": [
+    {
+      "code": "RBS_CORE", "name": "Rutgers Core (general education)", "requirement_type": "all_of", "parent": null, "sort_order": 0,
+      "graded_only": true, "min_course_credits": 3,
+      "quotes": [
+        {"source": "rbs-catalog-programs", "quote": "Rutgers Core (general education) Requirements (minimum 30 credits)"},
+        {"source": "rbs-catalog-programs", "quote": "all Rutgers Business School: Undergraduate-New Brunswick students must complete the following Rutgers core curriculum requirements:"},
+        {"source": "rbs-catalog-programs", "quote": "All courses must be at least 3 credits and must be taken for degree credit. Pass/no credit courses may not be used to fulfill these requirements. Students should see Degree Navigator for specific courses and conditions."}
+      ]
+    },
+    {
+      "code": "RBS_CORE_CC", "name": "Contemporary Challenges", "requirement_type": "choose_n", "parent": "RBS_CORE", "sort_order": 0,
+      "min_count": 2, "course_list_unknown": true,
+      "notes": "Course list not stated in the catalog (deferred to Degree Navigator).",
+      "quotes": [{"source": "rbs-catalog-programs", "quote": "1) Contemporary Challenges (two courses)"}]
+    },
+    {
+      "code": "RBS_CORE_AOI", "name": "Areas of Inquiry", "requirement_type": "choose_n", "parent": "RBS_CORE", "sort_order": 1,
+      "min_count": 6, "course_list_unknown": true,
+      "notes": "Course list and any per-area distribution not stated in the catalog (deferred to Degree Navigator).",
+      "quotes": [{"source": "rbs-catalog-programs", "quote": "2) Areas of Inquiry (six courses)"}]
+    },
+    {
+      "code": "RBS_CORE_CSP", "name": "Cognitive Skills and Processes", "requirement_type": "choose_n", "parent": "RBS_CORE", "sort_order": 2,
+      "min_count": 5, "course_list_unknown": true,
+      "notes": "Course list and any per-skill distribution not stated in the catalog (deferred to Degree Navigator).",
+      "quotes": [{"source": "rbs-catalog-programs", "quote": "3) Cognitive Skills and Processes (five courses)."}]
+    }
+  ],
+  "school_rules": [
+    {
+      "code": "RBS_MIN_GPA", "name": "Cumulative GPA of at least 2.000", "rule_type": "min_gpa", "min_gpa": 2.0, "gpa_scope": "cumulative",
+      "quotes": [{"source": "rbs-catalog-credits-residency", "quote": "All students must earn at least 120 degree credits, with a minimum cumulative grade-point average of 2.000."}]
+    },
+    {
+      "code": "RBS_45_BUSINESS_CREDITS_NB", "name": "45 business credits at Rutgers-New Brunswick", "rule_type": "residency", "is_evaluable": false,
+      "not_evaluable_reason": "Counts business CREDITS taken at Rutgers-New Brunswick; which courses are 'business credits' is not defined on the archived page, and attendance campus is not certified on the record.",
+      "quotes": [{"source": "rbs-catalog-credits-residency", "quote": "Rutgers Business School: Undergraduate-New Brunswick (RBS-UNB) students must complete 45 business credits at Rutgers University-New Brunswick."}]
+    }
+  ],
+  "rules_not_yet_modeled": [
+    {"rule": "Which courses fill each Rutgers Core category for RBS students, and any per-goal distribution inside a category.", "why_not": "The catalog defers to Degree Navigator; the myRBS pages returned HTTP 403. Recorded as unknown, never borrowed from another school."},
+    {"rule": "Rutgers Core minimum of 30 credits.", "why_not": "Thirteen courses of at least 3 credits each already exceed 30; no separate credit node is needed until a source states otherwise."},
+    {"rule": "Students matriculated in RBS-UNB must receive written prior approval to take courses outside of Rutgers-New Brunswick.", "why_not": "An approval process, not a degree requirement CoursePilot can check.", "source": "rbs-catalog-credits-residency", "quote": "Students matriculated in RBS-UNB must receive written prior approval to take courses outside of Rutgers-New Brunswick."}
+  ],
+  "unknowns": [
+    "Course lists for the three Rutgers Core categories (Degree Navigator).",
+    "RBS Pass/No Credit policy beyond 'Pass/no credit courses may not be used to fulfill these requirements' (myRBS, HTTP 403)."
+  ],
+  "review_questions": [
+    "Is RBS's Rutgers Core the same goal-code structure as SAS/SEBS Core (CC: CCD/CCO; Areas of Inquiry: NS/HST/SCL/AH; Cognitive Skills: WC/WCr/WCd/QQ/QR)? If an official RBS source says so, the three nodes can use SOC certifications instead of an unknown list."
+  ],
+  "conflicts": [],
+  "curation": {
+    "curated_by": "manual encoding, Prompt 08 B1 (Claude Code session, 2026-11-11)",
+    "encoded_at": "2026-11-11",
+    "curation_status": "curated_from_prose",
+    "extractor_version": "manual-encoding/2"
+  }
+}

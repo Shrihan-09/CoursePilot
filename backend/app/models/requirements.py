@@ -262,6 +262,24 @@ class ProgramVersion(Base, TimestampMixin):
     # evaluated by the Degree Engine.
     admission_prose: Mapped[str | None] = mapped_column(Text)
 
+    # --- Prompt 08 B1: applicability and stages ------------------------------
+    # Two complete curricula can govern the SAME program in the SAME catalog
+    # year for different classes (Industrial Engineering: classes 2026-2029
+    # versus class 2030). '' = the program has one curriculum for the year.
+    curriculum_key: Mapped[str] = mapped_column(String(48), default="", server_default="")
+    # The entering classes (by expected class year) a class-scoped curriculum
+    # governs, as the source states them. NULL = not class-scoped. Never
+    # derived from an editable graduation target (app.services.applicability).
+    curriculum_class_years: Mapped[list | None] = mapped_column(JSON(none_as_null=True))
+    # The stage a student must pass before this program's OWN requirement
+    # nodes are taken, e.g. "rbs-nb-admission" or "soe-major-declaration".
+    # A plan never assumes it: courses are labelled "after <stage>".
+    admission_stage: Mapped[str | None] = mapped_column(String(48))
+    # The program's own sourced degree total when it differs from the school's
+    # (School of Engineering: "120 to 132 credits ... depending on the major").
+    degree_credits_min: Mapped[Decimal | None] = mapped_column(Numeric(5, 1))
+    degree_credits_source: Mapped[dict | None] = mapped_column(JSON(none_as_null=True))
+
     program: Mapped[Program] = relationship(back_populates="versions")
     requirements: Mapped[list[Requirement]] = relationship(
         back_populates="program_version", cascade="all, delete-orphan"
@@ -271,7 +289,7 @@ class ProgramVersion(Base, TimestampMixin):
     )
 
     __table_args__ = (
-        UniqueConstraint("program_id", "catalog_year", name="uq_program_version"),
+        UniqueConstraint("program_id", "catalog_year", "curriculum_key", name="uq_program_version"),
         CheckConstraint(
             "total_credits_min IS NULL OR total_credits_min >= 0",
             name="total_credits_min_non_negative",
@@ -306,8 +324,37 @@ class ProgramVersion(Base, TimestampMixin):
         return f"<ProgramVersion {self.catalog_year}>"
 
 
+class ComponentKind(StrEnum):
+    """What a requirement component (a `school_requirement_set_version`) is.
+
+    GEN_ED        a school's general education (SAS Core, SEBS Core, SOE H/SS,
+                  the Rutgers Core as RBS states it)
+    SCHOOL_CORE   requirements shared by every major of a school, encoded once
+                  (the RBS business core, the SoE first-year program 004)
+    ENTRY_STAGE   what a student completes BEFORE a stage (admission to RBS,
+                  SoE major declaration); composed only while the stage is not
+                  verified as passed
+    SHARED_MAJOR  one major's requirements offered by two schools (Biological
+                  Sciences under SAS and SEBS): authored once, linked to each
+                  school's program version, which keeps its own school gen-ed
+    """
+
+    GEN_ED = "gen_ed"
+    SCHOOL_CORE = "school_core"
+    ENTRY_STAGE = "entry_stage"
+    SHARED_MAJOR = "shared_major"
+
+
 class SchoolRequirementSetVersion(Base, TimestampMixin):
-    """Explicit independently versioned school rules composed with matching majors."""
+    """An independently versioned requirement COMPONENT owned by a school.
+
+    `composition` says how it reaches a program:
+      * "school": composed with every program version of its school and
+        catalog year whose applicability matches (gen-ed, the original use);
+      * "linked": composed ONLY with program versions that link it explicitly
+        through `program_version_component` (shared cores, entry stages,
+        shared majors) - never because a program happens to share the school.
+    """
     __tablename__ = "school_requirement_set_version"
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     school_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("school.id"), index=True)
@@ -321,8 +368,48 @@ class SchoolRequirementSetVersion(Base, TimestampMixin):
     lifecycle_state: Mapped[str] = mapped_column(String(24), default="pending_review")
     sharing_policy: Mapped[str] = mapped_column(String(32), default="exclusive")
     source_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("data_source.id"))
-    __table_args__ = (UniqueConstraint("school_id", "catalog_year", "code",
-                                      name="uq_school_requirement_set_version"),)
+    # --- Prompt 08 B1 ---------------------------------------------------------
+    kind: Mapped[str] = mapped_column(String(24), default=ComponentKind.GEN_ED.value,
+                                      server_default=ComponentKind.GEN_ED.value)
+    composition: Mapped[str] = mapped_column(String(16), default="school", server_default="school")
+    # Who the component governs, as its source states it, e.g.
+    # {"matriculated_from_term": "20199"} (SEBS Core: "matriculating fall 2019
+    # and later"). Unknown keys make it inapplicable - never silently ignored.
+    applicability: Mapped[dict | None] = mapped_column(JSON(none_as_null=True))
+    # ENTRY_STAGE only: {"code": "rbs-nb-admission", "label": "after admission
+    # to RBS"} - the stage these requirements lead to.
+    stage: Mapped[dict | None] = mapped_column(JSON(none_as_null=True))
+    # The school's sourced degree total ("at least 120 degree credits").
+    degree_credits_min: Mapped[Decimal | None] = mapped_column(Numeric(5, 1))
+    # {"quote": ..., "url": ..., "capture": <sources.json id>} for that total.
+    degree_credits_source: Mapped[dict | None] = mapped_column(JSON(none_as_null=True))
+    __table_args__ = (
+        UniqueConstraint("school_id", "catalog_year", "code",
+                         name="uq_school_requirement_set_version"),
+        CheckConstraint("kind IN ('gen_ed','school_core','entry_stage','shared_major')",
+                        name="component_kind_known"),
+        CheckConstraint("composition IN ('school','linked')", name="component_composition_known"),
+        CheckConstraint("kind <> 'entry_stage' OR stage IS NOT NULL",
+                        name="entry_stage_names_its_stage"),
+    )
+
+
+class ProgramVersionComponent(Base, TimestampMixin):
+    """An explicit link: this program version is composed with this component.
+
+    The ONLY way a "linked" component reaches a program. The business core is
+    linked to each of the six RBS majors; one shared Biological Sciences
+    component is linked to the SAS and the SEBS program versions.
+    """
+    __tablename__ = "program_version_component"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    program_version_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("program_version.id", ondelete="CASCADE"), index=True)
+    component_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("school_requirement_set_version.id", ondelete="CASCADE"), index=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    __table_args__ = (UniqueConstraint("program_version_id", "component_id",
+                                       name="uq_program_version_component"),)
 
 
 class StudentAcademicEvidence(Base, TimestampMixin):
@@ -337,8 +424,12 @@ class StudentAcademicEvidence(Base, TimestampMixin):
     value: Mapped[dict] = mapped_column(JSON)
     verified: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     source_reference: Mapped[str] = mapped_column(Text)
+    # Prompt 08 B1: 'admission' (key = stage code, value {"status":
+    # "admitted"|"declared"}) and 'curriculum_class_year' (key = program key,
+    # value {"class_year": 2030}) - verified decisions, never inferred.
     __table_args__ = (CheckConstraint(
-        "evidence_kind IN ('exam_score','attendance_campus','requirement_waiver')",
+        "evidence_kind IN ('exam_score','attendance_campus','requirement_waiver',"
+        "'admission','curriculum_class_year')",
         name="academic_evidence_kind_known"),)
 
 
@@ -442,6 +533,24 @@ class Requirement(Base, TimestampMixin):
     # be allocated here for it to cover its category:
     #   {"ANALYSIS": [["01:640:411", "01:640:412"]]}   (catalog "411-412")
     category_sequences: Mapped[dict | None] = mapped_column(JSON(none_as_null=True))
+
+    # --- Prompt 08 B1 --------------------------------------------------------
+    # Courses for this node AND its subtree are taken after a stage (the
+    # nearest ancestor's value applies): "after admission to RBS". The plan
+    # labels them; it never assumes the stage is passed.
+    available_after_stage: Mapped[str | None] = mapped_column(String(48))
+    # "All courses must be at least 3 credits" (RBS Rutgers Core, SEBS Core).
+    min_course_credits: Mapped[Decimal | None] = mapped_column(Numeric(4, 1))
+    # Term-scoped certification codes this node accepts (SOC coreCodes such as
+    # "SOEHS", "CCD"): what the course knowledge index joins per term.
+    certification_codes: Mapped[list | None] = mapped_column(JSON(none_as_null=True))
+    # At most `max` allocated courses from a named group:
+    #   [{"courses": ["01:198:493", "01:198:494"], "max": 1}]
+    #   CS: "at most one of a student's electives may be one of these courses"
+    group_caps: Mapped[list | None] = mapped_column(JSON(none_as_null=True))
+    # Open source-conflict ids (docs/investigations/evidence/*conflicts*.json)
+    # that affect this node: it stays conditional until a human resolves them.
+    unresolved_conflicts: Mapped[list | None] = mapped_column(JSON(none_as_null=True))
 
     program_version: Mapped[ProgramVersion | None] = relationship(back_populates="requirements")
     children: Mapped[list[Requirement]] = relationship(
@@ -637,6 +746,16 @@ class ProgramRuleType(StrEnum):
     COURSE_EXCLUSION = "course_exclusion"
     RESIDENCY = "residency"
     MIN_GPA = "min_gpa"
+    # Prompt 08 B1 school policies, recorded so an audit can never call a
+    # degree complete while one is unchecked. Not evaluated yet: each is
+    # stored with is_evaluable=False and its reason (the loader refuses
+    # otherwise), and the audit reports NOT_EVALUABLE.
+    #   RESIDENCY_WINDOW    "No more than 12 of the last 42 credits ... outside Rutgers"
+    #   PASS_FAIL_LIMIT     "up to two of these unspecified elective courses ... Pass/No Credit"
+    #   DOUBLE_COUNT_LIMIT  "may only double count one RBS course between those majors"
+    RESIDENCY_WINDOW = "residency_window"
+    PASS_FAIL_LIMIT = "pass_fail_limit"
+    DOUBLE_COUNT_LIMIT = "double_count_limit"
 
 
 class ProgramRule(Base, TimestampMixin):
@@ -661,8 +780,15 @@ class ProgramRule(Base, TimestampMixin):
     __tablename__ = "program_rule"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
-    program_version_id: Mapped[uuid.UUID] = mapped_column(
+    program_version_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("program_version.id", ondelete="CASCADE"), index=True
+    )
+    # Prompt 08 B1: a SCHOOL-level rule belongs to a component (gen-ed set or
+    # shared school core), encoded once and applied to every program it
+    # composes with - not copied into each major.
+    school_requirement_set_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("school_requirement_set_version.id", ondelete="CASCADE",
+                   name="fk_program_rule_school_set"), index=True
     )
 
     code: Mapped[str] = mapped_column(String(64))
@@ -699,12 +825,21 @@ class ProgramRule(Base, TimestampMixin):
     )
     source_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("data_source.id"))
 
-    program_version: Mapped[ProgramVersion] = relationship(back_populates="rules")
+    program_version: Mapped[ProgramVersion | None] = relationship(back_populates="rules")
 
     __table_args__ = (
         UniqueConstraint("program_version_id", "code", name="uq_program_rule_code"),
+        UniqueConstraint("school_requirement_set_version_id", "code",
+                         name="uq_school_rule_code"),
         CheckConstraint(
-            "rule_type IN ('max_grade_count','course_exclusion','residency','min_gpa')",
+            "(program_version_id IS NOT NULL AND school_requirement_set_version_id IS NULL) OR "
+            "(program_version_id IS NULL AND school_requirement_set_version_id IS NOT NULL)",
+            name="program_rule_exactly_one_owner"),
+        # Prompt 08 B1 adds school policies that CoursePilot records but cannot
+        # yet evaluate (they must then say why: not_evaluable_requires_reason).
+        CheckConstraint(
+            "rule_type IN ('max_grade_count','course_exclusion','residency','min_gpa',"
+            "'residency_window','pass_fail_limit','double_count_limit')",
             name="program_rule_type_known",
         ),
         CheckConstraint("max_count IS NULL OR max_count >= 0", name="rule_max_count_non_negative"),

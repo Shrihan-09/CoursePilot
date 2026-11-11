@@ -1,0 +1,68 @@
+{
+  "_README": [
+    "School of Engineering first-year program, curriculum code 004, 'common to all four-year engineering programs' - encoded ONCE and linked to each SoE major (Prompt 08 B1).",
+    "The catalog prints the program twice (before and starting from Class of 2030); the course lists are identical. The ONLY difference is which majors do not require General Chemistry II (01:160:160), so Chemistry II is its own component (soe-first-year-chem-ii) that a major links only when its curriculum requires it - never an unconditional node here.",
+    "The two H/SS electives of the first year live in soe-school (gen-ed), not here, so they are never counted twice.",
+    "Semester placement is the catalog's layout, not a binding deadline; it is not encoded as one."
+  ],
+  "format": "component/1",
+  "component": {
+    "code": "soe-first-year",
+    "name": "SoE First-Year Program (curriculum 004)",
+    "kind": "school_core",
+    "composition": "linked",
+    "school": {"code": "SOE", "name": "School of Engineering", "campus_code": "NB"},
+    "catalog_year": "2026-2027",
+    "definition_version": "1",
+    "requirement_system": "major",
+    "sharing_policy": "exclusive",
+    "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/programs-study/first-year"
+  },
+  "sources": [
+    {"id": "eng-catalog-first-year", "role": "catalog"},
+    {"id": "eng-catalog-programs-study", "role": "catalog"}
+  ],
+  "requirements": [
+    {"code": "SOE_FY", "name": "First-Year Program (004)", "requirement_type": "all_of", "parent": null, "sort_order": 0,
+     "quotes": [
+       {"source": "eng-catalog-first-year", "quote": "FIRST-YEAR PROGRAM Curriculum Code 004 (common to all four-year engineering programs)"},
+       {"source": "eng-catalog-programs-study", "quote": "Students in the first year of a four-year curriculum are listed under curriculum code 004."}
+     ]},
+    {"code": "SOE_FY_CHEM_159", "name": "General Chemistry for Engineers I", "requirement_type": "course", "parent": "SOE_FY", "sort_order": 0,
+     "courses": ["01:160:159"], "quotes": [{"source": "eng-catalog-first-year", "quote": "01:160:159 General Chemistry for Engineers I (3cr)"}]},
+    {"code": "SOE_FY_CHEM_171", "name": "Introduction to Experimentation", "requirement_type": "course", "parent": "SOE_FY", "sort_order": 1,
+     "courses": ["01:160:171"], "quotes": [{"source": "eng-catalog-first-year", "quote": "01:160:171 Introduction to Experimentation (1cr) *"}]},
+    {"code": "SOE_FY_WRITING", "name": "College Writing", "requirement_type": "course", "parent": "SOE_FY", "sort_order": 2,
+     "courses": ["01:355:101"], "quotes": [{"source": "eng-catalog-first-year", "quote": "01:355:101 College Writing (3cr) *"}]},
+    {"code": "SOE_FY_CALC_151", "name": "Calculus I for Mathematical and Physical Sciences", "requirement_type": "course", "parent": "SOE_FY", "sort_order": 3,
+     "courses": ["01:640:151"], "quotes": [{"source": "eng-catalog-first-year", "quote": "01:640:151 Calculus I for Mathematical and Physical Sciences (4cr)"}]},
+    {"code": "SOE_FY_PHYS_123", "name": "Analytical Physics IA", "requirement_type": "course", "parent": "SOE_FY", "sort_order": 4,
+     "courses": ["01:750:123"], "quotes": [{"source": "eng-catalog-first-year", "quote": "01:750:123 Analytical Physics IA (2cr)"}]},
+    {"code": "SOE_FY_ID3EA_101", "name": "Introduction to Data-Driven Design for Engineering Applications", "requirement_type": "course", "parent": "SOE_FY", "sort_order": 5,
+     "courses": ["14:440:101"], "quotes": [{"source": "eng-catalog-first-year", "quote": "14:440:101 Introduction to Data-Driven Design for Engineering Applications (2cr)"}]},
+    {"code": "SOE_FY_CALC_152", "name": "Calculus II for Mathematical and Physical Sciences", "requirement_type": "course", "parent": "SOE_FY", "sort_order": 6,
+     "courses": ["01:640:152"], "quotes": [{"source": "eng-catalog-first-year", "quote": "01:640:152 Calculus II for Mathematical and Physical Sciences (4cr)"}]},
+    {"code": "SOE_FY_PHYS_124", "name": "Analytical Physics IB", "requirement_type": "course", "parent": "SOE_FY", "sort_order": 7,
+     "courses": ["01:750:124"], "quotes": [{"source": "eng-catalog-first-year", "quote": "01:750:124 Analytical Physics IB (2cr)"}]},
+    {"code": "SOE_FY_ID3EA_102", "name": "Integrated Data-Driven Design for Engineering Applications", "requirement_type": "course", "parent": "SOE_FY", "sort_order": 8,
+     "courses": ["14:440:102"], "quotes": [{"source": "eng-catalog-first-year", "quote": "14:440:102 Integrated Data-Driven Design for Engineering Applications (2cr)"}]},
+    {"code": "SOE_FY_STATICS", "name": "Engineering Mechanics: Statics", "requirement_type": "course", "parent": "SOE_FY", "sort_order": 9,
+     "courses": ["14:440:221"], "quotes": [{"source": "eng-catalog-first-year", "quote": "14:440:221 Engineering Mechanics: Statics (3cr)"}]}
+  ],
+  "school_rules": [],
+  "rules_not_yet_modeled": [
+    {"rule": "Semester placement of the first-year courses ('* May be taken in the second semester of the first year').", "why_not": "Layout and timing guidance, not a completion rule.", "source": "eng-catalog-first-year", "quote": "* May be taken in the second semester of the first year."}
+  ],
+  "unknowns": [],
+  "review_questions": [
+    "Confirm the two printed first-year programs (before and starting from Class of 2030) differ only in the Chemistry II footnote.",
+    "Confirm 01:355:101 College Writing is required of every SoE student (no exemption path is stated on the archived page)."
+  ],
+  "conflicts": [],
+  "curation": {
+    "curated_by": "manual encoding, Prompt 08 B1 (Claude Code session, 2026-11-11)",
+    "encoded_at": "2026-11-11",
+    "curation_status": "curated_from_prose",
+    "extractor_version": "manual-encoding/2"
+  }
+}

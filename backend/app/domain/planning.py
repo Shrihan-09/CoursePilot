@@ -525,6 +525,11 @@ class PlannedCourse(BaseModel):
     #: Phase 7.6: the structured reason (requirement and its status source,
     #: offering, prerequisite, Core codes, restrictions, provenance).
     trace: RecommendationTrace | None = None
+    #: Prompt 08 B1: the stage this course comes after ("rbs-nb-admission")
+    #: and its label ("after admission to RBS"), when the student has not
+    #: verifiably passed it. A plan never assumes admission.
+    after_stage: str | None = None
+    after_stage_label: str | None = None
 
 
 class TermWorkload(BaseModel):
