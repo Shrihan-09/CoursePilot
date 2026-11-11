@@ -40,6 +40,7 @@ from app.domain.plan_edits import (
     PlanPreview,
     TermCap,
     TermDiff,
+    UnmetRequirement,
 )
 from app.domain.planning import (
     CourseAvoid,
@@ -101,6 +102,8 @@ def plan_constraints(base: PlanningConstraints, edits: PlanEdits) -> PlanningCon
         old = overrides.get(cap.term_code)
         fields = old.model_dump() if old is not None else {"term_code": cap.term_code}
         fields |= {"credit_min": cap.credit_min, "credit_max": cap.credit_max}
+        if cap.pinned_only:
+            fields["pinned_only"] = True
         overrides[cap.term_code] = TermPlanningOverride.model_validate(fields)
     selections = {**base.alternative_selections, **edits.alternative_selections}
     data = base.model_dump()
@@ -167,6 +170,8 @@ class Edit:
     errors: list[str]
     summary: str
     touched: set[str]
+    #: A student's drop: re-plan with NOTHING added (engine `strict_holds`).
+    strict: bool = False
 
 
 def _where(plan: PlanResult) -> dict[str, str]:
@@ -197,7 +202,7 @@ def _without(pins: list[CoursePin], course: str) -> list[CoursePin]:
 
 
 def build_edit(plan: PlanResult, constraints: PlanningConstraints, edits: PlanEdits,
-               change: PlanChange) -> Edit:
+               change: PlanChange, *, as_drop: bool = True) -> Edit:
     """What `change` does to the student's edits, and which courses stay held.
 
     Refusals are closed codes with a message ("code: message"); nothing is
@@ -224,7 +229,10 @@ def build_edit(plan: PlanResult, constraints: PlanningConstraints, edits: PlanEd
         current = {c for c, t in where.items() if t == term}
         holds = dict(where)
         for removed in sorted(current - selected):
-            part = build_edit(plan, constraints, e, PlanChange(kind="remove", course=removed, term_code=term))
+            # The builder sets the whole term itself: a removal there is part
+            # of that edit, not a standalone drop (no drop cap / strict preview).
+            part = build_edit(plan, constraints, e, PlanChange(kind="remove", course=removed, term_code=term),
+                              as_drop=False)
             errors += part.errors
             e = part.edits
             holds = {c: t for c, t in holds.items() if c in part.holds}
@@ -288,13 +296,44 @@ def build_edit(plan: PlanResult, constraints: PlanningConstraints, edits: PlanEd
                           f"({_anchor_why(pc)}).")
         elif state.locked_reason == "locked":
             errors.append(f"locked: you locked {course} to {label(term)}. Unlock it first.")
-        else:
+        elif not as_drop:
             e.selections = _without(e.selections, course)
             e.avoid = [a for a in e.avoid if a.course != course] + [
                 CourseAvoid(course=course, term_code=term)]
             release |= {course} | _dependents(plan, course)
             touched = {course}
             summary = f"Remove {course} from {label(term)}"
+        else:
+            # A DROP is the student's decision, not a request to refill: the
+            # course is avoided in every term (undo / adding it back lifts
+            # that), the term keeps exactly its other courses and is capped at
+            # its new total so a rebuild does not backfill it either, and the
+            # preview adds nothing anywhere (strict holds). A later course
+            # that needed the dropped one is still held; if it can no longer
+            # be placed it drops out and the preview lists it.
+            e.selections = _without(e.selections, course)
+            e.avoid = [a for a in e.avoid if a.course != course] + [
+                CourseAvoid(course=course, term_code=None)]
+            # The term the student shaped stays as they left it: each other
+            # course there that is not pinned yet is pinned to it - a planner
+            # pick as the student's selection, an anchor (a needed retake) as a
+            # "must" that keeps its retake flag - so no rebuild swaps one out.
+            pinned = {p.course for p in [*constraints.pins, *e.selections, *e.locks]}
+            for kept in term_plan.courses:
+                s = states.get((kept.course, term))
+                if kept.course == course or kept.course in pinned or s is None:
+                    continue
+                if s.locked_reason == "anchor":
+                    e.locks.append(CoursePin(course=kept.course, term_code=term,
+                                             retake=bool(kept.retake), source="must"))
+                elif s.state is CourseState.PLANNER_SELECTED:
+                    e.selections.append(CoursePin(course=kept.course, term_code=term,
+                                                  source="selection"))
+            _cap_after_drop(constraints, e, term_plan, pc)
+            touched = {course}
+            summary = f"Remove {course} from {label(term)}"
+            holds = {c: t for c, t in where.items() if c != course}
+            return Edit(e, holds, [], summary, touched, strict=True)
     elif k == "add":
         if course in where:
             errors.append(f"already_planned: {course} is already in your plan "
@@ -364,6 +403,22 @@ def build_edit(plan: PlanResult, constraints: PlanningConstraints, edits: PlanEd
         return Edit(e, {}, errors, summary, touched)
     holds = {c: t for c, t in where.items() if c not in release}
     return Edit(e, holds, [], summary, touched)
+
+
+def _cap_after_drop(constraints: PlanningConstraints, e: PlanEdits, term_plan, pc) -> None:
+    """"Keep it at N credits for this term": the dropped term's credit range
+    becomes (min(its minimum, N), N), so no rebuild refills it. Only a plan
+    with a workload level has per-term credit ranges."""
+    import math
+
+    left = term_plan.credits + term_plan.free_elective_credits - pc.credits
+    top = min(24, max(1, math.ceil(left)))
+    floor = int(term_plan.workload.credit_floor) if term_plan.workload else top
+    # The range only shapes a plan with a workload level; `pinned_only` (no
+    # planner course in this term, ever) holds for every plan.
+    e.term_caps = [c for c in e.term_caps if c.term_code != term_plan.term_code] + [
+        TermCap(term_code=term_plan.term_code, credit_min=max(1, min(floor, top)),
+                credit_max=top, pinned_only=True)]
 
 
 def _horizon(plan: PlanResult) -> set[str]:
@@ -447,14 +502,37 @@ def plan_diff(before: PlanResult, after: PlanResult, before_c: PlanningConstrain
         bl = _lines(b, sb) if b else []
         al = _lines(a, sa) if a else []
         bc, ac = {x.course for x in bl}, {x.course for x in al}
+        credits_after = (a.credits + a.free_elective_credits) if a else Decimal(0)
+        floor = b.workload.credit_floor if b and b.workload else None
+        budget = (a or b).workload.budget if (a or b).workload else None
+        workload_after = a.workload.total if a and a.workload else None
+        changed = bool(ac - bc or bc - ac)
+        below = bool(changed and floor is not None and credits_after < floor)
+        warnings = []
+        notes = []
+        electives = ((a.free_elective_credits if a else Decimal(0))
+                     - (b.free_elective_credits if b else Decimal(0)))
+        if electives:
+            total = after.degree_credits.required if after.degree_credits else None
+            keep = (f" to keep the {_n(total)}-credit degree total" if total and electives > 0
+                    else "")
+            notes.append(f"{'+' if electives > 0 else '−'}{_n(abs(electives))} free-elective "
+                         f"credit{'s' if abs(electives) != 1 else ''} in {label(code)}{keep}.")
+        if below:
+            warnings.append(f"{_n(credits_after)} credits is below your {_n(floor)}-credit "
+                            f"minimum for {label(code)}.")
+        if changed and workload_after is not None and budget is not None \
+                and workload_after > budget:
+            warnings.append(f"Workload {_n(workload_after)} is over your {_n(budget)} "
+                            f"budget for {label(code)}.")
         terms.append(TermDiff(
             term_code=code, label=label(code), before=bl, after=al,
             added=sorted(ac - bc), removed=sorted(bc - ac),
             credits_before=(b.credits + b.free_elective_credits) if b else Decimal(0),
-            credits_after=(a.credits + a.free_elective_credits) if a else Decimal(0),
+            credits_after=credits_after,
             workload_before=b.workload.total if b and b.workload else None,
-            workload_after=a.workload.total if a and a.workload else None,
-            budget=(a or b).workload.budget if (a or b).workload else None))
+            workload_after=workload_after, budget=budget, credit_floor=floor,
+            below_minimum=below, warnings=warnings, notes=notes))
     moved = []
     after_reqs = {pc.course: sorted({r.requirement_name for r in pc.requirements})
                   for t in after.terms for pc in t.courses}
@@ -466,7 +544,11 @@ def plan_diff(before: PlanResult, after: PlanResult, before_c: PlanningConstrain
             why = "now planned" + (f" to fill {', '.join(after_reqs[course])}"
                                    if after_reqs.get(course) else "")
         elif to is None:
-            why = "no longer needed in the plan"
+            gone = [d.course for t in before.terms for pc in t.courses if pc.course == course
+                    for d in pc.prerequisite.conditional_on
+                    if d.source == "planned" and d.course in touched and d.course not in wa]
+            why = (f"its prerequisite {', '.join(gone)} is no longer planned" if gone
+                   else "no longer needed in the plan")
         else:
             prereq_moved = [d.course for t in after.terms for pc in t.courses if pc.course == course
                             for d in pc.prerequisite.conditional_on
@@ -483,6 +565,14 @@ def plan_diff(before: PlanResult, after: PlanResult, before_c: PlanningConstrain
     last_b = max(tb, default=None)
     last_a = max(ta, default=None)
     lost = sorted(req_names.get(c, c) for c in met_b - met_a)
+    unmet = [UnmetRequirement(code=c, name=req_names.get(c, c))
+             for c in sorted(met_b - met_a, key=lambda c: (c == "DEGREE_CREDITS",
+                                                           req_names.get(c, c)))]
+    dc = after.degree_credits
+    for u in unmet:
+        if u.code == "DEGREE_CREDITS" and dc is not None and dc.total < dc.required:
+            u.name = (f"the {_n(dc.required)}-credit degree total "
+                      f"({_n(dc.required - dc.total)} credits short)")
     gained = sorted(req_names.get(c, c) for c in met_a - met_b)
     over = any(a.workload is not None
                and (a.credits + a.free_elective_credits) > a.workload.credit_max
@@ -492,11 +582,43 @@ def plan_diff(before: PlanResult, after: PlanResult, before_c: PlanningConstrain
         graduation_before=before.graduation_target.term_code if before.graduation_target else None,
         graduation_after=after.graduation_target.term_code if after.graduation_target else None,
         last_term_before=last_b, last_term_after=last_a,
-        requirements_lost=lost, requirements_gained=gained, new_issues=new_issues)
+        requirements_lost=lost, requirements_gained=gained, unmet=unmet,
+        new_issues=new_issues)
     diff.big = bool(moved) or bool(lost) or over or bool(new_issues) or (
         last_a is not None and last_b is not None and last_a > last_b)
     diff.summary = _summary(diff, before, after)
     return diff
+
+
+def _n(value: Decimal) -> str:
+    """18.0 -> "18", 17.5 -> "17.5"."""
+    return f"{Decimal(value).normalize():f}"
+
+
+def _and(names: list[str]) -> str:
+    return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+
+
+def drop_summary(diff: PlanDiff, term: str) -> str:
+    """"Spring 2027: 18 → 15 credits. Discipline-Based Writing is now unmet.
+    Graduation unchanged." - one plain line for a drop."""
+    t = next((x for x in diff.terms if x.term_code == term), None)
+    parts = []
+    if t is not None:
+        parts.append(f"{t.label}: {_n(t.credits_before)} → {_n(t.credits_after)} credits.")
+    names = [u.name for u in diff.unmet]
+    if names:
+        parts.append(f"{_and(names)} {'is' if len(names) == 1 else 'are'} now unmet.")
+    if diff.forced_moves:
+        n = len(diff.forced_moves)
+        parts.append(f"{n} other course{'s' if n != 1 else ''} change{'s' if n == 1 else ''}"
+                     " because of it.")
+    if diff.last_term_after != diff.last_term_before and diff.last_term_after:
+        was = label(diff.last_term_before) if diff.last_term_before else "-"
+        parts.append(f"Last semester {was} → {label(diff.last_term_after)}.")
+    else:
+        parts.append("Graduation unchanged.")
+    return " ".join(parts)
 
 
 def _summary(diff: PlanDiff, before: PlanResult, after: PlanResult) -> str:
@@ -582,10 +704,28 @@ def preview_change(session: Session, student: Student, change: PlanChange, *,
             return PlanPreview(preview_id="", base_revision=row.revision, change=change, valid=False,
                                errors=failures, expires_at=expires)
     after_c = plan_constraints(base, edit.edits)
+    held_electives = ({t.term_code: t.free_elective_credits for t in plan.terms}
+                      if edit.strict else None)
     result = generate_plan(session, student, start_term=row.start_term, constraints=after_c,
-                           holds=edit.holds, prior_choices=plan.metadata.alternative_choices)
+                           holds=edit.holds, prior_choices=plan.metadata.alternative_choices,
+                           strict_holds=edit.strict, held_electives=held_electives)
     proposed = {c for c in edit.touched if c in _where(result)}
     diff = plan_diff(plan, result, before_c, after_c, edit.touched, proposed)
+    if change.kind == "remove":
+        diff.dropped_course, diff.dropped_term = change.course, change.term_code
+        # "X could not be completed within the plan horizon" would read as
+        # impossible; a drop already says X is now unmet (and offers a fix).
+        unmet = {u.code for u in diff.unmet}
+        restated = {i.message for i in result.issues if i.requirement_code in unmet}
+        # Keeping the term's courses pins them, which only re-words an issue a
+        # course already had where it already was ("...because you pinned it").
+        placed_before, placed_after = _where(plan), _where(result)
+        flagged = {i.course for i in plan.issues if i.course}
+        unchanged = {c for c, t in placed_after.items() if placed_before.get(c) == t}
+        restated |= {i.message for i in result.issues if i.course in unchanged and (
+            i.course in flagged or i.code == "PIN_PREREQUISITES_UNVERIFIED")}
+        diff.new_issues = [m for m in diff.new_issues if m not in restated]
+        diff.summary = drop_summary(diff, change.term_code)
     errors = _refusals(result, change, before=plan)
     preview = PlanChangePreview(
         id=uuid.uuid4(), student_id=student.id, base_revision=row.revision,
@@ -724,5 +864,6 @@ def push_history_for_rebuild(session: Session, row: StudentPlan) -> None:
 
 __all__ = ["HISTORY_DEPTH", "NoSavedPlan", "NothingToUndo", "PREVIEW_TTL", "PlanOutOfDate",
            "Reselection", "StalePreview", "apply_preview", "build_edit", "course_states",
+           "drop_summary",
            "edits_of", "last_change", "needs_reselection", "plan_constraints", "plan_diff",
            "preview_change", "profile_constraints", "undo"]

@@ -47,11 +47,11 @@ const preview: PlanPreview = {
     summary: "01:810:135 out of Spring 2027; 01:920:101 into Spring 2027; 1 other course move; graduation unchanged",
     big: true, graduation_before: "20291", graduation_after: "20291", last_term_before: "20281", last_term_after: "20281",
     requirements_lost: [], requirements_gained: ["Social Analysis"], new_issues: [],
-    forced_moves: [{ course: "01:190:207", title: "GREEK MYTHOLOGY", from_term: "20279", to_term: "20281",
+    forced_moves: [{ course: "01:190:207", title: "Greek Mythology", from_term: "20279", to_term: "20281",
                      reason: "moved to keep its requirements, prerequisites and credit limits" }],
     terms: [{ term_code: "20271", label: "Spring 2027", added: ["01:920:101"], removed: ["01:810:135"],
-              before: [{ course: "01:810:135", title: "INTRO TO MUSIC", credits: "3", state: "planner_selected" }],
-              after: [{ course: "01:920:101", title: "INTRO TO SOCIOLOGY", credits: "3", state: "proposed_change" }],
+              before: [{ course: "01:810:135", title: "Intro to Music", credits: "3", state: "planner_selected" }],
+              after: [{ course: "01:920:101", title: "Intro to Sociology", credits: "3", state: "proposed_change" }],
               credits_before: "16", credits_after: "16", workload_before: "21", workload_after: "20.5", budget: "24" }],
   },
 };
@@ -67,11 +67,11 @@ describe("the change preview", () => {
     const t = text(renderToStaticMarkup(<ChangePreviewDialog changes={changes(preview)} />));
     expect(t).toContain("Preview your change");
     expect(t).toContain("Nothing is saved until you confirm");
-    expect(t).toContain("Removed: 01:810:135 INTRO TO MUSIC");
-    expect(t).toContain("Added: 01:920:101 INTRO TO SOCIOLOGY");
+    expect(t).toContain("Removed: Intro to Music 01:810:135");
+    expect(t).toContain("Added: Intro to Sociology 01:920:101");
     expect(t).toContain("16 → 16 credits · workload 21 → 20.5 of 24");
     expect(t).toContain("Also changes");
-    expect(t).toContain("01:190:207 GREEK MYTHOLOGY: Fall 2027");
+    expect(t).toContain("Greek Mythology 01:190:207 : Fall 2027");
     expect(t).toContain("This change affects more than one course");
     expect(t).toContain("Now completed: Social Analysis");
     expect(t).toMatch(/Not now.*Confirm/);

@@ -23,6 +23,7 @@ from enum import StrEnum
 from pydantic import BaseModel, Field
 
 from app.domain.provenance import SourceRef
+from app.domain.text import CourseTitle
 from app.domain.validation import ValidationReport
 
 
@@ -47,7 +48,7 @@ class PlannedCourse(BaseModel):
 
     course_id: str
     course_code: str = Field(description="Display code, resolved from the database.")
-    title: str
+    title: CourseTitle
     credits: float | None = None
     section_id: str | None = Field(
         default=None, description="Set only once a concrete section has been chosen."

@@ -217,9 +217,12 @@ def generate_plan(session: Session, student: Student, *, start_term: str,
                   program_key_: str | None = None, catalog_year: str | None = None,
                   constraints: PlanningConstraints | None = None,
                   holds: dict[str, str] | None = None,
-                  prior_choices: list | None = None) -> PlanResult:
+                  prior_choices: list | None = None, strict_holds: bool = False,
+                  held_electives: dict | None = None) -> PlanResult:
     """`holds` and `prior_choices` (Prompt 11 previews) carry the plan being
-    changed: its placements as soft preferences, its one-of estimates."""
+    changed: its placements as soft preferences, its one-of estimates.
+    `strict_holds` / `held_electives` (a student's drop): nothing is added,
+    every remaining course and elective credit stays where it is."""
     if not is_term(start_term) or start_term[4] not in "0179":
         raise InvalidStartTerm(f"{start_term!r} is not a Rutgers term code (YYYYT, T in 0/1/7/9).")
     last = latest_history_term(session, student)
@@ -255,8 +258,9 @@ def generate_plan(session: Session, student: Student, *, start_term: str,
             message=(f"{declaration.label}. Sections restricted to declared majors are treated "
                      "as closed to you; minor and honors restrictions stay unconfirmed.")))
     result = PlanningEngine(session, constraints, overlay, holds=holds,
-                            prior_choices=prior_choices).plan(student, version, target,
-                                                              start_term, assumptions)
+                            prior_choices=prior_choices, strict_holds=strict_holds,
+                            held_electives=held_electives).plan(student, version, target,
+                                                                start_term, assumptions)
     result.assumptions += pending_term_assumptions(session, start_term, result)
     result.school_core = core
     result.declaration = declaration

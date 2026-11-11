@@ -626,7 +626,8 @@ class PlanningEngine:
 
     def __init__(self, session: Session, constraints: PlanningConstraints | None = None,
                  status_overlay=None, holds: dict[str, str] | None = None,
-                 prior_choices: list | None = None) -> None:
+                 prior_choices: list | None = None, strict_holds: bool = False,
+                 held_electives: dict[str, Decimal] | None = None) -> None:
         self.session = session
         self.constraints = constraints or PlanningConstraints()
         #: Prompt 11 A2: SOFT placements carried over from the plan being
@@ -634,6 +635,17 @@ class PlanningEngine:
         #: term and comes first among its role's candidates there; it is a
         #: preference, never a pin - if it no longer fits it is planned freely.
         self.holds: dict[str, str] = dict(holds or {})
+        #: A student's DROP (edits.preview_change, kind "remove"): the plan is
+        #: the one being changed minus the dropped course - NOTHING is added.
+        #: Each term may hold only its held courses and the student's own pins;
+        #: no backfill of the vacated requirement anywhere, no pruning or
+        #: levelling, and free-elective credits stay where they were
+        #: (`held_electives`). A held course that can no longer be placed (its
+        #: prerequisite was the dropped course) drops out and the preview lists
+        #: it. Transient: a preview setting, never stored with the plan.
+        self.strict_holds = strict_holds
+        self.held_electives: dict[str, Decimal] | None = (
+            dict(held_electives) if held_electives is not None else None)
         self._held_now: set[str] = set()
         #: Prompt 11 A2 (previews): the plan being changed already estimated
         #: each one-of requirement's alternatives. When the student's request
@@ -1196,9 +1208,16 @@ class PlanningEngine:
         plan_terms: list[PlanTerm] = []
         empty_streak = 0
         stalled = False
+        strict = getattr(self, "strict_holds", False)
+
+        def held_after(term: str) -> bool:
+            # A drop keeps every later course the student still has.
+            return strict and any(t >= term and k not in planned for k, t in self.holds.items())
+
         for term in terms:
-            if not self._active(current.requirements) and not any(
-                    p.term_code >= term and p.course not in planned for p in c.pins):
+            pins_left = any(p.term_code >= term and p.course not in planned for p in c.pins)
+            if not self._active(current.requirements) and not pins_left \
+                    and not held_after(term):
                 break
             term_plan = PlanTerm(term_code=term, label=label(term))
             current = self._fill_term(student, version, term, term_plan, current, planned, info,
@@ -1209,14 +1228,20 @@ class PlanningEngine:
             else:
                 # One empty term per season in a row: nothing will change.
                 empty_streak += 1
-                if empty_streak >= len({t[4] for t in terms}) and not any(
-                        p.term_code > term and p.course not in planned for p in c.pins):
+                later_pins = any(p.term_code > term and p.course not in planned for p in c.pins)
+                if empty_streak >= len({t[4] for t in terms}) and not later_pins \
+                        and not held_after(term):
                     stalled = True
                     break
 
-        final = self._prune(student, version, plan_terms, planned, info, current)
+        # A drop keeps every remaining course where the student has it: no
+        # pruning, no levelling (both would change courses the student kept).
+        final = current if strict else self._prune(student, version, plan_terms, planned,
+                                                   info, current)
         regular_or_chosen = [t for t in terms if t not in self._pin_only_terms]
-        if c.pace is not None and plan_terms and c.workload_level is None:
+        if strict:
+            pass
+        elif c.pace is not None and plan_terms and c.workload_level is None:
             # With a workload level each term is already shaped by its budget;
             # levelling would move anchors and break the term's explanation.
             final = self._level(student, version, regular_or_chosen, plan_terms, planned, info,
@@ -1400,6 +1425,16 @@ class PlanningEngine:
         dependencies = [k for k in dependencies if k not in elsewhere and k not in avoided]
         self._held_now = {k for k, t in getattr(self, "holds", {}).items() if t == term}
         held_later = {k for k, t in getattr(self, "holds", {}).items() if t > term}
+        pinned_only = any(o.term_code == term and o.pinned_only for o in c.term_overrides)
+        if getattr(self, "strict_holds", False) or pinned_only:
+            # A drop: this term may take back only what it already had (and the
+            # student's own pins) - never a replacement for the dropped course.
+            # A term the student dropped from stays theirs on every rebuild.
+            allowed = set(pins_here)
+            if getattr(self, "strict_holds", False):
+                allowed |= self._held_now
+            serves = defaultdict(list, {k: v for k, v in serves.items() if k in allowed})
+            dependencies = [k for k in dependencies if k in allowed]
         if term in self._pin_only_terms:
             # A winter/summer term opened only for a pin: nothing else goes in.
             serves.clear()
@@ -2576,6 +2611,31 @@ class PlanningEngine:
                        Decimal(0))
 
         by_term = {tp.term_code: tp for tp in plan_terms}
+        held = getattr(self, "held_electives", None)
+        if getattr(self, "strict_holds", False) and held is not None:
+            # A drop: free-elective credits stay exactly where they were - the
+            # dropped course's credits are NOT made up elsewhere (no new term,
+            # no heavier term). A total left short is reported as unmet, and
+            # "Suggest a replacement" is how the student fills it.
+            for t, extra in sorted(held.items()):
+                if extra <= 0:
+                    continue
+                if t not in by_term:
+                    by_term[t] = PlanTerm(term_code=t, label=label(t))
+                    plan_terms.append(by_term[t])
+                by_term[t].free_elective_credits = extra
+            planned_courses = sum((course_credits(tp) for tp in by_term.values()), Decimal(0))
+            plan_terms.sort(key=lambda tp: tp.term_code)
+            electives_total = sum((tp.free_elective_credits for tp in plan_terms), Decimal(0))
+            running = completed + in_progress
+            for tp in plan_terms:
+                running += course_credits(tp) + tp.free_elective_credits
+                tp.cumulative_credits = running
+            return DegreeCredits(
+                required=total.credits, completed=completed, in_progress=in_progress,
+                planned_courses=planned_courses, planned_free_electives=electives_total,
+                total=running, met=running >= total.credits, source_title=total.title,
+                source_url=total.url, source_quote=total.quote, retrieved_at=total.retrieved_at)
         span = sorted(set(by_term) | {t for t in terms if t[4] in "19"})
         if by_term:
             span = [t for t in span if t >= min(by_term)]
@@ -2766,9 +2826,11 @@ class PlanningEngine:
         UNKNOWN can never pass this check, so levelling cannot place one."""
         facts = info[key]
         credits = self.course_info[key].credits
-        if facts["group"] or credits is None:
-            return None
+        if facts["group"] or credits is None or getattr(self, "strict_holds", False):
+            return None                  # a drop moves nothing the student kept
         c = self.constraints
+        if any(o.term_code == term and o.pinned_only for o in c.term_overrides):
+            return None                  # nothing moves INTO a term the student shaped
         if any(p.course == key for p in c.pins) or any(
                 a.course == key and a.term_code in (None, term) for a in c.avoid):
             return None              # Prompt 11: a pin stays; an avoided term stays empty of it

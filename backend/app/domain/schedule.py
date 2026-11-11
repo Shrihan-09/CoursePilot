@@ -43,6 +43,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from app.domain.availability import AvailabilityStatus, Freshness
 from app.domain.modality import CourseModalityOptions, ModalityEvidence
+from app.domain.text import OptionalCourseTitle
 
 #: Bumped whenever the same inputs could produce different options.
 SCHEDULE_ENGINE_VERSION = "6.8.0"
@@ -347,7 +348,7 @@ class SectionChoice(BaseModel):
     component: str = "primary"
     course_string: str
     supplement_code: str = ""
-    title: str | None = None
+    title: OptionalCourseTitle = None
     section_number: str
     index_number: str                        # what a student types into WebReg
     campus_code: str

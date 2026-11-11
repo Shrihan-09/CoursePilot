@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert, Badge, Skeleton } from "@/components/ui/feedback";
 import { useToast } from "@/components/ui/overlay";
-import { PlanDiffView } from "@/features/plan/plan-changes";
+import { PlanDiffView, confirmLabel } from "@/features/plan/plan-changes";
 import { chipBody, deliveryWords, OPEN_STATUS, streamMessage } from "@/lib/assistant";
 import { ApiError, api } from "@/lib/api";
 import { termLabel } from "@/lib/academic/vocabulary";
@@ -374,7 +374,7 @@ function isDiff(d: ProposalCard["diff"]): d is PlanDiff {
   return Array.isArray((d as PlanDiff).terms);
 }
 
-export function Proposal({ p, ctx }: { p: ProposalCard; ctx: Pick<Ctx, "tap" | "tapping"> }) {
+export function Proposal({ p, ctx }: { p: ProposalCard; ctx: Pick<Ctx, "tap" | "tapping"> & Partial<Pick<Ctx, "send">> }) {
   const [dismissed, setDismissed] = useState(false);
   if (dismissed) return <p className="text-xs text-fg-muted">Not now: {p.title}. Nothing changed.</p>;
   return (
@@ -391,8 +391,12 @@ export function Proposal({ p, ctx }: { p: ProposalCard; ctx: Pick<Ctx, "tap" | "
       <p className="text-xs text-fg-muted">Nothing changes until you confirm.</p>
       <div className="flex gap-2">
         <Button size="sm" variant="ghost" onClick={() => setDismissed(true)}>Not now</Button>
+        {isDiff(p.diff) && p.diff.dropped_course && p.diff.dropped_term && ctx.send && (() => {
+          const ask = `Suggest a replacement for ${p.diff.dropped_course} in ${termLabel(p.diff.dropped_term)}`;
+          return <Button size="sm" variant="secondary" onClick={() => ctx.send?.({ text: ask }, ask)}>Suggest a replacement</Button>;
+        })()}
         {p.action_token
-          ? <Button size="sm" variant="primary" loading={ctx.tapping} onClick={() => ctx.tap(p.action_token!)}>Confirm</Button>
+          ? <Button size="sm" variant="primary" loading={ctx.tapping} onClick={() => ctx.tap(p.action_token!)}>{isDiff(p.diff) ? confirmLabel(p.diff) : "Confirm"}</Button>
           : <span className="text-xs text-fg-muted">Ask again to get a fresh preview.</span>}
       </div>
     </section>

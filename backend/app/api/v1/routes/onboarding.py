@@ -72,6 +72,7 @@ from app.api.security import (
 from app.core.config import get_settings
 from app.db.session import get_sync_sessionmaker
 from app.domain.history import Issue, IssueSeverity
+from app.domain.text import OptionalCourseTitle
 from app.models import Course
 from app.services import history as history_service
 from app.services import onboarding as onboarding_service
@@ -297,7 +298,7 @@ class EntryView(BaseModel):
     entry_id: uuid.UUID
     course_code: str
     supplement_code: str
-    title: str | None
+    title: OptionalCourseTitle
     term_code: str
     status: str
     grade: str | None

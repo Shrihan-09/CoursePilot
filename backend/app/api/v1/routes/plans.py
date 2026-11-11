@@ -42,6 +42,7 @@ from app.db.session import get_sync_sessionmaker
 from app.domain.plan_edits import PlanEdits, PlannedCourseState
 from app.domain.planning import CONSTRAINTS_SOURCE, PlanningConstraints, PlanResult
 from app.domain.planning_profile import to_constraints
+from app.domain.text import CourseTitle, OptionalCourseTitle
 from app.services.planning.engine import InvalidAlternativeSelection
 from app.services.planning.profile import get_profile, profile_input
 from app.services.planning.readiness import READY_STATES, readiness
@@ -174,7 +175,7 @@ class Freshness(BaseModel):
 
 class BlockedCourseView(BaseModel):
     course: str
-    title: str | None
+    title: OptionalCourseTitle
     issue_code: str
     requirement_code: str | None
     reasons: list[str]
@@ -379,13 +380,13 @@ class RetakeOptionView(BaseModel):
 
 class RetakeUnlockView(BaseModel):
     course: str
-    title: str | None
+    title: OptionalCourseTitle
     planned_term: str | None
 
 
 class RetakeView(BaseModel):
     course: str
-    title: str
+    title: CourseTitle
     reason: str
     unlocks: list[RetakeUnlockView]
     blocking: bool

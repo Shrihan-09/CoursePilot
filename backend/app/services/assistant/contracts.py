@@ -19,6 +19,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from app.domain.text import CourseTitle
+
 COURSE_KEY = re.compile(r"\b\d{2}:\d{3}:\d{3}\b")
 SEASONS = {"0": "Winter", "1": "Spring", "7": "Summer", "9": "Fall"}
 
@@ -230,7 +232,7 @@ class Question(BaseModel):
 
 class OptionCard(BaseModel):
     course: str
-    title: str
+    title: CourseTitle
     credits: Decimal | None = None
     term_code: str | None = None
     #: First 1-2 sentences of the Rutgers catalog description, cut by code.
@@ -267,7 +269,7 @@ class ProposalCard(BaseModel):
 
 class SectionCard(BaseModel):
     course: str
-    title: str = ""
+    title: CourseTitle = ""
     term_code: str
     index_number: str
     section_number: str

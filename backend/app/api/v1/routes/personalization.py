@@ -38,16 +38,17 @@ from app.domain.planning_profile import (
     PlanningProfileInput,
 )
 from app.domain.schedule import SectionChoice
+from app.domain.text import OptionalCourseTitle
 from app.services.planning.engine import GRADUATION_SEMESTERS
 from app.services.planning.profile import confirm_profile, get_profile, profile_input
-from app.services.planning.readiness import readiness
-from app.services.planning.terms import label as term_label
 from app.services.planning.questionnaire import (
     CLUB_HOURS,
     GREEK_HOURS,
     HOURS_PER_POINT,
     MAJOR_RANGE,
 )
+from app.services.planning.readiness import readiness
+from app.services.planning.terms import label as term_label
 from app.services.planning.workload import LEVELS
 from app.services.scheduling.current import (
     CurrentScheduleError,
@@ -170,7 +171,7 @@ class ReadinessView(BaseModel):
 
 class CurrentCourseView(BaseModel):
     course: str
-    title: str | None
+    title: OptionalCourseTitle
     term_code: str
     transcript_section: str | None
     confirmed: list[SectionChoice]
