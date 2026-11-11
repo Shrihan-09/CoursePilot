@@ -441,6 +441,16 @@ async def test_no_path_parameterised_student_route_exists(app) -> None:
     # extra="forbid" body of one validated course key) - see
     # tests/test_onboarding_api.py.
     assert sorted(student_self_service) == [
+        # Prompt 11b: the assistant. Every route resolves the student from the
+        # account; {conversation_id} is looked up with student_id == caller,
+        # so another account's conversation is a 404 identical to a missing
+        # one (service._conversation) - test_assistant_api.
+        "/api/v1/student/assistant",
+        "/api/v1/student/assistant/actions",
+        "/api/v1/student/assistant/conversations",
+        "/api/v1/student/assistant/conversations/{conversation_id}",
+        "/api/v1/student/assistant/history",
+        "/api/v1/student/assistant/messages",
         "/api/v1/student/audit",
         "/api/v1/student/context",
         "/api/v1/student/courses",
@@ -468,6 +478,9 @@ async def test_no_path_parameterised_student_route_exists(app) -> None:
         "/api/v1/student/plans",
         "/api/v1/student/plans/context",
         "/api/v1/student/plans/current",
+        # Prompt 12: the semester builder browses courses for a {term} of MY
+        # saved plan (a term not in it is a 422); owner-resolved.
+        "/api/v1/student/plans/current/builder",
         # Prompt 11 Part A: options / preview / apply / undo / choices / search
         # on MY saved plan. {course}/{term} name a course IN the caller's own
         # plan (a course not in it is a 404); a preview id belongs to its
@@ -478,6 +491,11 @@ async def test_no_path_parameterised_student_route_exists(app) -> None:
         "/api/v1/student/plans/current/choices",
         "/api/v1/student/plans/current/courses/{course}/{term}/options",
         "/api/v1/student/plans/current/search",
+        # Prompt 11b: "Ready for WebReg" section choices. {term}/{course} name
+        # a term and course of MY saved plan; extra="forbid" body - test_assistant_api.
+        "/api/v1/student/plans/current/terms/{term}/sections",
+        "/api/v1/student/plans/current/terms/{term}/sections/{course}",
+        "/api/v1/student/plans/current/terms/{term}/webreg",
         "/api/v1/student/plans/current/undo",
         "/api/v1/student/plans/generate",
         # Prompt 11 A3: "use my grades to personalize suggestions" (owner-resolved).
@@ -503,7 +521,7 @@ async def test_no_path_parameterised_student_route_exists(app) -> None:
     import re
 
     params = {m for p in student_self_service for m in re.findall(r"\{(\w+)\}", p)}
-    assert params == {"entry_id", "import_id", "row_id", "course", "term"}
+    assert params == {"entry_id", "import_id", "row_id", "course", "term", "conversation_id"}
     # The only parameterised student path in the API is the ADMIN linking one,
     # which Phase 5.5 gates on is_admin.
     assert all(
