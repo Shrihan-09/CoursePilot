@@ -1,0 +1,7 @@
+# Reviewed gitleaks false positives (commit:file:rule:line). No secret values here.
+# Add a line only after confirming the match is not a credential; see docs/SECURITY.md.
+
+# Unit-test fixture: `action_token` placeholder in an assistant card (two words + digits).
+3d7a38c95e6da2defdb0c62e33240b5e479a7bec:frontend/tests/unit/assistant.test.tsx:generic-api-key:40
+# `claim_token=token` where token is uuid.uuid4(): a notification lease id, not a credential.
+ab2275c3a1c6cc44e59548788c217c7926cdded4:backend/app/services/live.py:generic-api-key:526

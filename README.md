@@ -100,6 +100,13 @@ For local development, run the API with `AUTH_PROVIDER=dev`,
 `AUTH_MODE=dev`. That gives a "development sign-in" where any name signs in.
 Both halves refuse it in production.
 
+**Secrets.** `.env` is gitignored and `.env.example` holds placeholders only.
+Enable the pre-commit guard once per clone with
+`git config core.hooksPath scripts/hooks` (it needs
+[gitleaks](https://github.com/gitleaks/gitleaks)). The API refuses to start
+when an OpenAI provider is selected without `OPENAI_API_KEY`. Key handling,
+rotation and the budget cap are in [docs/SECURITY.md](docs/SECURITY.md).
+
 Real sign-in is OIDC Authorization Code + PKCE, requesting `openid email`
 only, against any standards-based provider (for example Google). See
 [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md) for the configuration and for
@@ -114,7 +121,7 @@ pytest                          # from the repository root: everything
 ```
 
 PostgreSQL-only tests run against a database whose name ends in `_test`
-(`TEST_DATABASE_URL=postgresql+psycopg://coursepilot:coursepilot@localhost:5432/coursepilot_test`)
+(`TEST_DATABASE_URL=postgresql+psycopg://coursepilot:<POSTGRES_PASSWORD>@localhost:5432/coursepilot_test`)
 and are skipped without one. `scripts/inject_*_failures.py` deliberately break
 the code and check that the tests notice.
 

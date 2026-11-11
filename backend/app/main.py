@@ -26,6 +26,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         settings.llm_provider,
     )
 
+    # Fail fast: an OpenAI provider without a key must not boot "healthy".
+    from app.core.config import MissingSecretError, require_openai_key
+
+    try:
+        require_openai_key(settings)
+    except MissingSecretError as exc:
+        logger.critical("startup_refused: %s", exc)
+        raise
+
     # Phase 5.12: say out loud what a production deployment is missing.
     # Findings name settings, never values - a log line that quoted a
     # database URL would put a password in the log stream.
