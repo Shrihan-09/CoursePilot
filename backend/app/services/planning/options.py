@@ -68,6 +68,9 @@ class Option:
     impact: str
     similar_to: str | None = None
     group: str = "same_requirement"         # same_requirement | different_requirement
+    #: Prompt 08 B1: the course knowledge index's verdict for this term
+    #: (status, "after admission" stage, pending review, open conflicts).
+    knowledge: dict | None = None
 
 
 @dataclass
@@ -249,6 +252,27 @@ class OptionsContext:
     def term(self, code: str):
         return next((t for t in self.plan.terms if t.term_code == code), None)
 
+    def knowledge(self, term: str):
+        """Prompt 08 B1: the course knowledge index for this program and term
+        (one view per term per context), or None before the index is built."""
+        cache = self.__dict__.setdefault("_knowledge", {})
+        if term not in cache:
+            from app.services.knowledge import KnowledgeView, current_build
+            cache[term] = (KnowledgeView(self.session, self.version, term)
+                           if current_build(self.session) is not None else None)
+        return cache[term]
+
+    def knowledge_fields(self, course: str, term: str) -> dict | None:
+        view = self.knowledge(term)
+        if view is None:
+            return None
+        k = view.judge(course)
+        return {"status": k.status,
+                "after_stage": next((f.after_stage for f in k.fills if f.after_stage), None),
+                "pending_review": any(f.pending_review for f in k.fills),
+                "conflicts": sorted({c for f in k.fills for c in f.conflicts}),
+                "reasons": k.reasons[:4], "stale": k.stale}
+
     def fills(self, key: str) -> list[str]:
         """Open requirements whose official pool lists the course."""
         return [code for code in self.open if key in self.engine.pools.get(code, ())]
@@ -276,7 +300,8 @@ class OptionsContext:
             contact_hours=w.contact_hours if w else None,
             delivery=list(w.delivery) if w else [],
             fills_multiple=self.engine._usable(codes) >= 2, impact=impact,
-            similar_to=note, group=group)
+            similar_to=note, group=group,
+            knowledge=self.knowledge_fields(verdict.course, term))
 
 
 def _order(options: list[Option], ctx: OptionsContext, term_code: str, replacing,

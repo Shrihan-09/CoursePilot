@@ -19,6 +19,8 @@ import {
 import type { DegreeAudit, RequirementStatus } from "@/types/degree";
 import type { ProgramView } from "@/types/onboarding";
 
+import { ReportTargetContext } from "./report-requirement";
+
 import {
   AlternativeChoicesContext, type AlternativeChoices, DnReviewContext, evidenceFor, leafTally, matchesFilter, RequirementNode, type Filter,
 } from "./requirement-tree";
@@ -172,6 +174,7 @@ export function DegreeView({ audit, program, source, dnNotMet = [], choices = {}
   const findings = audit.findings.filter((f) => f.code !== "program_pending_review");
 
   return (
+    <ReportTargetContext.Provider value={{ program_key: program.program_key, catalog_year: audit.catalog_year }}>
     <DnReviewContext.Provider value={review}>
     <AlternativeChoicesContext.Provider value={choices}>
     <div className="space-y-6">
@@ -260,5 +263,6 @@ export function DegreeView({ audit, program, source, dnNotMet = [], choices = {}
     </div>
     </AlternativeChoicesContext.Provider>
     </DnReviewContext.Provider>
+    </ReportTargetContext.Provider>
   );
 }

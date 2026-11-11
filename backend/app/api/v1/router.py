@@ -27,6 +27,7 @@ from app.api.v1.routes import (
     personalization,
     student,
     progress,
+    requirement_reports,
     watches,
 )
 
@@ -51,6 +52,7 @@ for _live_router in live.routers:
     api_router.include_router(_live_router)
 api_router.include_router(admin.router)
 api_router.include_router(assistant.router)
+api_router.include_router(requirement_reports.router)
 
 # Future routers land here as they are implemented:
 #   courses.router      — course search / lookup

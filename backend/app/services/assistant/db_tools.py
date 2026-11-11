@@ -286,7 +286,40 @@ class DbAssistantTools:
         return {"course": course, "title": row.title, "credits": row.credits,
                 "description": self._descriptions([course]).get(course),
                 "prerequisite_text": prereq,
-                "offerings": [{"term_code": t, "label_text": term_label(t)} for t in terms]}
+                "offerings": [{"term_code": t, "label_text": term_label(t)} for t in terms],
+                "requirement_fit": self._requirement_fit(course, terms)}
+
+    def _requirement_fit(self, course: str, terms: list[str]) -> dict | None:
+        """Prompt 08 B1: what the course could fill for THIS student's program
+        (course knowledge index, newest offered term), with the student's own
+        status per requirement computed now from their saved plan. Structural
+        membership never implies the student needs it or may enroll."""
+        from app.models import ProgramVersion
+        from app.services.knowledge import KnowledgeView, current_build
+
+        if (not terms or self.student.program_version_id is None
+                or current_build(self.session) is None):
+            return None
+        version = self.session.get(ProgramVersion, self.student.program_version_id)
+        verdict = KnowledgeView(self.session, version, terms[0]).judge(course)
+        status = {}
+        try:
+            from app.services.planning.saved import current_plan
+            saved = current_plan(self.session, self.student)
+            if saved is not None:
+                status = {r.requirement_code:
+                          str(getattr(r.status_before, "value", r.status_before))
+                          for r in saved.result.requirements}
+        except Exception:       # noqa: BLE001 - status is an overlay; never fail the tool
+            status = {}
+        return {"term_code": terms[0], "status": verdict.status, "stale": verdict.stale,
+                "reasons": verdict.reasons[:4],
+                "fills": [{"requirement_code": f.requirement_code,
+                           "requirement_name": f.requirement_name,
+                           "after_stage": f.after_stage, "pending_review": f.pending_review,
+                           "open_conflicts": f.conflicts, "minimum_grade": f.min_grade,
+                           "your_status": status.get(f.requirement_code, "unknown")}
+                          for f in verdict.fills]}
 
     # -- previews -------------------------------------------------------
     def preview_plan_change(self, change: PlanChange) -> dict:
