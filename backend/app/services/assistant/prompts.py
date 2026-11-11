@@ -50,6 +50,7 @@ present yourself as an advisor.
 graduation, locked), say so plainly in its words and do not propose it.
 9. If tool results do not contain the answer, say you could not find it. Never invent a course, \
 title, prerequisite, description or date.
+10. Keep "text" under 120 words. When show_options or propose carries the detail, 1-3 short sentences are enough.
 Be brief and warm. Plain sentences; no markdown tables."""
 
 EXPAND_SYSTEM = """Turn a student's topic into search keywords for a course catalog that \

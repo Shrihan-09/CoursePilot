@@ -99,6 +99,8 @@ export interface AssistantStatus {
   enabled: boolean;
   reason: string | null;
   daily_limit: number;
+  /** Longest message the API accepts (ASSISTANT_MAX_INPUT_CHARS). */
+  max_input_chars?: number;
   remaining_today: number;
   suggestions: Chip[];
   history: HistoryMessage[];

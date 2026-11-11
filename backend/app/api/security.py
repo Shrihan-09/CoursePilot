@@ -201,6 +201,21 @@ def get_model_limiter(settings: Settings | None = None) -> SlidingWindowLimiter:
     return _model_limiter
 
 
+#: Assistant messages per account per minute (launch cost control). Separate
+#: from the model budget: one assistant turn may make several model calls, and
+#: this bounds how often a person can START one.
+_assistant_limiter: SlidingWindowLimiter | None = None
+
+
+def get_assistant_limiter(settings: Settings | None = None) -> SlidingWindowLimiter:
+    global _assistant_limiter
+    settings = settings or get_settings()
+    if _assistant_limiter is None:
+        _assistant_limiter = SlidingWindowLimiter(
+            limit=settings.assistant_rate_limit_per_minute, window_seconds=60.0)
+    return _assistant_limiter
+
+
 def get_link_limiter(settings: Settings | None = None) -> SlidingWindowLimiter:
     global _link_limiter
     settings = settings or get_settings()
@@ -243,6 +258,8 @@ def get_upload_limiter(settings: Settings | None = None) -> SlidingWindowLimiter
 def reset_limiters() -> None:
     """Test hook. Not called by application code."""
     global _request_limiter, _model_limiter, _link_limiter, _push_limiter, _upload_limiter
+    global _assistant_limiter
+    _assistant_limiter = None
     _request_limiter = None
     _model_limiter = None
     _link_limiter = None

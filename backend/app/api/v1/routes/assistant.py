@@ -35,7 +35,13 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.api.security import Principal, enforce_request_rate_limit, get_model_limiter
+from app.api.security import (
+    Principal,
+    RateLimitExceeded,
+    enforce_request_rate_limit,
+    get_assistant_limiter,
+    get_model_limiter,
+)
 from app.api.v1.routes.student import _resolve, _unlinked
 from app.core.config import get_settings
 from app.db.session import get_sync_sessionmaker
@@ -59,10 +65,13 @@ class MessageIn(BaseModel):
     conversation_id: uuid.UUID | None = None
     context_term: str | None = Field(default=None, pattern=TERM)
     builder_selection: list[Annotated[str, Field(pattern=r"^\d{2}:\d{3}:\d{3}$")]] | None = Field(default=None, max_length=24)
-    text: str = Field(default="", max_length=600)
+    #: Loose transport bound only. The real limit (ASSISTANT_MAX_INPUT_CHARS)
+    #: is checked in the route so the student gets a friendly 400, not a 422.
+    text: str = Field(default="", max_length=4_000)
     chip: ChipIn | None = None
     #: Several clarify answers at once: question id -> chip value.
-    answers: dict[str, str] | None = Field(default=None, max_length=6)
+    answers: dict[Annotated[str, Field(max_length=32)], Annotated[str, Field(max_length=120)]] | None = Field(
+        default=None, max_length=6)
 
 
 class ActionIn(BaseModel):
@@ -97,6 +106,7 @@ async def status(conversation_id: uuid.UUID | None = None, principal: Principal 
                 return {"user_key": str(principal.account_id), "conversation_id": None, "conversations": [],
                         "enabled": False, "reason": "Finish linking your student record to use the assistant.",
                         "daily_limit": settings.assistant_daily_message_limit,
+                        "max_input_chars": settings.assistant_max_input_chars,
                         "remaining_today": settings.assistant_daily_message_limit,
                         "suggestions": [], "history": [], "footer": FOOTER}
             enabled, reason = service.availability(settings)
@@ -108,6 +118,7 @@ async def status(conversation_id: uuid.UUID | None = None, principal: Principal 
             return {"user_key": str(principal.account_id), "conversation_id": str(conv.id), "conversations": service.conversations(session, student),
                     "enabled": enabled, "reason": reason,
                     "daily_limit": settings.assistant_daily_message_limit,
+                    "max_input_chars": settings.assistant_max_input_chars,
                     "remaining_today": service.remaining_today(session, student, settings),
                     "suggestions": [c.model_dump() for c in service.SUGGESTIONS],
                     "history": service.history(session, student, conv.id), "footer": FOOTER}
@@ -122,10 +133,23 @@ async def message(body: MessageIn, principal: Principal = Depends(enforce_reques
     settings = get_settings()
     if not (body.text.strip() or body.chip or body.answers):
         raise HTTPException(status_code=422, detail="Type a message or tap an option.")
+    limit = settings.assistant_max_input_chars
+    typed = len(body.text.strip())
+    if typed > limit:
+        raise HTTPException(status_code=400, detail=(
+            f"Please keep your message to {limit} characters or fewer "
+            f"(yours is {typed}). Try asking one thing at a time."))
     enabled, reason = service.availability(settings)
     if not enabled:
         raise HTTPException(status_code=503, detail=reason)
     if settings.rate_limit_enabled:
+        try:
+            get_assistant_limiter(settings).check(f"assistant:{principal.account_id}")
+        except RateLimitExceeded as exc:
+            exc.detail = (f"You're sending messages quickly. Wait {exc.headers['Retry-After']} "
+                          f"seconds and try again (limit: "
+                          f"{settings.assistant_rate_limit_per_minute} a minute).")
+            raise
         get_model_limiter(settings).check(f"model:{principal.account_id}")
 
     # Resolve ownership before opening the stream: another user's id is a 404.

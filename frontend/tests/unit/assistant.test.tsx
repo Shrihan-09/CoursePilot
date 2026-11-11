@@ -11,12 +11,13 @@ import { ToastProvider } from "@/components/ui/overlay";
 import {
   ActivityLine,
   AssistantChat,
+  Composer,
   OptionCarousel,
   Proposal,
   Questions,
   WebRegPanelView,
 } from "@/features/assistant/assistant-chat";
-import { chipBody, parseNdjson, streamMessage } from "@/lib/assistant";
+import { ASSISTANT_MAX_INPUT_CHARS, chipBody, parseNdjson, streamMessage } from "@/lib/assistant";
 import type { AssistantReply, AssistantStatus, OptionCard, ProposalCard, StreamEvent } from "@/types/assistant";
 
 const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#x27;|&apos;/g, "'").replace(/&quot;/g, '"')
@@ -196,5 +197,41 @@ describe("the panel", () => {
       daily_limit: 50, remaining_today: 50, suggestions: [], history: [], footer: reply().footer };
     const t = text(withClient(<AssistantChat />, (c) => c.setQueryData(["assistant"], status)));
     expect(t).toContain("The assistant isn't set up on this server yet.");
+  });
+});
+
+
+describe("the 250-character input limit", () => {
+  // The disabled ATTRIBUTE, not Tailwind's `disabled:` class names.
+  const sendDisabled = (html: string) => /\sdisabled=""/.test(html.match(/<button[^>]*aria-label="Send"[^>]*>/)?.[0] ?? "");
+
+  it("matches the backend default", () => {
+    expect(ASSISTANT_MAX_INPUT_CHARS).toBe(250);
+  });
+
+  it("shows a live counter and allows exactly the limit", () => {
+    const html = renderToStaticMarkup(<Composer disabled={false} onSend={noop} draft={"a".repeat(250)} />);
+    expect(text(html)).toContain("250/250");
+    expect(sendDisabled(html)).toBe(false);
+    expect(html).not.toContain('aria-invalid="true"');
+  });
+
+  it("disables Send and says how far over past the limit", () => {
+    const html = renderToStaticMarkup(<Composer disabled={false} onSend={noop} draft={"a".repeat(251)} />);
+    expect(text(html)).toContain("1 over the 250-character limit");
+    expect(sendDisabled(html)).toBe(true);
+    expect(html).toContain('aria-invalid="true"');
+    // No silent truncation: the textarea has no hard maxLength.
+    expect(html).not.toMatch(/maxlength=/i);
+  });
+
+  it("does not count surrounding whitespace, like the API", () => {
+    const html = renderToStaticMarkup(<Composer disabled={false} onSend={noop} draft={`  ${"a".repeat(250)}  `} />);
+    expect(text(html)).toContain("250/250");
+  });
+
+  it("uses the server's limit when the status sends one", () => {
+    const html = renderToStaticMarkup(<Composer disabled={false} onSend={noop} draft="hello" maxChars={100} />);
+    expect(text(html)).toContain("5/100");
   });
 });

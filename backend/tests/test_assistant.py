@@ -345,3 +345,39 @@ def test_tests_never_use_a_real_model() -> None:
 
     get_settings.cache_clear()
     assert get_settings().assistant_provider == "fake"
+
+
+# --------------------------------------------------------------------------
+# Launch cost limits: output cap and reply length
+# --------------------------------------------------------------------------
+
+
+def test_the_output_cap_comes_from_settings_with_a_launch_default() -> None:
+    from app.core.config import Settings
+
+    assert Settings(_env_file=None).assistant_max_output_tokens == 400
+    assert AgentConfig().max_output_tokens == 400
+    cfg = AgentConfig.from_settings(Settings(_env_file=None, assistant_max_output_tokens=321))
+    assert cfg.max_output_tokens == 321
+
+
+async def test_every_model_call_receives_the_output_cap() -> None:
+    caps: list[int] = []
+
+    class Spy(FakeAssistantProvider):
+        async def complete(self, **kw):
+            caps.append(kw["max_tokens"])
+            return await super().complete(**kw)
+
+    tools = SyntheticTools("alex")
+    script = [json.dumps({"tool_calls": [{"name": "get_progress", "args": {}}]})]
+    assistant = Assistant(tools, default=Spy("spy", script=script),
+                          config=AgentConfig(max_output_tokens=400))
+    await assistant.turn("What do I still need for Core?")
+    assert caps and set(caps) == {400}
+
+
+def test_the_prompt_asks_for_short_replies() -> None:
+    from app.services.assistant.prompts import system_prompt
+
+    assert "under 120 words" in system_prompt()

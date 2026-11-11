@@ -62,7 +62,7 @@ _FLOW_ANSWER = re.compile(r"\?\s*$")
 @dataclass
 class AgentConfig:
     max_tool_calls: int = 8
-    max_output_tokens: int = 2_000
+    max_output_tokens: int = 400
     turn_token_budget: int = 60_000
     escalation_enabled: bool = True
     max_steps: int = 5
