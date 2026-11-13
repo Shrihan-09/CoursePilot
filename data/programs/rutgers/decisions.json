@@ -59,6 +59,12 @@
    "date": "2026-11-12",
    "decided_by": "project owner",
    "text": "Class-year choice in onboarding: the student's own stated class year counts (recorded as student-stated, like their declared major); plans show which curriculum governs and why."
+  },
+  {
+   "id": "owner-2026-11-13-confirmations",
+   "date": "2026-11-13",
+   "decided_by": "project owner",
+   "text": "121 satisfying prereqs that name 111: approved, keep it flagged. 111 isn't offered from Spring 2027, so new students must be able to reach 205 via 121. 120/121/122 every fall and spring: approved as a flagged assumption. Recheck when the Fall 2027 SOC is published. Second CS page: https://www.cs.rutgers.edu/academics/undergraduate/new-120-121-122-course-sequence (also https://www.cs.rutgers.edu/academics/undergraduate/new-introductory-computer-science-course-sequence). Both loaded fine from a normal browser; if you get 403, I'll save browser captures. Admission verification: fine as-is for now."
   }
  ]
 }

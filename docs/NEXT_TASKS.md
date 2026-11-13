@@ -112,6 +112,17 @@ changes the student's catalog year by itself.
   credit count (Degree Navigator's degree credits are authoritative), plus a
   reminder before it opens.
 
+## Backlog: program expansion (from Prompt 08 B1)
+
+- **Verify RBS admission** from an uploaded Degree Navigator audit or transcript (the
+  school code), with an admin override. Until then nothing in the app marks an
+  admission verified. Admitted RBS students keep the "after admission to RBS" labels,
+  and pre-business students keep SAS Core as the requirement of record (owner
+  decision 2026-11-13: fine as-is for now).
+- **Recheck the CS intro seasons** when the Fall 2027 SOC is published. 01:198:120/121/122
+  are assumed to run every fall and spring (approved flagged assumption,
+  `course-transitions.json`, SEASONS-ASSUMED).
+
 ## Backlog: tooling
 
 - Free-elective credits: show them as a course slot (e.g. "one 3-credit

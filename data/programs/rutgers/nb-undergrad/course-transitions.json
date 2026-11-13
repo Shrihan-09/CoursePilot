@@ -27,6 +27,10 @@
    "id": "cs-new-120-121-122-sequence",
    "role": "department",
    "note": "HTTP 403 expected; not yet archived: evidence gap until a browser-saved capture is added."
+  },
+  {
+   "id": "owner-2026-11-13-confirmations",
+   "role": "owner_decision"
   }
  ],
  "transitions": [
@@ -91,7 +95,13 @@
    "needs_review": [
     {
      "id": "SEASONS-ASSUMED",
-     "reason": "Offered every fall and spring from its first term is assumed: the sources give only the first term."
+     "reason": "Offered every fall and spring from its first term is assumed: the sources give only the first term.",
+     "status": "approved_as_flagged_assumption",
+     "recheck": "when the Fall 2027 SOC is published",
+     "approval": {
+      "source": "owner-2026-11-13-confirmations",
+      "quote": "120/121/122 every fall and spring: approved as a flagged assumption. Recheck when the Fall 2027 SOC is published."
+     }
     }
    ]
   },
@@ -125,11 +135,22 @@
    "needs_review": [
     {
      "id": "SEASONS-ASSUMED",
-     "reason": "Offered every fall and spring from its first term is assumed: the sources give only the first term."
+     "reason": "Offered every fall and spring from its first term is assumed: the sources give only the first term.",
+     "status": "approved_as_flagged_assumption",
+     "recheck": "when the Fall 2027 SOC is published",
+     "approval": {
+      "source": "owner-2026-11-13-confirmations",
+      "quote": "120/121/122 every fall and spring: approved as a flagged assumption. Recheck when the Fall 2027 SOC is published."
+     }
     },
     {
      "id": "CS121-FOR-111-PREREQ",
-     "reason": "Spring 2027 SOC prerequisites still name 01:198:111 (e.g. for 01:198:205); 121 is assumed to satisfy them from the stated 111→121 equivalency. The owner decision states the prerequisite substitution only for 112→122."
+     "reason": "Spring 2027 SOC prerequisites still name 01:198:111 (e.g. for 01:198:205); 121 is assumed to satisfy them from the stated 111→121 equivalency. The owner decision states the prerequisite substitution only for 112→122.",
+     "status": "approved_as_flagged_assumption",
+     "approval": {
+      "source": "owner-2026-11-13-confirmations",
+      "quote": "121 satisfying prereqs that name 111: approved, keep it flagged. 111 isn't offered from Spring 2027, so new students must be able to reach 205 via 121."
+     }
     }
    ]
   },
@@ -167,7 +188,13 @@
    "needs_review": [
     {
      "id": "SEASONS-ASSUMED",
-     "reason": "Offered every fall and spring from Fall 2027 is assumed: the sources give only the first term."
+     "reason": "Offered every fall and spring from Fall 2027 is assumed: the sources give only the first term.",
+     "status": "approved_as_flagged_assumption",
+     "recheck": "when the Fall 2027 SOC is published",
+     "approval": {
+      "source": "owner-2026-11-13-confirmations",
+      "quote": "120/121/122 every fall and spring: approved as a flagged assumption. Recheck when the Fall 2027 SOC is published."
+     }
     },
     {
      "id": "CS122-PREREQ-ASSUMED",
