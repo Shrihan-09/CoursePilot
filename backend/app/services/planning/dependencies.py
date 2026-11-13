@@ -78,6 +78,11 @@ class DependencyPlanner:
     #: not. A course CoursePilot has no data for is NOT a free course with no
     #: prerequisite (Phase 6.5 finding: Newark's 21:640:114 looked "free").
     plannable: Callable[[str], str | None] = lambda _course: None
+    #: Prompt 08 B1: old course -> courses that stand in for it in published
+    #: prerequisites ("courses that required 112 now require 122 (or 112)").
+    #: A prerequisite naming the old course is met by a stand-in, and when the
+    #: old course cannot be planned (retired) a stand-in is planned instead.
+    substitutes: dict[str, tuple[str, ...]] = field(default_factory=dict)
     max_depth: int = 6
     _memo: dict[str, PathResult] = field(default_factory=dict)
 
@@ -129,7 +134,14 @@ class DependencyPlanner:
             key = e.course_key
             if key in self.available:
                 return PathResult(True)
+            stand_ins = self.substitutes.get(key, ())
+            if any(s in self.available for s in stand_ins):
+                return PathResult(True)
             blocked = self.plannable(key)
+            if blocked and stand_ins:
+                # The named course cannot be planned (e.g. retired): plan the
+                # course that stands in for it.
+                return self._solve(AnyOf(tuple(CourseReq(s) for s in stand_ins)), stack)
             if blocked:
                 return PathResult(False, reason=f"{blocked}:{key}")
             sub = self._need(key, stack)

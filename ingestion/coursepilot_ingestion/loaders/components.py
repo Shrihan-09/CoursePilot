@@ -47,6 +47,7 @@ KINDS = {k.value for k in ComponentKind}
 RULE_TYPES = {"max_grade_count", "course_exclusion", "residency", "min_gpa",
               "residency_window", "pass_fail_limit", "double_count_limit"}
 UNEVALUATED_TYPES = {"residency_window", "pass_fail_limit", "double_count_limit"}
+RULE_TYPES = RULE_TYPES | {"no_major_credit"}
 #: Top-level keys that carry requirement meaning (what a reviewer approves).
 SEMANTIC_KEYS = ("component", "requirements", "school_rules")
 
@@ -105,6 +106,7 @@ def node_fields(rdef: dict) -> dict:
         group_caps=caps or None,
         unresolved_conflicts=sorted(set(rdef["unresolved_conflicts"]))
         if rdef.get("unresolved_conflicts") else None,
+        review_flags=rdef.get("review_flags") or None,
         **_grade_semantics(rdef),
     )
 

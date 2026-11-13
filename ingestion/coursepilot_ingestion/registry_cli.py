@@ -178,6 +178,51 @@ def cmd_publish(s: Session, a) -> None:
     print(f"published ({v.publication_basis})")
 
 
+def _component_for(s: Session, a):
+    from app.models import SchoolRequirementSetVersion
+
+    comp = s.scalar(select(SchoolRequirementSetVersion).where(
+        SchoolRequirementSetVersion.code == a.code,
+        SchoolRequirementSetVersion.catalog_year == a.year))
+    if comp is None:
+        raise program_lifecycle.LifecycleError(f"component {a.code} ({a.year}) is not loaded")
+    return comp
+
+
+def _component_file(code: str, year: str):
+    from coursepilot_ingestion.program_registry import CURATED_ROOT
+
+    matches = sorted(CURATED_ROOT.glob(f"*/{year}/components/{code}.json"))
+    return matches[0] if matches else None
+
+
+def cmd_review_component(s: Session, a) -> None:
+    """Prompt 08 B1: a named human approves (or asks changes to) a component.
+    The encoding must pass validation against its archived sources first."""
+    from coursepilot_ingestion.encoding.validate import validate_file
+    from coursepilot_ingestion.loaders.components import component_sha256
+
+    comp = _component_for(s, a)
+    path = _component_file(a.code, a.year)
+    if path is None:
+        raise program_lifecycle.LifecycleError(f"no encoding file for component {a.code}")
+    if component_sha256(json.loads(path.read_bytes())) != comp.definition_sha256:
+        raise program_lifecycle.LifecycleError(
+            "the loaded component differs from its file; load the file first, then review it")
+    report = validate_file(path, s)
+    review = program_lifecycle.record_component_review(
+        s, comp, reviewer=a.reviewer, decision=a.decision, notes=a.notes,
+        machine_checks_passed=report.ok)
+    print(f"recorded {review.decision} by {review.reviewer} on {comp.code} "
+          f"(definition {comp.definition_sha256[:16]}) -> {comp.lifecycle_state}")
+
+
+def cmd_publish_component(s: Session, a) -> None:
+    comp = _component_for(s, a)
+    program_lifecycle.publish_component(s, comp)
+    print(f"published component {comp.code}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="coursepilot-registry")
     p.add_argument("--database-url", default=None)
@@ -200,12 +245,21 @@ def build_parser() -> argparse.ArgumentParser:
             r.add_argument("--reviewer", required=True, help="your full name")
             r.add_argument("--decision", choices=("approved", "changes_requested"), required=True)
             r.add_argument("--notes")
+    for name in ("review-component", "publish-component"):
+        r = sub.add_parser(name)
+        r.add_argument("--code", required=True)
+        r.add_argument("--year", required=True)
+        if name == "review-component":
+            r.add_argument("--reviewer", required=True, help="your full name")
+            r.add_argument("--decision", choices=("approved", "changes_requested"), required=True)
+            r.add_argument("--notes")
     return p
 
 
 COMMANDS = {"discover": cmd_discover, "fetch": cmd_fetch, "load": cmd_load, "link": cmd_link,
             "validate": cmd_validate, "check-sources": cmd_check, "status": cmd_status,
-            "packets": cmd_packets, "coverage": cmd_coverage, "review": cmd_review, "publish": cmd_publish}
+            "packets": cmd_packets, "coverage": cmd_coverage, "review": cmd_review, "publish": cmd_publish,
+            "review-component": cmd_review_component, "publish-component": cmd_publish_component}
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -1,0 +1,64 @@
+{
+ "_README": [
+  "Decisions by the project owner on open source questions (Prompt 08 B1 follow-up). An encoding may cite a decision as a source ('role': 'owner_decision'); validation checks each quote against the decision text recorded here.",
+  "A decision is not evidence of what Rutgers published. Where a decision relies on a department page that could not be archived, that page stays listed as an evidence gap until a capture is added."
+ ],
+ "decisions": [
+  {
+   "id": "owner-2026-11-12-cs-intro-initial",
+   "date": "2026-11-12",
+   "decided_by": "project owner",
+   "resolves": [
+    "CS-INTRO-2027"
+   ],
+   "text": "CS-INTRO-2027: Follow the CS dept (cs.rutgers.edu \"New 120 121 122 Course Sequence\"). 111/112 retire after Fall 2026; from Spring 2027 the intro is 01:198:120 → 121 → 122. 120 is a prereq for 121. The placement exam can waive 120 but gives SAS credit, not CS major credit. Students who take 120 may choose the BA instead. Encode this as a class-year curriculum version. For students who already completed 111/112, count them toward the 121/122 slots, but mark that mapping as an unconfirmed assumption (the dept page doesn't say). Archive the dept page as evidence.",
+   "superseded_in_part_by": "owner-2026-11-12-cs-intro (no class-year split: course-based)"
+  },
+  {
+   "id": "owner-2026-11-12-cs-intro",
+   "date": "2026-11-12",
+   "decided_by": "project owner",
+   "resolves": [
+    "CS-INTRO-2027"
+   ],
+   "relies_on": [
+    "https://www.cs.rutgers.edu/academics/undergraduate/new-introductory-computer-science-course-sequence",
+    "https://www.cs.rutgers.edu/academics/undergraduate/new-120-121-122-course-sequence"
+   ],
+   "text": "No class-year split — it's course-based, per cs.rutgers.edu (new-introductory-computer-science-course-sequence + new-120-121-122-course-sequence; archive both with provenance): One CS curriculum. The intro requirement is met by 121 OR completed 111, and by 122 OR completed 112. 111→121 and 112→122 equivalency is stated for transfer credit; apply it to completed Rutgers 111/112 too, but mark that node \"needs review\" with the quote, since the page states it under transfers. CS120: SAS credit only, never CS major credit (free elective only). Prereq for 121 unless placed out (placement exam, AP CSA 4 = 120 equivalency, AP CSA 5 = 121 equivalency). Offerings: 111 last offered Fall 2026; 112 still offered Spring 2027, last offered then (not offered from Fall 2027). Planner: a student with 111 but no 112 can take 112 in Spring 2027, otherwise 122 from Fall 2027. A student with neither takes 120/121 (per placement) from Spring 2027. D/F in 111 in Fall 2026 → retake as 120 or 121 in Spring 2027; D/F in 112 in Spring 2027 → 122 in Fall 2027 (SAS repeat policy applies). Courses that required 112 now require 122 (or 112). Note: students who need 120 may choose the B.A. instead of the B.S. (dept page says so) — show as info only, never decide for them."
+  },
+  {
+   "id": "owner-2026-11-12-bait-ethics",
+   "date": "2026-11-12",
+   "decided_by": "project owner",
+   "resolves": [
+    "BAIT-ETHICS"
+   ],
+   "text": "BAIT-ETHICS: Use 33:522:334. Log the catalog table's 335 as a source conflict."
+  },
+  {
+   "id": "owner-2026-11-12-browser-captures",
+   "date": "2026-11-12",
+   "decided_by": "project owner",
+   "text": "Blocked dept pages: I'll provide browser-saved captures. Accept them as evidence with capture date + URL. Until then, keep them as gaps."
+  },
+  {
+   "id": "owner-2026-11-12-ie-credits",
+   "date": "2026-11-12",
+   "decided_by": "project owner",
+   "text": "IE credits: The catalog page (both captures) says 123, so fix the Phase A register to 123 and note the correction."
+  },
+  {
+   "id": "owner-2026-11-12-prebusiness-gen-ed",
+   "date": "2026-11-12",
+   "decided_by": "project owner",
+   "text": "Both, labelled — plus: when picking gen-ed courses, prefer ones that count for BOTH SAS Core and RBS's core, so the plan stays safe whether or not the student is admitted. Label each gen-ed course \"counts for both\" / \"SAS only\" / \"RBS only\". Never assume admission: SAS Core stays the requirement of record until admission is verified, then switch to RBS's core and show what already carried over."
+  },
+  {
+   "id": "owner-2026-11-12-class-year",
+   "date": "2026-11-12",
+   "decided_by": "project owner",
+   "text": "Class-year choice in onboarding: the student's own stated class year counts (recorded as student-stated, like their declared major); plans show which curriculum governs and why."
+  }
+ ]
+}

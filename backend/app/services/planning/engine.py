@@ -437,7 +437,8 @@ class PlanningEngine:
         dep = deps.get(available) if deps is not None else None
         if dep is None:
             dep = DependencyPlanner(self._expression_of, set(available),
-                                    plannable=self._plannable)
+                                    plannable=self._plannable,
+                                    substitutes=self._substitutes())
             if deps is not None:
                 deps[available] = dep
         dependencies = set()
@@ -706,6 +707,15 @@ class PlanningEngine:
         # stages' plain labels. A plan never assumes a stage is passed.
         from app.services.academic_context import node_stages, stage_labels
         self.node_stage = node_stages(list(self.requirements.values()), version)
+        # Prompt 08 B1: department transition notes for this program's courses.
+        from app.models import CourseTransition
+        from app.services.knowledge import program_key as _pkey
+        key = _pkey(version) if version.program else ""
+        self.transition_notes = {
+            row.course_string: row.planner_note
+            for row in s.scalars(select(CourseTransition).where(
+                CourseTransition.planner_note.is_not(None)))
+            if key in (row.note_programs or [key])}
         self.stage_label = stage_labels(s, version.catalog_year)
         self.passed_stage: set[str] = set()
         self._restriction_cache: dict[tuple[str, str], RestrictionCheck] = {}
@@ -842,6 +852,12 @@ class PlanningEngine:
         self._load_courses({course})
         rows = self.prereq_rows.get(course)
         if not rows:
+            # Prompt 08 B1: an announced course SOC has not published yet uses
+            # its ASSUMED prerequisite (needs review), never "none".
+            announced = self.offerings.announced.get(course)
+            if announced is not None and announced.assumed_prerequisite:
+                from app.domain.prerequisites import AnyOf, CourseReq
+                return AnyOf(tuple(CourseReq(k) for k in announced.assumed_prerequisite))
             return None
         row = rows[max(rows)]
         if course in self.placement_covers and is_math(course):
@@ -855,11 +871,25 @@ class PlanningEngine:
             expr = AllOf((expr, *(AnyOf(tuple(CourseReq(k) for k in codes)) for codes in lists)))
         return expr
 
+    def _substitutes(self) -> dict[str, tuple[str, ...]]:
+        """old course -> announced courses that stand in for it (Prompt 08 B1)."""
+        out: dict[str, list[str]] = {}
+        for new, row in self.offerings.announced.items():
+            for old in row.satisfies_prerequisite_of or ():
+                out.setdefault(old, []).append(new)
+        self._load_courses({k for v in out.values() for k in v})
+        return {k: tuple(sorted(v)) for k, v in out.items()}
+
     def _plannable(self, course: str) -> str | None:
         self._load_courses({course})
         if course not in self.course_info:
             return "not_in_catalog"
-        if not self.offerings.terms.get(course):
+        # Prompt 08 B1: a retired course is never added to a plan that starts
+        # after its last term; an announced one may be, with no SOC history.
+        last = self.offerings.retired.get(course)
+        if last is not None and getattr(self, "_plan_start", None) and self._plan_start > last:
+            return "retired"
+        if not self.offerings.terms.get(course) and course not in self.offerings.announced:
             return "no_offering_evidence"
         if course in self.excluded:
             return "excluded_by_program"
@@ -1031,6 +1061,7 @@ class PlanningEngine:
         Each retry closes a child, so the process is finite.
         """
         self._spread_major = True
+        self._plan_start = start_term
         result = self._plan_alternatives(student, version, target, start_term, assumptions)
         if self._spread and any(i.code == "GRADUATION_TARGET_NOT_MET" for i in result.issues):
             # Spread task: spreading the major-related courses would miss the
@@ -1530,7 +1561,8 @@ class PlanningEngine:
             expression_of=self._expression_of,
             available=self.passed | set(self.in_progress) | set(planned),
             contributes=lambda k: k in serves,
-            plannable=self._plannable)
+            plannable=self._plannable,
+            substitutes=self._substitutes())
         states = {k: self._settle(k, self._state(a, b), b, planner)
                   for k, (a, b, _) in evaluated.items()}
         ready = {k for k, s in states.items()
@@ -3143,6 +3175,9 @@ class PlanningEngine:
                 if pc.requirements:
                     pc.reasons.insert(0, Reason.SATISFIES_REQUIREMENT)
                 self._label_stage(pc)
+                note = self.transition_notes.get(pc.course)
+                if note and note not in pc.notes:
+                    pc.notes.append(note)
                 if pc.role == "multi_requirement" and \
                         len({r.requirement_code for r in pc.requirements}) < 2:
                     # Correctness fixes item 9: "Counts twice" only when the

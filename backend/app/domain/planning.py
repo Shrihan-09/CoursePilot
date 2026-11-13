@@ -56,6 +56,9 @@ class OfferingEvidenceKind(StrEnum):
     HISTORICAL_SAME_SEASON = "historically_offered_in_season"  # earlier terms of that season
     OTHER_SEASONS_ONLY = "offered_in_other_seasons_only"
     NO_EVIDENCE = "no_offering_evidence"
+    # Prompt 08 B1: the department announced the course from a term (and its
+    # seasons) that SOC has not published yet - e.g. 01:198:122 from Fall 2027.
+    DEPARTMENT_ANNOUNCED = "department_announced"
 
 
 class OfferingStatus(StrEnum):
@@ -76,6 +79,7 @@ def offering_status(kind: OfferingEvidenceKind) -> OfferingStatus:
         OfferingEvidenceKind.OTHER_SEASONS_ONLY: OfferingStatus.INSUFFICIENT_HISTORY,
         OfferingEvidenceKind.TERM_DATA_PENDING: OfferingStatus.UNKNOWN,
         OfferingEvidenceKind.NO_EVIDENCE: OfferingStatus.UNKNOWN,
+        OfferingEvidenceKind.DEPARTMENT_ANNOUNCED: OfferingStatus.HISTORICALLY_LIKELY,
     }[kind]
 
 

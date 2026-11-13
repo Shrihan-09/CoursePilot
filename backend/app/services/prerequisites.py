@@ -153,7 +153,8 @@ def check_many(
     `projected` (Phase 6.5): hypothetical attempts added to the student's
     history for this evaluation only; nothing is written.
     """
-    history = with_projected(attempts_by_course(session, student), projected)
+    history = with_equivalents(session, with_projected(attempts_by_course(session, student),
+                                                       projected))
     offered = {
         key for key, in session.execute(
             select(Course.course_string)
@@ -161,6 +162,18 @@ def check_many(
             .where(Course.course_string.in_(course_keys), CourseOffering.term_code == term_code)
         ).all()
     }
+    # Prompt 08 B1: a department-announced course counts as offered in the
+    # terms it is announced for; with no published prerequisite there, its
+    # assumed prerequisite (needs review) is evaluated instead of "none".
+    from app.services.planning.offerings import announced_in, transitions
+    _, announced = transitions(session)
+    assumed = {}
+    for key in course_keys:
+        row = announced.get(key)
+        if row is not None and key not in offered and announced_in(row, term_code):
+            offered.add(key)
+            if row.assumed_prerequisite:
+                assumed[key] = row.assumed_prerequisite
     published = base_record_rows(session.execute(
         select(Course.course_string, Course.supplement_code, CoursePrerequisite)
         .join(Course, Course.id == CoursePrerequisite.course_id)
@@ -169,8 +182,31 @@ def check_many(
 
     placement = getattr(student, "math_placement", None)
     return {key: _check(key, term_code, key in offered, published.get(key, []), history,
-                        placement, lambda: placement_covered(session, placement))
+                        placement, lambda: placement_covered(session, placement),
+                        assumed=assumed.get(key))
             for key in course_keys}
+
+
+def with_equivalents(session: Session, history: dict[str, list[Attempt]]) -> dict:
+    """History where a course that REPLACES another also satisfies prerequisites
+    naming the old one (Prompt 08 B1: "courses that required 112 now require 122
+    (or 112)"). Each stand-in attempt copies the real one's term, status, grade
+    and origin; nothing is written, and degree-requirement eligibility is not
+    affected (that is the encoding's job)."""
+    from app.models import CourseTransition
+
+    stands_in = {row.course_string: row.satisfies_prerequisite_of
+                 for row in session.scalars(select(CourseTransition).where(
+                     CourseTransition.satisfies_prerequisite_of.is_not(None)))}
+    if not stands_in or not any(k in history for k in stands_in):
+        return history
+    out = {k: list(v) for k, v in history.items()}
+    for new, olds in stands_in.items():
+        for a in history.get(new, ()):
+            for old in olds or ():
+                out.setdefault(old, []).append(
+                    Attempt(old, a.term_code, a.status, a.grade, a.credit_origin))
+    return out
 
 
 def base_record_rows(rows) -> dict[str, list]:
@@ -199,10 +235,22 @@ def check(session: Session, student: Student, course_key: str, term_code: str) -
 
 
 def _check(key, term_code, offered, rows, history, placement=None,
-           placement_covers=frozenset) -> PrerequisiteCheck:
+           placement_covers=frozenset, assumed=None) -> PrerequisiteCheck:
     if not offered:
         return PrerequisiteCheck(key, term_code, PrereqStatus.UNKNOWN, False,
                                  reasons=["no_offering_in_term"])
+    if not rows and assumed:
+        # An announced course SOC has not published: its ASSUMED prerequisite
+        # (any one of these) - labelled, never presented as published.
+        from app.domain.prerequisites import CourseReq
+        expr = AnyOf(tuple(CourseReq(k) for k in assumed))
+        evidence = evaluate(expr, history)
+        text = " or ".join(assumed)
+        return PrerequisiteCheck(
+            key, term_code, evidence.status, True,
+            raw_text=f"Assumed (not yet published): {text}",
+            expression_courses=list(assumed), evidence=evidence,
+            reasons=[*evidence.unknown_reasons, "assumed_prerequisite_needs_review"])
     if not rows:
         return PrerequisiteCheck(key, term_code, PrereqStatus.SATISFIED, False,
                                  reasons=["no_prerequisite_published"])

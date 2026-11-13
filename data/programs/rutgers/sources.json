@@ -44,6 +44,45 @@
    "note": "HTTP 403"
   },
   {
+   "id": "cs-intro-offerings",
+   "requested_url": "https://www.cs.rutgers.edu/academics/undergraduate/introductory-computer-science-offerings",
+   "final_url": "https://www.cs.rutgers.edu/academics/undergraduate/introductory-computer-science-offerings",
+   "status": 403,
+   "retrieved_at": "2026-11-11T21:50:47+00:00",
+   "sha256": null,
+   "bytes": null,
+   "content_type": "text/html; charset=utf-8",
+   "representation": "failed",
+   "archive_path": null,
+   "note": "HTTP 403"
+  },
+  {
+   "id": "cs-new-120-121-122-sequence",
+   "requested_url": "https://www.cs.rutgers.edu/academics/undergraduate/new-120-121-122-course-sequence",
+   "final_url": "https://www.cs.rutgers.edu/academics/undergraduate/new-120-121-122-course-sequence",
+   "status": 403,
+   "retrieved_at": "2026-11-13T03:23:58+00:00",
+   "sha256": null,
+   "bytes": null,
+   "content_type": "text/html; charset=utf-8",
+   "representation": "failed",
+   "archive_path": null,
+   "note": "HTTP 403"
+  },
+  {
+   "id": "cs-new-intro-sequence",
+   "requested_url": "https://www.cs.rutgers.edu/academics/undergraduate/new-introductory-computer-science-course-sequence",
+   "final_url": "https://www.cs.rutgers.edu/academics/undergraduate/new-introductory-computer-science-course-sequence",
+   "status": 403,
+   "retrieved_at": "2026-11-11T21:50:44+00:00",
+   "sha256": null,
+   "bytes": null,
+   "content_type": "text/html; charset=utf-8",
+   "representation": "failed",
+   "archive_path": null,
+   "note": "HTTP 403"
+  },
+  {
    "id": "eng-catalog-academic-policies",
    "requested_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/academic-policies-and-procedures",
    "final_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/eng/academic-policies-and-procedures",

@@ -31,6 +31,9 @@ NAMED = [
     "01:750:123", "01:750:124", "14:440:101", "14:440:102", "14:440:221", "14:440:222",
     # a SEBS synthetic major's own courses
     "01:119:115", "01:119:116", "01:119:117",
+    # the CS introductory transition (Prompt 08 B1 follow-up)
+    "01:198:111", "01:198:112", "01:198:120", "01:198:121", "01:198:205", "01:198:211",
+    "01:640:112",
 ]
 CODES = ["SOEHS", "CCD", "CCO", "NS", "HST", "SCL", "ECN", "GVT", "AHo", "AHp", "WC", "WCd",
          "QQ", "QR", "XPL"]

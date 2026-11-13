@@ -51,7 +51,27 @@ from app.models import Course, CourseOffering, DataSource
 from app.services.planning.terms import season
 from app.services.term_authority import TermAuthority, authority_of, term_states
 
-PLACEABLE = (OfferingEvidenceKind.CONFIRMED_IN_TERM, OfferingEvidenceKind.HISTORICAL_SAME_SEASON)
+PLACEABLE = (OfferingEvidenceKind.CONFIRMED_IN_TERM, OfferingEvidenceKind.HISTORICAL_SAME_SEASON,
+             OfferingEvidenceKind.DEPARTMENT_ANNOUNCED)
+
+
+def transitions(session: Session) -> tuple[dict, dict]:
+    """(retired course -> last term, announced course -> transition row)."""
+    from app.models import CourseTransition
+
+    retired, announced = {}, {}
+    for row in session.scalars(select(CourseTransition)):
+        if row.kind == "retired":
+            retired[row.course_string] = row.term_code
+        else:
+            announced[row.course_string] = row
+    return retired, announced
+
+
+def announced_in(row, term: str) -> bool:
+    """An announced course is expected in `term` (from its first term, in its seasons)."""
+    seasons = row.seasons or [row.term_code[4]]
+    return term >= row.term_code and term[4] in seasons
 
 
 class OfferingIndex:
@@ -82,6 +102,8 @@ class OfferingIndex:
             if records:
                 self.published.add(term)
         self.authority = term_states(session)
+        #: Prompt 08 B1: department-announced retirements and new courses.
+        self.retired, self.announced = transitions(session)
 
     def extend(self, session: Session, course_keys: set[str]) -> None:
         missing = {k for k in course_keys if k not in self.terms}
@@ -110,6 +132,11 @@ class OfferingIndex:
         if target_term in observed:
             return OfferingEvidence(kind=OfferingEvidenceKind.CONFIRMED_IN_TERM,
                                     rules_term=target_term, **base)
+        # Prompt 08 B1: a course the department retired is never offered after
+        # its last term, whatever its history says.
+        last = self.retired.get(course_key)
+        if last is not None and target_term > last:
+            return OfferingEvidence(kind=OfferingEvidenceKind.NOT_OFFERED_IN_TERM, **base)
         # The target-term authority rule: from here on, history may decide
         # nothing about a term whose data is authoritative or known published.
         if state.authority is TermAuthority.READY:
@@ -120,6 +147,14 @@ class OfferingIndex:
         if target_term in self.published:
             # A loaded non-empty payload IS publication (Phase 7.3): "not listed yet".
             return OfferingEvidence(kind=OfferingEvidenceKind.NOT_OFFERED_IN_TERM, **base)
+        row = self.announced.get(course_key)
+        if row is not None and announced_in(row, target_term):
+            # The department says it runs then; SOC has not published that term.
+            # Rules: its latest published term, else the target term (where an
+            # assumed prerequisite applies - app.services.prerequisites).
+            return OfferingEvidence(kind=OfferingEvidenceKind.DEPARTMENT_ANNOUNCED,
+                                    rules_term=observed[-1] if observed else target_term,
+                                    **base)
         if same:
             return OfferingEvidence(kind=OfferingEvidenceKind.HISTORICAL_SAME_SEASON,
                                     rules_term=observed[-1], **base)

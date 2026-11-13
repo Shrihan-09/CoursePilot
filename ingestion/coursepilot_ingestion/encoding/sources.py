@@ -140,6 +140,39 @@ def archive_many(requests: list[tuple[str, str]], *, delay: float = POLITE_DELAY
     return out
 
 
+def add_saved_capture(capture_id: str, url: str, file: pathlib.Path, captured_at: str, *,
+                      representation: str = "browser_saved", note: str | None = None,
+                      manifest: pathlib.Path = MANIFEST,
+                      archive_root: pathlib.Path = ARCHIVE_ROOT) -> dict:
+    """Record a page a PERSON saved from a browser (owner decision 2026-11-12:
+    accepted as evidence with its capture date and URL). The bytes are copied
+    content-addressed; a previous failed plain-HTTP attempt is kept in the note."""
+    if representation not in ("browser_saved", "extracted_text", "raw_pdf", "raw_html"):
+        raise ValueError(f"unknown representation {representation!r}")
+    datetime.fromisoformat(captured_at)          # a real date/time, or ValueError
+    data = file.read_bytes()
+    if not data:
+        raise ValueError(f"{file} is empty")
+    digest = hashlib.sha256(data).hexdigest()
+    ext = file.suffix.lstrip(".").lower() or "html"
+    archive_root.mkdir(parents=True, exist_ok=True)
+    target = archive_root / f"{digest}.{ext}"
+    if not target.exists():
+        target.write_bytes(data)
+    captures = load_manifest(manifest)
+    previous = captures.get(capture_id)
+    history = []
+    if previous and previous.get("representation") == "failed":
+        history.append(f"plain GET on {previous.get('retrieved_at')}: {previous.get('note')}")
+    record = asdict(Capture(capture_id, url, url, None, captured_at, digest, len(data), None,
+                            representation, _rel(target),
+                            note="; ".join(x for x in [note or "saved from a browser by the "
+                                                       "project owner", *history] if x)))
+    captures[capture_id] = record
+    save_manifest(captures, manifest)
+    return record
+
+
 # --------------------------------------------------------------------------
 # reading a capture back
 # --------------------------------------------------------------------------
@@ -169,6 +202,12 @@ def resolve(capture: dict) -> pathlib.Path | None:
     return path if path.exists() else None
 
 
+def _suffix_text(path: pathlib.Path, data: bytes) -> str | None:
+    if path.suffix in (".html", ".htm", ".mhtml"):
+        return html_text(data.decode("utf-8", errors="replace"))
+    return data.decode("utf-8", errors="replace")
+
+
 def source_text(capture: dict) -> str | None:
     """The capture's readable text, or None when its bytes are not present locally."""
     path = resolve(capture)
@@ -179,8 +218,7 @@ def source_text(capture: dict) -> str | None:
         raise ValueError(f"{capture['id']}: archived bytes do not match the recorded sha256")
     if path.suffix == ".pdf":
         return _pdf_text(path)
-    decoded = data.decode("utf-8", errors="replace")
-    return html_text(decoded) if path.suffix == ".html" else decoded
+    return _suffix_text(path, data)
 
 
 def _pdf_text(path: pathlib.Path) -> str | None:

@@ -394,6 +394,56 @@ class SchoolRequirementSetVersion(Base, TimestampMixin):
     )
 
 
+class CourseTransition(Base, TimestampMixin):
+    """A department-announced course change, with its source (Prompt 08 B1).
+
+    kind "retired":   never offered after `term_code` (01:198:111 after Fall 2026)
+    kind "announced": offered from `term_code` in `seasons` ("1" spring, "9"
+                      fall) though SOC has not listed it yet (01:198:122 from
+                      Fall 2027); `satisfies_prerequisite_of` lists the courses
+                      it stands in for in published prerequisites ("courses that
+                      required 112 now require 122 (or 112)").
+    `planner_note` is shown on a planned course for `note_programs` (info only,
+    e.g. "students who need CS120 may choose the B.A.").
+    """
+    __tablename__ = "course_transition"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    course_string: Mapped[str] = mapped_column(String(32))
+    kind: Mapped[str] = mapped_column(String(16))
+    term_code: Mapped[str] = mapped_column(String(16))
+    seasons: Mapped[list | None] = mapped_column(JSON(none_as_null=True))
+    title: Mapped[str | None] = mapped_column(Text)
+    credits: Mapped[Decimal | None] = mapped_column(Numeric(4, 1))
+    satisfies_prerequisite_of: Mapped[list | None] = mapped_column(JSON(none_as_null=True))
+    # Used ONLY while SOC publishes no prerequisite for an announced course:
+    # alternatives, any one of which is assumed to be required (needs review).
+    assumed_prerequisite: Mapped[list | None] = mapped_column(JSON(none_as_null=True))
+    planner_note: Mapped[str | None] = mapped_column(Text)
+    note_programs: Mapped[list | None] = mapped_column(JSON(none_as_null=True))
+    source_reference: Mapped[str] = mapped_column(Text)
+    needs_review: Mapped[list | None] = mapped_column(JSON(none_as_null=True))
+    __table_args__ = (
+        UniqueConstraint("course_string", "kind", name="uq_course_transition"),
+        CheckConstraint("kind IN ('retired','announced')", name="course_transition_kind_known"),
+    )
+
+
+class ComponentReview(Base, TimestampMixin):
+    """One human review of one requirement component (append-only), like
+    program_review for program versions."""
+    __tablename__ = "component_review"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    component_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("school_requirement_set_version.id", ondelete="CASCADE"), index=True)
+    reviewer: Mapped[str] = mapped_column(String(128))
+    reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    decision: Mapped[str] = mapped_column(String(24))
+    definition_sha256: Mapped[str] = mapped_column(String(64))
+    notes: Mapped[str | None] = mapped_column(Text)
+    __table_args__ = (CheckConstraint("decision IN ('approved','changes_requested')",
+                                      name="component_review_decision_known"),)
+
+
 class ProgramVersionComponent(Base, TimestampMixin):
     """An explicit link: this program version is composed with this component.
 
@@ -551,6 +601,10 @@ class Requirement(Base, TimestampMixin):
     # Open source-conflict ids (docs/investigations/evidence/*conflicts*.json)
     # that affect this node: it stays conditional until a human resolves them.
     unresolved_conflicts: Mapped[list | None] = mapped_column(JSON(none_as_null=True))
+    # Counted under an assumption a human must confirm, with the quote it rests
+    # on: [{"id": "CS-111-AS-121", "reason": ..., "source": ..., "quote": ...}].
+    # The node is labelled "needs review" wherever it is shown.
+    review_flags: Mapped[list | None] = mapped_column(JSON(none_as_null=True))
 
     program_version: Mapped[ProgramVersion | None] = relationship(back_populates="requirements")
     children: Mapped[list[Requirement]] = relationship(
@@ -756,6 +810,9 @@ class ProgramRuleType(StrEnum):
     RESIDENCY_WINDOW = "residency_window"
     PASS_FAIL_LIMIT = "pass_fail_limit"
     DOUBLE_COUNT_LIMIT = "double_count_limit"
+    #   NO_MAJOR_CREDIT     "Students earn SAS credit for CS120, but not Computer
+    #                        Science major credit" - degree credit, free elective only
+    NO_MAJOR_CREDIT = "no_major_credit"
 
 
 class ProgramRule(Base, TimestampMixin):
@@ -839,7 +896,7 @@ class ProgramRule(Base, TimestampMixin):
         # yet evaluate (they must then say why: not_evaluable_requires_reason).
         CheckConstraint(
             "rule_type IN ('max_grade_count','course_exclusion','residency','min_gpa',"
-            "'residency_window','pass_fail_limit','double_count_limit')",
+            "'residency_window','pass_fail_limit','double_count_limit','no_major_credit')",
             name="program_rule_type_known",
         ),
         CheckConstraint("max_count IS NULL OR max_count >= 0", name="rule_max_count_non_negative"),
