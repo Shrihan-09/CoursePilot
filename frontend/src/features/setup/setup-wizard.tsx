@@ -133,9 +133,12 @@ export function SetupWizard() {
   const saveAbout = async () => {
     const a = about!;
     const profile = status.data!.profile;
-    if (!profile) await api.createProfile(a.programKey, a.catalogYear);
-    else if (profile.program.program_key !== a.programKey || profile.program.catalog_year !== a.catalogYear) {
-      await api.changeProgram(a.programKey, a.catalogYear);
+    const context = { class_year: a.classYear, home_school_code: a.homeSchool };
+    if (!profile) await api.createProfile(a.programKey, a.catalogYear, context);
+    else if (profile.program.program_key !== a.programKey || profile.program.catalog_year !== a.catalogYear
+             || (profile.class_year ?? null) !== a.classYear
+             || (profile.home_school_code ?? null) !== a.homeSchool) {
+      await api.changeProgram(a.programKey, a.catalogYear, context);
     }
     if ((profile?.declaration_status ?? null) !== a.declaration) await api.setDeclaration(a.declaration);
     const m = await client.fetchQuery({ queryKey: ["planning-profile"], queryFn: api.planningProfile, staleTime: 0 });

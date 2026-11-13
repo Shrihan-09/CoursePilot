@@ -223,7 +223,7 @@ function CourseCard({ course: c, actions }: { course: PlannedCourse; actions?: B
   const state = actions?.states.get(`${c.course}@${c.term_code}`);
   return <li className={cn("min-w-0 space-y-2 rounded-lg border border-border bg-surface-elevated p-3", courseTone(c.course))} data-testid="plan-course">
     <h4 className="text-base font-semibold leading-snug [overflow-wrap:anywhere]">{c.title}</h4>
-    <div className="flex flex-wrap items-center gap-2 text-xs text-fg-secondary"><span className="code">{c.course}</span><span>{Number(c.credits)} credits</span>{state && <StateLine state={state.state} reason={state.locked_reason} />}{!state && c.role === "anchor" && <span><Lock aria-hidden className="inline size-3" /> Anchor</span>}{c.after_stage_label && <span className="rounded border border-warning/40 px-1.5 py-0.5 text-warning" data-testid="after-stage">Planned {c.after_stage_label}</span>}</div>
+    <div className="flex flex-wrap items-center gap-2 text-xs text-fg-secondary"><span className="code">{c.course}</span><span>{Number(c.credits)} credits</span>{state && <StateLine state={state.state} reason={state.locked_reason} />}{!state && c.role === "anchor" && <span><Lock aria-hidden className="inline size-3" /> Anchor</span>}{c.after_stage_label && <span className="rounded border border-warning/40 px-1.5 py-0.5 text-warning" data-testid="after-stage">Planned {c.after_stage_label}</span>}{c.gen_ed_label && <span className="rounded border border-border px-1.5 py-0.5" data-testid="gen-ed-label">Gen-ed: {c.gen_ed_label}</span>}</div>
     <div className="flex flex-wrap items-center justify-between gap-2"><span className="min-w-0 rounded bg-surface-hover px-2 py-1 text-xs [overflow-wrap:anywhere]">{c.requirements[0]?.requirement_name ?? "Requirement coverage not mapped"}</span><span className="text-xs text-fg-muted">{c.workload?.delivery.some((d) => d === "async" || d === "online") ? <Monitor aria-hidden className="mr-1 inline size-3" /> : <MapPin aria-hidden className="mr-1 inline size-3" />}{c.workload ? deliveryText(c.workload.delivery) : "Delivery unknown"}</span></div>
     <div className="flex flex-wrap items-start justify-between gap-2"><details className="min-w-0 flex-1 text-xs text-fg-secondary"><summary className="cursor-pointer py-2">Details</summary>
       {topicsText(c) && <p>{topicsText(c)}</p>}
@@ -421,6 +421,11 @@ export function PlanView({
 
       {r.declaration && <DeclarationPanel declaration={r.declaration} />}
 
+      {r.gen_ed && (
+        <Alert tone="info" title={r.gen_ed.state === "admitted" ? "Your gen-ed changed with admission" : "Two gen-ed systems"}>
+          {r.gen_ed.message}
+        </Alert>
+      )}
       {r.school_core?.status === "unknown" && (
         <Alert tone="warning" title="Core status unknown">{r.school_core.message}</Alert>
       )}

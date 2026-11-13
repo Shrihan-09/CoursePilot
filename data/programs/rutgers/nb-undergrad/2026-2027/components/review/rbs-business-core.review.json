@@ -4,10 +4,10 @@
   "kind": "component",
   "component_kind": "school_core",
   "definition_file": "data/programs/rutgers/nb-undergrad/2026-2027/components/rbs-business-core.json",
-  "file_sha256": "75e6792bb5a0d048b8afef3b51e33ef9ad09475c9a04e62ef555dada6dc0b6a6",
-  "definition_sha256": "15e6158cbd4f0ccc9fc23fa37d3a1872168ea38ac50d4b2c93f8fadd10a56858",
+  "file_sha256": "ee63a90c4a3ebb2f5e207059bf992cbe8a9657d22bbe6a885695b366676049a8",
+  "definition_sha256": "dbcc57e766f91ee7f2c4c438bf53e6f5f1c773594af4042cff78090457f26e02",
   "curated_by": "manual encoding, Prompt 08 B1 (Claude Code session, 2026-11-11)",
-  "lifecycle_state": "pending_review",
+  "lifecycle_state": "needs_rereview",
   "sources": [
     {
       "id": "rbs-catalog-bait",
@@ -44,16 +44,26 @@
       "archive": "data/raw/catalog/phase-08a-dual-source/13240ec394575554cf14878297e65b0919f3c9accc33ad0e6c087110126f57ba.txt",
       "archive_present": true,
       "status": "archived"
+    },
+    {
+      "id": "owner-2026-11-12-bait-ethics",
+      "role": "owner_decision",
+      "note": null,
+      "url": null,
+      "retrieved_at": null,
+      "sha256": null,
+      "representation": null,
+      "archive": null,
+      "archive_present": false,
+      "status": "not in manifest"
     }
   ],
   "machine_checks": {
     "passed": true,
-    "quotes_found": 27,
-    "quotes_checked": 27,
+    "quotes_found": 30,
+    "quotes_checked": 30,
     "errors": [],
-    "warnings": [
-      "RBS_BC_ETHICS: 33:522:335 not in the loaded course table (reported, never created)"
-    ],
+    "warnings": [],
     "note": "Machine checks are NOT review. They prove quotes exist verbatim in the archived sources and the file loads - not that the encoding means what the sources mean."
   },
   "requirements": [
@@ -374,18 +384,23 @@
       "quotes": [
         {
           "source": "rbs-catalog-bait",
-          "quote": "33:522:335 OR"
+          "quote": "You can earn credit towards graduation if you take 33:522:334 Business Ethics"
+        },
+        {
+          "source": "phase08a-myrbs-bait",
+          "quote": "33:522:334 Business Ethics OR 33:140:320 Business Law"
+        },
+        {
+          "source": "owner-2026-11-12-bait-ethics",
+          "quote": "Use 33:522:334."
         }
       ],
       "quoted_via": null,
-      "notes": "The table's literal course number. The same page's notes, and the department pages, print 33:522:334: see conflict BAIT-ETHICS.",
+      "notes": "33:522:334 per the owner decision of 2026-11-12. The catalog's core table prints 33:522:335 (conflict BAIT-ETHICS, kept as a record).",
       "courses": [
-        "33:522:335"
+        "33:522:334"
       ],
-      "unresolved_conflicts": [
-        "BAIT-ETHICS"
-      ],
-      "eligible_course_rows": 0
+      "eligible_course_rows": 1
     },
     {
       "code": "RBS_BC_140_320",
@@ -443,13 +458,11 @@
       "why_not": "A different cohort's curriculum (conflict register BAIT-CORE-COHORT); this component applies to fall-2026 entrants only."
     }
   ],
-  "unknowns": [
-    "Which Business Ethics course number governs the fall 2026 core (33:522:335 or 33:522:334): conflict BAIT-ETHICS."
-  ],
+  "unknowns": [],
   "conflicts": [
     {
       "id": "BAIT-ETHICS",
-      "status": "open",
+      "status": "resolved_by_owner",
       "claims": [
         {
           "source": "rbs-catalog-bait",
@@ -463,11 +476,15 @@
           "source": "phase08a-myrbs-bait",
           "quote": "33:522:334 Business Ethics OR 33:140:320 Business Law"
         }
-      ]
+      ],
+      "summary": "The core table prints 33:522:335; the same page's notes and the department pages print 33:522:334. Resolved 2026-11-12: 33:522:334 is used; the 335 claim is kept as a logged source conflict.",
+      "resolution": {
+        "source": "owner-2026-11-12-bait-ethics",
+        "quote": "Use 33:522:334. Log the catalog table's 335 as a source conflict."
+      }
     }
   ],
   "review_questions": [
-    "Resolve BAIT-ETHICS: the BAIT page's core table prints 33:522:335 while its own notes and the department pages print 33:522:334.",
     "Confirm the business core table is identical on all six RBS major pages for fall 2026 entrants (encoded once from the BAIT page)."
   ],
   "what_to_verify": [
@@ -478,5 +495,5 @@
     "Confirm admission/declaration rules are entry-stage requirements or labels, never completion requirements, and that no plan would assume admission.",
     "Answer every review question; 'changes requested' is a valid outcome."
   ],
-  "how_to_record": "Components have no review command yet: record the decision in the PR / review notes; the component stays 'pending_review' (and every audit and index label says so) until a component review command exists."
+  "how_to_record": "python -m coursepilot_ingestion.registry_cli review-component --code rbs-business-core --year 2026-2027 --reviewer \"<your full name>\" --decision approved|changes_requested --notes \"...\"  (then, if approved: registry_cli publish-component --code rbs-business-core --year 2026-2027)"
 }

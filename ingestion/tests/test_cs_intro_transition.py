@@ -38,7 +38,10 @@ from app.services.prerequisites import check_many
 from sqlalchemy import select
 
 from coursepilot_ingestion.loaders.requirements import RequirementLoader
-from coursepilot_ingestion.loaders.transitions import load_transitions, validate_transitions
+from coursepilot_ingestion.loaders.transitions import (
+    load_transitions,
+    validate_transitions,
+)
 from coursepilot_ingestion.pipelines.courses import CourseIngestionPipeline
 from coursepilot_ingestion.pipelines.sections import SectionIngestionPipeline
 from coursepilot_ingestion.sources.soc import SocQuery

@@ -217,13 +217,15 @@ class DegreeAuditEngine:
     def _load_requirements(self, version_id) -> list[Requirement]:
         from app.services.academic_context import composed_requirements
         version = self.session.get(ProgramVersion, version_id)
-        return composed_requirements(self.session, version) if version else []
+        return (composed_requirements(self.session, version, getattr(self, "_student", None))
+                if version else [])
 
     def _load_rules(self, version_id) -> list[ProgramRule]:
         # Prompt 08 B1: plus the school-level rules of composed components.
         from app.services.academic_context import composed_rules
         version = self.session.get(ProgramVersion, version_id)
-        return composed_rules(self.session, version) if version else []
+        return (composed_rules(self.session, version, getattr(self, "_student", None))
+                if version else [])
 
     def _load_eligibility(
         self, requirement_ids: list
@@ -1075,6 +1077,9 @@ class DegreeAuditEngine:
         WITHOUT writing a different program onto the Student. The engine
         reads the student's record and never modifies it either way.
         """
+        # Prompt 08 B1: the student's context (current school, verified
+        # admission) decides which gen-ed is the requirement of record.
+        self._student = student
         if program_version is None:
             version = self.session.get(ProgramVersion, student.program_version_id)
             if version is None:
@@ -1133,7 +1138,7 @@ class DegreeAuditEngine:
                 )
             )
 
-        for school_set in school_requirement_sets(self.session, version):
+        for school_set in school_requirement_sets(self.session, version, student):
             if school_set.lifecycle_state != "published":
                 findings.append(AuditFinding(severity=Severity.WARNING,
                     code="school_requirements_pending_review",

@@ -534,6 +534,9 @@ class PlannedCourse(BaseModel):
     #: verifiably passed it. A plan never assumes admission.
     after_stage: str | None = None
     after_stage_label: str | None = None
+    #: Prompt 08 B1, pre-business students: "counts for both" / "<record> only"
+    #: / "<target> only" / "<record>; <target>: unknown".
+    gen_ed_label: str | None = None
 
 
 class TermWorkload(BaseModel):
@@ -744,6 +747,27 @@ class Declaration(BaseModel):
     message: str | None = None
 
 
+class GenEdContext(BaseModel):
+    """Prompt 08 B1 (owner decision 2026-11-12): a student still in another
+    school than their program's (a pre-business student in SAS) sees BOTH
+    gen-ed systems, labelled. The current school's is the requirement of
+    record until admission is VERIFIED; then the program school's applies and
+    the courses that carried over are listed."""
+
+    state: str                          # before_admission | admitted
+    stage: str
+    stage_label: str                    # "after admission to RBS"
+    home_school: str
+    record: list[str]                   # gen-ed of record (names)
+    target: list[str]                   # the program school's gen-ed (names)
+    #: False while the target gen-ed's course lists are unknown (RBS today):
+    #: "counts for both" cannot be decided and is never guessed.
+    target_lists_known: bool
+    #: Completed / in-progress courses that also count toward the target gen-ed.
+    carried_over: list[str] = Field(default_factory=list)
+    message: str
+
+
 class SchoolCoreStatus(BaseModel):
     """Phase 7.6: which school Core applies, chosen by the program's school."""
 
@@ -768,6 +792,7 @@ class PlanResult(BaseModel):
     #: Spread task: None when the program's school/catalog year has no
     #: modelled total (an issue says so).
     degree_credits: DegreeCredits | None = None
+    gen_ed: GenEdContext | None = None
     #: Phase 7.6
     school_core: SchoolCoreStatus | None = None
     declaration: Declaration | None = None

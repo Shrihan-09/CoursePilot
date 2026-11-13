@@ -135,7 +135,11 @@ def cmd_load(a) -> int:
         for f in a.files:
             path = pathlib.Path(f)
             definition = json.loads(path.read_bytes())
-            if file_kind(definition) == "component":
+            if file_kind(definition) == "transitions":
+                from coursepilot_ingestion.loaders.transitions import load_transitions
+                st = load_transitions(s, path)
+                print(f"{f}: transitions {st}")
+            elif file_kind(definition) == "component":
                 st = ComponentLoader(s).load_file(path)
                 print(f"{f}: component {st.code} inserted={st.inserted} "
                       f"changed={st.definition_changed} nodes+{st.requirements_inserted}"

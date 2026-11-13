@@ -21,4 +21,8 @@ class CourseRankingEvidence(BaseModel):
     # schedules show it in ONE regular season only.
     unlock_chain_depth: int = Field(default=0, ge=0)
     season_only: bool = False
+    #: Prompt 08 B1: a gen-ed course that ALSO counts toward the program
+    #: school's gen-ed (pre-business students): preferred, so the plan stays
+    #: safe whether or not the student is admitted.
+    counts_for_target_gen_ed: bool = False
     policy_version: str = "1.2.0"

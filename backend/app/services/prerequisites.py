@@ -153,8 +153,12 @@ def check_many(
     `projected` (Phase 6.5): hypothetical attempts added to the student's
     history for this evaluation only; nothing is written.
     """
+    # One query for every department transition (Prompt 08 B1): stand-ins and
+    # announced courses - a fixed count whatever the number of candidates.
+    from app.models import CourseTransition
+    rows = list(session.scalars(select(CourseTransition)))
     history = with_equivalents(session, with_projected(attempts_by_course(session, student),
-                                                       projected))
+                                                       projected), rows)
     offered = {
         key for key, in session.execute(
             select(Course.course_string)
@@ -165,8 +169,8 @@ def check_many(
     # Prompt 08 B1: a department-announced course counts as offered in the
     # terms it is announced for; with no published prerequisite there, its
     # assumed prerequisite (needs review) is evaluated instead of "none".
-    from app.services.planning.offerings import announced_in, transitions
-    _, announced = transitions(session)
+    from app.services.planning.offerings import announced_in
+    announced = {r.course_string: r for r in rows if r.kind == "announced"}
     assumed = {}
     for key in course_keys:
         row = announced.get(key)
@@ -187,7 +191,8 @@ def check_many(
             for key in course_keys}
 
 
-def with_equivalents(session: Session, history: dict[str, list[Attempt]]) -> dict:
+def with_equivalents(session: Session, history: dict[str, list[Attempt]],
+                     rows=None) -> dict:
     """History where a course that REPLACES another also satisfies prerequisites
     naming the old one (Prompt 08 B1: "courses that required 112 now require 122
     (or 112)"). Each stand-in attempt copies the real one's term, status, grade
@@ -195,9 +200,10 @@ def with_equivalents(session: Session, history: dict[str, list[Attempt]]) -> dic
     affected (that is the encoding's job)."""
     from app.models import CourseTransition
 
+    if rows is None:
+        rows = session.scalars(select(CourseTransition))
     stands_in = {row.course_string: row.satisfies_prerequisite_of
-                 for row in session.scalars(select(CourseTransition).where(
-                     CourseTransition.satisfies_prerequisite_of.is_not(None)))}
+                 for row in rows if row.satisfies_prerequisite_of}
     if not stands_in or not any(k in history for k in stands_in):
         return history
     out = {k: list(v) for k, v in history.items()}

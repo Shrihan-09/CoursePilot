@@ -105,6 +105,10 @@ def get_transcript_extractor() -> Extractor:
 class ProgramChoice(BaseModel):
     program_key: str = Field(max_length=80, pattern=_PROGRAM_KEY)
     catalog_year: str = Field(pattern=_CATALOG_YEAR)
+    #: Prompt 08 B1: the class year the student states, for a class-scoped
+    #: curriculum; and the school they are in now (pre-business in SAS).
+    class_year: int | None = Field(default=None, ge=2000, le=2100)
+    home_school_code: str | None = Field(default=None, pattern=r"^[A-Z]{2,8}$")
 
     model_config = {"extra": "forbid"}
 
@@ -248,6 +252,10 @@ class ProfileView(BaseModel):
     #: Prompt 10a: the first Rutgers semester as the student stated it.
     first_term: str | None = None
     class_standing: str | None = None
+    #: Prompt 08 B1: the school the student says they are in now, and the
+    #: class year they stated for a class-scoped curriculum.
+    home_school_code: str | None = None
+    class_year: int | None = None
 
 
 class SetupView(BaseModel):
@@ -403,7 +411,17 @@ def _profile_view(session, student) -> ProfileView:
         transcript_reported_gpa=ReportedGpa(value=gpa[0], as_of=gpa[1]) if gpa else None,
         math_placement=student.math_placement,
         declaration_status=student.declaration_status,
-        first_term=student.first_term, class_standing=student.class_standing)
+        first_term=student.first_term, class_standing=student.class_standing,
+        home_school_code=student.home_school_code,
+        class_year=_stated_class_year(session, student))
+
+
+def _stated_class_year(session, student) -> int | None:
+    from app.services.academic_context import academic_evidence
+
+    years = [(c.value or {}).get("class_year") for c in academic_evidence(session, student)
+             if c.evidence_kind == "curriculum_class_year"]
+    return next((y for y in years if isinstance(y, int)), None)
 
 
 def _setup_view(student) -> SetupView:
@@ -500,6 +518,11 @@ def _program_error(exc) -> HTTPException:
         return _issues_error(404, "No such catalog year for this program.", [Issue(
             "CATALOG_YEAR_UNAVAILABLE", "catalog_year", IssueSeverity.INVALID,
             "Available catalog years: " + (", ".join(exc.available) or "none") + ".")])
+    from app.services.scenarios import CurriculumClassYearRequired
+    if isinstance(exc, CurriculumClassYearRequired):
+        return _issues_error(422, "Choose your class year.", [Issue(
+            "CLASS_YEAR_REQUIRED", "class_year", IssueSeverity.INVALID,
+            str(exc) + " Known classes: " + ", ".join(map(str, exc.class_years)) + ".")])
     if isinstance(exc, ProgramChoiceRequired):
         return _issues_error(422, "Choose a program variant.", [Issue(
             "PROGRAM_VARIANT_REQUIRED", "program_key", IssueSeverity.INVALID,
@@ -677,7 +700,8 @@ async def create_profile(body: ProgramChoice, response: Response,
         with _session() as session:
             student, created = onboarding_service.create_profile(
                 session, principal.account_id, program_key=body.program_key,
-                catalog_year=body.catalog_year)
+                catalog_year=body.catalog_year, class_year=body.class_year,
+                home_school_code=body.home_school_code)
             session.commit()
             return ProfileCreated(created=created, profile=_profile_view(session, student))
     out = await _run(work, "profile_create", principal)
@@ -707,7 +731,8 @@ async def change_program(body: ProgramChoice,
         with _session() as session:
             student = onboarding_service.change_program(
                 session, principal.account_id, program_key=body.program_key,
-                catalog_year=body.catalog_year)
+                catalog_year=body.catalog_year, class_year=body.class_year,
+                home_school_code=body.home_school_code)
             session.commit()
             return _profile_view(session, student)
     return await _run(work, "program_change", principal)

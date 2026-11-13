@@ -27,7 +27,15 @@ VALIDATE = "ingestion/coursepilot_ingestion/encoding/validate.py"
 COMPONENTS = "ingestion/coursepilot_ingestion/loaders/components.py"
 REPORTS = "backend/app/api/v1/routes/requirement_reports.py"
 ELIG = "backend/app/services/eligibility.py"
-TESTS = ["ingestion/tests/test_program_expansion.py"]
+OFFER = "backend/app/services/planning/offerings.py"
+PREREQ = "backend/app/services/prerequisites.py"
+DEPS = "backend/app/services/planning/dependencies.py"
+RULES = "backend/app/services/audit/rules.py"
+SCEN = "backend/app/services/scenarios.py"
+SERVICE = "backend/app/services/planning/service.py"
+LIFE = "backend/app/services/program_lifecycle.py"
+TESTS = ["ingestion/tests/test_program_expansion.py", "ingestion/tests/test_cs_intro_transition.py",
+         "ingestion/tests/test_b1_followups.py"]
 DB_TESTS = ["backend/tests/test_requirement_reports.py"]
 
 FAULTS = {
@@ -70,6 +78,39 @@ FAULTS = {
     "N": ("certification-code nodes get no eligibility",
           [(ELIG, "    for code_ in rule.get(\"certification_codes\", ()):",
             "    for code_ in ():")], TESTS),
+    "P": ("a retired course is still offered after its last term",
+          [(OFFER, "        if last is not None and target_term > last:", "        if False:")], TESTS),
+    "Q": ("an announced course gets no offering evidence",
+          [(OFFER, "        if row is not None and announced_in(row, target_term):",
+            "        if False:")], TESTS),
+    "R": ("122 does not satisfy prerequisites naming 112",
+          [(PREREQ, "    if not stands_in or not any(k in history for k in stands_in):",
+            "    if True:")], TESTS),
+    "S": ("an unpublished announced course is treated as having no prerequisite",
+          [(PREREQ, "    if not rows and assumed:", "    if False:")], TESTS),
+    "T": ("the planner keeps planning a retired prerequisite (no substitution)",
+          [(DEPS, "            if blocked and stand_ins:", "            if False:")], TESTS),
+    "U": ("a completed 111 counts silently (no 'needs review' finding)",
+          [(AUDIT, "                if a.course.course_string in (flag.get(\"applies_to\") or ()):",
+            "                if False:")], TESTS),
+    "V": ("CS120 is not recognised as free elective only",
+          [(KNOW, "        if course in self._no_major:", "        if False:")], TESTS),
+    "W": ("a class-scoped program silently picks a curriculum",
+          [(SCEN, "        if class_year is None:" + LF + "            raise CurriculumClassYearRequired(",
+            "        if class_year is None:" + LF + "            class_year = years[-1]" + LF
+            + "        if False:" + LF + "            raise CurriculumClassYearRequired(")], TESTS),
+    "X": ("a pre-business student's admission is assumed (program school's gen-ed applies)",
+          [(CTX, "    if stage in passed_stages(evidence):" + LF + "        return program_school",
+            "    if True:" + LF + "        return program_school")], TESTS),
+    "Y": ("'counts for both' is guessed while the target lists are unknown",
+          [(SERVICE, "            if not known:" + LF + "                pc.gen_ed_label",
+            "            if False:" + LF + "                pc.gen_ed_label")], TESTS),
+    "Z": ("a component can be published without an approved review",
+          [(LIFE, "    if component.lifecycle_state != REVIEWED:", "    if False:"),
+           (LIFE, "    review = latest_component_review(session, component)" + LF
+            + "    if review is None or review.decision != \"approved\":",
+            "    review = latest_component_review(session, component)" + LF + "    if False:")],
+          TESTS),
     "O": ("the admin report list exposes the reporter's account id",
           [(REPORTS, "reporter=redact_id(str(r.account_id))", "reporter=str(r.account_id)")],
           DB_TESTS),

@@ -670,10 +670,11 @@ class PlanningEngine:
 
     # ---- data, loaded in bulk ------------------------------------------
 
-    def _load_static(self, version: ProgramVersion) -> None:
+    def _load_static(self, version: ProgramVersion, student: Student | None = None) -> None:
         s = self.session
         from app.services.academic_context import composed_requirements
-        self.requirements = {r.code: r for r in composed_requirements(s, version)}
+        self.requirements = {r.code: r for r in composed_requirements(s, version, student)}
+        self._context_student = student
         self.pools: dict[str, set[str]] = defaultdict(set)
         self.course_info: dict[str, Course] = {}
         #: Phase 7.6: (requirement, course) -> the certifying categories (SAS
@@ -701,7 +702,7 @@ class PlanningEngine:
         shared = SharingPolicy.SHARE_ACROSS_SYSTEMS.value
         self.share = (version.sharing_policy == shared
                       or any(v.sharing_policy == shared
-                             for v in school_requirement_sets(s, version)))
+                             for v in school_requirement_sets(s, version, student)))
         self.by_id_code = {r.id: r.code for r in self.requirements.values()}
         # Prompt 08 B1: which stage each node's courses come after, and the
         # stages' plain labels. A plan never assumes a stage is passed.
@@ -730,7 +731,7 @@ class PlanningEngine:
                                             natural_science=set(self.pools.get("CORE_NS", ())))
         self.excluded: set[str] = set()
         from app.services.academic_context import composed_rules
-        for rule in composed_rules(s, version):
+        for rule in composed_rules(s, version, student):
             if rule.rule_type == "course_exclusion":
                 self.excluded |= set(rule.excluded_courses)
         self.offerings = OfferingIndex(s, set(self.course_info))
@@ -1145,7 +1146,7 @@ class PlanningEngine:
     def _plan_once(self, student: Student, version: ProgramVersion, target: ScenarioTarget,
                    start_term: str, assumptions: list[ScenarioAssumption]) -> PlanResult:
         c = self.constraints
-        self._load_static(version)
+        self._load_static(version, student)
         self._history(student)
         from app.services.planning.options import liked_courses
 
@@ -1722,7 +1723,9 @@ class PlanningEngine:
                 # only a course the student MUST take: a one-season Core option
                 # among hundreds is no reason to come first
                 season_only=(key in self._required_courses()
-                             and self._pattern(key, term).only_season is not None))
+                             and self._pattern(key, term).only_season is not None),
+                counts_for_target_gen_ed=(key in getattr(self, "gen_ed_target", ())
+                                          and bool(systems & {"core", "school"})))
 
         rank_cache: dict[str, tuple] = {}
 
@@ -2230,7 +2233,7 @@ class PlanningEngine:
         rules, the student's record and attributes."""
         if getattr(self, "_prepared", None) == (student.id, version.id):
             return
-        self._load_static(version)
+        self._load_static(version, student)
         self._history(student)
         from app.services.scheduling.candidates import student_attributes
         self.attributes = student_attributes(self.session, student)

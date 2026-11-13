@@ -40,7 +40,7 @@ def test_program_rules_load_from_curated_fixture(cs_session) -> None:
     rules = cs_session.scalars(select(ProgramRule)).all()
     by_code = {r.code: r for r in rules}
 
-    assert set(by_code) == {"CS_MAX_D", "CS_EXCLUDED", "CS_RESIDENCY"}
+    assert set(by_code) == {"CS_MAX_D", "CS_EXCLUDED", "CS_RESIDENCY", "CS_120_NO_MAJOR_CREDIT"}
     assert by_code["CS_MAX_D"].rule_type == "max_grade_count"
     assert by_code["CS_EXCLUDED"].rule_type == "course_exclusion"
     assert by_code["CS_RESIDENCY"].rule_type == "residency"

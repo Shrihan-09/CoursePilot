@@ -31,6 +31,12 @@ import type {
 import type { PlanningContext, SavedPlan } from "@/types/plan";
 import type { ScheduleRequest, ScheduleResult } from "@/types/schedule";
 
+/** Prompt 08 B1: what the student states alongside a program choice. */
+export interface ProgramContext {
+  class_year?: number | null;
+  home_school_code?: string | null;
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -92,12 +98,12 @@ export const api = {
   me: () => request<Me>("/me"),
   onboarding: () => request<Onboarding>("/student/onboarding"),
   programs: () => request<{ programs: Program[] }>("/programs"),
-  createProfile: (program_key: string, catalog_year: string) =>
+  createProfile: (program_key: string, catalog_year: string, context: ProgramContext = {}) =>
     request<{ created: boolean; profile: Profile }>(
-      "/student/profile", json("POST", { program_key, catalog_year })),
+      "/student/profile", json("POST", { program_key, catalog_year, ...context })),
   profile: () => request<Profile>("/student/profile"),
-  changeProgram: (program_key: string, catalog_year: string) =>
-    request<Profile>("/student/program", json("PUT", { program_key, catalog_year })),
+  changeProgram: (program_key: string, catalog_year: string, context: ProgramContext = {}) =>
+    request<Profile>("/student/program", json("PUT", { program_key, catalog_year, ...context })),
   /** Prompt 10a: wizard progress; omit firstTerm to leave it unchanged. */
   saveSetup: (completed_steps: string[], firstTerm?: string | null,
     classStanding?: import("@/types/onboarding").ClassStanding | null) =>

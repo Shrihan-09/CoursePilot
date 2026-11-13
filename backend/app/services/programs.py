@@ -138,6 +138,11 @@ class ProgramVersionInfo:
     curated_by: str | None
     source_prose_sha256: str | None
     last_checked_at: datetime | None
+    # Prompt 08 B1: class-scoped curricula and the admission stage, so a
+    # client knows to ask for the class year / the student's current school.
+    curriculum_key: str = ""
+    curriculum_class_years: tuple[int, ...] = ()
+    admission_stage: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -216,6 +221,9 @@ def _build_version_info(version: ProgramVersion, req_curations: list,
         curated_by=version.curated_by,
         source_prose_sha256=version.source_prose_sha256,
         last_checked_at=version.last_checked_at,
+        curriculum_key=version.curriculum_key or "",
+        curriculum_class_years=tuple(version.curriculum_class_years or ()),
+        admission_stage=version.admission_stage,
     )
 
 

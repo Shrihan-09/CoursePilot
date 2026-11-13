@@ -255,9 +255,10 @@ def test_soc_credits_untouched_on_postgres(
 def test_program_rules_load_on_postgres(pg_session, cs_payload_bytes: bytes) -> None:
     stats = _seed(pg_session, cs_payload_bytes)
 
-    assert stats.rules_inserted == 3
+    # 4 since Prompt 08 B1 added CS_120_NO_MAJOR_CREDIT.
+    assert stats.rules_inserted == 4
     assert stats.rules_not_evaluable == 1
-    assert pg_session.scalar(select(func.count()).select_from(ProgramRule)) == 3
+    assert pg_session.scalar(select(func.count()).select_from(ProgramRule)) == 4
 
 
 @requires_postgres
@@ -321,7 +322,7 @@ def test_duplicate_rule_code_rejected(pg_session, cs_payload_bytes: bytes) -> No
 def test_deleting_a_version_cascades_to_rules(pg_session, cs_payload_bytes: bytes) -> None:
     _seed(pg_session, cs_payload_bytes)
     version = pg_session.scalar(select(ProgramVersion))
-    assert pg_session.scalar(select(func.count()).select_from(ProgramRule)) == 3
+    assert pg_session.scalar(select(func.count()).select_from(ProgramRule)) == 4
 
     pg_session.execute(
         text("DELETE FROM program_version WHERE id = :i"), {"i": version.id}
@@ -341,7 +342,7 @@ def test_requirement_load_still_idempotent_with_rules(
     pg_session.commit()
 
     assert second.rules_inserted == 0
-    assert pg_session.scalar(select(func.count()).select_from(ProgramRule)) == 3
+    assert pg_session.scalar(select(func.count()).select_from(ProgramRule)) == 4
 
 
 # --------------------------------------------------------------------------
@@ -386,7 +387,7 @@ def test_audit_with_rules_on_postgres(pg_session, cs_payload_bytes: bytes) -> No
     assert result.credits_completed == Decimal(7)
     assert result.credits_applicable_to_degree == Decimal(4)
     assert result.credits_excluded == Decimal(3)
-    assert len(result.rules) == 3
+    assert len(result.rules) == 4
     residency = next(r for r in result.rules if r.rule_code == "CS_RESIDENCY")
     assert residency.status is RequirementStatus.NOT_EVALUABLE
     assert result.status is not AuditStatus.COMPLETE
