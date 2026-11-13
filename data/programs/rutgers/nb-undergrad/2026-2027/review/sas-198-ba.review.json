@@ -1,82 +1,155 @@
 {
-  "packet_version": "review-packet/2",
-  "program_key": "sas-198-ba",
-  "catalog_year": "2026-2027",
+  "packet_version": "review-packet/3",
+  "key": "sas-198-ba",
+  "kind": "program",
+  "component_kind": null,
   "definition_file": "data/programs/rutgers/nb-undergrad/2026-2027/sas-198-ba.json",
-  "definition_sha256": "dbdd5ef37af26886d368551b4a5f8d7f5179f9051269646a568fb8c6136d1e5b",
-  "source": {
-    "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/computer-science-198",
-    "catalog_page": "/schools/sas/program-listing/computer-science-198",
-    "archive": "data/raw/catalog/catalog_computer-science-198_2026_2027.html",
-    "archive_present": true,
-    "archive_sha256": "4f56493b41181fd13e8052c75eef7e8be56ee6396332680ff19ecd0a83b500fd",
-    "prose_sha256": "4421d9b70ef5a4f84a90ebc5006fb76da4c43496f874e8d91e57dff419bfcb67"
-  },
+  "file_sha256": "1810e70ec0178fe739205841f239a613d5fbd65ae27cf557db3b0bbcdc60b380",
+  "definition_sha256": "4bd6b68e13229c5467e0a8d0dca231260099b86deb998170f3404b5fb3131f86",
   "curated_by": "manual encoding, Phase 3 (encoder not recorded)",
-  "curation_status_label": "curated_from_prose",
   "lifecycle_state": "needs_rereview",
-  "publication_basis": "legacy_curated",
+  "sources": [
+    {
+      "id": "catalog-cs-198-2026-2027",
+      "role": "catalog",
+      "note": null,
+      "url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/computer-science-198",
+      "retrieved_at": "2026-09-13",
+      "sha256": "dc89098d8598619c8ba023bb74ccf3074849c4c4b03baf9e4cf73efe24a7661c",
+      "representation": "raw_html",
+      "archive": "data/raw/catalog/catalog_computer-science-198_2026_2027.html",
+      "archive_present": true,
+      "status": "archived"
+    },
+    {
+      "id": "phase08a-cs-bs-degree",
+      "role": "department",
+      "note": null,
+      "url": "https://www.cs.rutgers.edu/academics/undergraduate/cs-degrees/b-s-degree",
+      "retrieved_at": "2026-11-09T19:51:02.092573+00:00",
+      "sha256": "dc360f490d57026c48754dec41729c86b3a49378d39b4a71d3468075602515de",
+      "representation": "raw_html",
+      "archive": "data/raw/catalog/phase-08a-dual-source/dc360f490d57026c48754dec41729c86b3a49378d39b4a71d3468075602515de.html",
+      "archive_present": true,
+      "status": "archived"
+    },
+    {
+      "id": "owner-2026-11-12-cs-intro",
+      "role": "owner_decision",
+      "note": null,
+      "url": null,
+      "retrieved_at": null,
+      "sha256": null,
+      "representation": null,
+      "archive": null,
+      "archive_present": false,
+      "status": "not in manifest"
+    }
+  ],
   "machine_checks": {
     "passed": false,
-    "quotes_found": 7,
-    "quotes_checked": 8,
+    "quotes_found": 16,
+    "quotes_checked": 17,
     "errors": [
-      "CS_ELECTIVES: quote not found verbatim on the page: 'five electives from a designated list of courses in computer science and related disciplin'"
+      "CS_ELECTIVES: quote not found verbatim in catalog-cs-198-2026-2027: 'five electives from a designated list of courses in computer science and related disciplin'"
     ],
     "warnings": [
-      "CS_ELECTIVES: 01:198:324 not in the loaded course table",
-      "CS_ELECTIVES: 01:198:411 not in the loaded course table",
-      "CS_ELECTIVES: 01:198:424 not in the loaded course table",
-      "CS_ELECTIVES: 14:332:453 not in the loaded course table"
+      "CS_ELECTIVES: 01:198:324 not in the loaded course table (reported, never created)",
+      "CS_ELECTIVES: 01:198:411 not in the loaded course table (reported, never created)",
+      "CS_ELECTIVES: 01:198:424 not in the loaded course table (reported, never created)",
+      "CS_ELECTIVES: 14:332:453 not in the loaded course table (reported, never created)"
     ],
-    "note": "Machine checks are NOT review. They prove quotes exist and the engine can load the tree - not that the encoding means what the prose means."
+    "note": "Machine checks are NOT review. They prove quotes exist verbatim in the archived sources and the file loads - not that the encoding means what the sources mean."
   },
-  "non_undergraduate_eligible_rows": 8,
-  "admission_prose": null,
   "requirements": [
     {
       "code": "CS_BA",
+      "name": "Computer Science B.A. Major",
       "type": "all_of",
       "parent": null,
-      "quote": "The basic major, leading to a bachelor of arts (B.A.) degree, consists of: 1) six required courses in computer science, 01:198:111, 112, 205, 206, 211, and 344; 2) three courses in mathematics, 01:640:151-152 and 01:640:250; and 3) five electives from a designated list of courses in computer science and related disciplines.",
+      "quotes": [
+        {
+          "source": "catalog-cs-198-2026-2027",
+          "quote": "The basic major, leading to a bachelor of arts (B.A.) degree, consists of: 1) six required courses in computer science, 01:198:111, 112, 205, 206, 211, and 344; 2) three courses in mathematics, 01:640:151-152 and 01:640:250; and 3) five electives from a designated list of courses in computer science and related disciplines."
+        }
+      ],
+      "quoted_via": null,
       "notes": null,
       "eligible_course_rows": 0
     },
     {
       "code": "CS_CORE",
+      "name": "Required Computer Science Courses",
       "type": "all_of",
       "parent": "CS_BA",
-      "quote": "six required courses in computer science, 01:198:111, 112, 205, 206, 211, and 344",
+      "quotes": [
+        {
+          "source": "catalog-cs-198-2026-2027",
+          "quote": "six required courses in computer science, 01:198:111, 112, 205, 206, 211, and 344"
+        }
+      ],
+      "quoted_via": null,
       "notes": null,
       "eligible_course_rows": 0
     },
     {
       "code": "CS_111",
+      "name": "Introduction to Computer Science",
       "type": "course",
       "parent": "CS_CORE",
-      "quote": null,
-      "notes": null,
-      "courses": [
-        "01:198:111"
+      "quotes": [
+        {
+          "source": "owner-2026-11-12-cs-intro",
+          "quote": "The intro requirement is met by 121 OR completed 111"
+        }
       ],
-      "eligible_course_rows": 1
+      "quoted_via": null,
+      "notes": "Met by 01:198:121 or a completed 01:198:111 (owner decision 2026-11-12). 01:198:111 counts under an equivalency the department states for transfer credit: needs review.",
+      "courses": [
+        "01:198:121"
+      ],
+      "course_categories": {
+        "EQUIV_111": [
+          "01:198:111"
+        ]
+      },
+      "eligible_course_rows": 2
     },
     {
       "code": "CS_112",
+      "name": "Data Structures",
       "type": "course",
       "parent": "CS_CORE",
-      "quote": null,
-      "notes": null,
-      "courses": [
-        "01:198:112"
+      "quotes": [
+        {
+          "source": "owner-2026-11-12-cs-intro",
+          "quote": "and by 122 OR completed 112"
+        }
       ],
-      "eligible_course_rows": 1
+      "quoted_via": null,
+      "notes": "Met by 01:198:122 or a completed 01:198:112 (owner decision 2026-11-12). 01:198:112 counts under an equivalency the department states for transfer credit: needs review.",
+      "courses": [
+        "01:198:122"
+      ],
+      "course_categories": {
+        "EQUIV_112": [
+          "01:198:112"
+        ]
+      },
+      "eligible_course_rows": 2
     },
     {
       "code": "CS_205",
+      "name": "Introduction to Discrete Structures I",
       "type": "course",
       "parent": "CS_CORE",
-      "quote": null,
+      "quotes": [
+        {
+          "source": "catalog-cs-198-2026-2027",
+          "quote": "six required courses in computer science, 01:198:111, 112, 205, 206, 211, and 344"
+        }
+      ],
+      "quoted_via": "CS_CORE",
       "notes": null,
       "courses": [
         "01:198:205"
@@ -85,9 +158,16 @@
     },
     {
       "code": "CS_206",
+      "name": "Introduction to Discrete Structures II",
       "type": "course",
       "parent": "CS_CORE",
-      "quote": null,
+      "quotes": [
+        {
+          "source": "catalog-cs-198-2026-2027",
+          "quote": "six required courses in computer science, 01:198:111, 112, 205, 206, 211, and 344"
+        }
+      ],
+      "quoted_via": "CS_CORE",
       "notes": null,
       "courses": [
         "01:198:206"
@@ -96,9 +176,16 @@
     },
     {
       "code": "CS_211",
+      "name": "Computer Architecture",
       "type": "course",
       "parent": "CS_CORE",
-      "quote": null,
+      "quotes": [
+        {
+          "source": "catalog-cs-198-2026-2027",
+          "quote": "six required courses in computer science, 01:198:111, 112, 205, 206, 211, and 344"
+        }
+      ],
+      "quoted_via": "CS_CORE",
       "notes": null,
       "courses": [
         "01:198:211"
@@ -107,9 +194,16 @@
     },
     {
       "code": "CS_344",
+      "name": "Design and Analysis of Computer Algorithms",
       "type": "course",
       "parent": "CS_CORE",
-      "quote": null,
+      "quotes": [
+        {
+          "source": "catalog-cs-198-2026-2027",
+          "quote": "six required courses in computer science, 01:198:111, 112, 205, 206, 211, and 344"
+        }
+      ],
+      "quoted_via": "CS_CORE",
       "notes": null,
       "courses": [
         "01:198:344"
@@ -118,17 +212,31 @@
     },
     {
       "code": "CS_MATH",
+      "name": "Mathematics Requirement",
       "type": "all_of",
       "parent": "CS_BA",
-      "quote": "three courses in mathematics, 01:640:151-152 and 01:640:250",
+      "quotes": [
+        {
+          "source": "catalog-cs-198-2026-2027",
+          "quote": "three courses in mathematics, 01:640:151-152 and 01:640:250"
+        }
+      ],
+      "quoted_via": null,
       "notes": null,
       "eligible_course_rows": 0
     },
     {
       "code": "MATH_151",
+      "name": "Calculus I",
       "type": "course",
       "parent": "CS_MATH",
-      "quote": null,
+      "quotes": [
+        {
+          "source": "catalog-cs-198-2026-2027",
+          "quote": "three courses in mathematics, 01:640:151-152 and 01:640:250"
+        }
+      ],
+      "quoted_via": "CS_MATH",
       "notes": null,
       "courses": [
         "01:640:151"
@@ -137,9 +245,16 @@
     },
     {
       "code": "MATH_152",
+      "name": "Calculus II",
       "type": "course",
       "parent": "CS_MATH",
-      "quote": null,
+      "quotes": [
+        {
+          "source": "catalog-cs-198-2026-2027",
+          "quote": "three courses in mathematics, 01:640:151-152 and 01:640:250"
+        }
+      ],
+      "quoted_via": "CS_MATH",
       "notes": null,
       "courses": [
         "01:640:152"
@@ -148,9 +263,16 @@
     },
     {
       "code": "MATH_250",
+      "name": "Introductory Linear Algebra",
       "type": "course",
       "parent": "CS_MATH",
-      "quote": null,
+      "quotes": [
+        {
+          "source": "catalog-cs-198-2026-2027",
+          "quote": "three courses in mathematics, 01:640:151-152 and 01:640:250"
+        }
+      ],
+      "quoted_via": "CS_MATH",
       "notes": null,
       "courses": [
         "01:640:250"
@@ -159,9 +281,16 @@
     },
     {
       "code": "CS_ELECTIVES",
+      "name": "Computer Science Electives",
       "type": "choose_n",
       "parent": "CS_BA",
-      "quote": "five electives from a designated list of courses in computer science and related disciplines (e.g., electrical engineering, mathematics). At most, two of the five electives may be taken outside the Department of Computer Science; at least two must be computer science courses at the 300 level or above.",
+      "quotes": [
+        {
+          "source": "catalog-cs-198-2026-2027",
+          "quote": "five electives from a designated list of courses in computer science and related disciplines (e.g., electrical engineering, mathematics). At most, two of the five electives may be taken outside the Department of Computer Science; at least two must be computer science courses at the 300 level or above."
+        }
+      ],
+      "quoted_via": null,
       "notes": "Designated list from the Department of Computer Science electives page (https://www.cs.rutgers.edu/academics/undergraduate/electives, read 2026-10-23, undated), to which the catalog defers: 30 CS courses plus Electrical Engineering, Mathematics, Philosophy, Linguistics and Statistics options. Replaces the earlier query {subject 198, number >= 300}, which admitted courses the department does not list (e.g. 01:198:345). The catalog's own constraints are kept: at most two outside CS, at least two CS courses at the 300 level or above.",
       "min_count": 5,
       "min_at_level": 300,
@@ -228,7 +357,7 @@
       "eligible_course_rows": 51
     }
   ],
-  "program_rules": [
+  "school_rules": [
     {
       "code": "CS_MAX_D",
       "name": "At most one grade of D in required major courses",
@@ -256,6 +385,23 @@
       "is_evaluable": false,
       "not_evaluable_reason": "The rule requires knowing which courses were taken AT Rutgers-New Brunswick. StudentCourse records no transfer provenance, and a cross-listed course carries another department's code, so the count cannot be computed without guessing. Rutgers publishes no transfer-equivalence rule we could apply here.",
       "source_prose": "A minimum of seven courses must be taken in the Rutgers University-New Brunswick Department of Computer Science."
+    },
+    {
+      "code": "CS_120_NO_MAJOR_CREDIT",
+      "name": "CS120 earns SAS credit, never CS major credit",
+      "rule_type": "no_major_credit",
+      "excluded_course_strings": "01:198:120",
+      "is_evaluable": true,
+      "quotes": [
+        {
+          "source": "phase08a-cs-bs-degree",
+          "quote": "Students earn SAS credit for CS120, but not Computer Science major credit."
+        },
+        {
+          "source": "owner-2026-11-12-cs-intro",
+          "quote": "CS120: SAS credit only, never CS major credit (free elective only)."
+        }
+      ]
     }
   ],
   "rules_not_yet_modeled": [
@@ -266,54 +412,45 @@
     {
       "rule": "At most one of a student's electives may be 01:198:493/494 (Independent Study); whether an instance counts depends on the individual arrangement.",
       "why_not": "No per-course-group cap in the requirement model yet; source: the department electives page (2026-10-23)."
+    },
+    {
+      "rule": "Placement: the CS placement exam or AP Computer Science A (4 = CS120 equivalency, 5 = CS121 equivalency) lets a student skip CS120.",
+      "why_not": "No CS placement or AP evidence is recorded on the student record yet; plans include CS120 before CS121 and say that placing out removes it.",
+      "source": "owner-2026-11-12-cs-intro",
+      "quote": "Prereq for 121 unless placed out (placement exam, AP CSA 4 = 120 equivalency, AP CSA 5 = 121 equivalency)."
+    }
+  ],
+  "unknowns": [],
+  "conflicts": [
+    {
+      "id": "CS-INTRO-2027",
+      "status": "resolved_by_owner",
+      "summary": "Catalog 2026-2027 names 01:198:111/112; the department names 121/122 from Spring 2027. Resolved 2026-11-12 by the owner: one course-based curriculum (121 or completed 111; 122 or completed 112), with the 111/112 counting flagged for review. Both original claims are kept.",
+      "claims": [
+        {
+          "source": "phase08a-cs-bs-degree",
+          "quote": "Beginning Spring 2027, the Department of Computer Science has adopted a new introductory course sequence consisting of:"
+        }
+      ],
+      "resolution": {
+        "source": "owner-2026-11-12-cs-intro",
+        "quote": "One CS curriculum. The intro requirement is met by 121 OR completed 111, and by 122 OR completed 112."
+      }
     }
   ],
   "review_questions": [
     "CS_ELECTIVES source_prose omits 'For details, see a computer science adviser or the departmental website.' without marking the elision ('...'). Confirm the omission is harmless and approve adding the marker (a definition change: it moves CS to needs_rereview until re-approved).",
     "CS is published with basis 'legacy_curated' (no review record predates Phase 6.3). Converting it to a human_review publication requires passing through needs_rereview, during which CS reports pending_review. Decide when to do that.",
-    "CS_ELECTIVES now lists the department's designated electives (2026-10-23) instead of the {subject 198, number >= 300} query. Confirm the list and that it applies to catalog year 2026-2027 (the department page is undated)."
+    "CS_ELECTIVES now lists the department's designated electives (2026-10-23) instead of the {subject 198, number >= 300} query. Confirm the list and that it applies to catalog year 2026-2027 (the department page is undated).",
+    "CS-111-AS-121 / CS-112-AS-122: confirm with the department that completed Rutgers 01:198:111/112 count toward the 121/122 slots (the stated equivalency is for transfer credit)."
   ],
   "what_to_verify": [
-    "Open the archived page (path below) and find every quoted sentence.",
-    "For each requirement node, confirm the encoding says what the quote says: course lists, counts, levels, exclusions.",
-    "Confirm nothing the page requires for COMPLETION is missing - compare against 'rules not yet modeled'.",
-    "Confirm admission/declaration rules are kept as admission_prose and not as completion requirements.",
-    "Answer every review question; a 'changes_requested' review is a valid outcome.",
-    "Spot-check the eligible-course counts below against the course list you expect."
+    "Open each archived source (paths below) and find every quoted sentence.",
+    "For each node, confirm the encoding says what its quote says: courses, counts, levels, grade floors, credit minimums, stages.",
+    "Confirm nothing the sources require is missing - compare with 'rules not yet modeled' and 'unknowns'.",
+    "Resolve or explicitly accept each OPEN conflict; never pick a side silently.",
+    "Confirm admission/declaration rules are entry-stage requirements or labels, never completion requirements, and that no plan would assume admission.",
+    "Answer every review question; 'changes requested' is a valid outcome."
   ],
-  "how_to_record": "python -m coursepilot_ingestion.registry_cli review --program sas-198-ba --year 2026-2027 --reviewer \"<your full name>\" --decision approved|changes_requested --notes \"...\"  (then, if approved: registry_cli publish --program ... --year ...)",
-  "quotes": [
-    {
-      "node": "program_version",
-      "quote": "The B.A. option requires 51-55 credits (depending on 3-credit or 4-credit elective options); the B.S. option requires 67-72 credits."
-    },
-    {
-      "node": "CS_BA",
-      "quote": "The basic major, leading to a bachelor of arts (B.A.) degree, consists of: 1) six required courses in computer science, 01:198:111, 112, 205, 206, 211, and 344; 2) three courses in mathematics, 01:640:151-152 and 01:640:250; and 3) five electives from a designated list of courses in computer science and related disciplines."
-    },
-    {
-      "node": "CS_CORE",
-      "quote": "six required courses in computer science, 01:198:111, 112, 205, 206, 211, and 344"
-    },
-    {
-      "node": "CS_MATH",
-      "quote": "three courses in mathematics, 01:640:151-152 and 01:640:250"
-    },
-    {
-      "node": "CS_ELECTIVES",
-      "quote": "five electives from a designated list of courses in computer science and related disciplines (e.g., electrical engineering, mathematics). At most, two of the five electives may be taken outside the Department of Computer Science; at least two must be computer science courses at the 300 level or above."
-    },
-    {
-      "node": "CS_MAX_D",
-      "quote": "No more than one grade of D can be accepted in the courses required for the major."
-    },
-    {
-      "node": "CS_EXCLUDED",
-      "quote": "Declared computer science majors (198) will not receive credit (major or degree) for subsequent enrollment in computer science 105, 107,110, 142, 170, or 405."
-    },
-    {
-      "node": "CS_RESIDENCY",
-      "quote": "A minimum of seven courses must be taken in the Rutgers University-New Brunswick Department of Computer Science."
-    }
-  ]
+  "how_to_record": "python -m coursepilot_ingestion.registry_cli review --program sas-198-ba --year 2026-2027 --reviewer \"<your full name>\" --decision approved|changes_requested --notes \"...\""
 }

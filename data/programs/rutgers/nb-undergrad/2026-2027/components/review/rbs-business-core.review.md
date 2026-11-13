@@ -1,8 +1,8 @@
 # Review packet: `rbs-business-core` (component, school_core)
 
-- **Lifecycle:** `pending_review`
+- **Lifecycle:** `needs_rereview`
 - **Encoded by:** manual encoding, Prompt 08 B1 (Claude Code session, 2026-11-11) - encoding is not review
-- **Definition:** `data/programs/rutgers/nb-undergrad/2026-2027/components/rbs-business-core.json`  semantic sha256 `15e6158cbd4f0ccc`
+- **Definition:** `data/programs/rutgers/nb-undergrad/2026-2027/components/rbs-business-core.json`  semantic sha256 `dbcc57e766f91ee7`
 
 ## Sources
 
@@ -11,16 +11,17 @@
 | `rbs-catalog-bait` | catalog | archived | 2026-11-11T19:09:24+00:00 | raw_html | `863737ed3974d15a` | https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/programs-majors-minors/bait |
 | `rbs-catalog-programs` | catalog | archived | 2026-11-11T19:09:19+00:00 | raw_html | `87b56becf9a97ce2` | https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/programs-majors-minors/programs |
 | `phase08a-myrbs-bait` | department | archived | 2026-11-09T19:54:38.603287+00:00 | extracted_text | `13240ec394575554` | https://myrbs.business.rutgers.edu/undergraduate-new-brunswick/business-analytics-and-information-technology-major |
+| `owner-2026-11-12-bait-ethics` | owner_decision | not in manifest |  |  | `` |  |
 - `phase08a-myrbs-bait`: Phase A extraction-only capture (web reader text), not raw HTML.
 
 ## Machine checks (not review)
 
-- passed: **True**, quotes found verbatim: 27/27
-- warning: RBS_BC_ETHICS: 33:522:335 not in the loaded course table (reported, never created)
+- passed: **True**, quotes found verbatim: 30/30
 
 ## OPEN conflicts (both claims shown; none resolved)
 
-### BAIT-ETHICS (open)
+### BAIT-ETHICS (resolved_by_owner)
+The core table prints 33:522:335; the same page's notes and the department pages print 33:522:334. Resolved 2026-11-12: 33:522:334 is used; the 335 claim is kept as a logged source conflict.
 - `rbs-catalog-bait`: "33:522:335 OR 33:140:320 Business Ethics OR Business Law"
 - `rbs-catalog-bait`: "You can earn credit towards graduation if you take 33:522:334 Business Ethics"
 - `phase08a-myrbs-bait`: "33:522:334 Business Ethics OR 33:140:320 Business Law"
@@ -28,7 +29,6 @@
 
 ## Review questions
 
-- [ ] Resolve BAIT-ETHICS: the BAIT page's core table prints 33:522:335 while its own notes and the department pages print 33:522:334.
 - [ ] Confirm the business core table is identical on all six RBS major pages for fall 2026 entrants (encoded once from the BAIT page).
 
 ## What to verify
@@ -61,7 +61,7 @@
 | `RBS_BC_136_370` Management Information Systems | course | RBS_BC_MIS_OR_AIS | courses: 33:136:370 | 1 |
 | `RBS_BC_010_458` Accounting Information Systems | course | RBS_BC_MIS_OR_AIS | courses: 33:010:458 | 1 |
 | `RBS_BC_ETHICS_OR_LAW` Business Ethics OR Business Law | any_of | RBS_BUSINESS_CORE | min_count=1 | 0 |
-| `RBS_BC_ETHICS` Business Ethics | course | RBS_BC_ETHICS_OR_LAW | courses: 33:522:335<br>**open conflict** BAIT-ETHICS | 0 |
+| `RBS_BC_ETHICS` Business Ethics | course | RBS_BC_ETHICS_OR_LAW | courses: 33:522:334 | 1 |
 | `RBS_BC_140_320` Business Law | course | RBS_BC_ETHICS_OR_LAW | courses: 33:140:320 | 1 |
 
 ### Verbatim quotes per node
@@ -103,8 +103,10 @@
 - **RBS_BC_ETHICS_OR_LAW**:
   - `rbs-catalog-bait`: "33:522:335 OR 33:140:320 Business Ethics OR Business Law"
 - **RBS_BC_ETHICS**:
-  - `rbs-catalog-bait`: "33:522:335 OR"
-  - note: The table's literal course number. The same page's notes, and the department pages, print 33:522:334: see conflict BAIT-ETHICS.
+  - `rbs-catalog-bait`: "You can earn credit towards graduation if you take 33:522:334 Business Ethics"
+  - `phase08a-myrbs-bait`: "33:522:334 Business Ethics OR 33:140:320 Business Law"
+  - `owner-2026-11-12-bait-ethics`: "Use 33:522:334."
+  - note: 33:522:334 per the owner decision of 2026-11-12. The catalog's core table prints 33:522:335 (conflict BAIT-ETHICS, kept as a record).
 - **RBS_BC_140_320**:
   - `rbs-catalog-bait`: "33:140:320 Business Ethics OR Business Law"
 
@@ -129,10 +131,10 @@
 
 ## Unknowns
 
-- Which Business Ethics course number governs the fall 2026 core (33:522:335 or 33:522:334): conflict BAIT-ETHICS.
+- (none)
 
 ## How to record your decision
 
 ```
-Components have no review command yet: record the decision in the PR / review notes; the component stays 'pending_review' (and every audit and index label says so) until a component review command exists.
+python -m coursepilot_ingestion.registry_cli review-component --code rbs-business-core --year 2026-2027 --reviewer "<your full name>" --decision approved|changes_requested --notes "..."  (then, if approved: registry_cli publish-component --code rbs-business-core --year 2026-2027)
 ```

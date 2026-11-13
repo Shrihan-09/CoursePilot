@@ -146,9 +146,10 @@ def build_packet(path: pathlib.Path, session=None) -> dict:
             f"{_key(definition)} --year 2026-2027 --reviewer \"<your full name>\" "
             "--decision approved|changes_requested --notes \"...\""
             if kind == "program" else
-            "Components have no review command yet: record the decision in the PR / review "
-            "notes; the component stays 'pending_review' (and every audit and index label says "
-            "so) until a component review command exists."),
+            "python -m coursepilot_ingestion.registry_cli review-component --code "
+            f"{_key(definition)} --year 2026-2027 --reviewer \"<your full name>\" "
+            "--decision approved|changes_requested --notes \"...\"  (then, if approved: "
+            f"registry_cli publish-component --code {_key(definition)} --year 2026-2027)"),
     }
 
 

@@ -140,20 +140,98 @@ def annotate_recommendations(result: PlanResult, overlay, parents: dict[str, str
                     code = parents.get(code)
 
 
-def school_core_status(session: Session, version: ProgramVersion) -> SchoolCoreStatus:
-    """Which school Core applies - chosen by the PROGRAM's school (Phase 7.6).
+def gen_ed_sets(session: Session, components) -> tuple[set[str], set[str], bool]:
+    """(requirement codes, eligible course strings, lists known) of gen-ed components."""
+    from app.models import Course, Requirement, RequirementCourseOption
 
-    A school whose Core CoursePilot has not encoded (SEBS, SOE, ...) has
-    status "unknown": the plan says so and never substitutes SAS Core."""
-    from app.services.academic_context import school_requirement_sets
+    ids = [c.id for c in components]
+    if not ids:
+        return set(), set(), True
+    reqs = list(session.scalars(select(Requirement).where(
+        Requirement.school_requirement_set_version_id.in_(ids))))
+    courses = set(session.scalars(
+        select(Course.course_string).join(RequirementCourseOption,
+                                          RequirementCourseOption.course_id == Course.id)
+        .where(RequirementCourseOption.requirement_id.in_([r.id for r in reqs]))))
+    known = not any(r.requirement_type in ("course", "choose_n") and r.eligibility_rule == {}
+                    and not r.certification_codes for r in reqs)
+    return {r.code for r in reqs}, courses, known
 
-    school = session.get(School, version.program.school_id)
-    sets = school_requirement_sets(session, version)
+
+def gen_ed_context(session: Session, student: Student, version: ProgramVersion):
+    """Prompt 08 B1: (GenEdContext, record codes, target courses, known) or None."""
+    from app.domain.planning import GenEdContext
+    from app.services.academic_context import gen_ed_transition
+    from app.services.prerequisites import attempts_by_course
+
+    t = gen_ed_transition(session, version, student)
+    if t is None:
+        return None
+    record_codes, _, _ = gen_ed_sets(session, t["record"])
+    _, target_courses, known = gen_ed_sets(session, t["target"])
+    taken = sorted(k for k, atts in attempts_by_course(session, student).items()
+                   if k in target_courses and any(a.status in ("completed", "in_progress")
+                                                  for a in atts))
+    record = [s.name for s in t["record"]]
+    target = [s.name for s in t["target"]]
+    if t["state"] == "admitted":
+        msg = (f"You are admitted (verified): {', '.join(target)} is now your gen-ed. "
+               + (f"Already counting toward it: {', '.join(taken)}." if taken else
+                  "None of your earlier courses is known to count toward it yet."))
+    else:
+        msg = (f"You are in {t['home_school']}: {', '.join(record) or 'its gen-ed'} stays your "
+               f"requirement of record until admission is verified. Courses {t['stage_label']} "
+               f"follow {', '.join(target) or 'the program school gen-ed'}. "
+               + ("Gen-ed picks that count for both are preferred." if known else
+                  f"{', '.join(target)}'s course lists are not yet known, so whether a course "
+                  "counts for both cannot be decided yet."))
+    ctx = GenEdContext(state=t["state"], stage=t["stage"], stage_label=t["stage_label"],
+                       home_school=t["home_school"], record=record, target=target,
+                       target_lists_known=known, carried_over=taken, message=msg)
+    return ctx, record_codes, target_courses, known
+
+
+def label_gen_ed(result: PlanResult, ctx, record_codes, target_courses, known) -> None:
+    """Label each gen-ed course of a pre-admission plan (owner decision 2026-11-12)."""
+    rec = " / ".join(ctx.record) or "current gen-ed"
+    tgt = " / ".join(ctx.target) or "program gen-ed"
+    for term in result.terms:
+        for pc in term.courses:
+            in_record = any(r.requirement_code in record_codes for r in pc.requirements)
+            in_target = pc.course in target_courses
+            if not (in_record or in_target):
+                continue
+            if not known:
+                pc.gen_ed_label = f"{rec}; {tgt}: unknown (course lists not yet sourced)"
+            elif in_record and in_target:
+                pc.gen_ed_label = "counts for both"
+            elif in_record:
+                pc.gen_ed_label = f"{rec} only"
+            else:
+                pc.gen_ed_label = f"{tgt} only"
+
+
+def school_core_status(session: Session, version: ProgramVersion,
+                       student: Student | None = None) -> SchoolCoreStatus:
+    """Which school Core applies - chosen by the PROGRAM's school (Phase 7.6),
+    or, for a student still in another school before verified admission, by
+    their current school (Prompt 08 B1).
+
+    A school whose Core CoursePilot has not encoded has status "unknown": the
+    plan says so and never substitutes another school's Core."""
+    from app.services.academic_context import gen_ed_school_id, school_requirement_sets
+
+    school = session.get(School, gen_ed_school_id(session, version, student))
+    sets = [x for x in school_requirement_sets(session, version, student)
+            if x.kind == "gen_ed"]
     if sets:
         names = ", ".join(s.name for s in sets)
         return SchoolCoreStatus(
             school_code=school.code, status="encoded", requirement_sets=[s.code for s in sets],
-            message=f"Core requirements: {names}, chosen by your program's school ({school.code}).")
+            message=f"Core requirements: {names}, chosen by "
+                    + ("your program's school" if school.id == version.program.school_id
+                       else "the school you are in now")
+                    + f" ({school.code}).")
     return SchoolCoreStatus(
         school_code=school.code, status="unknown",
         message=(f"Core status is unknown: CoursePilot has not encoded the "
@@ -244,7 +322,7 @@ def generate_plan(session: Session, student: Student, *, start_term: str,
     overlay, dn_notes = degree_navigator_overlay(session, student, version, key,
                                                  what_if=not target.is_current_program)
     assumptions += dn_notes
-    core = school_core_status(session, version)
+    core = school_core_status(session, version, student)
     if core.status == "unknown":
         assumptions.append(ScenarioAssumption(code="school_core_unknown", message=core.message))
     declaration = declaration_of(session, student, version, key)
@@ -257,10 +335,17 @@ def generate_plan(session: Session, student: Student, *, start_term: str,
             code="planning_toward_undeclared_major",
             message=(f"{declaration.label}. Sections restricted to declared majors are treated "
                      "as closed to you; minor and honors restrictions stay unconfirmed.")))
-    result = PlanningEngine(session, constraints, overlay, holds=holds,
+    engine = PlanningEngine(session, constraints, overlay, holds=holds,
                             prior_choices=prior_choices, strict_holds=strict_holds,
-                            held_electives=held_electives).plan(student, version, target,
-                                                                start_term, assumptions)
+                            held_electives=held_electives)
+    gen_ed = gen_ed_context(session, student, version)
+    if gen_ed is not None and gen_ed[0].state == "before_admission" and gen_ed[3]:
+        engine.gen_ed_target = gen_ed[2]      # prefer gen-ed picks that count for both
+    result = engine.plan(student, version, target, start_term, assumptions)
+    if gen_ed is not None:
+        result.gen_ed = gen_ed[0]
+        if gen_ed[0].state == "before_admission":
+            label_gen_ed(result, *gen_ed)
     result.assumptions += pending_term_assumptions(session, start_term, result)
     result.school_core = core
     result.declaration = declaration

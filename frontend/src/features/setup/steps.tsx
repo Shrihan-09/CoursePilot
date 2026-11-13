@@ -53,6 +53,10 @@ export interface AboutAnswers {
   classStanding: ClassStanding | null;
   pace: Pace;
   gradTerm: string | null;
+  /** Prompt 08 B1: stated class year (class-scoped curricula only). */
+  classYear: number | null;
+  /** Prompt 08 B1: the school the student is in now (null = the program's school). */
+  homeSchool: string | null;
 }
 
 export function initialAbout(profile: Profile | null | undefined, draft: Draft | null): AboutAnswers {
@@ -64,6 +68,8 @@ export function initialAbout(profile: Profile | null | undefined, draft: Draft |
     classStanding: profile?.class_standing ?? null,
     pace: draft?.pace ?? "balanced",
     gradTerm: draft?.expected_graduation_term ?? null,
+    classYear: profile?.class_year ?? null,
+    homeSchool: profile?.home_school_code ?? null,
   };
 }
 
@@ -84,6 +90,12 @@ export function AboutStep({ value, onChange }: { value: AboutAnswers; onChange: 
       .toLowerCase().includes(query.trim().toLowerCase()))
     .sort((a, b) => a.name.localeCompare(b.name));
   const years = chosen?.versions.filter((v) => v.support_status !== "unavailable") ?? [];
+  // Prompt 08 B1: curricula for specific classes in the chosen catalog year.
+  const classYears = [...new Set(years.filter((v) => v.catalog_year === value.catalogYear)
+    .flatMap((v) => v.curriculum_class_years ?? []))].sort();
+  const stage = years.find((v) => v.catalog_year === value.catalogYear)?.admission_stage ?? null;
+  const schoolOptions = useMemo(() => [...new Map(all.map((p) => [p.school_code, p.school_name])).entries()]
+    .sort((a, b) => a[1].localeCompare(b[1])), [all]);
   const gradChoices = upcomingTerms(new Date(), 14).filter((t) => t.endsWith("1") || t.endsWith("9"));
   const set = (patch: Partial<AboutAnswers>) => onChange({ ...value, ...patch });
 
@@ -107,7 +119,7 @@ export function AboutStep({ value, onChange }: { value: AboutAnswers; onChange: 
         <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
           {list.map((p) => (
             <ProgramChoice key={p.program_key} program={p} checked={p.program_key === value.programKey}
-              onSelect={() => set({ programKey: p.program_key, catalogYear: p.versions.find((v) => v.support_status !== "unavailable")?.catalog_year ?? "" })} />
+              onSelect={() => set({ programKey: p.program_key, catalogYear: p.versions.find((v) => v.support_status !== "unavailable")?.catalog_year ?? "", classYear: null, homeSchool: null })} />
           ))}
           {programs.isSuccess && list.length === 0 && (
             <p className="py-4 text-center text-sm text-fg-muted">No program matches. Try another school or search.</p>
@@ -120,6 +132,33 @@ export function AboutStep({ value, onChange }: { value: AboutAnswers; onChange: 
           {({ id, describedBy }) => (
             <Select id={id} aria-describedby={describedBy} value={value.catalogYear} onChange={(e) => set({ catalogYear: e.target.value })}>
               {years.map((v) => <option key={v.catalog_year} value={v.catalog_year}>{v.catalog_year}</option>)}
+            </Select>
+          )}
+        </Field>
+      )}
+
+      {chosen && classYears.length > 0 && (
+        <Field label="Your class" hint="This program has different curricula for different classes. The class you state decides which one applies to you.">
+          {({ id, describedBy }) => (
+            <Select id={id} aria-describedby={describedBy} value={value.classYear ?? ""}
+              onChange={(e) => set({ classYear: e.target.value ? Number(e.target.value) : null })}>
+              <option value="">Choose your class</option>
+              {classYears.map((y) => <option key={y} value={y}>Class of {y}</option>)}
+            </Select>
+          )}
+        </Field>
+      )}
+
+      {chosen && stage && (
+        <Field label="Which school are you in now?"
+          hint={`Admission to ${chosen.school_name} is never assumed. Until it is confirmed, your current school's gen-ed stays your requirement of record.`}>
+          {({ id, describedBy }) => (
+            <Select id={id} aria-describedby={describedBy} value={value.homeSchool ?? ""}
+              onChange={(e) => set({ homeSchool: e.target.value || null })}>
+              <option value="">{chosen.school_name}</option>
+              {schoolOptions.filter(([code]) => code !== chosen.school_code).map(([code, name]) => (
+                <option key={code} value={code}>{name}</option>
+              ))}
             </Select>
           )}
         </Field>

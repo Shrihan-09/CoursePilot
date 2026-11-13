@@ -27,7 +27,8 @@
   "review_questions": [
     "CS_ELECTIVES source_prose omits 'For details, see a computer science adviser or the departmental website.' without marking the elision ('...'). Confirm the omission is harmless and approve adding the marker (a definition change: it moves CS to needs_rereview until re-approved).",
     "CS is published with basis 'legacy_curated' (no review record predates Phase 6.3). Converting it to a human_review publication requires passing through needs_rereview, during which CS reports pending_review. Decide when to do that.",
-    "CS_ELECTIVES now lists the department's designated electives (2026-10-23) instead of the {subject 198, number >= 300} query. Confirm the list and that it applies to catalog year 2026-2027 (the department page is undated)."
+    "CS_ELECTIVES now lists the department's designated electives (2026-10-23) instead of the {subject 198, number >= 300} query. Confirm the list and that it applies to catalog year 2026-2027 (the department page is undated).",
+    "CS-111-AS-121 / CS-112-AS-122: confirm with the department that completed Rutgers 01:198:111/112 count toward the 121/122 slots (the stated equivalency is for transfer credit)."
   ],
   "curation": {
     "curated_by": "manual encoding, Phase 3 (encoder not recorded)",
@@ -70,7 +71,30 @@
       "sort_order": 0,
       "parent": "CS_CORE",
       "courses": [
-        "01:198:111"
+        "01:198:121"
+      ],
+      "course_categories": {
+        "EQUIV_111": [
+          "01:198:111"
+        ]
+      },
+      "notes": "Met by 01:198:121 or a completed 01:198:111 (owner decision 2026-11-12). 01:198:111 counts under an equivalency the department states for transfer credit: needs review.",
+      "quotes": [
+        {
+          "source": "owner-2026-11-12-cs-intro",
+          "quote": "The intro requirement is met by 121 OR completed 111"
+        }
+      ],
+      "review_flags": [
+        {
+          "id": "CS-111-AS-121",
+          "applies_to": [
+            "01:198:111"
+          ],
+          "reason": "01:198:111 counts toward the 01:198:121 slot under the 111→121 equivalency the department states for TRANSFER credit; applying it to completed Rutgers courses is the owner's decision, pending the department's confirmation.",
+          "source": "owner-2026-11-12-cs-intro",
+          "quote": "111→121 and 112→122 equivalency is stated for transfer credit; apply it to completed Rutgers 111/112 too"
+        }
       ]
     },
     {
@@ -80,7 +104,30 @@
       "sort_order": 1,
       "parent": "CS_CORE",
       "courses": [
-        "01:198:112"
+        "01:198:122"
+      ],
+      "course_categories": {
+        "EQUIV_112": [
+          "01:198:112"
+        ]
+      },
+      "notes": "Met by 01:198:122 or a completed 01:198:112 (owner decision 2026-11-12). 01:198:112 counts under an equivalency the department states for transfer credit: needs review.",
+      "quotes": [
+        {
+          "source": "owner-2026-11-12-cs-intro",
+          "quote": "and by 122 OR completed 112"
+        }
+      ],
+      "review_flags": [
+        {
+          "id": "CS-112-AS-122",
+          "applies_to": [
+            "01:198:112"
+          ],
+          "reason": "01:198:112 counts toward the 01:198:122 slot under the 112→122 equivalency the department states for TRANSFER credit; applying it to completed Rutgers courses is the owner's decision, pending the department's confirmation.",
+          "source": "owner-2026-11-12-cs-intro",
+          "quote": "111→121 and 112→122 equivalency is stated for transfer credit; apply it to completed Rutgers 111/112 too"
+        }
       ]
     },
     {
@@ -241,6 +288,12 @@
     {
       "rule": "At most one of a student's electives may be 01:198:493/494 (Independent Study); whether an instance counts depends on the individual arrangement.",
       "why_not": "No per-course-group cap in the requirement model yet; source: the department electives page (2026-10-23)."
+    },
+    {
+      "rule": "Placement: the CS placement exam or AP Computer Science A (4 = CS120 equivalency, 5 = CS121 equivalency) lets a student skip CS120.",
+      "why_not": "No CS placement or AP evidence is recorded on the student record yet; plans include CS120 before CS121 and say that placing out removes it.",
+      "source": "owner-2026-11-12-cs-intro",
+      "quote": "Prereq for 121 unless placed out (placement exam, AP CSA 4 = 120 equivalency, AP CSA 5 = 121 equivalency)."
     }
   ],
   "program_rules": [
@@ -271,6 +324,55 @@
       "is_evaluable": false,
       "not_evaluable_reason": "The rule requires knowing which courses were taken AT Rutgers-New Brunswick. StudentCourse records no transfer provenance, and a cross-listed course carries another department's code, so the count cannot be computed without guessing. Rutgers publishes no transfer-equivalence rule we could apply here.",
       "source_prose": "A minimum of seven courses must be taken in the Rutgers University-New Brunswick Department of Computer Science."
+    },
+    {
+      "code": "CS_120_NO_MAJOR_CREDIT",
+      "name": "CS120 earns SAS credit, never CS major credit",
+      "rule_type": "no_major_credit",
+      "excluded_course_strings": "01:198:120",
+      "is_evaluable": true,
+      "quotes": [
+        {
+          "source": "phase08a-cs-bs-degree",
+          "quote": "Students earn SAS credit for CS120, but not Computer Science major credit."
+        },
+        {
+          "source": "owner-2026-11-12-cs-intro",
+          "quote": "CS120: SAS credit only, never CS major credit (free elective only)."
+        }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "catalog-cs-198-2026-2027",
+      "role": "catalog",
+      "primary": true
+    },
+    {
+      "id": "phase08a-cs-bs-degree",
+      "role": "department"
+    },
+    {
+      "id": "owner-2026-11-12-cs-intro",
+      "role": "owner_decision"
+    }
+  ],
+  "conflicts": [
+    {
+      "id": "CS-INTRO-2027",
+      "status": "resolved_by_owner",
+      "summary": "Catalog 2026-2027 names 01:198:111/112; the department names 121/122 from Spring 2027. Resolved 2026-11-12 by the owner: one course-based curriculum (121 or completed 111; 122 or completed 112), with the 111/112 counting flagged for review. Both original claims are kept.",
+      "claims": [
+        {
+          "source": "phase08a-cs-bs-degree",
+          "quote": "Beginning Spring 2027, the Department of Computer Science has adopted a new introductory course sequence consisting of:"
+        }
+      ],
+      "resolution": {
+        "source": "owner-2026-11-12-cs-intro",
+        "quote": "One CS curriculum. The intro requirement is met by 121 OR completed 111, and by 122 OR completed 112."
+      }
     }
   ]
 }

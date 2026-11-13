@@ -60,6 +60,8 @@ from app.models.search_version import SEARCH_TABLES, SearchVersion
 from app.models.requirements import (
     CatalogCourseEntry,
     ComponentKind,
+    ComponentReview,
+    CourseTransition,
     CurationStatus,
     Program,
     ProgramRule,

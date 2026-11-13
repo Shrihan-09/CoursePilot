@@ -217,13 +217,15 @@ class DegreeAuditEngine:
     def _load_requirements(self, version_id) -> list[Requirement]:
         from app.services.academic_context import composed_requirements
         version = self.session.get(ProgramVersion, version_id)
-        return composed_requirements(self.session, version) if version else []
+        return (composed_requirements(self.session, version, getattr(self, "_student", None))
+                if version else [])
 
     def _load_rules(self, version_id) -> list[ProgramRule]:
         # Prompt 08 B1: plus the school-level rules of composed components.
         from app.services.academic_context import composed_rules
         version = self.session.get(ProgramVersion, version_id)
-        return composed_rules(self.session, version) if version else []
+        return (composed_rules(self.session, version, getattr(self, "_student", None))
+                if version else [])
 
     def _load_eligibility(
         self, requirement_ids: list
@@ -817,6 +819,7 @@ class DegreeAuditEngine:
             reason="",
             source_prose=req.source_prose,
             curation_status=req.curation_status,
+            review_flags=list(getattr(req, "review_flags", None) or []),
         )
 
         if req.code in getattr(self, "_exempt_requirement_codes", set()):
@@ -1074,6 +1077,9 @@ class DegreeAuditEngine:
         WITHOUT writing a different program onto the Student. The engine
         reads the student's record and never modifies it either way.
         """
+        # Prompt 08 B1: the student's context (current school, verified
+        # admission) decides which gen-ed is the requirement of record.
+        self._student = student
         if program_version is None:
             version = self.session.get(ProgramVersion, student.program_version_id)
             if version is None:
@@ -1132,7 +1138,7 @@ class DegreeAuditEngine:
                 )
             )
 
-        for school_set in school_requirement_sets(self.session, version):
+        for school_set in school_requirement_sets(self.session, version, student):
             if school_set.lifecycle_state != "published":
                 findings.append(AuditFinding(severity=Severity.WARNING,
                     code="school_requirements_pending_review",
@@ -1621,6 +1627,19 @@ class DegreeAuditEngine:
         if any(f.severity is Severity.BLOCKING and f.code == "catalog_year_mismatch"
                for f in findings):
             status = AuditStatus.INSUFFICIENT_DATA
+
+        # Prompt 08 B1: a course counted under an assumption a human must
+        # confirm says so (e.g. a completed 01:198:111 in the 121 slot).
+        flagged = {r.code: r.review_flags for r in requirements if r.review_flags}
+        for a in allocations:
+            for flag in flagged.get(a.requirement_code, ()):
+                if a.course.course_string in (flag.get("applies_to") or ()):
+                    findings.append(AuditFinding(
+                        severity=Severity.WARNING, code="counted_under_assumption",
+                        requirement_code=a.requirement_code,
+                        message=(f"{a.course.course_string} counts toward {a.requirement_name} "
+                                 f"under an assumption that needs review: {flag.get('reason')}"),
+                        remediation="Confirm with the department or your advisor."))
 
         # Remaining is measured against APPLICABLE credits, not completed ones.
         # Counting excluded courses toward the total would tell a student they

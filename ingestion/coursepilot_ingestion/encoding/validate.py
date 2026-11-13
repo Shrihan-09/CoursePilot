@@ -48,8 +48,22 @@ class EncodingReport:
         return not self.errors
 
 
+DECISIONS = (pathlib.Path(__file__).resolve().parents[3] / "data" / "programs" / "rutgers"
+             / "decisions.json")
+
+
+def load_decisions(path: pathlib.Path = DECISIONS) -> dict[str, dict]:
+    """Owner decisions an encoding may cite (data/programs/rutgers/decisions.json)."""
+    if not path.exists():
+        return {}
+    return {d["id"]: d for d in json.loads(path.read_text("utf-8"))["decisions"]}
+
+
 def file_kind(definition: dict) -> str:
-    return "component" if definition.get("format", "").startswith("component/") else "program"
+    fmt = definition.get("format", "")
+    if fmt.startswith("course-transitions/"):
+        return "transitions"
+    return "component" if fmt.startswith("component/") else "program"
 
 
 def _nodes(definition: dict):
@@ -59,6 +73,11 @@ def _nodes(definition: dict):
 def _quoted_items(definition: dict):
     """(where, quote dict) for every quote the file makes."""
     kind = file_kind(definition)
+    if kind == "transitions":
+        for t in definition.get("transitions", []):
+            for q in t.get("quotes", []):
+                yield f"{t['course']} ({t['kind']})", q
+        return
     if kind == "component":
         total = definition["component"].get("degree_credits")
         if total:
@@ -82,6 +101,9 @@ def _quoted_items(definition: dict):
             yield r["code"], {"source": primary, "quote": r["source_prose"]}
         for q in r.get("quotes", []):
             yield r["code"], q
+        for flag in r.get("review_flags") or ():
+            if flag.get("quote"):
+                yield f"{r['code']} (review flag {flag.get('id')})", flag
     for r in definition.get("school_rules", []) + definition.get("program_rules", []):
         if kind == "program" and primary and r.get("source_prose"):
             yield r["code"], {"source": primary, "quote": r["source_prose"]}
@@ -90,6 +112,8 @@ def _quoted_items(definition: dict):
     for c in definition.get("conflicts", []):
         for q in c.get("claims", []):
             yield f"conflict {c.get('id')}", q
+        if c.get("resolution", {}).get("quote"):
+            yield f"conflict {c.get('id')} resolution", c["resolution"]
     for r in definition.get("rules_not_yet_modeled", []):
         if r.get("quote"):
             yield "rules_not_yet_modeled", {"source": r.get("source"), "quote": r["quote"]}
@@ -101,7 +125,11 @@ def validate_file(path: pathlib.Path, session=None, manifest: dict | None = None
     rep = EncodingReport(path=str(path), kind=kind)
     manifest = manifest if manifest is not None else load_manifest()
 
-    if kind == "component":
+    if kind == "transitions":
+        from coursepilot_ingestion.loaders.transitions import validate_transitions
+
+        rep.errors.extend(validate_transitions(definition))
+    elif kind == "component":
         from coursepilot_ingestion.loaders.components import validate_component_shape
 
         rep.errors.extend(validate_component_shape(definition))
@@ -123,7 +151,11 @@ def validate_file(path: pathlib.Path, session=None, manifest: dict | None = None
 
     cited = {s["id"] for s in definition.get("sources", [])}
     texts: dict[str, str | None] = {}
+    decisions = load_decisions()
     for sid in cited - DB_SOURCES:
+        if sid in decisions:            # an owner decision: quotes are checked against it
+            texts[sid] = _norm(decisions[sid]["text"])
+            continue
         cap = manifest.get(sid)
         if cap is None:
             rep.errors.append(f"source {sid!r} is not in data/programs/rutgers/sources.json")
@@ -164,7 +196,7 @@ def validate_file(path: pathlib.Path, session=None, manifest: dict | None = None
                     rep.errors.append(f"{where}: {quote!r} is not a SOC core-code description")
             continue
         cap = manifest.get(sid) or {}
-        if cap.get("representation") == "failed":
+        if sid not in decisions and cap.get("representation") == "failed":
             rep.errors.append(f"{where}: quotes {sid!r}, a FAILED capture - nothing to quote")
             continue
         text = texts.get(sid)

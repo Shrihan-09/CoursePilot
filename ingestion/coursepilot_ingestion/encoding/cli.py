@@ -78,6 +78,16 @@ def cmd_archive(a) -> int:
     return 0
 
 
+def cmd_add_capture(a) -> int:
+    from coursepilot_ingestion.encoding.sources import add_saved_capture
+
+    rec = add_saved_capture(a.id, a.url, pathlib.Path(a.file), a.captured_at,
+                            representation=a.representation, note=a.note)
+    print(f"{rec['id']}: {rec['representation']} {rec['retrieved_at']} "
+          f"{rec['sha256'][:16]} -> {rec['archive_path']}")
+    return 0
+
+
 def cmd_new(a) -> int:
     out = pathlib.Path(a.out)
     if out.exists():
@@ -125,7 +135,11 @@ def cmd_load(a) -> int:
         for f in a.files:
             path = pathlib.Path(f)
             definition = json.loads(path.read_bytes())
-            if file_kind(definition) == "component":
+            if file_kind(definition) == "transitions":
+                from coursepilot_ingestion.loaders.transitions import load_transitions
+                st = load_transitions(s, path)
+                print(f"{f}: transitions {st}")
+            elif file_kind(definition) == "component":
                 st = ComponentLoader(s).load_file(path)
                 print(f"{f}: component {st.code} inserted={st.inserted} "
                       f"changed={st.definition_changed} nodes+{st.requirements_inserted}"
@@ -176,6 +190,13 @@ def build_parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(dest="cmd", required=True)
     ar = sub.add_parser("archive", help="archive official sources (plain HTTP)")
     ar.add_argument("pairs", nargs="+", help="<capture id> <url> pairs")
+    ac = sub.add_parser("add-capture", help="record a page saved from a browser")
+    ac.add_argument("id")
+    ac.add_argument("url")
+    ac.add_argument("file")
+    ac.add_argument("--captured-at", required=True, help="ISO date/time the page was saved")
+    ac.add_argument("--representation", default="browser_saved")
+    ac.add_argument("--note")
     nw = sub.add_parser("new", help="write an empty encoding template")
     nw.add_argument("kind", choices=("component", "program"))
     nw.add_argument("--code", required=True)
@@ -199,7 +220,7 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
-COMMANDS = {"archive": cmd_archive, "new": cmd_new, "validate": cmd_validate,
+COMMANDS = {"archive": cmd_archive, "add-capture": cmd_add_capture, "new": cmd_new, "validate": cmd_validate,
             "packet": cmd_packet, "load": cmd_load, "index": cmd_index}
 
 

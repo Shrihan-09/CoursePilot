@@ -452,11 +452,16 @@ class KnowledgeView:
         self._fills: dict[str, list[Fill]] = defaultdict(list)
         self._coverage = None
         self._excluded: set[str] = set()
+        #: course -> the sourced statement that it earns no major credit.
+        self._no_major: dict[str, str] = {}
         from app.services.academic_context import composed_rules
 
         for rule in composed_rules(session, version):
             if rule.rule_type == "course_exclusion" and rule.is_evaluable:
                 self._excluded |= set(rule.excluded_courses)
+            elif rule.rule_type == "no_major_credit":
+                for c in rule.excluded_courses:
+                    self._no_major[c] = rule.source_prose or rule.name
         if self.build is None:
             return
         owners = list(session.scalars(select(KnowledgeContext.owner_id).where(
@@ -496,6 +501,11 @@ class KnowledgeView:
         if course in self._excluded:
             return CourseKnowledge(course, self.term, "excluded", [], [
                 "A program rule says this course earns no credit for this program."], bid,
+                self.stale)
+        if course in self._no_major:
+            # A source says so explicitly: degree credit, never major credit.
+            return CourseKnowledge(course, self.term, "free_elective_only", [], [
+                f"Earns degree credit but no major credit: {self._no_major[course]}"], bid,
                 self.stale)
         cov = self._coverage
         if cov is None:

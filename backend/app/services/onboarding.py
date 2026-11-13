@@ -157,7 +157,8 @@ def describe_selection(session: Session, version: ProgramVersion) -> ProgramSele
         warnings=lifecycle_warnings(session, version))
 
 
-def resolve_selection(session: Session, key: str, catalog_year: str) -> ProgramVersion:
+def resolve_selection(session: Session, key: str, catalog_year: str,
+                      class_year: int | None = None) -> ProgramVersion:
     """The version a selection names, or a ScenarioError subclass.
 
     Delegates to the scenario resolver so a "program key + catalog year"
@@ -165,8 +166,36 @@ def resolve_selection(session: Session, key: str, catalog_year: str) -> ProgramV
     """
     from app.services.scenarios import resolve_version
 
-    version, _info = resolve_version(session, key, catalog_year)
+    version, _info = resolve_version(session, key, catalog_year, class_year)
     return version
+
+
+def record_context(session: Session, student: Student, version: ProgramVersion, *,
+                   program_key: str, class_year: int | None,
+                   home_school_code: str | None) -> None:
+    """Prompt 08 B1: what the student STATES about their context.
+
+    * class year - for a class-scoped curriculum, stored as academic evidence
+      with basis "student_stated" (owner decision 2026-11-12: it counts);
+    * current school - e.g. SAS for a pre-business student choosing an RBS
+      major. It never stands for admission: only a verified admission record
+      moves the requirement of record to the program school's gen-ed.
+    """
+    from app.models import StudentAcademicEvidence
+
+    for old in session.scalars(select(StudentAcademicEvidence).where(
+            StudentAcademicEvidence.student_id == student.id,
+            StudentAcademicEvidence.evidence_kind == "curriculum_class_year",
+            StudentAcademicEvidence.verified.is_(False))):
+        session.delete(old)
+    if class_year is not None and version.curriculum_class_years:
+        session.add(StudentAcademicEvidence(
+            student_id=student.id, evidence_kind="curriculum_class_year",
+            evidence_key=program_key,
+            value={"class_year": class_year, "basis": "student_stated"},
+            verified=False, source_reference="stated by the student in setup"))
+    student.home_school_code = home_school_code or None
+    session.flush()
 
 
 def owned_student(session: Session, account_id: uuid.UUID) -> Student | None:
@@ -206,7 +235,8 @@ def invalidate_audit(session: Session, student_id: uuid.UUID) -> None:
 
 
 def create_profile(session: Session, account_id: uuid.UUID, *, program_key: str,
-                   catalog_year: str) -> tuple[Student, bool]:
+                   catalog_year: str, class_year: int | None = None,
+                   home_school_code: str | None = None) -> tuple[Student, bool]:
     """(student, created). Idempotent: an existing record is returned as is.
 
     A repeated call never re-binds the program - changing a program is an
@@ -219,7 +249,7 @@ def create_profile(session: Session, account_id: uuid.UUID, *, program_key: str,
     if session.get(UserAccount, account_id) is None:
         raise ProfileMissing("This account is not provisioned.")
 
-    version = resolve_selection(session, program_key, catalog_year)
+    version = resolve_selection(session, program_key, catalog_year, class_year)
     student = Student(user_id=account_id, program_version_id=version.id,
                       catalog_year=version.catalog_year, external_ref=None)
     session.add(student)
@@ -229,6 +259,8 @@ def create_profile(session: Session, account_id: uuid.UUID, *, program_key: str,
                                      performed_by_id=account_id, action=LINK_ACTION_CREATED,
                                      reason="self-service academic profile"))
         session.flush()
+        record_context(session, student, version, program_key=program_key,
+                       class_year=class_year, home_school_code=home_school_code)
     except IntegrityError:
         # The concurrent first create won. Its row is THE record.
         session.rollback()
@@ -241,7 +273,8 @@ def create_profile(session: Session, account_id: uuid.UUID, *, program_key: str,
 
 
 def change_program(session: Session, account_id: uuid.UUID, *, program_key: str,
-                   catalog_year: str) -> Student:
+                   catalog_year: str, class_year: int | None = None,
+                   home_school_code: str | None = None) -> Student:
     """Re-bind the record to another program version. Courses are untouched.
 
     Program and catalog year move TOGETHER (the engine reports a mismatch
@@ -252,7 +285,9 @@ def change_program(session: Session, account_id: uuid.UUID, *, program_key: str,
     student = lock_student(session, account_id)
     if student is None:
         raise ProfileMissing("No academic record exists for this account.")
-    version = resolve_selection(session, program_key, catalog_year)
+    version = resolve_selection(session, program_key, catalog_year, class_year)
+    record_context(session, student, version, program_key=program_key,
+                   class_year=class_year, home_school_code=home_school_code)
     if student.program_version_id != version.id or student.catalog_year != version.catalog_year:
         student.program_version_id = version.id
         student.catalog_year = version.catalog_year

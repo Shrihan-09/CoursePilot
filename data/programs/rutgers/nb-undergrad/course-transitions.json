@@ -1,0 +1,183 @@
+{
+ "_README": [
+  "Department-announced course changes the planner must know before SOC lists them (Prompt 08 B1 follow-up).",
+  "Each entry quotes its source: the archived department B.S. page (Phase A raw capture, 2026-11-09) and the owner decision of 2026-11-12. The department's new-sequence pages returned HTTP 403 to a plain GET; they stay evidence gaps until browser-saved captures are added.",
+  "An announced course absent from SOC gets a course row labelled as a department announcement (never a fabricated SOC record). Anything assumed beyond the sources carries needs_review."
+ ],
+ "format": "course-transitions/1",
+ "sources": [
+  {
+   "id": "phase08a-cs-bs-degree",
+   "role": "department"
+  },
+  {
+   "id": "owner-2026-11-12-cs-intro",
+   "role": "owner_decision"
+  },
+  {
+   "id": "owner-2026-11-12-cs-intro-initial",
+   "role": "owner_decision"
+  },
+  {
+   "id": "cs-new-intro-sequence",
+   "role": "department",
+   "note": "HTTP 403 to a plain GET on 2026-11-12: evidence gap until a browser-saved capture is added."
+  },
+  {
+   "id": "cs-new-120-121-122-sequence",
+   "role": "department",
+   "note": "HTTP 403 expected; not yet archived: evidence gap until a browser-saved capture is added."
+  }
+ ],
+ "transitions": [
+  {
+   "course": "01:198:111",
+   "kind": "retired",
+   "term_code": "20269",
+   "quotes": [
+    {
+     "source": "owner-2026-11-12-cs-intro",
+     "quote": "111 last offered Fall 2026"
+    }
+   ]
+  },
+  {
+   "course": "01:198:112",
+   "kind": "retired",
+   "term_code": "20271",
+   "quotes": [
+    {
+     "source": "owner-2026-11-12-cs-intro",
+     "quote": "112 still offered Spring 2027, last offered then (not offered from Fall 2027)"
+    }
+   ]
+  },
+  {
+   "course": "01:198:120",
+   "kind": "announced",
+   "term_code": "20271",
+   "seasons": [
+    "1",
+    "9"
+   ],
+   "title": "Introduction to Programming",
+   "credits": 4,
+   "planner_note": "CS120 earns SAS credit but no Computer Science major credit. If you place out of it (the CS placement exam, or AP Computer Science A with a 4), start with CS121. The department notes that students who need CS120 may choose the B.A. instead of the B.S. - that choice is yours; CoursePilot does not make it.",
+   "note_programs": [
+    "sas-198-bs"
+   ],
+   "quotes": [
+    {
+     "source": "phase08a-cs-bs-degree",
+     "quote": "Beginning Spring 2027, the Department of Computer Science has adopted a new introductory course sequence consisting of:"
+    },
+    {
+     "source": "phase08a-cs-bs-degree",
+     "quote": "CS120: Introduction to Programming (4 credits)"
+    },
+    {
+     "source": "phase08a-cs-bs-degree",
+     "quote": "Students earn SAS credit for CS120, but not Computer Science major credit."
+    },
+    {
+     "source": "owner-2026-11-12-cs-intro",
+     "quote": "Prereq for 121 unless placed out (placement exam, AP CSA 4 = 120 equivalency, AP CSA 5 = 121 equivalency)."
+    },
+    {
+     "source": "owner-2026-11-12-cs-intro",
+     "quote": "Note: students who need 120 may choose the B.A. instead of the B.S. (dept page says so) — show as info only, never decide for them."
+    }
+   ],
+   "needs_review": [
+    {
+     "id": "SEASONS-ASSUMED",
+     "reason": "Offered every fall and spring from its first term is assumed: the sources give only the first term."
+    }
+   ]
+  },
+  {
+   "course": "01:198:121",
+   "kind": "announced",
+   "term_code": "20271",
+   "seasons": [
+    "1",
+    "9"
+   ],
+   "title": "Introduction to Computer Science",
+   "credits": 4,
+   "satisfies_prerequisite_of": [
+    "01:198:111"
+   ],
+   "quotes": [
+    {
+     "source": "phase08a-cs-bs-degree",
+     "quote": "CS121: Introduction to Computer Science (4 credits)"
+    },
+    {
+     "source": "owner-2026-11-12-cs-intro",
+     "quote": "A student with neither takes 120/121 (per placement) from Spring 2027."
+    },
+    {
+     "source": "owner-2026-11-12-cs-intro",
+     "quote": "111→121 and 112→122 equivalency is stated for transfer credit"
+    }
+   ],
+   "needs_review": [
+    {
+     "id": "SEASONS-ASSUMED",
+     "reason": "Offered every fall and spring from its first term is assumed: the sources give only the first term."
+    },
+    {
+     "id": "CS121-FOR-111-PREREQ",
+     "reason": "Spring 2027 SOC prerequisites still name 01:198:111 (e.g. for 01:198:205); 121 is assumed to satisfy them from the stated 111→121 equivalency. The owner decision states the prerequisite substitution only for 112→122."
+    }
+   ]
+  },
+  {
+   "course": "01:198:122",
+   "kind": "announced",
+   "term_code": "20279",
+   "seasons": [
+    "9",
+    "1"
+   ],
+   "title": "Data Structures",
+   "credits": 4,
+   "satisfies_prerequisite_of": [
+    "01:198:112"
+   ],
+   "quotes": [
+    {
+     "source": "phase08a-cs-bs-degree",
+     "quote": "CS122: Data Structures (4 credits)"
+    },
+    {
+     "source": "owner-2026-11-12-cs-intro",
+     "quote": "a student with 111 but no 112 can take 112 in Spring 2027, otherwise 122 from Fall 2027"
+    },
+    {
+     "source": "owner-2026-11-12-cs-intro",
+     "quote": "Courses that required 112 now require 122 (or 112)."
+    },
+    {
+     "source": "owner-2026-11-12-cs-intro-initial",
+     "quote": "from Spring 2027 the intro is 01:198:120 → 121 → 122"
+    }
+   ],
+   "needs_review": [
+    {
+     "id": "SEASONS-ASSUMED",
+     "reason": "Offered every fall and spring from Fall 2027 is assumed: the sources give only the first term."
+    },
+    {
+     "id": "CS122-PREREQ-ASSUMED",
+     "reason": "SOC has not published 01:198:122's prerequisites; until it does, 01:198:121 (or a completed 01:198:111) is assumed from the stated 120 → 121 → 122 sequence."
+    }
+   ],
+   "assumed_prerequisite": [
+    "01:198:121",
+    "01:198:111"
+   ]
+  }
+ ]
+}

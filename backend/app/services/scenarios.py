@@ -107,6 +107,15 @@ class ProgramChoiceRequired(ScenarioError):
         self.variants = variants
 
 
+class CurriculumClassYearRequired(ProgramChoiceRequired):
+    """Prompt 08 B1: the program has curricula for different classes; the
+    student states their class year (owner decision: student-stated counts)."""
+
+    def __init__(self, message: str, class_years: list[int], curricula: list[str]) -> None:
+        super().__init__(message, curricula)
+        self.class_years = class_years
+
+
 class ScenarioWouldWrite(RuntimeError):
     """Evaluation left pending changes in the session. Never expected."""
 
@@ -116,7 +125,7 @@ class ScenarioWouldWrite(RuntimeError):
 # --------------------------------------------------------------------------
 
 
-def resolve_version(session: Session, key: str, wanted: str):
+def resolve_version(session: Session, key: str, wanted: str, class_year: int | None = None):
     """(version, info) for a program key and catalog year - or a ScenarioError.
 
     Phase 7.0: shared with program SELECTION (`app.services.onboarding`), so
@@ -133,14 +142,29 @@ def resolve_version(session: Session, key: str, wanted: str):
 
     available = sorted({v.catalog_year for v in program.versions}, reverse=True)
     matching = [v for v in program.versions if v.catalog_year == wanted]
-    if len(matching) > 1:
+    scoped = [v for v in matching if v.curriculum_class_years]
+    if scoped:
         # Prompt 08 B1: class-scoped curricula (Industrial Engineering classes
-        # 2026-2029 vs class 2030). Which one governs is the student's verified
-        # class year - never chosen here, never derived from a graduation target.
+        # 2026-2029 vs class 2030). The governing one follows the class year the
+        # student states - never chosen here, never derived from a graduation
+        # target. An unlisted class has no curriculum: never extrapolated.
+        years = sorted({y for v in scoped for y in v.curriculum_class_years})
+        keys = sorted(v.curriculum_key for v in matching)
+        if class_year is None:
+            raise CurriculumClassYearRequired(
+                f"{program.name} ({program.degree_type}) {wanted} has curricula for different "
+                f"classes ({', '.join(keys)}). Choose your class year.", years, keys)
+        matching = [v for v in scoped if class_year in v.curriculum_class_years]
+        if not matching:
+            raise CurriculumClassYearRequired(
+                f"{program.name} ({program.degree_type}) {wanted} has no curriculum CoursePilot "
+                f"knows for the class of {class_year}. Known classes: "
+                f"{', '.join(map(str, years))}.", years, keys)
+    elif len(matching) > 1:
         keys = sorted(v.curriculum_key for v in matching)
         raise ProgramChoiceRequired(
-            f"{program.name} ({program.degree_type}) {wanted} has curricula for different "
-            f"classes: {', '.join(keys)}. Choose the one that governs your class.", keys)
+            f"{program.name} ({program.degree_type}) {wanted} has several curricula: "
+            f"{', '.join(keys)}.", keys)
     version = matching[0] if matching else None
     if version is None:
         # Never the latest, never the closest: choosing a catalog year is an

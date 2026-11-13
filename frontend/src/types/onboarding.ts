@@ -32,6 +32,11 @@ export interface ProgramVersion {
   requirement_count: number;
   not_evaluable_rule_count: number;
   total_credits_min: string | null;
+  /** Prompt 08 B1: a curriculum for specific classes (e.g. class 2030). */
+  curriculum_key?: string;
+  curriculum_class_years?: number[];
+  /** The stage the program's own courses come after (e.g. "rbs-nb-admission"). */
+  admission_stage?: string | null;
 }
 
 export interface Program {
@@ -77,6 +82,9 @@ export interface Profile {
   first_term?: string | null;
   /** 10a follow-up: "What year are you?" as stated; orders the record cards. */
   class_standing?: ClassStanding | null;
+  /** Prompt 08 B1: the school the student is in now; their stated class year. */
+  home_school_code?: string | null;
+  class_year?: number | null;
 }
 
 export type ClassStanding = "first_year" | "sophomore" | "junior" | "senior" | "transfer";

@@ -177,7 +177,65 @@ def school_set_definition_changed(school_set, new_definition_sha256: str) -> boo
     return True
 
 
+# --------------------------------------------------------------------------
+# Prompt 08 B1: requirement COMPONENTS (school gen-ed, shared cores, stages)
+# --------------------------------------------------------------------------
+#: A component's states: pending_review (machine-loaded, never reviewed),
+#: needs_rereview (changed after a review), reviewed, published.
+PENDING_REVIEW = "pending_review"
+
+
+def record_component_review(
+    session: Session, component, *, reviewer: str, decision: str, machine_checks_passed: bool,
+    notes: str | None = None, now: datetime | None = None,
+):
+    """Append a human review of a component. Approval moves it to `reviewed`.
+
+    Only a component whose encoding passes the machine checks (verbatim quotes
+    against the archived sources) can be reviewed; the review records the
+    definition hash it approved."""
+    from app.models import ComponentReview
+
+    name = assert_human_reviewer(reviewer)
+    if decision not in ("approved", "changes_requested"):
+        raise LifecycleError(f"unknown review decision {decision!r}")
+    if not machine_checks_passed:
+        raise LifecycleError("the component's encoding does not pass validation; fix it first")
+    if component.lifecycle_state not in (PENDING_REVIEW, NEEDS_REREVIEW, REVIEWED):
+        raise LifecycleError(
+            f"a {component.lifecycle_state} component cannot be reviewed again until it changes")
+    review = ComponentReview(component_id=component.id, reviewer=name, reviewed_at=_now(now),
+                             decision=decision, definition_sha256=component.definition_sha256,
+                             notes=notes)
+    session.add(review)
+    component.lifecycle_state = REVIEWED if decision == "approved" else PENDING_REVIEW
+    session.flush()
+    return review
+
+
+def latest_component_review(session: Session, component):
+    from app.models import ComponentReview
+
+    return session.scalar(
+        select(ComponentReview).where(ComponentReview.component_id == component.id)
+        .order_by(ComponentReview.reviewed_at.desc(), ComponentReview.created_at.desc()).limit(1))
+
+
+def publish_component(session: Session, component) -> None:
+    """reviewed -> published, only if the approval covers the definition that exists NOW."""
+    if component.lifecycle_state != REVIEWED:
+        raise LifecycleError(
+            f"only a reviewed component can be published (this one is {component.lifecycle_state})")
+    review = latest_component_review(session, component)
+    if review is None or review.decision != "approved":
+        raise LifecycleError("no approved human review on record")
+    if review.definition_sha256 != component.definition_sha256:
+        raise LifecycleError("the approved review does not cover the current definition")
+    component.lifecycle_state = PUBLISHED
+
+
 __all__ = ["NEEDS_REREVIEW", "PARSED", "PUBLISHED", "REVIEWED", "STATES", "VALIDATED",
            "LifecycleError", "assert_human_reviewer", "check_source", "definition_changed",
-           "latest_review", "mark_validated", "publish", "record_review",
+           "latest_component_review", "latest_review", "mark_validated", "publish",
+           "publish_component", "record_component_review", "record_review",
            "school_set_definition_changed"]

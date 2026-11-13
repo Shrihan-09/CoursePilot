@@ -136,6 +136,82 @@ Every plan is `partial`, for honest reasons. The fixture has only Fall 2026 and 
   - built the index.
 - **No student record or saved plan was rewritten.** Saved plans aren't regenerated; the planning engine version isn't bumped.
 
+## Follow-up: owner decisions of 2026-11-12
+
+Every decision is recorded verbatim in `data/programs/rutgers/decisions.json`. Encodings cite the decisions, and validation checks those quotes. A decision is not evidence of what Rutgers published, so unarchived department pages stay gaps.
+
+**1. CS intro (one course-based curriculum, B.S. and B.A.).**
+- **Intro slots:** the CS_111 slot is met by 01:198:121 or a completed 111, and CS_112 by 122 or a completed 112.
+- **Needs review:** the 111/112 counting is flagged "needs review", with your decision's quote. The degree page shows the flag, and the audit warns whenever a 111 or 112 actually counts.
+- **01:198:120:** earns SAS credit and never CS major credit (new `no_major_credit` rule). The index calls it "free elective only", with the department's quote.
+- **Course transitions** (new table plus `course-transitions.json`):
+  - 111 is never planned after Fall 2026, and 112 never after Spring 2027.
+  - 120/121 from Spring 2027 and 122 from Fall 2027 are department-announced; this is a new kind of offering evidence the planner can place.
+  - 122 has no SOC record yet, so it gets a course row labelled as a department announcement.
+  - Prerequisites naming 112 accept 122.
+  - Until SOC publishes 122's prerequisite, it's assumed to be 121 (or 111), flagged.
+  - The prerequisite-path planner swaps a retired prerequisite for the course that replaces it.
+  - Planned 120 carries the info note "students who need CS120 may choose the B.A.… CoursePilot does not make it".
+- **Planned sequence:**
+  - A student with neither intro course: 120 in Spring 2027 → 121 in Fall 2027 → 122 and 205 in Spring 2028 → 211.
+  - A student with 111: 112 in Spring 2027, otherwise 122 from Fall 2027. 121 is never added.
+  - A student with an F in 111: never retakes 111 itself.
+- **For you to confirm:**
+  - **121 for 111 in prerequisites:** I added "121 satisfies prerequisites naming 111", flagged. Spring 2027 SOC still lists 111 for 205, and your decision states the substitution only for 112→122.
+  - **Seasons:** I assumed 120/121/122 run every fall and spring, flagged; the sources give only the first term.
+  - **Department pages:** both new-sequence pages returned 403. The second URL is my best reading of the name in your decision.
+
+**2. BAIT-ETHICS.** The business core uses 33:522:334. The catalog table's 335 is kept as a logged conflict, marked "resolved by owner".
+
+**3. Browser-saved captures.** Add them with `python scripts/encode_program.py add-capture <id> <url> <file> --captured-at <ISO time>`. Until then the pages stay gaps.
+
+**4. IE register.** IE-CATALOG-SCOPE is corrected to 123 credits, with a dated correction section. Both catalog captures say 123, and the page lists the class-2030 courses 14:540:220 and 14:540:385. The open question is now scope only.
+
+**5(a). Class-year choice in onboarding.**
+- **Setup:** for a class-scoped program, setup asks "Your class". The stated year is stored as student-stated evidence and governs the curriculum; a restatement replaces the earlier one.
+- **API:** `resolve_version` asks for the class year and never extrapolates to an unlisted class. A missing year returns the 422 issue `CLASS_YEAR_REQUIRED`.
+
+**5(b). Pre-business students in SAS.**
+- **Setup:** for programs with an admission stage, setup asks "Which school are you in now?".
+- **Before verified admission:** the student's current school's gen-ed (SAS Core) is composed as the requirement of record, and RBS's core is not.
+- **Plan summary:** the plan shows both systems ("Two gen-ed systems"), and each gen-ed course gets a label.
+- **Labels:** today every label says the RBS core is "unknown", because RBS lists are unsourced; "counts for both" is never guessed. Courses that count for both are preferred in ranking.
+- **After a verified admission record:** RBS's core applies, and the plan lists what carried over.
+- **Audit cache:** the student's current school and evidence are now part of the fingerprint, so a cached audit can't be stale.
+
+**5(c). Component review.** `registry_cli review-component` and `publish-component`:
+- the reviewer must be a named human;
+- the loaded component must match its file and pass validation;
+- reviews are recorded append-only in `component_review`;
+- publishing needs an approval of the current definition;
+- any change moves the component to `needs_rereview`.
+
+**Migration `p08b102`** (additive):
+- adds `course_transition`, `requirement.review_flags`, `student.home_school_code`, `component_review`, and the `no_major_credit` rule type;
+- the dev DB was backed up first to `devdb-before-08b1-02-20261113T042202Z.dump` (71 tables, verified);
+- an upgrade/downgrade/upgrade round trip passed;
+- applied to the test and dev DBs.
+
+**Dev DB data:** loaded the transitions (5, including 122's course row), the business core, and the CS B.S. and B.A. The CS B.S. was re-validated to `validated`. The index was rebuilt: 32,481 memberships.
+
+**Tests:**
+- 11 CS transition tests and 7 follow-up tests, all new.
+- 11 new failure injections, 26 of 26 in total, all detected.
+- `test_prerequisite_service` now expects 4 constant queries instead of 3, because transitions add one. It still asserts that one candidate costs the same as many.
+
+**Open gap to decide:** nothing in the app can mark an admission as verified. Until an admin flow exists, an admitted RBS student keeps "after admission" labels, and a pre-business student keeps SAS Core as the requirement of record.
+
+**Suites after the follow-ups** (run one at a time):
+
+| Suite | Result |
+|---|---|
+| Backend | 1351 passed, 4 skipped, **3 failed** |
+| Ingestion (full) | 1247 passed, 1 skipped, **6 failed** |
+| Frontend | 210/210; `tsc` clean |
+
+- **Backend:** two failures are the ones that also fail on main. The third, `test_prerequisite_service…not_n_plus_one`, came from the new transitions query. It's fixed with one merged query (now 4 queries, still constant) and passes, 8 of 8.
+- **Ingestion:** all 6 failures were rule counts and sets that didn't yet include the new `CS_120_NO_MAJOR_CREDIT` rule, plus the old Fall 2026 fixture's missing 121/122. Their expectations are updated, and the 3 affected files pass, 52 of 52. The full ingestion suite was not rerun after that test-only change.
+
 ## For you to decide or check
 
 1. **CS-INTRO-2027.** Do 01:198:121/122 replace 111/112 for 2026-2027-catalog students? Spring 2027 doesn't offer 111. This affects plans now.

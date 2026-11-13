@@ -351,7 +351,7 @@ class RequirementLoader:
                 gpa_scope=rdef.get("gpa_scope"),
                 is_evaluable=evaluable,
                 not_evaluable_reason=rdef.get("not_evaluable_reason"),
-                source_prose=rdef.get("source_prose"),
+                source_prose=_prose(rdef),
                 curation_status=curation,
             )
             existing = self.session.scalar(
@@ -470,6 +470,7 @@ def _b1_fields(rdef: dict) -> dict:
         "group_caps": caps or None,
         "unresolved_conflicts": sorted(set(rdef["unresolved_conflicts"]))
         if rdef.get("unresolved_conflicts") else None,
+        "review_flags": rdef.get("review_flags") or None,
     }
 
 

@@ -242,6 +242,12 @@ def academic_fingerprint(session: Session, student: Student) -> str:
     # Phase 7.3: only when stated, so every existing fingerprint is unchanged.
     if getattr(student, "math_placement", None):
         hasher.update(f"math_placement={student.math_placement}\n".encode())
+    # Prompt 08 B1: current school, academic evidence (class year, admission)
+    # and the gen-ed of record they select.
+    from app.services.academic_context import context_fingerprint
+    context = context_fingerprint(session, student)
+    if context:         # only when stated, so every other fingerprint is unchanged
+        hasher.update(f"context={context}\n".encode())
     rows = session.execute(
         select(
             StudentCourse.course_id,

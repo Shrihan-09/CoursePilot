@@ -152,7 +152,9 @@ def check_proposal(session: Session, student: Student, course_keys_: list[str], 
     """
     proposed = frozenset(proposed) | (frozenset() if independent else frozenset(course_keys_))
     prerequisites = check_many(session, student, course_keys_, term_code, projected=projected)
-    history = with_projected(attempts_by_course(session, student), projected)
+    from app.services.prerequisites import with_equivalents
+    history = with_equivalents(session, with_projected(attempts_by_course(session, student),
+                                                       projected))
     evaluation_term = as_of_term or term_code
     coreq_rows: dict[str, list[CourseCorequisite]] = base_record_rows(session.execute(
         select(Course.course_string, Course.supplement_code, CourseCorequisite)

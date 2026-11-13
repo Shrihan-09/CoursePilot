@@ -3,7 +3,7 @@
     "RBS-New Brunswick Business Core for students who entered RBS in fall 2026, encoded ONCE and linked to each RBS major (Prompt 08 B1).",
     "Source: the 2026-2027 catalog's major pages print the same 36-credit Business Core table; quoted here from the BAIT page. Courses are taken after admission to RBS (available_after_stage) - a plan never assumes admission.",
     "Major-dependent overrides (Accounting majors take Accounting Information Systems, Business Law and Managerial Accounting) belong to the Accounting encoding (Phase C) and are listed under rules_not_yet_modeled.",
-    "OPEN CONFLICT BAIT-ETHICS: the same catalog page prints Business Ethics as 33:522:335 in the core table and 33:522:334 in its notes; the department pages print 334. The table's literal claim is encoded on the ethics branch, which stays conditional (unresolved_conflicts) until a human resolves it. No equivalence is invented."
+    "BAIT-ETHICS (resolved by the owner 2026-11-12): the catalog's core table prints 33:522:335, while the same page's notes and the department pages print 33:522:334, and only 334 is offered in any loaded term. The ethics branch uses 33:522:334; the table's 335 stays recorded as a source conflict."
   ],
   "format": "component/1",
   "component": {
@@ -11,98 +11,422 @@
     "name": "RBS-NB Business Core (entered fall 2026)",
     "kind": "school_core",
     "composition": "linked",
-    "school": {"code": "RBSNB", "name": "Rutgers Business School-New Brunswick", "campus_code": "NB"},
+    "school": {
+      "code": "RBSNB",
+      "name": "Rutgers Business School-New Brunswick",
+      "campus_code": "NB"
+    },
     "catalog_year": "2026-2027",
     "definition_version": "1",
     "requirement_system": "major",
     "sharing_policy": "exclusive",
     "source_url": "https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/rbsnb/degree-requirements/programs-majors-minors/bait",
-    "applicability": {"entered_school_from_term": "20269", "note": "Major requirements for students who entered RBS in the fall 2026 semester."}
+    "applicability": {
+      "entered_school_from_term": "20269",
+      "note": "Major requirements for students who entered RBS in the fall 2026 semester."
+    }
   },
   "sources": [
-    {"id": "rbs-catalog-bait", "role": "catalog"},
-    {"id": "rbs-catalog-programs", "role": "catalog"},
-    {"id": "phase08a-myrbs-bait", "role": "department", "note": "Phase A extraction-only capture (web reader text), not raw HTML."}
+    {
+      "id": "rbs-catalog-bait",
+      "role": "catalog"
+    },
+    {
+      "id": "rbs-catalog-programs",
+      "role": "catalog"
+    },
+    {
+      "id": "phase08a-myrbs-bait",
+      "role": "department",
+      "note": "Phase A extraction-only capture (web reader text), not raw HTML."
+    },
+    {
+      "id": "owner-2026-11-12-bait-ethics",
+      "role": "owner_decision"
+    }
   ],
   "requirements": [
     {
-      "code": "RBS_BUSINESS_CORE", "name": "Business Core", "requirement_type": "all_of", "parent": null, "sort_order": 0,
-      "min_grade": "C", "available_after_stage": "rbs-nb-admission",
+      "code": "RBS_BUSINESS_CORE",
+      "name": "Business Core",
+      "requirement_type": "all_of",
+      "parent": null,
+      "sort_order": 0,
+      "min_grade": "C",
+      "available_after_stage": "rbs-nb-admission",
       "quotes": [
-        {"source": "rbs-catalog-bait", "quote": "Major requirements for students who entered RBS in the fall 2026 semester:"},
-        {"source": "rbs-catalog-programs", "quote": "business core course requirements that all students must complete regardless of their choice of major program"},
-        {"source": "rbs-catalog-programs", "quote": "All core courses and required courses specific to the major must be completed with a grade of C or better."}
+        {
+          "source": "rbs-catalog-bait",
+          "quote": "Major requirements for students who entered RBS in the fall 2026 semester:"
+        },
+        {
+          "source": "rbs-catalog-programs",
+          "quote": "business core course requirements that all students must complete regardless of their choice of major program"
+        },
+        {
+          "source": "rbs-catalog-programs",
+          "quote": "All core courses and required courses specific to the major must be completed with a grade of C or better."
+        }
       ]
     },
-    {"code": "RBS_BC_010_272", "name": "Intro to Financial Accounting", "requirement_type": "course", "parent": "RBS_BUSINESS_CORE", "sort_order": 0,
-     "courses": ["33:010:272"], "quotes": [{"source": "rbs-catalog-bait", "quote": "33:010:272 Intro to Financial Accounting"}]},
-    {"code": "RBS_BC_011_301", "name": "Foundations for Your Career Journey", "requirement_type": "course", "parent": "RBS_BUSINESS_CORE", "sort_order": 1,
-     "courses": ["33:011:301"], "quotes": [{"source": "rbs-catalog-bait", "quote": "33:011:301 Foundations for Your Career Journey"}]},
-    {"code": "RBS_BC_011_302", "name": "Building Your Brand", "requirement_type": "course", "parent": "RBS_BUSINESS_CORE", "sort_order": 2,
-     "courses": ["33:011:302"], "quotes": [{"source": "rbs-catalog-bait", "quote": "33:011:302 Building Your Brand"}]},
-    {"code": "RBS_BC_011_303", "name": "Conquering Your Transition", "requirement_type": "course", "parent": "RBS_BUSINESS_CORE", "sort_order": 3,
-     "courses": ["33:011:303"], "quotes": [{"source": "rbs-catalog-bait", "quote": "33:011:303 Conquering Your Transition"}]},
-    {"code": "RBS_BC_390_300", "name": "Financial Management", "requirement_type": "course", "parent": "RBS_BUSINESS_CORE", "sort_order": 4,
-     "courses": ["33:390:300"], "quotes": [{"source": "rbs-catalog-bait", "quote": "33:390:300 Financial Management"}]},
-    {"code": "RBS_BC_620_302", "name": "Management Skills", "requirement_type": "course", "parent": "RBS_BUSINESS_CORE", "sort_order": 5,
-     "courses": ["33:620:302"], "quotes": [{"source": "rbs-catalog-bait", "quote": "33:620:302 Management Skills"}]},
-    {"code": "RBS_BC_136_385", "name": "Stat Methods for Business", "requirement_type": "course", "parent": "RBS_BUSINESS_CORE", "sort_order": 6,
-     "courses": ["33:136:385"], "quotes": [{"source": "rbs-catalog-bait", "quote": "33:136:385 Stat Methods for Business"}]},
-    {"code": "RBS_BC_620_369", "name": "International Business", "requirement_type": "course", "parent": "RBS_BUSINESS_CORE", "sort_order": 7,
-     "courses": ["33:620:369"], "quotes": [{"source": "rbs-catalog-bait", "quote": "33:620:369 International Business"}]},
-    {"code": "RBS_BC_630_301", "name": "Intro to Marketing", "requirement_type": "course", "parent": "RBS_BUSINESS_CORE", "sort_order": 8,
-     "courses": ["33:630:301"], "quotes": [{"source": "rbs-catalog-bait", "quote": "33:630:301 Intro to Marketing"}]},
-    {"code": "RBS_BC_799_301", "name": "Intro to Supply Chain", "requirement_type": "course", "parent": "RBS_BUSINESS_CORE", "sort_order": 9,
-     "courses": ["33:799:301"], "quotes": [{"source": "rbs-catalog-bait", "quote": "33:799:301 Intro to Supply Chain"}]},
-    {"code": "RBS_BC_136_386", "name": "Business Operations Analytics", "requirement_type": "course", "parent": "RBS_BUSINESS_CORE", "sort_order": 10,
-     "courses": ["33:136:386"], "quotes": [{"source": "rbs-catalog-bait", "quote": "33:136:386 Business Operations Analytics"}]},
-    {"code": "RBS_BC_620_492", "name": "Business Policy & Strategy", "requirement_type": "course", "parent": "RBS_BUSINESS_CORE", "sort_order": 11,
-     "courses": ["33:620:492"], "quotes": [{"source": "rbs-catalog-bait", "quote": "33:620:492 Business Policy & Strategy"}]},
-    {"code": "RBS_BC_MIS_OR_AIS", "name": "Management Information Systems OR Accounting Information Systems", "requirement_type": "any_of", "parent": "RBS_BUSINESS_CORE", "sort_order": 12,
-     "min_count": 1,
-     "quotes": [{"source": "rbs-catalog-bait", "quote": "33:136:370 OR 33:010:458 Management Information Systems OR Accounting Information Systems"}]},
-    {"code": "RBS_BC_136_370", "name": "Management Information Systems", "requirement_type": "course", "parent": "RBS_BC_MIS_OR_AIS", "sort_order": 0,
-     "courses": ["33:136:370"], "quotes": [{"source": "rbs-catalog-bait", "quote": "33:136:370 OR"}]},
-    {"code": "RBS_BC_010_458", "name": "Accounting Information Systems", "requirement_type": "course", "parent": "RBS_BC_MIS_OR_AIS", "sort_order": 1,
-     "courses": ["33:010:458"], "quotes": [{"source": "rbs-catalog-bait", "quote": "33:010:458 Management Information Systems OR Accounting Information Systems"}]},
-    {"code": "RBS_BC_ETHICS_OR_LAW", "name": "Business Ethics OR Business Law", "requirement_type": "any_of", "parent": "RBS_BUSINESS_CORE", "sort_order": 13,
-     "min_count": 1,
-     "quotes": [{"source": "rbs-catalog-bait", "quote": "33:522:335 OR 33:140:320 Business Ethics OR Business Law"}]},
-    {"code": "RBS_BC_ETHICS", "name": "Business Ethics", "requirement_type": "course", "parent": "RBS_BC_ETHICS_OR_LAW", "sort_order": 0,
-     "courses": ["33:522:335"], "unresolved_conflicts": ["BAIT-ETHICS"],
-     "notes": "The table's literal course number. The same page's notes, and the department pages, print 33:522:334: see conflict BAIT-ETHICS.",
-     "quotes": [{"source": "rbs-catalog-bait", "quote": "33:522:335 OR"}]},
-    {"code": "RBS_BC_140_320", "name": "Business Law", "requirement_type": "course", "parent": "RBS_BC_ETHICS_OR_LAW", "sort_order": 1,
-     "courses": ["33:140:320"], "quotes": [{"source": "rbs-catalog-bait", "quote": "33:140:320 Business Ethics OR Business Law"}]}
+    {
+      "code": "RBS_BC_010_272",
+      "name": "Intro to Financial Accounting",
+      "requirement_type": "course",
+      "parent": "RBS_BUSINESS_CORE",
+      "sort_order": 0,
+      "courses": [
+        "33:010:272"
+      ],
+      "quotes": [
+        {
+          "source": "rbs-catalog-bait",
+          "quote": "33:010:272 Intro to Financial Accounting"
+        }
+      ]
+    },
+    {
+      "code": "RBS_BC_011_301",
+      "name": "Foundations for Your Career Journey",
+      "requirement_type": "course",
+      "parent": "RBS_BUSINESS_CORE",
+      "sort_order": 1,
+      "courses": [
+        "33:011:301"
+      ],
+      "quotes": [
+        {
+          "source": "rbs-catalog-bait",
+          "quote": "33:011:301 Foundations for Your Career Journey"
+        }
+      ]
+    },
+    {
+      "code": "RBS_BC_011_302",
+      "name": "Building Your Brand",
+      "requirement_type": "course",
+      "parent": "RBS_BUSINESS_CORE",
+      "sort_order": 2,
+      "courses": [
+        "33:011:302"
+      ],
+      "quotes": [
+        {
+          "source": "rbs-catalog-bait",
+          "quote": "33:011:302 Building Your Brand"
+        }
+      ]
+    },
+    {
+      "code": "RBS_BC_011_303",
+      "name": "Conquering Your Transition",
+      "requirement_type": "course",
+      "parent": "RBS_BUSINESS_CORE",
+      "sort_order": 3,
+      "courses": [
+        "33:011:303"
+      ],
+      "quotes": [
+        {
+          "source": "rbs-catalog-bait",
+          "quote": "33:011:303 Conquering Your Transition"
+        }
+      ]
+    },
+    {
+      "code": "RBS_BC_390_300",
+      "name": "Financial Management",
+      "requirement_type": "course",
+      "parent": "RBS_BUSINESS_CORE",
+      "sort_order": 4,
+      "courses": [
+        "33:390:300"
+      ],
+      "quotes": [
+        {
+          "source": "rbs-catalog-bait",
+          "quote": "33:390:300 Financial Management"
+        }
+      ]
+    },
+    {
+      "code": "RBS_BC_620_302",
+      "name": "Management Skills",
+      "requirement_type": "course",
+      "parent": "RBS_BUSINESS_CORE",
+      "sort_order": 5,
+      "courses": [
+        "33:620:302"
+      ],
+      "quotes": [
+        {
+          "source": "rbs-catalog-bait",
+          "quote": "33:620:302 Management Skills"
+        }
+      ]
+    },
+    {
+      "code": "RBS_BC_136_385",
+      "name": "Stat Methods for Business",
+      "requirement_type": "course",
+      "parent": "RBS_BUSINESS_CORE",
+      "sort_order": 6,
+      "courses": [
+        "33:136:385"
+      ],
+      "quotes": [
+        {
+          "source": "rbs-catalog-bait",
+          "quote": "33:136:385 Stat Methods for Business"
+        }
+      ]
+    },
+    {
+      "code": "RBS_BC_620_369",
+      "name": "International Business",
+      "requirement_type": "course",
+      "parent": "RBS_BUSINESS_CORE",
+      "sort_order": 7,
+      "courses": [
+        "33:620:369"
+      ],
+      "quotes": [
+        {
+          "source": "rbs-catalog-bait",
+          "quote": "33:620:369 International Business"
+        }
+      ]
+    },
+    {
+      "code": "RBS_BC_630_301",
+      "name": "Intro to Marketing",
+      "requirement_type": "course",
+      "parent": "RBS_BUSINESS_CORE",
+      "sort_order": 8,
+      "courses": [
+        "33:630:301"
+      ],
+      "quotes": [
+        {
+          "source": "rbs-catalog-bait",
+          "quote": "33:630:301 Intro to Marketing"
+        }
+      ]
+    },
+    {
+      "code": "RBS_BC_799_301",
+      "name": "Intro to Supply Chain",
+      "requirement_type": "course",
+      "parent": "RBS_BUSINESS_CORE",
+      "sort_order": 9,
+      "courses": [
+        "33:799:301"
+      ],
+      "quotes": [
+        {
+          "source": "rbs-catalog-bait",
+          "quote": "33:799:301 Intro to Supply Chain"
+        }
+      ]
+    },
+    {
+      "code": "RBS_BC_136_386",
+      "name": "Business Operations Analytics",
+      "requirement_type": "course",
+      "parent": "RBS_BUSINESS_CORE",
+      "sort_order": 10,
+      "courses": [
+        "33:136:386"
+      ],
+      "quotes": [
+        {
+          "source": "rbs-catalog-bait",
+          "quote": "33:136:386 Business Operations Analytics"
+        }
+      ]
+    },
+    {
+      "code": "RBS_BC_620_492",
+      "name": "Business Policy & Strategy",
+      "requirement_type": "course",
+      "parent": "RBS_BUSINESS_CORE",
+      "sort_order": 11,
+      "courses": [
+        "33:620:492"
+      ],
+      "quotes": [
+        {
+          "source": "rbs-catalog-bait",
+          "quote": "33:620:492 Business Policy & Strategy"
+        }
+      ]
+    },
+    {
+      "code": "RBS_BC_MIS_OR_AIS",
+      "name": "Management Information Systems OR Accounting Information Systems",
+      "requirement_type": "any_of",
+      "parent": "RBS_BUSINESS_CORE",
+      "sort_order": 12,
+      "min_count": 1,
+      "quotes": [
+        {
+          "source": "rbs-catalog-bait",
+          "quote": "33:136:370 OR 33:010:458 Management Information Systems OR Accounting Information Systems"
+        }
+      ]
+    },
+    {
+      "code": "RBS_BC_136_370",
+      "name": "Management Information Systems",
+      "requirement_type": "course",
+      "parent": "RBS_BC_MIS_OR_AIS",
+      "sort_order": 0,
+      "courses": [
+        "33:136:370"
+      ],
+      "quotes": [
+        {
+          "source": "rbs-catalog-bait",
+          "quote": "33:136:370 OR"
+        }
+      ]
+    },
+    {
+      "code": "RBS_BC_010_458",
+      "name": "Accounting Information Systems",
+      "requirement_type": "course",
+      "parent": "RBS_BC_MIS_OR_AIS",
+      "sort_order": 1,
+      "courses": [
+        "33:010:458"
+      ],
+      "quotes": [
+        {
+          "source": "rbs-catalog-bait",
+          "quote": "33:010:458 Management Information Systems OR Accounting Information Systems"
+        }
+      ]
+    },
+    {
+      "code": "RBS_BC_ETHICS_OR_LAW",
+      "name": "Business Ethics OR Business Law",
+      "requirement_type": "any_of",
+      "parent": "RBS_BUSINESS_CORE",
+      "sort_order": 13,
+      "min_count": 1,
+      "quotes": [
+        {
+          "source": "rbs-catalog-bait",
+          "quote": "33:522:335 OR 33:140:320 Business Ethics OR Business Law"
+        }
+      ]
+    },
+    {
+      "code": "RBS_BC_ETHICS",
+      "name": "Business Ethics",
+      "requirement_type": "course",
+      "parent": "RBS_BC_ETHICS_OR_LAW",
+      "sort_order": 0,
+      "courses": [
+        "33:522:334"
+      ],
+      "notes": "33:522:334 per the owner decision of 2026-11-12. The catalog's core table prints 33:522:335 (conflict BAIT-ETHICS, kept as a record).",
+      "quotes": [
+        {
+          "source": "rbs-catalog-bait",
+          "quote": "You can earn credit towards graduation if you take 33:522:334 Business Ethics"
+        },
+        {
+          "source": "phase08a-myrbs-bait",
+          "quote": "33:522:334 Business Ethics OR 33:140:320 Business Law"
+        },
+        {
+          "source": "owner-2026-11-12-bait-ethics",
+          "quote": "Use 33:522:334."
+        }
+      ]
+    },
+    {
+      "code": "RBS_BC_140_320",
+      "name": "Business Law",
+      "requirement_type": "course",
+      "parent": "RBS_BC_ETHICS_OR_LAW",
+      "sort_order": 1,
+      "courses": [
+        "33:140:320"
+      ],
+      "quotes": [
+        {
+          "source": "rbs-catalog-bait",
+          "quote": "33:140:320 Business Ethics OR Business Law"
+        }
+      ]
+    }
   ],
   "school_rules": [
     {
-      "code": "RBS_ONE_SHARED_MAJOR_COURSE", "name": "One RBS course may count toward two RBS majors", "rule_type": "double_count_limit", "is_evaluable": false,
+      "code": "RBS_ONE_SHARED_MAJOR_COURSE",
+      "name": "One RBS course may count toward two RBS majors",
+      "rule_type": "double_count_limit",
+      "is_evaluable": false,
       "not_evaluable_reason": "CoursePilot plans one major per student today; a cross-major overlap cap is recorded, not evaluated.",
-      "quotes": [{"source": "rbs-catalog-bait", "quote": "Students with more than one Business School major may only double count one RBS course between those majors (not including the Business Core)."}]
+      "quotes": [
+        {
+          "source": "rbs-catalog-bait",
+          "quote": "Students with more than one Business School major may only double count one RBS course between those majors (not including the Business Core)."
+        }
+      ]
     }
   ],
   "rules_not_yet_modeled": [
-    {"rule": "Accounting majors (first, second or third major) take 33:010:458, 33:140:320 and 33:010:275; 33:522:334, 33:136:370 and 33:136:386 then earn graduation credit but no Accounting major credit.", "why_not": "A major-dependent override of the shared core; it is encoded with the Accounting major (Phase C), never applied to other majors.", "source": "rbs-catalog-bait", "quote": "If you major in Accounting as your first, second, or third major, you are required to take 33:010:458 Accounting Information Systems, 33:140:320 Business Law I, and an additional course - 33:010:275 Managerial Accounting."},
-    {"rule": "A grade of B or better in 33:390:300 is needed to take further Finance courses.", "why_not": "A prerequisite-grade gate for later courses, not a completion rule of the core; it belongs to the Finance encoding.", "source": "rbs-catalog-bait", "quote": "A grade of B or better in 33:390:300 Financial Management is required to take any additional Finance department courses."},
-    {"rule": "Credit for 33:011:300 Business Forum replaces 33:011:301, 302 and 303.", "why_not": "Stated only in an extraction-only department capture (phase08a-myrbs-bait), not in the catalog; recorded for review, not encoded."},
-    {"rule": "Students who entered RBS before fall 2026 follow a different (39-credit) business core.", "why_not": "A different cohort's curriculum (conflict register BAIT-CORE-COHORT); this component applies to fall-2026 entrants only."}
+    {
+      "rule": "Accounting majors (first, second or third major) take 33:010:458, 33:140:320 and 33:010:275; 33:522:334, 33:136:370 and 33:136:386 then earn graduation credit but no Accounting major credit.",
+      "why_not": "A major-dependent override of the shared core; it is encoded with the Accounting major (Phase C), never applied to other majors.",
+      "source": "rbs-catalog-bait",
+      "quote": "If you major in Accounting as your first, second, or third major, you are required to take 33:010:458 Accounting Information Systems, 33:140:320 Business Law I, and an additional course - 33:010:275 Managerial Accounting."
+    },
+    {
+      "rule": "A grade of B or better in 33:390:300 is needed to take further Finance courses.",
+      "why_not": "A prerequisite-grade gate for later courses, not a completion rule of the core; it belongs to the Finance encoding.",
+      "source": "rbs-catalog-bait",
+      "quote": "A grade of B or better in 33:390:300 Financial Management is required to take any additional Finance department courses."
+    },
+    {
+      "rule": "Credit for 33:011:300 Business Forum replaces 33:011:301, 302 and 303.",
+      "why_not": "Stated only in an extraction-only department capture (phase08a-myrbs-bait), not in the catalog; recorded for review, not encoded."
+    },
+    {
+      "rule": "Students who entered RBS before fall 2026 follow a different (39-credit) business core.",
+      "why_not": "A different cohort's curriculum (conflict register BAIT-CORE-COHORT); this component applies to fall-2026 entrants only."
+    }
   ],
-  "unknowns": [
-    "Which Business Ethics course number governs the fall 2026 core (33:522:335 or 33:522:334): conflict BAIT-ETHICS."
-  ],
+  "unknowns": [],
   "review_questions": [
-    "Resolve BAIT-ETHICS: the BAIT page's core table prints 33:522:335 while its own notes and the department pages print 33:522:334.",
     "Confirm the business core table is identical on all six RBS major pages for fall 2026 entrants (encoded once from the BAIT page)."
   ],
   "conflicts": [
     {
-      "id": "BAIT-ETHICS", "status": "open",
+      "id": "BAIT-ETHICS",
+      "status": "resolved_by_owner",
       "claims": [
-        {"source": "rbs-catalog-bait", "quote": "33:522:335 OR 33:140:320 Business Ethics OR Business Law"},
-        {"source": "rbs-catalog-bait", "quote": "You can earn credit towards graduation if you take 33:522:334 Business Ethics"},
-        {"source": "phase08a-myrbs-bait", "quote": "33:522:334 Business Ethics OR 33:140:320 Business Law"}
-      ]
+        {
+          "source": "rbs-catalog-bait",
+          "quote": "33:522:335 OR 33:140:320 Business Ethics OR Business Law"
+        },
+        {
+          "source": "rbs-catalog-bait",
+          "quote": "You can earn credit towards graduation if you take 33:522:334 Business Ethics"
+        },
+        {
+          "source": "phase08a-myrbs-bait",
+          "quote": "33:522:334 Business Ethics OR 33:140:320 Business Law"
+        }
+      ],
+      "summary": "The core table prints 33:522:335; the same page's notes and the department pages print 33:522:334. Resolved 2026-11-12: 33:522:334 is used; the 335 claim is kept as a logged source conflict.",
+      "resolution": {
+        "source": "owner-2026-11-12-bait-ethics",
+        "quote": "Use 33:522:334. Log the catalog table's 335 as a source conflict."
+      }
     }
   ],
   "curation": {

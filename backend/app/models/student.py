@@ -132,6 +132,9 @@ class Student(Base, TimestampMixin):
     # the record has no Rutgers Fall/Spring semester (10a follow-up). NULL:
     # not stated.
     first_term: Mapped[str | None] = mapped_column(String(5), nullable=True)
+    #: Prompt 08 B1: the school the student is IN now (e.g. "SAS" for a
+    #: pre-business student planning an RBS major). None = the program's school.
+    home_school_code: Mapped[str | None] = mapped_column(String(16), nullable=True)
 
     # 10a follow-up: "What year are you?" as stated. Orders the setup wizard's
     # upload cards only; no engine reads it. NULL: not stated.

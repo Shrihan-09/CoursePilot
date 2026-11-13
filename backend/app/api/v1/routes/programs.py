@@ -72,6 +72,9 @@ class ProgramVersionResponse(BaseModel):
     curated_by: str | None
     source_prose_sha256: str | None
     last_checked_at: datetime | None
+    curriculum_key: str = ""
+    curriculum_class_years: list[int] = []
+    admission_stage: str | None = None
 
 
 class ProgramDetailResponse(BaseModel):
@@ -129,6 +132,9 @@ def _to_response(info: ProgramInfo) -> ProgramDetailResponse:
                 curated_by=v.curated_by,
                 source_prose_sha256=v.source_prose_sha256,
                 last_checked_at=v.last_checked_at,
+                curriculum_key=v.curriculum_key,
+                curriculum_class_years=list(v.curriculum_class_years),
+                admission_stage=v.admission_stage,
             )
             for v in info.versions
         ],

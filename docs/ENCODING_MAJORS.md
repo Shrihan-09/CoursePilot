@@ -32,6 +32,22 @@ python scripts/encode_program.py archive \
 
 Use stable, descriptive capture ids, for example `sebs-catalog-core` or `rbs-catalog-bait`.
 
+**Pages refused to plain HTTP (403).** A person saves the page from a browser, then records it. The owner decision of 2026-11-12 accepts such captures as evidence, with their capture date and URL.
+
+```
+python scripts/encode_program.py add-capture <id> <url> <saved-file> --captured-at 2026-11-12T15:30
+```
+
+The command:
+
+- copies the bytes content-addressed;
+- records `representation: "browser_saved"`;
+- keeps a note of the earlier failed plain-HTTP attempt.
+
+Until a capture exists the page stays a recorded gap, and nothing may quote it.
+
+**Owner decisions.** A decision on an open question (a conflict, an assumption) goes in `data/programs/rutgers/decisions.json`, verbatim, with its date. An encoding may cite it as a source (`"role": "owner_decision"`), and validation checks those quotes too. A decision is not evidence of what Rutgers published: where it relies on an unarchived department page, that page stays a gap.
+
 ## Step 2: write the encoding
 
 Start from a template:
@@ -67,6 +83,7 @@ Encode a shared component **once** and link it. Never copy its nodes into each m
 | `group_caps` | at most N courses from a group | "at most one … 493/494" |
 | `available_after_stage` | courses here come after the stage (nearest ancestor wins) | business core: `rbs-nb-admission` |
 | `unresolved_conflicts` | open conflict ids from the file's `conflicts`; the node stays conditional | `BAIT-ETHICS` |
+| `review_flags` | counted under an assumption a human must confirm: `[{id, applies_to, reason, source, quote}]`. The node shows "needs review", and the audit warns when a flagged course counts. | completed 01:198:111 in the 121 slot |
 | `quotes` | `[{source: <capture id>, quote: <verbatim>}]`; " ... " separates elided parts | |
 
 A leaf `course` node may rely on its parent's quote ("six required courses … 205, 206, 211"); the packet shows it as "via" the parent.
@@ -91,6 +108,25 @@ Recorded but **not yet evaluated** are `residency_window` ("12 of the last 42"),
 - `unknowns`: what the sources don't say, or what wasn't archivable
 - `conflicts`: `{id, status: "open", summary, claims: [{source, quote}, ...]}`
 - `review_questions`: what a human must decide
+
+### Course transitions (`data/programs/rutgers/nb-undergrad/course-transitions.json`)
+
+These record department-announced course changes that SOC hasn't listed yet. Every entry quotes its sources and is validated like an encoding.
+
+- **`retired`** `{course, term_code}`: never planned after its last term.
+- **`announced`** `{course, term_code, seasons, title, credits}`: planned from its first term, with offering evidence "announced by the department".
+  - If SOC has never listed the course, it gets a course row labelled as a department announcement.
+  - `satisfies_prerequisite_of: [old]` means published prerequisites naming the old course accept the new one.
+  - `assumed_prerequisite: [...]` is used only while SOC publishes none.
+  - `planner_note` / `note_programs` show info on planned courses.
+- **`needs_review`** must be filled for anything assumed beyond the sources, such as the seasons a course runs in.
+
+Load them with the `load` step (`python scripts/encode_program.py load data/programs/rutgers/nb-undergrad/course-transitions.json`), after SOC data, because an announced course needs its subject loaded.
+
+### Class-scoped curricula and stages
+
+- **Two curricula for different classes in one catalog year:** use a `curriculum_key` plus `curriculum_class_years` on each version. Setup then asks the student for their class. The student-stated class year counts (owner decision 2026-11-12), and an unlisted class has no curriculum; it's never extrapolated.
+- **An entry stage reached from another school (pre-business in SAS → RBS):** set the program's `admission_stage`. Setup asks which school the student is in now. That school's gen-ed stays the requirement of record until a **verified** admission record exists. The plan shows both gen-ed systems, labels each gen-ed course ("counts for both" / "<record> only" / "<target> only" / "unknown"), and prefers courses that count for both.
 
 ## Step 3: validate
 
@@ -122,6 +158,20 @@ This writes `review/<stem>.review.json` and `.review.md` next to the file. A pac
 - every node's encoding beside its verbatim quote(s);
 - rules, rules not yet modeled, unknowns, review questions;
 - the command that records a decision.
+
+## Step 4b: human review
+
+Program versions are reviewed with `registry_cli review` and published with `registry_cli publish`. Components use:
+
+```
+python -m coursepilot_ingestion.registry_cli review-component --code <code> --year 2026-2027        --reviewer "<your full name>" --decision approved|changes_requested --notes "..."
+python -m coursepilot_ingestion.registry_cli publish-component --code <code> --year 2026-2027
+```
+
+- **Who:** the reviewer must be a named human; an AI, script or system label is refused.
+- **Before review:** the loaded component must match its file, and its encoding must pass validation.
+- **Publishing:** needs an approval of the exact current definition.
+- **Re-review:** any later change moves the component to `needs_rereview`.
 
 ## Step 5: load (test database first)
 

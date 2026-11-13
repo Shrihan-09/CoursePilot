@@ -2,7 +2,7 @@
 
 - **Lifecycle:** `validated`
 - **Encoded by:** manual encoding, Phase 7.3 (Claude Code session, 2026-10-23) - encoding is not review
-- **Definition:** `data/programs/rutgers/nb-undergrad/2026-2027/sas-198-bs.json`  semantic sha256 `401dbf5a52a55c94`
+- **Definition:** `data/programs/rutgers/nb-undergrad/2026-2027/sas-198-bs.json`  semantic sha256 `305a817f1a4497c4`
 
 ## Sources
 
@@ -11,10 +11,11 @@
 | `catalog-cs-198-2026-2027` | catalog | archived | 2026-09-13 | raw_html | `dc89098d8598619c` | https://newbrunswick-26-27-undergrad.catalogs.rutgers.edu/schools/sas/program-listing/computer-science-198 |
 | `phase08a-cs-bs-degree` | department | archived | 2026-11-09T19:51:02.092573+00:00 | raw_html | `dc360f490d57026c` | https://www.cs.rutgers.edu/academics/undergraduate/cs-degrees/b-s-degree |
 | `phase08a-cs-electives` | department | archived | 2026-11-09T19:51:07.098586+00:00 | raw_html | `7b5b963251fe592c` | https://www.cs.rutgers.edu/academics/undergraduate/electives |
+| `owner-2026-11-12-cs-intro` | owner_decision | not in manifest |  |  | `` |  |
 
 ## Machine checks (not review)
 
-- passed: **True**, quotes found verbatim: 22/22
+- passed: **True**, quotes found verbatim: 27/27
 - warning: CS_ELECTIVES: 01:198:324 not in the loaded course table (reported, never created)
 - warning: CS_ELECTIVES: 01:198:411 not in the loaded course table (reported, never created)
 - warning: CS_ELECTIVES: 01:198:424 not in the loaded course table (reported, never created)
@@ -22,8 +23,8 @@
 
 ## OPEN conflicts (both claims shown; none resolved)
 
-### CS-INTRO-2027 (open)
-Catalog 2026-2027 requires 01:198:111 and 112; the department B.S. page requires 121 and 122 and says the new sequence begins Spring 2027. In the loaded Spring 2027 listing, 01:198:111 is not offered and 01:198:120 and 121 are. Not resolved: no official transition or equivalence policy is archived.
+### CS-INTRO-2027 (resolved_by_owner)
+Catalog 2026-2027 names 01:198:111/112; the department names 121/122 from Spring 2027. Resolved 2026-11-12 by the owner: one course-based curriculum (121 or completed 111; 122 or completed 112), with the 111/112 counting flagged for review. Both original claims are kept.
 - `catalog-cs-198-2026-2027`: "six required courses in computer science, 01:198:111, 112, 205, 206, 211, and 344"
 - `phase08a-cs-bs-degree`: "Beginning Spring 2027, the Department of Computer Science has adopted a new introductory course sequence consisting of:"
 - `phase08a-cs-bs-degree`: "Students complete the major requirements through CS121 and CS122. CS120 does not count toward Computer Science major requirements"
@@ -36,11 +37,11 @@ The department's B.S. page states the residency and ten-year elective clauses in
 
 ## Review questions
 
-- [ ] CS-INTRO-2027: the department requires 01:198:121/122 from Spring 2027 while the catalog names 111/112 (and 111 is not offered in Spring 2027). Which governs students on the 2026-2027 catalog, and is 121/122 an equivalent of 111/112?
 - [ ] CS-BS-COPY: do the residency (seven 01:198 courses) and ten-year elective clauses on the B.S. page bind B.S. students? The page labels them 'B.A.'.
 - [ ] The physics list names '01:750:193 and 194' twice ('... or 01:750:193 and 194 ... or 01:750:193, 194'). Encoded once. Confirm no other course was meant.
 - [ ] Chemistry 01:160:171 appears in all three chemistry options; each option is encoded as its own all-of set.
 - [ ] Same graduate-course question as the B.A. (sas-198-ba.json review_questions).
+- [ ] CS-111-AS-121 / CS-112-AS-122: confirm with the department that completed Rutgers 01:198:111/112 count toward the 121/122 slots (the stated equivalency is for transfer credit).
 
 ## What to verify
 
@@ -57,8 +58,8 @@ The department's B.S. page states the residency and ten-year elective clauses in
 |---|---|---|---|---|
 | `CS_BS` Computer Science B.S. Major | all_of |  |  | 0 |
 | `CS_CORE` Required Computer Science Courses | all_of | CS_BS |  | 0 |
-| `CS_111` Introduction to Computer Science | course | CS_CORE | courses: 01:198:111<br>**open conflict** CS-INTRO-2027 | 1 |
-| `CS_112` Data Structures | course | CS_CORE | courses: 01:198:112<br>**open conflict** CS-INTRO-2027 | 1 |
+| `CS_111` Introduction to Computer Science | course | CS_CORE | courses: 01:198:121<br>EQUIV_111: 01:198:111 | 2 |
+| `CS_112` Data Structures | course | CS_CORE | courses: 01:198:122<br>EQUIV_112: 01:198:112 | 2 |
 | `CS_205` Introduction to Discrete Structures I | course | CS_CORE | courses: 01:198:205 | 1 |
 | `CS_206` Introduction to Discrete Structures II | course | CS_CORE | courses: 01:198:206 | 1 |
 | `CS_211` Computer Architecture | course | CS_CORE | courses: 01:198:211 | 1 |
@@ -110,11 +111,11 @@ The department's B.S. page states the residency and ten-year elective clauses in
 - **CS_CORE**:
   - `catalog-cs-198-2026-2027`: "six required courses in computer science, 01:198:111, 112, 205, 206, 211, and 344"
 - **CS_111**:
-  - `phase08a-cs-bs-degree`: "01:198:121 Introduction to Computer Science"
-  - note: The catalog names 01:198:111; the department's B.S. page names 01:198:121 and dates a new introductory sequence to Spring 2027. Open conflict CS-INTRO-2027: the node keeps the catalog's course until the transition policy is reviewed.
+  - `owner-2026-11-12-cs-intro`: "The intro requirement is met by 121 OR completed 111"
+  - note: Met by 01:198:121 or a completed 01:198:111 (owner decision 2026-11-12). 01:198:111 counts under an equivalency the department states for transfer credit: needs review.
 - **CS_112**:
-  - `phase08a-cs-bs-degree`: "01:198:122 Data Structures"
-  - note: The catalog names 01:198:112; the department's B.S. page names 01:198:122 and dates a new introductory sequence to Spring 2027. Open conflict CS-INTRO-2027: the node keeps the catalog's course until the transition policy is reviewed.
+  - `owner-2026-11-12-cs-intro`: "and by 122 OR completed 112"
+  - note: Met by 01:198:122 or a completed 01:198:112 (owner decision 2026-11-12). 01:198:112 counts under an equivalency the department states for transfer credit: needs review.
 - **CS_205** (via `CS_CORE`):
   - `catalog-cs-198-2026-2027`: "six required courses in computer science, 01:198:111, 112, 205, 206, 211, and 344"
 - **CS_206** (via `CS_CORE`):
@@ -216,6 +217,9 @@ The department's B.S. page states the residency and ten-year elective clauses in
 - `CS_RESIDENCY` (residency, evaluable=False): Minimum seven courses in the Rutgers-New Brunswick CS department
   - not evaluated: The rule requires knowing which courses were taken AT Rutgers-New Brunswick. StudentCourse records no transfer provenance, and a cross-listed course carries another department's code, so the count cannot be computed without guessing. Rutgers publishes no transfer-equivalence rule we could apply here.
   - `catalog`: "A minimum of seven courses must be taken in the Rutgers University-New Brunswick Department of Computer Science."
+- `CS_120_NO_MAJOR_CREDIT` (no_major_credit, evaluable=True): CS120 earns SAS credit, never CS major credit
+  - `phase08a-cs-bs-degree`: "Students earn SAS credit for CS120, but not Computer Science major credit."
+  - `owner-2026-11-12-cs-intro`: "CS120: SAS credit only, never CS major credit (free elective only)."
 
 ## Rules not yet modeled
 
@@ -227,9 +231,9 @@ The department's B.S. page states the residency and ten-year elective clauses in
 - CS electives completed within the last ten years preceding graduation.  
   _why:_ Labelled 'B.A.' on the B.S. page (conflict CS-BS-COPY), and a recency window is not modeled.  
   `phase08a-cs-bs-degree`: "All CS electives required for the B.A. degree must have been completed within the last ten years preceding graduation."
-- The new introductory sequence (01:198:121/122, with 01:198:120 preparatory and not for major credit) from Spring 2027.  
-  _why:_ Open conflict CS-INTRO-2027 with the 2026-2027 catalog; no archived transition policy.  
-  `phase08a-cs-bs-degree`: "Students earn SAS credit for CS120, but not Computer Science major credit."
+- Placement: the CS placement exam or AP Computer Science A (4 = CS120 equivalency, 5 = CS121 equivalency) lets a student skip CS120.  
+  _why:_ No CS placement or AP evidence is recorded on the student record yet; plans include CS120 before CS121 and say that placing out removes it.  
+  `owner-2026-11-12-cs-intro`: "Prereq for 121 unless placed out (placement exam, AP CSA 4 = 120 equivalency, AP CSA 5 = 121 equivalency)."
 
 ## Unknowns
 

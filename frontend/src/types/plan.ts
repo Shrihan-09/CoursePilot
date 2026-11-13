@@ -123,6 +123,8 @@ export interface PlannedCourse {
   /** Prompt 08 B1: the stage this course comes after (not yet verified), e.g. "after admission to RBS". */
   after_stage?: string | null;
   after_stage_label?: string | null;
+  /** Prompt 08 B1: "counts for both" / "SAS Core only" / ... (pre-business plans). */
+  gen_ed_label?: string | null;
 }
 
 /** Phase 7.6 (backend app/domain/planning.py RecommendationTrace). */
@@ -284,6 +286,11 @@ export interface PlanResult {
   graduation_target?: { term_code: string; basis: string; entry_term: string | null; semesters: number | null; record_first_term?: string | null; conflict?: string | null } | null;
   /** Phase 7.6: which school Core applies ("unknown" when not encoded - never SAS by default). */
   school_core?: { school_code: string; status: "encoded" | "unknown"; requirement_sets: string[]; message: string } | null;
+  /** Prompt 08 B1: both gen-ed systems for a student still in another school (pre-business). */
+  gen_ed?: {
+    state: "before_admission" | "admitted"; stage: string; stage_label: string; home_school: string;
+    record: string[]; target: string[]; target_lists_known: boolean; carried_over: string[]; message: string;
+  } | null;
   /** Phase 7.6: set when the student is planning toward a major they have not declared. */
   declaration?: Declaration | null;
   /** The degree credit total (null: not modelled for this school/catalog year). */

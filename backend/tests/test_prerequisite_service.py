@@ -231,4 +231,6 @@ def test_checking_many_candidates_is_not_n_plus_one(world) -> None:
         finally:
             event.remove(session.get_bind(), "before_cursor_execute", listener)
     assert len(results) == len(world["targets"])
-    assert one == many == 3
+    # Constant, never per candidate: offerings, prerequisites, history, and
+    # (Prompt 08 B1) the department course transitions.
+    assert one == many == 4

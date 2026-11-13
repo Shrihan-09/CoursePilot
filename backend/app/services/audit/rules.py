@@ -85,6 +85,12 @@ def evaluate_rule(rule: ProgramRule, courses: list[StudentCourseView],
         return _eval_course_exclusion(rule, courses, base)
     if rule.rule_type == ProgramRuleType.RESIDENCY.value:
         return _eval_residency(rule, courses, base)
+    if rule.rule_type == ProgramRuleType.NO_MAJOR_CREDIT.value:
+        # Prompt 08 B1: holds by construction - the named courses are in no
+        # major requirement; they still earn degree (free-elective) credit.
+        named = ", ".join(rule.excluded_courses)
+        return RuleResult(**base, status=RequirementStatus.SATISFIED,
+                          reason=f"{named} earns degree credit but never counts toward the major.")
 
     return RuleResult(
         **base,

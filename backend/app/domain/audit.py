@@ -154,6 +154,9 @@ class RequirementResult(BaseModel):
     # Why a student can trust this: the curated prose behind the requirement.
     source_prose: str | None = None
     curation_status: str | None = None
+    #: Prompt 08 B1: assumptions a human must confirm for this node, each with
+    #: the quote it rests on ("01:198:111 counts toward the 121 slot ...").
+    review_flags: list[dict] = Field(default_factory=list)
 
 
 class RuleResult(BaseModel):

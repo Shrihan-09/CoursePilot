@@ -34,10 +34,33 @@ APPLICABILITY_KEYS = frozenset({"matriculated_from_term", "matriculated_before_t
 PASSED = frozenset({"admitted", "declared"})
 
 
-def _school_sets(session, version):
+def gen_ed_school_id(session, version, student=None, evidence=None):
+    """The school whose gen-ed is the REQUIREMENT OF RECORD for this student.
+
+    The program's school - except for a student who is still in another
+    school (`student.home_school_code`, e.g. a pre-business student in SAS)
+    before a VERIFIED record says they passed the program's admission stage:
+    their current school's gen-ed stays the requirement of record (owner
+    decision 2026-11-12). Admission is never assumed."""
+    program_school = version.program.school_id
+    home = getattr(student, "home_school_code", None) if student is not None else None
+    if not home or version.program.school is None or home == version.program.school.code:
+        return program_school
+    stage = version.admission_stage
+    if stage is None:
+        return program_school
+    evidence = academic_evidence(session, student) if evidence is None else evidence
+    if stage in passed_stages(evidence):
+        return program_school
+    from app.models import School
+    school = session.scalar(select(School).where(School.code == home))
+    return school.id if school is not None else program_school
+
+
+def _school_sets(session, version, student=None):
     return list(session.scalars(
         select(SchoolRequirementSetVersion).where(
-            SchoolRequirementSetVersion.school_id == version.program.school_id,
+            SchoolRequirementSetVersion.school_id == gen_ed_school_id(session, version, student),
             SchoolRequirementSetVersion.catalog_year == version.catalog_year,
             SchoolRequirementSetVersion.composition == "school",
         ).order_by(SchoolRequirementSetVersion.code)))
@@ -52,18 +75,18 @@ def linked_components(session, version):
         .order_by(ProgramVersionComponent.sort_order, SchoolRequirementSetVersion.code)))
 
 
-def school_requirement_sets(session, version):
+def school_requirement_sets(session, version, student=None):
     """Every component composed with `version`: school gen-ed, then linked ones."""
     seen, out = set(), []
-    for s in _school_sets(session, version) + linked_components(session, version):
+    for s in _school_sets(session, version, student) + linked_components(session, version):
         if s.id not in seen:
             seen.add(s.id)
             out.append(s)
     return out
 
 
-def composed_requirements(session, version):
-    school = _school_sets(session, version)
+def composed_requirements(session, version, student=None):
+    school = _school_sets(session, version, student)
     linked = [s for s in linked_components(session, version) if s.id not in {x.id for x in school}]
     local = list(
         session.scalars(select(Requirement).where(Requirement.program_version_id == version.id))
@@ -87,12 +110,12 @@ def composed_requirements(session, version):
     return sorted(local, key=lambda r: (r.sort_order, r.code))
 
 
-def composed_rules(session, version):
+def composed_rules(session, version, student=None):
     """The program's own rules plus the school-level rules of every composed
     component (Prompt 08 B1): a school rule is encoded once, on its component."""
     from app.models import ProgramRule
 
-    sets = [s.id for s in school_requirement_sets(session, version)]
+    sets = [s.id for s in school_requirement_sets(session, version, student)]
     cond = ProgramRule.program_version_id == version.id
     if sets:
         cond = cond | ProgramRule.school_requirement_set_version_id.in_(sets)
@@ -127,6 +150,55 @@ def context_coverage(session, version):
         "missing_scopes": ["graduation_credits", "residency", "additional_programs"]
         + ([] if has_gen_ed else ["school_requirements"]),
     }
+
+
+def gen_ed_transition(session, version, student):
+    """Owner decision 2026-11-12, pre-business students: both gen-ed systems,
+    labelled. None unless the student is in another school than the program's
+    and the program has an admission stage.
+
+        {"state": "before_admission" | "admitted", "stage", "stage_label",
+         "record": [gen-ed components of record], "target": [the program
+         school's gen-ed components]}
+    """
+    home = getattr(student, "home_school_code", None)
+    if not home or version.program.school is None or home == version.program.school.code \
+            or version.admission_stage is None:
+        return None
+    evidence = academic_evidence(session, student)
+    admitted = version.admission_stage in passed_stages(evidence)
+    target = [s for s in _school_sets(session, version) if s.kind == ComponentKind.GEN_ED.value]
+    record = (target if admitted else
+              [s for s in _school_sets(session, version, student)
+               if s.kind == ComponentKind.GEN_ED.value])
+    return {"state": "admitted" if admitted else "before_admission",
+            "stage": version.admission_stage,
+            "stage_label": stage_labels(session, version.catalog_year).get(
+                version.admission_stage, f"after {version.admission_stage}"),
+            "home_school": home, "record": record, "target": target}
+
+
+def context_fingerprint(session, student) -> str:
+    """What, besides courses, decides a student's composed requirements: their
+    current school and their academic evidence (Prompt 08 B1)."""
+    import hashlib
+    import json
+
+    evidence = sorted((c.evidence_kind, c.evidence_key, json.dumps(c.value, sort_keys=True),
+                       bool(c.verified)) for c in academic_evidence(session, student))
+    if not evidence and not getattr(student, "home_school_code", None):
+        return ""
+    body = json.dumps({"home": getattr(student, "home_school_code", None), "evidence": evidence},
+                      sort_keys=True)
+    version = None
+    if student.program_version_id is not None:
+        from app.models import ProgramVersion
+        version = session.get(ProgramVersion, student.program_version_id)
+    if version is not None:
+        sets = sorted((s.code, s.definition_sha256, s.lifecycle_state)
+                      for s in _school_sets(session, version, student))
+        body += json.dumps(sets)
+    return hashlib.sha256(body.encode()).hexdigest()
 
 
 def allocation_scope(requirement):
@@ -189,7 +261,10 @@ def curriculum_applies(version, evidence) -> tuple[bool | None, str]:
     years = version.curriculum_class_years
     if not years:
         return True, "This program has one curriculum for the catalog year."
-    claims = [c for c in evidence if c.verified and c.evidence_kind == "curriculum_class_year"]
+    # Owner decision 2026-11-12: the student's own stated class year counts,
+    # like a declared major (recorded with basis "student_stated").
+    claims = [c for c in evidence if c.evidence_kind == "curriculum_class_year"
+              and (c.verified or (c.value or {}).get("basis") == "student_stated")]
     stated = {(c.value or {}).get("class_year") for c in claims} - {None}
     if len(stated) > 1:
         return None, "Verified class-year records conflict."
@@ -197,8 +272,9 @@ def curriculum_applies(version, evidence) -> tuple[bool | None, str]:
         return None, ("This curriculum governs specific classes "
                       f"({', '.join(str(y) for y in years)}); your class year is not confirmed.")
     year = next(iter(stated))
+    how = ("you stated" if not any(c.verified for c in claims) else "on your verified record")
     if year in years:
-        return True, f"Class of {year} is governed by this curriculum."
+        return True, f"Class of {year} ({how}) is governed by this curriculum."
     return False, f"Class of {year} is not governed by this curriculum."
 
 

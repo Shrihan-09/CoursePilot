@@ -44,5 +44,6 @@ def rank_key(course: str, evidence: CourseRankingEvidence,
         0 if evidence.confirmed_offering else 1,
         0 if evidence.prerequisites_met_by_history else 1,
         -evidence.candidate_requirement_coverage,
+        0 if evidence.counts_for_target_gen_ed else 1,
         course,
     )
