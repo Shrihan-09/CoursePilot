@@ -30,7 +30,7 @@ export interface NavItem {
 export const NAV: NavItem[] = [
   { href: "/home", label: "Home", icon: Home, available: true, mobile: "tab" },
   { href: "/degree", label: "Degree", icon: GraduationCap, available: true, mobile: "tab", group: "Academics" },
-  { href: "/profile", label: "Progress", icon: UserRound, available: true, mobile: "more", group: "Academics" },
+  { href: "/profile", label: "Profile", icon: UserRound, available: true, mobile: "more", group: "Academics" },
   { href: "/records", label: "My records", icon: FileText, available: true, mobile: "more", group: "Academics" },
   { href: "/plan", label: "Plan", icon: Map, available: true, mobile: "tab", group: "Planning" },
   { href: "/schedule", label: "Schedule", icon: CalendarDays, available: true, mobile: "tab", group: "Planning" },

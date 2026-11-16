@@ -1,9 +1,12 @@
-import { CalendarDays, ChevronRight, Feather, Lock, LockOpen, MapPin, Monitor, RefreshCw, SlidersHorizontal } from "lucide-react";
+import { AlertTriangle, CalendarDays, ChevronRight, Feather, HelpCircle, Info, Lock, LockOpen, MapPin, Monitor, RefreshCw, SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
+import { useId, useState } from "react";
 
 import { StateBadge, STATUS_ICON } from "@/components/academic/status";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Alert, Progress } from "@/components/ui/feedback";
+import { Tooltip } from "@/components/ui/overlay";
+import { courseTitle } from "@/lib/academic/course-title";
 import {
   blockedReasonText,
   DN_NOT_MET_MESSAGE,
@@ -37,7 +40,7 @@ export interface BoardActions {
   onOptions: (course: string, term: string) => void;
   onAddCourse?: (term: string) => void;
 }
-import { conditionalLabel, creditsText, electiveSlotText, loadText } from "@/lib/academic/plan-text";
+import { conditionalLabel, creditsText, electiveSlotText, fitChips, loadText, overBudget } from "@/lib/academic/plan-text";
 
 /**
  * The Planning Engine's plan, semester by semester (Phase 7.2).
@@ -219,21 +222,79 @@ export function courseCategory(c: PlannedCourse): string {
   if (c.requirements.some((r) => ["core", "school_core", "school"].includes(r.requirement_system))) return "School Core / gen-ed";
   return c.requirements.length ? "Electives" : "Free elective";
 }
+
+/** UI polish A3: one colour per category, always with its text label (never colour alone). */
+export const CATEGORY_CHIP: Record<string, { label: string; className: string }> = {
+  "Major": { label: "Major", className: "border-primary/30 bg-primary-subtle text-primary-text" },
+  "School Core / gen-ed": { label: "Core", className: "border-success/30 bg-success-subtle text-success" },
+  "Electives": { label: "Elective", className: "border-warning/30 bg-warning-subtle text-warning" },
+  "Free elective": { label: "Free elective", className: "border-border-strong bg-surface-hover text-fg-secondary" },
+};
+
+export function CategoryChip({ category }: { category: string }) {
+  const chip = CATEGORY_CHIP[category] ?? { label: "Free elective", className: "border-border-strong bg-surface-hover text-fg-secondary" };
+  return <span className={cn("inline-flex shrink-0 items-center whitespace-nowrap rounded-sm border px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wide", chip.className)} data-testid="category-chip">{chip.label}</span>;
+}
+
+/** Anchor: a small lock badge; the tooltip says what an anchor is. */
+export function AnchorBadge() {
+  return (
+    <Tooltip content="Anchor: a course the plan keeps in this semester (a must-take or a needed retake).">
+      <span tabIndex={0} className="inline-flex items-center gap-1 rounded-sm border border-primary/30 bg-primary-subtle px-1.5 py-0.5 text-2xs font-semibold text-primary-text" data-testid="anchor-badge">
+        <Lock aria-hidden className="size-3" />Anchor
+      </span>
+    </Tooltip>
+  );
+}
+
+function DeliveryLabel({ delivery }: { delivery: string[] | undefined }) {
+  const remote = delivery?.some((d) => d === "async" || d === "online");
+  const Icon = !delivery ? HelpCircle : remote ? Monitor : MapPin;
+  return (
+    <span className="inline-flex items-center gap-1 text-xs text-fg-secondary">
+      <Icon aria-hidden className="size-3.5 shrink-0" />
+      {delivery ? deliveryText(delivery as ("async" | "online" | "in_person")[]) : "Delivery unknown"}
+    </span>
+  );
+}
+
 function CourseCard({ course: c, actions }: { course: PlannedCourse; actions?: BoardActions }) {
   const state = actions?.states.get(`${c.course}@${c.term_code}`);
-  return <li className={cn("min-w-0 space-y-2 rounded-lg border border-border bg-surface-elevated p-3", courseTone(c.course))} data-testid="plan-course">
-    <h4 className="text-base font-semibold leading-snug [overflow-wrap:anywhere]">{c.title}</h4>
-    <div className="flex flex-wrap items-center gap-2 text-xs text-fg-secondary"><span className="code">{c.course}</span><span>{Number(c.credits)} credits</span>{state && <StateLine state={state.state} reason={state.locked_reason} />}{!state && c.role === "anchor" && <span><Lock aria-hidden className="inline size-3" /> Anchor</span>}{c.after_stage_label && <span className="rounded border border-warning/40 px-1.5 py-0.5 text-warning" data-testid="after-stage">Planned {c.after_stage_label}</span>}{c.gen_ed_label && <span className="rounded border border-border px-1.5 py-0.5" data-testid="gen-ed-label">Gen-ed: {c.gen_ed_label}</span>}</div>
-    <div className="flex flex-wrap items-center justify-between gap-2"><span className="min-w-0 rounded bg-surface-hover px-2 py-1 text-xs [overflow-wrap:anywhere]">{c.requirements[0]?.requirement_name ?? "Requirement coverage not mapped"}</span><span className="text-xs text-fg-muted">{c.workload?.delivery.some((d) => d === "async" || d === "online") ? <Monitor aria-hidden className="mr-1 inline size-3" /> : <MapPin aria-hidden className="mr-1 inline size-3" />}{c.workload ? deliveryText(c.workload.delivery) : "Delivery unknown"}</span></div>
-    <div className="flex flex-wrap items-start justify-between gap-2"><details className="min-w-0 flex-1 text-xs text-fg-secondary"><summary className="cursor-pointer py-2">Details</summary>
+  const anchor = state ? state.state === "locked" && state.locked_reason === "anchor" : c.role === "anchor";
+  return <li className={cn("cp-lift flex h-full min-w-0 flex-col gap-2 rounded-lg border border-border bg-surface-elevated p-3 focus-within:ring-2 focus-within:ring-focus/40", courseTone(c.course))} data-testid="plan-course">
+    <div className="flex items-start justify-between gap-2">
+      <h4 className="min-w-0 text-base font-semibold leading-snug [overflow-wrap:anywhere]">
+        {courseTitle(c.title)}{" "}
+        <span className="code whitespace-nowrap text-2xs font-normal text-fg-muted">{c.course}</span>
+      </h4>
+      <CategoryChip category={courseCategory(c)} />
+    </div>
+    <div className="flex flex-wrap items-center gap-2 text-xs text-fg-secondary"><span className="tabular">{Number(c.credits)} credits</span>{anchor ? <AnchorBadge /> : state && <StateLine state={state.state} reason={state.locked_reason} />}{c.after_stage_label && <span className="rounded border border-warning/40 px-1.5 py-0.5 text-warning" data-testid="after-stage">Planned {c.after_stage_label}</span>}{c.gen_ed_label && <span className="rounded border border-border px-1.5 py-0.5" data-testid="gen-ed-label">Gen-ed: {c.gen_ed_label}</span>}</div>
+    <div className="flex flex-wrap items-center justify-between gap-2"><span className="min-w-0 rounded bg-surface-hover px-2 py-1 text-xs text-fg-secondary [overflow-wrap:anywhere]">{c.requirements[0]?.requirement_name ?? "Requirement coverage not mapped"}</span><DeliveryLabel delivery={c.workload?.delivery} /></div>
+    <div className="mt-auto flex flex-wrap items-start justify-between gap-2"><details className="min-w-0 flex-1 text-xs text-fg-secondary"><summary className="inline-flex min-h-8 cursor-pointer items-center rounded py-1">Details</summary>
       {topicsText(c) && <p>{topicsText(c)}</p>}
       {c.role_reason && <p>{c.role_reason}</p>}
       {c.workload && <p>Workload {Number(c.workload.weight)} ({workloadBreakdown(c.workload)})</p>}
       {offeringLabel(c.offering) && <p>{offeringLabel(c.offering)}</p>}
       {c.requirements.slice(1).map((r) => <p key={r.requirement_code}>Also fills {r.requirement_name}</p>)}
       {(c.notes ?? []).map((n) => <p key={n}>{n}</p>)}<WhyHere course={c} />
-    </details>{actions && <Button size="sm" variant="ghost" onClick={() => actions.onOptions(c.course, c.term_code)} aria-label={`Options for ${c.title}`}><SlidersHorizontal aria-hidden className="size-4" />Options</Button>}</div>
+    </details>{actions && <Button size="sm" variant="ghost" onClick={() => actions.onOptions(c.course, c.term_code)} aria-label={`Options for ${courseTitle(c.title)}`}><SlidersHorizontal aria-hidden className="size-4" />Options</Button>}</div>
   </li>;
+}
+
+/** The full "Why this fits you" sentence, one tap away (always in the DOM for assistive tech). */
+function FitInfo({ fit }: { fit: string }) {
+  const [open, setOpen] = useState(false);
+  const id = useId();
+  return (
+    <div className="text-xs">
+      <button type="button" aria-expanded={open} aria-controls={id} onClick={() => setOpen((v) => !v)}
+        className="inline-flex min-h-8 items-center gap-1.5 rounded px-1 font-medium text-primary-text hover:underline">
+        <Info aria-hidden className="size-4" />Why this fits you
+      </button>
+      <p id={id} hidden={!open} className="mt-1 rounded border border-border bg-surface-elevated p-2 text-fg-secondary">{fit}</p>
+    </div>
+  );
 }
 
 export function SemesterCard({ term, scheduleHref, note, maxCredits, actions, open = true, choices }: {
@@ -243,15 +304,22 @@ export function SemesterCard({ term, scheduleHref, note, maxCredits, actions, op
   const electives = Number(term.free_elective_credits ?? 0);
   const credits = Number(term.credits) + electives;
   const groups = ["Major", "School Core / gen-ed", "Electives", "Free elective"];
-  return <details open={open} className="min-w-0 rounded-xl border border-border bg-surface p-3" data-testid="semester-section">
+  const chips = term.workload ? fitChips(term.workload) : [`${term.courses.filter((c) => courseCategory(c) === "Major").length} major courses`];
+  const over = overBudget(term.workload);
+  return <details open={open} className="min-w-0 rounded-xl border border-border bg-surface p-3 sm:p-4" data-testid="semester-section">
     <summary className="cursor-pointer space-y-2 rounded p-1 marker:text-fg-muted">
       <span className="text-lg font-bold" id={`term-${term.term_code}`}>{term.label}</span>
-      <span className="ml-2 text-xs text-fg-secondary">{credits} credits / {term.workload?.major_related ?? term.courses.filter((c) => courseCategory(c) === "Major").length} major courses</span>
+      <span className="tabular ml-2 text-sm font-medium text-fg-secondary">{credits} credits</span>
       {electives > 0 && <span className="block text-xs text-fg-muted">Includes {Number(term.credits)} course credits + {electiveSlotText(electives)}</span>}
+      <span className="flex flex-wrap items-center gap-1.5" data-testid="fit-chips">
+        {chips.map((chip) => <span key={chip} className="inline-flex items-center rounded-full border border-border bg-surface-elevated px-2 py-0.5 text-xs text-fg-secondary">{chip}</span>)}
+        {over !== null && <span className="inline-flex items-center gap-1 rounded-full border border-warning/40 bg-warning-subtle px-2 py-0.5 text-xs font-medium text-warning" data-testid="over-budget"><AlertTriangle aria-hidden className="size-3.5" />Over budget by {over}</span>}
+      </span>
       {term.workload ? <Progress value={Number(term.workload.total)} max={Number(term.workload.budget) || 1} label={`Workload ${Number(term.workload.total)} of ${Number(term.workload.budget)}`} className="h-1.5" /> : maxCredits ? <Progress value={credits} max={maxCredits} label={`${credits} of ${maxCredits} credits`} className="h-1.5" /> : null}
-      {term.workload?.fit && <span className="block text-xs text-fg-secondary">{term.workload.fit}</span>}
+      {term.workload && <span className="tabular block text-2xs text-fg-muted">Workload {Number(term.workload.total)} of {Number(term.workload.budget)}</span>}
     </summary>
     <div className="mt-3 space-y-4">
+      {term.workload?.fit && <FitInfo fit={term.workload.fit} />}
       {choices}
       <div className="flex flex-wrap gap-1">{actions?.onAddCourse && <Button size="sm" variant="primary" onClick={() => actions.onAddCourse?.(term.term_code)}>Build / change this semester</Button>}
         {scheduleHref && <Link href={scheduleHref} className={buttonVariants({ variant: "ghost", size: "sm" })}><CalendarDays aria-hidden className="size-4" />Compare schedules</Link>}
@@ -269,8 +337,8 @@ function BlockedList({ courses }: { courses: BlockedCourse[] }) {
       {courses.map((b) => (
         <li key={`${b.issue_code}-${b.course}-${b.requirement_code}`} className="space-y-1 p-3 text-sm">
           <p>
-            <span className="code font-medium text-fg">{b.course}</span>{" "}
-            <span className="text-fg-secondary [overflow-wrap:anywhere]">{b.title ?? ""}</span>
+            <span className="font-medium text-fg [overflow-wrap:anywhere]">{courseTitle(b.title) || b.course}</span>{" "}
+            {b.title && <span className="code text-2xs text-fg-muted">{b.course}</span>}
           </p>
           <ul className="text-fg-secondary">
             {b.reasons.map((r) => <li key={r}>{blockedReasonText(r)}</li>)}

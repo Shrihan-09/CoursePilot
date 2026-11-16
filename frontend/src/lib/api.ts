@@ -50,6 +50,22 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * UI polish A5: what a failed request says on screen. A failure never surfaces
+ * as a bare "Internal Server Error" or a status code; the API's own sentences
+ * ("Unable to generate a plan.", the assistant's unavailability reason) are
+ * written for students and kept.
+ */
+export function friendlyErrorMessage(status: number, detail: unknown): string {
+  const text = typeof detail === "string" ? detail.trim() : "";
+  if (!text || /^internal server error\.?$/i.test(text)) {
+    return status === 502 || status === 503 || status === 504
+      ? "CoursePilot can't be reached right now. Check your connection and try again."
+      : "CoursePilot couldn't finish that. Nothing was changed. Try again in a moment.";
+  }
+  return text;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api/cp${path}`, {
     ...init,
@@ -70,7 +86,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       // not JSON: keep the generic message below
     }
     throw new ApiError(
-      body?.detail ?? `Request failed (${response.status})`,
+      friendlyErrorMessage(response.status, body?.detail),
       response.status,
       body?.error?.code ?? "internal_error",
       body?.error?.issues ?? [],
@@ -88,7 +104,7 @@ const json = (method: string, body: unknown): RequestInit => ({
 });
 
 export const api = {
-  scheduleImports: () => request<{imports: {id: string; state: string; expires_at: string}[]}>("/student/schedule-imports"),
+  scheduleImports: () => request<{imports: {id: string; state: string; expires_at: string; created_at?: string; confirmed_at?: string | null}[]}>("/student/schedule-imports"),
   uploadSchedule: (file: File) => request<import("@/types/schedule-import").ScheduleImport>("/student/schedule-imports", {method: "POST", headers: {"content-type": "application/pdf"}, body: file}),
   scheduleImport: (id: string) => request<import("@/types/schedule-import").ScheduleImport>(`/student/schedule-imports/${id}`),
   editScheduleRow: (id: string, rowId: string, body: Record<string, unknown>) => request<import("@/types/schedule-import").ScheduleImport>(`/student/schedule-imports/${id}/rows/${rowId}`, json("PATCH", body)),
@@ -96,6 +112,7 @@ export const api = {
   discardSchedule: (id: string) => request<import("@/types/schedule-import").ScheduleImport>(`/student/schedule-imports/${id}`, {method: "DELETE"}),
   registrations: () => request<{registrations: import("@/types/schedule-import").Registration[]}>("/student/registrations"),
   me: () => request<Me>("/me"),
+  registrationSchedule: (term: string) => request<import("@/lib/home").RegistrationSchedule>(`/registration-schedules/${term}`),
   onboarding: () => request<Onboarding>("/student/onboarding"),
   programs: () => request<{ programs: Program[] }>("/programs"),
   createProfile: (program_key: string, catalog_year: string, context: ProgramContext = {}) =>

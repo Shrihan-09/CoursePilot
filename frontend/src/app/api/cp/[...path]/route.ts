@@ -55,6 +55,15 @@ async function proxy(request: NextRequest, { params }: { params: Promise<{ path:
   } catch {
     return json(502, "internal_error", "The CoursePilot service is unreachable.");
   }
+  // A crashed upstream answers with plain text ("Internal Server Error"):
+  // send the client the standard JSON envelope instead (UI polish A5).
+  if (upstream.status >= 500 && !(upstream.headers.get("content-type") ?? "").includes("json")) {
+    await upstream.body?.cancel();
+    const failed = json(upstream.status, "internal_error", "CoursePilot couldn't finish that request.");
+    const requestId = upstream.headers.get("x-request-id");
+    if (requestId) failed.headers.set("x-request-id", requestId);
+    return failed;
+  }
   const out = new Headers();
   for (const name of FORWARDED_RESPONSE_HEADERS) {
     const value = upstream.headers.get(name);

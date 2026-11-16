@@ -3,7 +3,7 @@
  * Presentation only: every number comes from the plan the server returned.
  */
 import { termLabel, WORKLOAD_LEVEL_LABEL } from "@/lib/academic/vocabulary";
-import type { ConditionalDependency, PlanningConstraints } from "@/types/plan";
+import type { ConditionalDependency, PlanningConstraints, TermWorkload } from "@/types/plan";
 
 const num = (v: string | number) => String(Number(v));
 
@@ -43,6 +43,38 @@ export function loadText(c: PlanningConstraints): string {
   }
   const aim = c.target_credits_per_term ? `aiming for ${num(c.target_credits_per_term)} credits, ` : "";
   return `${aim}never more than ${max} credits or ${courses} a semester`;
+}
+
+/**
+ * UI polish A2: the semester header's compact chips, from the planning
+ * engine's own "Why this fits you: <level> + <commitment> + ... -> <facts>."
+ * line (only the inputs before the arrow) and its major-related count. The
+ * full sentence stays available behind an info button. Nothing is inferred:
+ * a sentence in another shape yields no input chips.
+ */
+export function fitChips(w: Pick<TermWorkload, "fit" | "major_related"> | null | undefined): string[] {
+  if (!w) return [];
+  const chips: string[] = [];
+  const inputs = /^Why this fits you:\s*(.+?)\s*→/.exec(w.fit ?? "")?.[1];
+  if (inputs) {
+    for (const part of inputs.split(" + ")) {
+      const text = part.trim().replace(/\s*h\/week$/, "h/wk").replace(/\s+(\d+h\/wk)$/, " $1");
+      if (text) chips.push(text.charAt(0).toUpperCase() + text.slice(1));
+    }
+  }
+  if (typeof w.major_related === "number") {
+    chips.push(`${w.major_related} major ${w.major_related === 1 ? "course" : "courses"}`);
+  }
+  return chips;
+}
+
+/** The term's workload is over its budget (both numbers as the engine stated them). */
+export function overBudget(w: Pick<TermWorkload, "total" | "budget"> | null | undefined): number | null {
+  if (!w) return null;
+  const total = Number(w.total);
+  const budget = Number(w.budget);
+  if (!Number.isFinite(total) || !Number.isFinite(budget) || budget <= 0) return null;
+  return total > budget ? total - budget : null;
 }
 
 /**

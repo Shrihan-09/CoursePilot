@@ -79,6 +79,11 @@
        halos only - never behind text, so text contrast is unchanged. */
     --glow-accent: 1 109 244;           /* logo core blue */
     --glow-accent-2: 60 200 253;        /* logo highlight */
+    /* UI polish B1: progress rings (3:1+ against the surface; never colour alone). */
+    --ring-1: 1 109 244;                /* degree credits - core blue */
+    --ring-2: 13 138 120;               /* major - teal #0D8A78 */
+    --ring-3: 124 58 237;               /* Core / gen-ed - violet #7C3AED */
+    --ring-review: 128 135 148;         /* needs review / unknown - grey #808794, 3.6:1 */
     --glow-edge: 0.55;                  /* travelling border light */
     --glow-halo: 0.18;                  /* soft outer halo */
   }
@@ -125,6 +130,10 @@
     --shadow-elevated: 0 1px 2px rgb(0 0 0 / 0.4), 0 8px 24px rgb(0 0 0 / 0.35);
     --glow-accent: 77 159 255;
     --glow-accent-2: 60 200 253;
+    --ring-1: 77 159 255;
+    --ring-2: 45 212 191;
+    --ring-3: 167 139 250;
+    --ring-review: 98 106 120;
     --glow-edge: 0.75;                  /* reads best on charcoal */
     --glow-halo: 0.32;
   }
@@ -349,4 +358,14 @@
       rgb(var(--glow-accent-2) / 0.25), rgb(var(--glow-accent) / var(--glow-edge)));
   }
   .cp-glow-fill { transition: none; }
+}
+
+/* UI polish B1: a ring is a link; show its focus on the ring itself. */
+.cp-ring-link { cursor: pointer; outline: none; }
+.cp-ring-link:focus-visible circle:first-of-type { stroke: rgb(var(--focus) / .35); }
+.cp-ring-link:hover circle:first-of-type { stroke: rgb(var(--border-strong)); }
+/* UI polish A6: the one accent glow (same as the assistant button), without its text colour. */
+.cp-glow {
+  border-color: rgb(var(--glow-accent) / .35);
+  box-shadow: 0 0 0 1px rgb(var(--glow-accent) / .12), 0 0 18px -4px rgb(var(--glow-accent) / .35);
 }

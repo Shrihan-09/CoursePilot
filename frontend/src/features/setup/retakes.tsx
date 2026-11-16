@@ -1,4 +1,5 @@
 "use client";
+import { courseTitle } from "@/lib/academic/course-title";
 
 import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, RotateCcw } from "lucide-react";
@@ -65,7 +66,7 @@ export function RetakeCard({ retake, pins, onChange }: { retake: Retake; pins: C
         <RotateCcw aria-hidden className="mt-0.5 size-5 shrink-0 text-primary" />
         <div className="min-w-0 space-y-0.5">
           <p className="text-sm font-semibold text-fg [overflow-wrap:anywhere]">
-            {retake.title} (<span className="code">{retake.course}</span>): retake needed.
+            {courseTitle(retake.title)} (<span className="code">{retake.course}</span>): retake needed.
           </p>
           <p className="text-sm text-fg-secondary">Why: {retake.reason}.</p>
           {line && <p className="code text-xs text-fg-muted [overflow-wrap:anywhere]">{line}</p>}

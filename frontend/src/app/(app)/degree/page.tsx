@@ -11,6 +11,8 @@ import { Tabs } from "@/components/ui/overlay";
 import { DegreeNavigatorImport, DnNodeSource, DnSourceNotice, dnLookup, dnNotMet, useDnProgress } from "@/features/degree/degree-navigator";
 import { DegreeView } from "@/features/degree/degree-view";
 import { WhatIf } from "@/features/degree/what-if";
+import { ProgressRings } from "@/features/home/progress-rings";
+import { useRings } from "@/features/home/use-rings";
 import { ApiError, api } from "@/lib/api";
 import { planChoices } from "@/types/plan";
 
@@ -30,6 +32,7 @@ export default function DegreePage() {
   // Correctness fixes item 3: a choose-one requirement counts its chosen alternative.
   const plan = useQuery({ queryKey: ["plan"], queryFn: api.currentPlan, staleTime: 0 });
   const choices = useMemo(() => planChoices(plan.data?.plan), [plan.data]);
+  const { rings, pending: ringsPending } = useRings();
 
   if (profile.isPending || audit.isPending || onboarding.isPending) {
     return (
@@ -93,6 +96,16 @@ export default function DegreePage() {
               Every requirement below shows as still needed until you add your transcript or courses.
             </Alert>
           )}
+          {program.warnings.map((w) => (
+            <Alert key={w.code} tone={w.severity === "warning" ? "warning" : "info"}>{w.message}</Alert>
+          ))}
+          <section aria-labelledby="rings-heading" className="cp-glow space-y-3 rounded-xl border bg-surface-elevated p-4 sm:p-5">
+            <h2 id="rings-heading" className="text-sm font-semibold text-fg">Progress at a glance</h2>
+            {ringsPending ? <Skeleton className="h-52" /> : rings ? (
+              <ProgressRings rings={rings} anchors
+                hrefs={{ degree: "#summary-heading", major: "/profile#primary_program", core: "/profile#school_core" }} />
+            ) : <p className="text-sm text-fg-muted">Progress rings are unavailable right now.</p>}
+          </section>
           <DnSourceNotice progress={dn.data} onImport={() => setView("dn")} />
           <DegreeView
             audit={audit.data}

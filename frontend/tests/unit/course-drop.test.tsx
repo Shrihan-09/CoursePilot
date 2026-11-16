@@ -74,7 +74,7 @@ describe("a drop preview", () => {
   it("shows the title first and the code after it, never the code alone", () => {
     const html = render(<ChangePreviewDialog changes={changes(dropPreview)} />);
     expect(html.indexOf("Stories of the Sea in Film")).toBeLessThan(html.indexOf(">01:111:222<"));
-    expect(html).toMatch(/class="code text-xs text-fg-muted">01:111:222</);
+    expect(html).toMatch(/class="code text-2xs text-fg-muted">01:111:222</);
   });
 
   it("an ordinary change keeps Confirm and offers no replacement search", () => {
