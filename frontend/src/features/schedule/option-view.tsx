@@ -1,4 +1,5 @@
 "use client";
+import { courseTitle } from "@/lib/academic/course-title";
 
 import { Check, ClipboardCopy, Radio as LiveIcon, ShieldCheck } from "lucide-react";
 import { useState } from "react";
@@ -124,7 +125,7 @@ function SectionDetails({ choice }: { choice: SectionChoice }) {
       <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
         <p className="min-w-0 text-sm">
           <span className="code font-semibold text-fg">{choice.course_string}{choice.supplement_code ? ` ${choice.supplement_code}` : ""}</span>{" "}
-          <span className="text-fg-secondary [overflow-wrap:anywhere]">{choice.title ?? ""}</span>
+          <span className="text-fg-secondary [overflow-wrap:anywhere]">{courseTitle(choice.title)}</span>
         </p>
         <p className="tabular shrink-0 text-xs text-fg-muted">
           Section {choice.section_number} · Index <span className="code font-semibold text-fg">{choice.index_number}</span>

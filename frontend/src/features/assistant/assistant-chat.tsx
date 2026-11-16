@@ -1,4 +1,5 @@
 "use client";
+import { courseTitle } from "@/lib/academic/course-title";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronDown, Copy, ExternalLink, MessageSquareText, Send, Sparkles } from "lucide-react";
@@ -338,7 +339,7 @@ function OptionCardView({ card: c, ctx }: { card: OptionCard; ctx: Pick<Ctx, "ta
         data-testid="option-card">
       <div>
         <p className="code text-xs text-fg-secondary">{c.course}{c.credits != null && ` · ${Number(c.credits)} cr`}</p>
-        <h4 className="font-semibold leading-snug text-fg">{c.title}</h4>
+        <h4 className="font-semibold leading-snug text-fg">{courseTitle(c.title)}</h4>
       </div>
       {c.description
         ? <p className="line-clamp-3 text-xs text-fg-secondary" title={`From the ${c.description_source ?? "catalog"}`}>{c.description}</p>
@@ -469,7 +470,7 @@ export function WebRegPanelView({ term }: { term: string }) {
             {p.items.map((i) => (
               <li key={i.course}>
                 <span className="code font-semibold text-fg">{i.index_number}</span>{" "}
-                <span className="code text-fg-secondary">{i.course}</span> {i.title}
+                <span className="code text-fg-secondary">{i.course}</span> {courseTitle(i.title)}
                 {i.section_number && <span className="text-fg-secondary"> · section {i.section_number}</span>}
                 {i.warnings.map((w) => <span key={w} className="block text-xs text-warning">{w}</span>)}
               </li>

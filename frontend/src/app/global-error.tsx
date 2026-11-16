@@ -1,12 +1,18 @@
 "use client";
 
-import { PageError } from "@/components/feedback/page-error";
+import "./globals.css";
 
-/** Root-layout failures need their own html/body and provider-free styling. */
+import { PageError } from "@/components/feedback/page-error";
+import { THEME_SCRIPT } from "@/lib/theme";
+
+/** Root-layout failures need their own html/body; the stylesheet is imported here directly. */
 export default function GlobalError({}: { error: Error & { digest?: string }; reset: () => void }) {
   return (
-    <html lang="en">
-      <body style={{ margin: 0, background: "#f8fafc", color: "#0f172a" }}>
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
+      <body className="min-h-dvh font-sans">
         <PageError onRetry={() => window.location.reload()} />
       </body>
     </html>

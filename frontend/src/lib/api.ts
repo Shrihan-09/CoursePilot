@@ -50,6 +50,22 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * UI polish A5: what a failed request says on screen. A failure never surfaces
+ * as a bare "Internal Server Error" or a status code; the API's own sentences
+ * ("Unable to generate a plan.", the assistant's unavailability reason) are
+ * written for students and kept.
+ */
+export function friendlyErrorMessage(status: number, detail: unknown): string {
+  const text = typeof detail === "string" ? detail.trim() : "";
+  if (!text || /^internal server error\.?$/i.test(text)) {
+    return status === 502 || status === 503 || status === 504
+      ? "CoursePilot can't be reached right now. Check your connection and try again."
+      : "CoursePilot couldn't finish that. Nothing was changed. Try again in a moment.";
+  }
+  return text;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api/cp${path}`, {
     ...init,
@@ -70,7 +86,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       // not JSON: keep the generic message below
     }
     throw new ApiError(
-      body?.detail ?? `Request failed (${response.status})`,
+      friendlyErrorMessage(response.status, body?.detail),
       response.status,
       body?.error?.code ?? "internal_error",
       body?.error?.issues ?? [],

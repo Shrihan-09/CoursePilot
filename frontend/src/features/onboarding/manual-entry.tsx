@@ -1,4 +1,5 @@
 "use client";
+import { courseTitle } from "@/lib/academic/course-title";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
@@ -137,7 +138,7 @@ export function ManualEntry() {
               <div className="min-w-0 flex-1">
                 <p className="flex flex-wrap items-baseline gap-x-2 text-sm">
                   <span className="code font-medium text-fg">{e.course_code}</span>
-                  <span className="text-fg-secondary [overflow-wrap:anywhere]">{e.title}</span>
+                  <span className="text-fg-secondary [overflow-wrap:anywhere]">{courseTitle(e.title)}</span>
                 </p>
                 <p className="tabular text-xs text-fg-muted">
                   {termLabel(e.term_code)} · {STATUS_LABEL[e.status]}
