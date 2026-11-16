@@ -112,6 +112,22 @@ only, against any standards-based provider (for example Google). See
 [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md) for the configuration and for
 what signing in does and does not grant.
 
+### When the app won't load: `dev_doctor`
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\dev_doctor.ps1
+```
+
+This is a read-only check of the local stack. It covers the Docker engine, the
+`coursepilot-db`, `coursepilot-backend` and `coursepilot-live-worker`
+containers, `GET /api/v1/health`, alembic current vs heads on the dev DB, and
+which process owns ports 3000 and 8000 (PID, name, start time). It also flags
+stale or orphaned Next dev servers that wedge port 3000 or lock
+`frontend\.next` (EBUSY). Each problem comes with a plain-English `fix:` line.
+The script never stops processes, migrates, deletes anything or reads secrets.
+You run the fixes yourself. The exit code is the number of problems found
+(0 means healthy). Use `-FrontendPort` and `-BackendPort` to check other ports.
+
 ### Tests
 
 ```bash
