@@ -85,6 +85,8 @@ export interface Profile {
   /** Prompt 08 B1: the school the student is in now; their stated class year. */
   home_school_code?: string | null;
   class_year?: number | null;
+  /** Home follow-ups: the program's encoded degree credit total (null: unknown, never assumed). */
+  degree_credit_total?: { credits: string; source_title: string; source_url: string } | null;
 }
 
 export type ClassStanding = "first_year" | "sophomore" | "junior" | "senior" | "transfer";

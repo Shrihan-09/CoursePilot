@@ -240,6 +240,15 @@ class ReportedGpa(BaseModel):
     as_of: datetime | None
 
 
+class DegreeCreditTotalView(BaseModel):
+    """The program's encoded degree credit minimum and its citation
+    (app.services.planning.degree_total.degree_total_for)."""
+
+    credits: Decimal
+    source_title: str
+    source_url: str
+
+
 class ProfileView(BaseModel):
     program: ProgramView
     onboarding_completed_at: datetime | None
@@ -256,6 +265,9 @@ class ProfileView(BaseModel):
     #: class year they stated for a class-scoped curriculum.
     home_school_code: str | None = None
     class_year: int | None = None
+    #: Home follow-ups: the degree credit total (e.g. 120) when a source states
+    #: one for this program; null when unknown - never assumed.
+    degree_credit_total: DegreeCreditTotalView | None = None
 
 
 class SetupView(BaseModel):
@@ -415,7 +427,20 @@ def _profile_view(session, student, *, include_gpa: bool = False) -> ProfileView
         declaration_status=student.declaration_status,
         first_term=student.first_term, class_standing=student.class_standing,
         home_school_code=student.home_school_code,
-        class_year=_stated_class_year(session, student))
+        class_year=_stated_class_year(session, student),
+        degree_credit_total=_degree_credit_total(session, student))
+
+
+def _degree_credit_total(session, student) -> DegreeCreditTotalView | None:
+    from app.models import ProgramVersion
+    from app.services.planning.degree_total import degree_total_for
+
+    version = session.get(ProgramVersion, student.program_version_id)
+    total = degree_total_for(session, version) if version is not None else None
+    if total is None:
+        return None
+    return DegreeCreditTotalView(credits=total.credits, source_title=total.title,
+                                 source_url=total.url)
 
 
 def _stated_class_year(session, student) -> int | None:

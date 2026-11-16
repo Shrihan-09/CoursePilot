@@ -264,7 +264,7 @@ function CourseCard({ course: c, actions }: { course: PlannedCourse; actions?: B
   return <li className={cn("cp-lift flex h-full min-w-0 flex-col gap-2 rounded-lg border border-border bg-surface-elevated p-3 focus-within:ring-2 focus-within:ring-focus/40", courseTone(c.course))} data-testid="plan-course">
     <div className="flex items-start justify-between gap-2">
       <h4 className="min-w-0 text-base font-semibold leading-snug [overflow-wrap:anywhere]">
-        {courseTitle(c.title)}{" "}
+        {courseTitle(c.title, c.course)}{" "}
         <span className="code whitespace-nowrap text-2xs font-normal text-fg-muted">{c.course}</span>
       </h4>
       <CategoryChip category={courseCategory(c)} />
@@ -278,7 +278,7 @@ function CourseCard({ course: c, actions }: { course: PlannedCourse; actions?: B
       {offeringLabel(c.offering) && <p>{offeringLabel(c.offering)}</p>}
       {c.requirements.slice(1).map((r) => <p key={r.requirement_code}>Also fills {r.requirement_name}</p>)}
       {(c.notes ?? []).map((n) => <p key={n}>{n}</p>)}<WhyHere course={c} />
-    </details>{actions && <Button size="sm" variant="ghost" onClick={() => actions.onOptions(c.course, c.term_code)} aria-label={`Options for ${courseTitle(c.title)}`}><SlidersHorizontal aria-hidden className="size-4" />Options</Button>}</div>
+    </details>{actions && <Button size="sm" variant="ghost" onClick={() => actions.onOptions(c.course, c.term_code)} aria-label={`Options for ${courseTitle(c.title, c.course)}`}><SlidersHorizontal aria-hidden className="size-4" />Options</Button>}</div>
   </li>;
 }
 
@@ -337,7 +337,7 @@ function BlockedList({ courses }: { courses: BlockedCourse[] }) {
       {courses.map((b) => (
         <li key={`${b.issue_code}-${b.course}-${b.requirement_code}`} className="space-y-1 p-3 text-sm">
           <p>
-            <span className="font-medium text-fg [overflow-wrap:anywhere]">{courseTitle(b.title) || b.course}</span>{" "}
+            <span className="font-medium text-fg [overflow-wrap:anywhere]">{courseTitle(b.title, b.course) || b.course}</span>{" "}
             {b.title && <span className="code text-2xs text-fg-muted">{b.course}</span>}
           </p>
           <ul className="text-fg-secondary">

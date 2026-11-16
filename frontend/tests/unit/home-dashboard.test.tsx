@@ -9,7 +9,7 @@ import { ProgressRings } from "@/features/home/progress-rings";
 import { GpaRow } from "@/features/profile/profile-overview";
 import { GPA_VISIBLE_KEY, readGpaVisible, writeGpaVisible } from "@/lib/gpa-visibility";
 import {
-  degreeRing, graduation, metricRing, nextUp, plannedCourseCount, registrationWindow, wholeCredits,
+  degreeFigures, degreeRing, graduation, metricRing, nextUp, plannedCourseCount, registrationWindow, wholeCredits,
   type NextUpInput, type RegistrationSchedule,
 } from "@/lib/home";
 import type { ProgressMetric } from "@/types/progress";
@@ -70,12 +70,35 @@ describe("your record", () => {
 /* ---------------------------------------------------------------- rings */
 describe("ring math (matches the audit / modeled progress)", () => {
   it("outer ring: earned + in-progress degree credits over the degree total", () => {
-    const r = degreeRing(plan().result.degree_credits);
+    const r = degreeRing(degreeFigures(plan().result.degree_credits, null, null));
     expect(r.done).toBeCloseTo(52 / 120);
     expect(r.inProgress).toBeCloseTo(14 / 120);
     expect(r.review).toBe(0);
     expect(r.summary).toBe("66 / 120 credits");
     expect(degreeRing(null).available).toBe(false);
+  });
+
+  const audit = { credits_applicable_to_degree: "34.0", credits_in_progress: "14.0" };
+
+  it("without a saved plan: the audit's credits against the program's encoded degree total", () => {
+    const f = degreeFigures(null, audit, "120");
+    expect(f).toEqual({ earned: 34, inProgress: 14, total: 120, basis: "record" });
+    const r = degreeRing(f);
+    expect(r.summary).toBe("48 / 120 credits");
+    expect(r.done).toBeCloseTo(34 / 120);
+  });
+
+  it("the saved plan's figures win over the encoded total", () => {
+    expect(degreeFigures(plan().result.degree_credits, audit, "130")?.basis).toBe("plan");
+  });
+
+  it("unknown total: a dash and 'Build a plan to see this', never a guessed number", () => {
+    expect(degreeFigures(null, audit, null)).toBeNull();
+    expect(degreeFigures(null, audit, undefined)).toBeNull();
+    expect(degreeFigures(null, null, "120")).toBeNull();
+    const r = degreeRing(null);
+    expect(r).toMatchObject({ available: false, summary: "—", detail: "Build a plan to see this." });
+    expect(degreeRing(null, true).detail).toMatch(/isn't modeled/);
   });
 
   it("middle/inner rings: completed, in-progress increment and unknown obligations as a grey segment", () => {
@@ -113,7 +136,7 @@ describe("ring math (matches the audit / modeled progress)", () => {
   });
 
   it("rings render with accessible labels and links, and skip motion under reduced motion", () => {
-    const rings = [degreeRing(plan().result.degree_credits), metricRing("major", "Major requirements", metric(18, 8, 10, 2)), metricRing("core", "Core / gen-ed", metric(12, 4, 5, 2))];
+    const rings = [degreeRing(degreeFigures(plan().result.degree_credits, null, null)), metricRing("major", "Major requirements", metric(18, 8, 10, 2)), metricRing("core", "Core / gen-ed", metric(12, 4, 5, 2))];
     const html = renderToStaticMarkup(<ProgressRings rings={rings} hrefs={{ degree: "/degree#a", major: "/degree#b", core: "/degree#c" }} />);
     // Server render (and prefers-reduced-motion) = no animation, arcs drawn at full length.
     expect(html).toContain('data-reduced-motion="true"');
@@ -210,19 +233,20 @@ describe("GPA hidden by default; reveal is per device", () => {
 
 /* ---------------------------------------------------------------- Home render */
 describe("Home dashboard", () => {
-  function renderHome() {
+  function renderHome({ withPlan = true, total = null as string | null } = {}) {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
     const p = plan();
     client.setQueryData(["onboarding"], { state: "complete", history_counts: { completed: 14, in_progress: 4, planned: 0 }, open_imports: [], next_steps: [],
       // An older API that still sent the GPA here must not make Home show it.
       profile: { onboarding_completed_at: null, transcript_reported_gpa: { value: GPA, source: "x", as_of: null },
+        degree_credit_total: total ? { credits: total, source_title: "SAS", source_url: "https://example.invalid" } : null,
         program: { program_key: "k", program_name: "Computer Science", program_code: "198", school_code: "01", degree_type: "BS", variant: "", catalog_year: "2025-2026", lifecycle_state: "", publication_basis: null, support_status: "pending_review",
           warnings: [{ code: "W1", severity: "warning", message: "This program's encoding has not yet been verified." }, { code: "W2", severity: "info", message: "1 program rule can't be evaluated." }] } } });
     client.setQueryData(["audit"], { credits_applicable_to_degree: "34.0", credits_required_min: "67.0", credits_in_progress: "14.0", requirements: [] });
-    client.setQueryData(["plan"], { plan: p });
+    client.setQueryData(["plan"], { plan: withPlan ? p : null });
     client.setQueryData(["readiness"], { state: "ready" });
     client.setQueryData(["plan-choices"], { term_code: "20271", questions: [] });
-    client.setQueryData(["dn-imports"], { imports: [] });
+    client.setQueryData(["dn-imports"], { imports: [{ state: "confirmed", confirmed_scope: "primary" }] });
     client.setQueryData(["dn-progress"], { source: "coursepilot_estimate", label: "", imports: [], requirements: [], nudge: null });
     client.setQueryData(["modeled-progress"], { metrics: [{ ...metric(18, 8, 10, 0), scope: "primary_program" }, { ...metric(12, 4, 5, 2), scope: "school_core" }] });
     client.setQueryData(["grades-reminder"], { show: false });
@@ -247,5 +271,15 @@ describe("Home dashboard", () => {
     expect(t).toContain("View modeled progress");
     expect(t).toContain("Ask the assistant");
     expect(t).toContain("What Core is left?");
+    // One "Build Spring 2027 schedule" (the Next-up action), never a duplicate.
+    expect(t.match(/Build Spring 2027 schedule/g)?.length).toBe(1);
+  });
+
+  it("without a plan: the degree total comes from the encoded minimum, or shows a dash", () => {
+    expect(text(renderHome({ withPlan: false, total: "120" }))).toContain("Degree: 48 / 120 · Major: 34 / 67");
+    const t = text(renderHome({ withPlan: false, total: null }));
+    expect(t).toContain("Degree: — · Major: 34 / 67");
+    expect(t).toContain("Build a plan to see this.");
+    expect(t).not.toMatch(/\/ 120/);
   });
 });

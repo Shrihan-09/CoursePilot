@@ -111,6 +111,25 @@ changes the student's catalog year by itself.
   9:00 am - 60+ degree credits"), labelled as computed from CoursePilot's
   credit count (Degree Navigator's degree credits are authoritative), plus a
   reminder before it opens.
+  *Partly done (UI polish, PR #46):* Home's "Next up" card names the tier and
+  opening time from the plan's earned degree credits
+  (`GET /registration-schedules/{term}`). Still open: the Plan/Schedule page
+  and the reminder.
+
+## Backlog: Home and progress rings (from the Home follow-ups)
+
+- **Isolate the disputed requirement on a Degree Navigator disagreement.**
+  Today, when Degree Navigator says a requirement CoursePilot counts as met is
+  NOT met, the whole counted part of the major or Core ring is drawn grey
+  ("needs review"), because the modeled-progress metric has no per-requirement
+  units (`frontend/src/lib/home.ts`, `metricRing`). Done means the progress
+  API reports each requirement's units in the metric, and only the disputed
+  requirement's share turns grey while the rest stays "done".
+- **Review the SOC full-title proposals.** `SOC_FULL_TITLES` in
+  `frontend/src/lib/academic/course-title.ts` holds proposed full titles for
+  courses whose SOC record has no `expandedTitle`; none applies until an owner
+  sets `reviewed: true` with a Rutgers `source`. List every such course with
+  `scripts/list_unexpanded_titles.py` (read-only).
 
 ## Backlog: tooling
 

@@ -56,15 +56,45 @@ function segments(done: number, inProgress: number, review: number) {
   return { done: d, inProgress: p, review: r };
 }
 
-/** Outer ring: degree credits (earned + in progress) against the degree total. */
-export function degreeRing(credits: SavedPlan["result"]["degree_credits"] | null | undefined): RingValue {
-  if (!credits || !(Number(credits.required) > 0)) {
-    return { key: "degree", label: "Degree credits", done: 0, inProgress: 0, review: 0, available: false,
-      summary: "Not modeled", detail: "The degree credit total isn't modeled for your school and catalog year yet." };
+/** Degree credit figures: earned, in progress, and the degree total they count toward. */
+export interface DegreeFigures {
+  earned: number;
+  inProgress: number;
+  total: number;
+  /** "plan": the saved plan's degree_credits; "record": the audit + the program's encoded total. */
+  basis: "plan" | "record";
+}
+
+/**
+ * Home follow-ups item 3. With a saved plan, its degree_credits (the planning
+ * engine's own figures). Without one, the same parts the engine uses - the
+ * audit's credits applicable to the degree and in progress - against the
+ * program's ENCODED degree total (e.g. 120). Unknown total: null, never a
+ * guessed number.
+ */
+export function degreeFigures(
+  planCredits: SavedPlan["result"]["degree_credits"] | null | undefined,
+  audit: { credits_applicable_to_degree: string | number; credits_in_progress: string | number } | null | undefined,
+  encodedTotal: string | number | null | undefined,
+): DegreeFigures | null {
+  if (planCredits && Number(planCredits.required) > 0) {
+    return { earned: Number(planCredits.completed), inProgress: Number(planCredits.in_progress), total: Number(planCredits.required), basis: "plan" };
   }
-  const total = Number(credits.required);
-  const earned = Number(credits.completed);
-  const current = Number(credits.in_progress);
+  const total = Number(encodedTotal);
+  if (audit && encodedTotal !== null && encodedTotal !== undefined && total > 0) {
+    return { earned: Number(audit.credits_applicable_to_degree), inProgress: Number(audit.credits_in_progress), total, basis: "record" };
+  }
+  return null;
+}
+
+/** Outer ring: degree credits (earned + in progress) against the degree total. */
+export function degreeRing(figures: DegreeFigures | null, hasPlan = false): RingValue {
+  if (!figures) {
+    return { key: "degree", label: "Degree credits", done: 0, inProgress: 0, review: 0, available: false,
+      summary: "—",
+      detail: hasPlan ? "The degree credit total isn't modeled for your school and catalog year yet." : "Build a plan to see this." };
+  }
+  const { earned, inProgress: current, total } = figures;
   return { key: "degree", label: "Degree credits", ...segments(earned / total, current / total, 0), available: true,
     summary: `${wholeCredits(earned + current)} / ${wholeCredits(total)} credits`,
     detail: `${wholeCredits(earned)} earned, ${wholeCredits(current)} in progress, of the ${wholeCredits(total)}-credit degree total.` };

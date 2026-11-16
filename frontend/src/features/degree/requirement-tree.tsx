@@ -188,7 +188,7 @@ export function RequirementNode({
                   <li key={`${a.course.course_string}-${a.term_code}`} className="flex flex-col gap-0.5 p-2 text-sm sm:flex-row sm:items-baseline sm:gap-3">
                     <span className="code shrink-0 font-medium text-fg">{a.course.course_string}</span>
                     <span className="min-w-0 flex-1 text-fg-secondary [overflow-wrap:anywhere]">
-                      {courseTitle(a.course.title) || "Untitled course"}
+                      {courseTitle(a.course.title, a.course.course_string) || "Untitled course"}
                       {a.term_code && <span className="text-fg-muted"> · {termLabel(a.term_code)}</span>}
                       {a.earned_grade && <span className="text-fg-muted"> · Grade {a.earned_grade}</span>}
                       {a.status === "in_progress" && <span className="text-fg-muted"> · In progress</span>}

@@ -93,7 +93,7 @@ export default function HomePage() {
   const dnImports = useQuery({ queryKey: ["dn-imports"], queryFn: api.dnImports, staleTime: 60_000 });
   const schedule = useQuery({ queryKey: ["registration-schedule", first?.term_code], queryFn: () => api.registrationSchedule(first!.term_code),
     enabled: !!first, retry: false, staleTime: 3_600_000 });
-  const { rings, pending: ringsPending, notMet } = useRings();
+  const { rings, pending: ringsPending, notMet, figures } = useRings();
   const panel = useAssistantPanel();
   const [now, setNow] = useState<Date | null>(null);
   useEffect(() => setNow(new Date()), []);
@@ -118,9 +118,8 @@ export default function HomePage() {
   const reg = now ? registrationWindow(schedule.data, earned, now) : null;
   const step = nextUp({ onboardingState: state, readiness: readiness.data?.state, plan: saved, choicesPending: pendingChoices, hasDnAudit: hasDn, registration: reg });
   const grad = graduation(saved, notMet.length);
-  const dc = saved?.result.degree_credits;
   const creditLine = [
-    dc ? `Degree: ${wholeCredits(Number(dc.completed) + Number(dc.in_progress))} / ${wholeCredits(dc.required)}` : null,
+    figures ? `Degree: ${wholeCredits(figures.earned + figures.inProgress)} / ${wholeCredits(figures.total)}` : "Degree: —",
     audit.data?.credits_required_min ? `Major: ${wholeCredits(audit.data.credits_applicable_to_degree)} / ${wholeCredits(audit.data.credits_required_min)}` : null,
   ].filter(Boolean).join(" · ");
   const record: [string, number][] = [["Completed", c.completed ?? 0], ["In progress", c.in_progress ?? 0], ["Planned", plannedCourseCount(saved)]];
@@ -179,7 +178,7 @@ export default function HomePage() {
                 {first.courses.map((course) => (
                   <li key={course.course} className="flex items-baseline justify-between gap-3 py-2 text-sm">
                     <span className="min-w-0 [overflow-wrap:anywhere]">
-                      <span className="font-medium text-fg">{courseTitle(course.title)}</span>{" "}
+                      <span className="font-medium text-fg">{courseTitle(course.title, course.course)}</span>{" "}
                       <span className="code text-2xs text-fg-muted">{course.course}</span>
                     </span>
                     <span className="tabular shrink-0 text-xs text-fg-secondary">{wholeCredits(course.credits)} cr</span>
