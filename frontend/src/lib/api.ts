@@ -104,7 +104,7 @@ const json = (method: string, body: unknown): RequestInit => ({
 });
 
 export const api = {
-  scheduleImports: () => request<{imports: {id: string; state: string; expires_at: string}[]}>("/student/schedule-imports"),
+  scheduleImports: () => request<{imports: {id: string; state: string; expires_at: string; created_at?: string; confirmed_at?: string | null}[]}>("/student/schedule-imports"),
   uploadSchedule: (file: File) => request<import("@/types/schedule-import").ScheduleImport>("/student/schedule-imports", {method: "POST", headers: {"content-type": "application/pdf"}, body: file}),
   scheduleImport: (id: string) => request<import("@/types/schedule-import").ScheduleImport>(`/student/schedule-imports/${id}`),
   editScheduleRow: (id: string, rowId: string, body: Record<string, unknown>) => request<import("@/types/schedule-import").ScheduleImport>(`/student/schedule-imports/${id}/rows/${rowId}`, json("PATCH", body)),
@@ -112,6 +112,7 @@ export const api = {
   discardSchedule: (id: string) => request<import("@/types/schedule-import").ScheduleImport>(`/student/schedule-imports/${id}`, {method: "DELETE"}),
   registrations: () => request<{registrations: import("@/types/schedule-import").Registration[]}>("/student/registrations"),
   me: () => request<Me>("/me"),
+  registrationSchedule: (term: string) => request<import("@/lib/home").RegistrationSchedule>(`/registration-schedules/${term}`),
   onboarding: () => request<Onboarding>("/student/onboarding"),
   programs: () => request<{ programs: Program[] }>("/programs"),
   createProfile: (program_key: string, catalog_year: string, context: ProgramContext = {}) =>

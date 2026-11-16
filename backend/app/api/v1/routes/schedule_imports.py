@@ -132,7 +132,8 @@ async def list_imports(principal: Annotated[Principal, Depends(enforce_request_r
                 imp.rows, imp.state = [], "expired"
         return {
             "imports": [
-                {"id": str(imp.id), "state": imp.state, "expires_at": imp.expires_at}
+                {"id": str(imp.id), "state": imp.state, "expires_at": imp.expires_at,
+                 "created_at": imp.created_at, "confirmed_at": imp.confirmed_at}
                 for imp in imports
             ]
         }

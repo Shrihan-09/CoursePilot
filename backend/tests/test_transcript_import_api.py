@@ -106,7 +106,7 @@ def _record(account_id) -> list[tuple]:
 
 
 @requires_db
-async def test_upload_stages_review_confirms_and_only_then_writes(ob, storage) -> None:
+async def test_upload_stages_review_confirms_and_only_then_writes(ob, storage, caplog) -> None:
     async with _client(_app(storage), ob["account"]) as ac:
         await _profile(ac, ob)
         imp = await _upload(ac, _doc(ob))
@@ -165,6 +165,11 @@ async def test_upload_stages_review_confirms_and_only_then_writes(ob, storage) -
         assert profile["transcript_reported_gpa"]["value"] == "3.412"
         assert profile["transcript_reported_gpa"]["source"] == \
             "student_uploaded_unofficial_transcript"
+        # UI polish B3: GPA only where the page can reveal it - never in the
+        # onboarding/Home response, and never in a log line.
+        home = (await ac.get("/api/v1/student/onboarding")).json()
+        assert home["profile"]["transcript_reported_gpa"] is None
+        assert "3.412" not in caplog.text
 
 
 @requires_db

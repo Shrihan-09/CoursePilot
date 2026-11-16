@@ -1,7 +1,7 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { ThemeProvider } from "@/components/theme/theme-provider";
 
@@ -27,6 +27,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
         },
       }),
   );
+
+  // UI polish B4: the offline-page service worker (production builds only, so
+  // it never caches anything under `next dev`).
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production" || !("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("/sw.js").catch(() => { /* installability is optional */ });
+  }, []);
 
   return (
     <ThemeProvider>

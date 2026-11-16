@@ -403,8 +403,10 @@ def _program_view(session, student) -> ProgramView:
         warnings=[WarningView(**w.as_dict()) for w in sel.warnings])
 
 
-def _profile_view(session, student) -> ProfileView:
-    gpa = import_service.latest_reported_gpa(session, student.id)
+def _profile_view(session, student, *, include_gpa: bool = False) -> ProfileView:
+    # Privacy (UI polish B3): the transcript-reported GPA is returned only by
+    # GET /student/profile, the one response whose page can reveal it.
+    gpa = import_service.latest_reported_gpa(session, student.id) if include_gpa else None
     return ProfileView(
         program=_program_view(session, student),
         onboarding_completed_at=student.onboarding_completed_at,
@@ -718,7 +720,7 @@ async def get_profile(principal: Principal = Depends(enforce_request_rate_limit)
             student = onboarding_service.owned_student(session, principal.account_id)
             if student is None:
                 raise onboarding_service.ProfileMissing("no profile")
-            return _profile_view(session, student)
+            return _profile_view(session, student, include_gpa=True)
     return await _run(work, "profile_read", principal)
 
 

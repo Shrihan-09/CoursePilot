@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Offline · CoursePilot</title>
+  <style>
+    :root { color-scheme: light dark; --bg: #ffffff; --card: #f8fafc; --fg: #0f172a; --muted: #4b5563; --border: #e2e8f0; --primary: #016df4; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #0a0b0d; --card: #14161a; --fg: #f1f5f9; --muted: #a3acb9; --border: #262a31; --primary: #4d9fff; } }
+    body { margin: 0; min-height: 100dvh; display: grid; place-items: center; background: var(--bg); color: var(--fg);
+           font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; padding: 16px; box-sizing: border-box; }
+    main { max-width: 420px; width: 100%; text-align: center; background: var(--card); border: 1px solid var(--border);
+           border-radius: 12px; padding: 32px 24px; box-sizing: border-box; }
+    img { width: 48px; height: 48px; }
+    h1 { font-size: 24px; margin: 16px 0 8px; }
+    p { color: var(--muted); margin: 0 0 20px; font-size: 14px; }
+    button { min-height: 44px; padding: 0 20px; border: 0; border-radius: 8px; background: var(--primary); color: #fff;
+             font: inherit; font-weight: 600; cursor: pointer; }
+    button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  </style>
+</head>
+<body>
+  <main>
+    <img src="/brand/coursepilot-mark-128.png" alt="">
+    <h1>You're offline</h1>
+    <p>CoursePilot needs a connection to load your plan and record. Nothing is stored on this device while you're away.</p>
+    <button type="button" onclick="location.reload()">Try again</button>
+  </main>
+</body>
+</html>
