@@ -240,14 +240,14 @@ export function DegreeView({ audit, program, source, dnNotMet = [], choices = {}
             {audit.unallocated_courses.map((c) => (
               <li key={`u-${c.course_string}-${c.supplement_code}`} className="flex flex-col gap-0.5 p-3 text-sm sm:flex-row sm:gap-3">
                 <span className="code font-medium text-fg">{c.course_string}</span>
-                <span className="flex-1 text-fg-secondary [overflow-wrap:anywhere]">{courseTitle(c.title) || "Untitled course"}</span>
+                <span className="flex-1 text-fg-secondary [overflow-wrap:anywhere]">{courseTitle(c.title, c.course_string) || "Untitled course"}</span>
                 <span className="text-xs text-fg-muted">Not used by any requirement</span>
               </li>
             ))}
             {audit.excluded_courses.map((c) => (
               <li key={`x-${c.course_string}-${c.supplement_code}`} className="flex flex-col gap-0.5 p-3 text-sm sm:flex-row sm:gap-3">
                 <span className="code font-medium text-fg">{c.course_string}</span>
-                <span className="flex-1 text-fg-secondary [overflow-wrap:anywhere]">{courseTitle(c.title) || "Untitled course"}</span>
+                <span className="flex-1 text-fg-secondary [overflow-wrap:anywhere]">{courseTitle(c.title, c.course_string) || "Untitled course"}</span>
                 <span className="text-xs text-fg-muted">Excluded from the degree by a program rule</span>
               </li>
             ))}

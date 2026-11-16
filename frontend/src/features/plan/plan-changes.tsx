@@ -249,7 +249,7 @@ export function PlanDiffView({ diff: d }: { diff: PlanDiff }) {
  * first, the code small and muted after it. */
 export function CourseName({ course, title }: { course: string; title?: string | null }) {
   return title
-    ? <><span className="text-fg">{courseTitle(title)}</span> <span className="code text-2xs text-fg-muted">{course}</span></>
+    ? <><span className="text-fg">{courseTitle(title, course)}</span> <span className="code text-2xs text-fg-muted">{course}</span></>
     : <span className="code">{course}</span>;
 }
 
@@ -261,7 +261,7 @@ export function OptionCard({ option: o, onChoose, busy, action = "Choose" }: {
   const open = "open_status" in o ? o.open_status : "unknown";
   const DeliveryIcon = o.delivery.some((d) => d === "async" || d === "online") ? Monitor : MapPin;
   return <li className="min-w-0 rounded-lg border border-border bg-surface-elevated p-3 text-sm" data-testid="option-card">
-    <div className="flex min-w-0 flex-wrap items-start justify-between gap-2"><div className="min-w-0 flex-1 basis-36"><h4 className="font-semibold leading-snug [overflow-wrap:anywhere]">{courseTitle(o.title)}</h4><p className="code mt-1 text-xs text-fg-muted">{o.course} / {Number(o.credits)} credits</p></div><Button size="sm" variant="secondary" loading={busy} onClick={onChoose}>{action}</Button></div>
+    <div className="flex min-w-0 flex-wrap items-start justify-between gap-2"><div className="min-w-0 flex-1 basis-36"><h4 className="font-semibold leading-snug [overflow-wrap:anywhere]">{courseTitle(o.title, o.course)}</h4><p className="code mt-1 text-xs text-fg-muted">{o.course} / {Number(o.credits)} credits</p></div><Button size="sm" variant="secondary" loading={busy} onClick={onChoose}>{action}</Button></div>
     <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-fg-secondary">{o.requirements[0] && <Badge tone="info">{o.requirements[0]}</Badge>}<span><DeliveryIcon aria-hidden className="mr-1 inline size-3" />{deliveryText(o.delivery)}</span><span>{open === "open" ? "Open" : open === "closed" ? "Closed" : "Seats unknown"}</span></div>
     <details className="mt-1 text-xs text-fg-secondary"><summary className="cursor-pointer py-1">Details</summary><p>{o.offering === "confirmed" ? "Confirmed for this semester" : "Historically offered this season"}</p>{o.requirements.length > 1 && <p>Also fills: {o.requirements.slice(1).join(", ")}</p>}{"why" in o && <p>{o.why}</p>}{o.similar_to && <p>{o.similar_to}</p>}{"impact" in o && <p>{o.impact}</p>}<p>{o.workload_weight != null && `Workload ${Number(o.workload_weight)}`}{o.contact_hours != null && ` / ${Number(o.contact_hours)} contact hrs/week`}</p></details>
   </li>;
@@ -315,7 +315,7 @@ export function CourseOptionsSheet({ target, onClose, changes }: {
       ) : o && (
         <div className="space-y-5" data-testid="options-sheet">
           <div className="space-y-1">
-            <p className="text-sm text-fg">{courseTitle(o.title)}</p>
+            <p className="text-sm text-fg">{courseTitle(o.title, o.course)}</p>
             <p className="text-xs text-fg-secondary">
               {termLabel(o.term_code)}{o.requirements.length ? ` · counts toward ${o.requirements.join(", ")}` : ""}
             </p>

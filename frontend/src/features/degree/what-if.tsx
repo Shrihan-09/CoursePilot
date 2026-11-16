@@ -66,7 +66,7 @@ function CourseList({ title, courses, empty }: { title: string; courses: CourseC
           {courses.map((c) => (
             <li key={c.course_string} className="flex flex-col gap-0.5 p-2 text-sm sm:flex-row sm:gap-3">
               <span className="code font-medium text-fg">{c.course_string}</span>
-              <span className="flex-1 text-fg-secondary [overflow-wrap:anywhere]">{courseTitle(c.title) || "Untitled course"}</span>
+              <span className="flex-1 text-fg-secondary [overflow-wrap:anywhere]">{courseTitle(c.title, c.course_string) || "Untitled course"}</span>
             </li>
           ))}
         </ul>

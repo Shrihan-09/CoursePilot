@@ -5,7 +5,7 @@ import NotFound from "@/app/not-found";
 import AppError from "@/app/error";
 import { SemesterCard } from "@/features/plan/plan-result";
 import { friendlyErrorMessage } from "@/lib/api";
-import { courseTitle, SOC_ABBREVIATIONS, type AbbreviationEntry } from "@/lib/academic/course-title";
+import { courseTitle, SOC_FULL_TITLES, type FullTitleEntry } from "@/lib/academic/course-title";
 import { fitChips, overBudget } from "@/lib/academic/plan-text";
 import type { PlanTerm, PlannedCourse } from "@/types/plan";
 
@@ -40,18 +40,36 @@ describe("course titles (A1)", () => {
     expect(courseTitle("iOS Development")).toBe("iOS Development");
   });
 
-  it("never expands an abbreviation that is not reviewed", () => {
-    expect(SOC_ABBREVIATIONS.every((e) => !e.reviewed)).toBe(true);
-    expect(courseTitle("numer anlys & comput")).toBe("Numer Anlys & Comput");
+  it("title-cases the sourced full title (SOC expandedTitle, stored as the course title)", () => {
+    expect(courseTitle("INTRODUCTION TO DISCRETE STRUCTURES I", "01:198:205")).toBe("Introduction to Discrete Structures I");
   });
 
-  it("expands only reviewed entries that cite a source", () => {
-    const table: AbbreviationEntry[] = [
-      { short: "anlys", expanded: "Analysis", reviewed: true, source: "SOC expandedTitle, 01:640:373" },
-      { short: "numer", expanded: "Numerical", reviewed: true, source: null },
-      { short: "comput", expanded: "Computing", reviewed: false, source: "x" },
-    ];
-    expect(courseTitle("NUMER ANLYS & COMPUT", table)).toBe("Numer Analysis & Comput");
+  it("never applies an unreviewed fallback: every shipped entry is a proposal", () => {
+    expect(SOC_FULL_TITLES.length).toBeGreaterThan(0);
+    expect(SOC_FULL_TITLES.every((e) => !e.reviewed && e.source === null)).toBe(true);
+    expect(courseTitle("NUMER ANLYS & COMPUT", "01:198:323")).toBe("Numer Anlys & Comput");
+  });
+
+  const table: FullTitleEntry[] = [
+    { course: "01:198:323", soc_title: "NUMER ANLYS & COMPUT", full_title: "Numerical Analysis and Computing", reviewed: true, source: "https://example.invalid/catalog" },
+    { course: "01:640:250", soc_title: "INTRO LINEAR ALGEBRA", full_title: "Introduction to Linear Algebra", reviewed: true, source: null },
+    { course: "01:640:300", soc_title: "INTRO MATH REASONING", full_title: "Introduction to Mathematical Reasoning", reviewed: false, source: "x" },
+  ];
+
+  it("applies a reviewed, sourced full title only to that course and that exact SOC title", () => {
+    expect(courseTitle("NUMER ANLYS & COMPUT", "01:198:323", table)).toBe("Numerical Analysis and Computing");
+    expect(courseTitle("numer  anlys & comput", "01:198:323", table)).toBe("Numerical Analysis and Computing");
+    // Another course with the same short title, or no course code: not applied.
+    expect(courseTitle("NUMER ANLYS & COMPUT", "01:640:373", table)).toBe("Numer Anlys & Comput");
+    expect(courseTitle("NUMER ANLYS & COMPUT", undefined, table)).toBe("Numer Anlys & Comput");
+    // Missing source or not reviewed: not applied.
+    expect(courseTitle("INTRO LINEAR ALGEBRA", "01:640:250", table)).toBe("Intro Linear Algebra");
+    expect(courseTitle("INTRO MATH REASONING", "01:640:300", table)).toBe("Intro Math Reasoning");
+  });
+
+  it("stops applying once Rutgers supplies an expandedTitle (the title shown changes)", () => {
+    expect(courseTitle("NUMERICAL ANALYSIS AND COMPUTING", "01:198:323", table)).toBe("Numerical Analysis and Computing");
+    expect(courseTitle("NUMERICAL METHODS", "01:198:323", table)).toBe("Numerical Methods");
   });
 
   it("is empty for a missing title", () => {
