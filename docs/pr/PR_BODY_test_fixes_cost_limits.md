@@ -6,6 +6,14 @@ commit. `feature/launch-prep` is kept as a backup of the rebrand.
 1. `test: fix the two pre-existing backend test failures`
 2. `feat: assistant cost limits for public launch`
 
+**Rebased onto `main` (`c59c3e5`, after #46 and #47).**
+- **One conflict.** It was in the `assistant-chat.tsx` imports, and I kept both sides: main's `confirmLabel` (Home/UI polish) and this branch's `ASSISTANT_MAX_INPUT_CHARS`. Everything else merged cleanly. main's title-casing and Home changes and every cost limit below are all present.
+- **Route list.** Since this branch was cut, main added four routes, none under `/api/v1/student`. That means the enumerated student-route list needed no change. I reviewed each one as intentional:
+  - `GET /registration-schedules/{term_code}`: bundled public Registrar tiers, no student data; `{term_code}` names a term.
+  - `POST /requirements/reports`: requires sign-in and records the caller's own `account_id`. The body is a bounded program key, year, requirement code and message, with no student id.
+  - `GET /admin/requirement-reports` and `PATCH /admin/requirement-reports/{report_id}`: gated by `require_admin_account`.
+- **Production audit.** The placeholder-key fix is kept, and `require_openai_key` and the audit are unchanged.
+
 ## Commit 1: fix the 2 pre-existing backend test failures
 
 - `test_a_fully_configured_production_setup_reports_nothing`: a fully
@@ -38,9 +46,9 @@ commit. `feature/launch-prep` is kept as a backup of the rebrand.
 
 ## Tests
 
-Run one at a time on this branch:
-- **Backend** against `coursepilot_test`: **1340 passed, 4 skipped**.
-- **Frontend**: **185 passed**; typecheck clean.
+Run one at a time on this branch after the rebase:
+- **Backend** against `coursepilot_test`: **1366 passed, 4 skipped, 0 failed**.
+- **Frontend** (vitest): **253 passed / 23 files**; `tsc --noEmit` clean.
 
 New tests:
 - input limit: frontend counter and Send disabled; backend 400, exactly 250 accepted, a refused message costs no allowance
